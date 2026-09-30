@@ -59,8 +59,8 @@ def matches_publish_workflow(name: str, wf_name: str, target_wf: str = "") -> bo
     script = f"""
     {JQ_FILTER}
     def check($n; $w; $p):
-      ((($n // "") | ascii_downcase | contains("preview")) or (($w // "") | ascii_downcase | contains("preview"))) as $is_preview
-      | if $is_preview then false
+      {{"name": $n, "workflowName": $w}} as $run
+      | if ($run | is_preview) then false
         else (matches($n // ""; $p) or matches($w // ""; $p))
         end;
     check($name; $wf_name; $target)

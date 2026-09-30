@@ -4183,13 +4183,16 @@ jobs:
 
       # claude-code-review.yml is exempt from the v2 comparison because it
       # reinstates checks: read as a breaking change for @v3 (gha#833).
+      # cleanup-pr-previews.yml is exempt from the v2 comparison because it
+      # adds actions: read to inspect workflow runs for wait-for-publish (gha#994).
       # slide-major-tag.yml does not pass --exempt-workflow and continues to block
       # sliding v2 over this commit.
       - name: Assert no callee permission widening against v2
         shell: bash
         run: |
           python3 .github/workflows/scripts/audit_callee_permissions.py --base-ref v2 \
-            --exempt-workflow .github/workflows/claude-code-review.yml
+            --exempt-workflow .github/workflows/claude-code-review.yml \
+            --exempt-workflow .github/workflows/cleanup-pr-previews.yml
 
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,

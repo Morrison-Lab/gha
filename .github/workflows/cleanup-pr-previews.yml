@@ -141,6 +141,9 @@ jobs:
               # PR was merged. Verify that the merged main publish workflow has succeeded and deployed.
               local check_base="${base_ref:-main}"
               local jq_filter='
+                def is_preview:
+                  ((.workflowName // "") | ascii_downcase | contains("preview")) or ((.name // "") | ascii_downcase | contains("preview"));
+
                 def matches($target; $p):
                   ($target | ascii_downcase) as $t
                   | ($p | ascii_downcase) as $pat
@@ -165,21 +168,21 @@ jobs:
 
               commit_runs_match=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
-                | select((.workflowName // .name // "") | test("preview"; "i") | not)
+                | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | (.workflowName // .name)
               ' <<< "$runs_json" | head -n1)
 
               commit_runs_success=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
-                | select((.workflowName // .name // "") | test("preview"; "i") | not)
+                | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | select(.status == "completed" and .conclusion == "success")
                 | (.workflowName // .name)
               ' <<< "$runs_json" | head -n1)
 
               if [ -n "$commit_runs_success" ]; then
-                echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow '${commit_runs_success}' succeeded) - removing preview at ${dir}"
+                echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow '\''${commit_runs_success}'\'' succeeded) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
                 continue
@@ -187,7 +190,7 @@ jobs:
 
               commit_runs_pending=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
-                | select((.workflowName // .name // "") | test("preview"; "i") | not)
+                | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | select(.status != "completed")
                 | "\(.workflowName // .name): \(.status)"
@@ -203,7 +206,7 @@ jobs:
                 deploy_commit_found=$(git log -100 --format="%s" HEAD 2>/dev/null \
                   | grep -E -i "deploy.*${merge_oid:0:8}" | head -n1 || true)
                 if [ -n "$deploy_commit_found" ]; then
-                  echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '${deploy_commit_found}') - removing preview at ${dir}"
+                  echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '\''${deploy_commit_found}'\'') - removing preview at ${dir}"
                   rm -rf "$dir"
                   REMOVED=$((REMOVED + 1))
                   continue
@@ -217,7 +220,7 @@ jobs:
 
               base_runs_match=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
-                | select((.workflowName // .name // "") | test("preview"; "i") | not)
+                | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | (.workflowName // .name)
               ' <<< "$base_runs_json" | head -n1)
@@ -249,7 +252,7 @@ jobs:
                 fi
               done < <(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
-                | select((.workflowName // .name // "") | test("preview"; "i") | not)
+                | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | [.headSha // "", .status // "", .conclusion // "", .workflowName // .name // ""]
                 | @tsv
