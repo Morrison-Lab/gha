@@ -1,0 +1,74 @@
+---
+title: "update-quarto-extensions.yml"
+---
+
+Update vendored Quarto extensions in-place to upstream semver tags and open
+or refresh an automation pull request when newer versions are available.
+
+Preserves the repository's existing directory layout (flat
+`_extensions/<name>/` vs nested `_extensions/<owner>/<name>/`), fails loudly
+if a vendored copy was modified locally without matching any published upstream
+release tag, and never modifies `_quarto.yml`.
+
+## Inputs
+
+| Input               | Type    | Default                              | Description                                                                                                   |
+| ------------------- | ------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `extension-repos`   | string  | `''`                                 | Mapping of extension names to upstream GitHub repositories (`owner/repo`). Built-in defaults cover common d-morrison extensions. |
+| `extensions-dir`    | string  | `_extensions`                        | Directory holding vendored Quarto extensions.                                                                 |
+| `base-branch`       | string  | `main`                               | Base branch to open the PR against.                                                                           |
+| `pr-branch`         | string  | `automated/update-quarto-extensions` | Head branch for the automation PR.                                                                            |
+| `labels`            | string  | `dependencies, quarto`               | Comma-separated labels to apply to the automation PR.                                                         |
+| `dry-run`           | boolean | `false`                              | When true, detect and log updates without modifying files or opening a PR.                                    |
+| `allow-local-edits` | boolean | `false`                              | When true, overwrite vendored copies even if they differ from all published upstream tags.                   |
+
+## Secrets
+
+| Secret           | Required | Description                                                         |
+| ---------------- | -------- | ------------------------------------------------------------------- |
+| `WORKFLOW_TOKEN` | no       | PAT or App token; needed to push to a protected branch or run checks.|
+
+## Permissions
+
+Grant `contents: write` and `pull-requests: write`, and enable Settings ->
+Actions -> General -> "Allow GitHub Actions to create and approve pull requests".
+
+## Example
+
+```yaml
+# Copy to .github/workflows/update-quarto-extensions.yml in your repo.
+# Periodically update vendored Quarto extensions in-place to upstream semver tags.
+# Requires Settings -> Actions -> General -> "Allow GitHub Actions to create and
+# approve pull requests" (the integrated GITHUB_TOKEN opens the PR).
+name: Update Quarto extensions
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC
+
+jobs:
+  update:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Morrison-Lab/gha/.github/workflows/update-quarto-extensions.yml@v3
+    with:
+      # Optional: custom extension repository mapping (owner/repo). Built-in
+      # defaults already cover common d-morrison extensions (code-language-labels,
+      # div-anchors, equation-anchors, slidebreak, revealjs-html-links,
+      # callouty-theorem).
+      # extension-repos: |
+      #   my-extension: my-org/my-extension
+      # extensions-dir: _extensions
+      # dry-run: false
+    secrets:
+      # Optional: set only if the bot must push to a protected branch or
+      # trigger subsequent pull_request checks; otherwise omit and falls back to
+      # GITHUB_TOKEN.
+      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+```
+
+See
+[`examples/update-quarto-extensions.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/update-quarto-extensions.yml)
+for the full caller stub.

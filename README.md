@@ -103,6 +103,7 @@ not reference `@main` from consumers.
 | `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history`, `publish-workflow`, `wait-for-publish` |
 | `altdoc-multiversion-docs.yml` | Render an altdoc-based R package's Quarto docs and deploy multiple versions side by side on `gh-pages` (`/dev/`, `/latest-tag/`, `/vX.Y.Z/`, plus PR previews and a root redirect) | `r-packages`, `needs`, `apt-packages`, `setup-julia`, `checkout-submodules`, `default-branch`, `quarto-config-path`, `docs-base-url`, `preview-branch`, `timeout-minutes`, `rewrite-pr-preview-links`, `rewrite-issue-links`, `dispatch-version`, `dispatch-release-tag`, `legacy-paths`, `root-landing-target`, `version-dropdown-title-template`, `version-in-navbar-title` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
+| `update-quarto-extensions.yml` | Update vendored Quarto extensions in-place to upstream semver tags and open a PR when newer versions are available | `extension-repos`, `extensions-dir`, `base-branch`, `pr-branch`, `labels`, `dry-run`, `allow-local-edits` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change -- avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 | `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes -- keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
 | `bump-dev-version.yml` | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in -- so PRs never need to touch `Version:` themselves | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run`, `pr-labels` |
@@ -657,7 +658,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
-`opposition-research.yml`, and `student-qmd.yml`
+`opposition-research.yml`,
+`student-qmd.yml`, and
+`update-quarto-extensions.yml`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
 `quarto-publish.yml` additionally has a genuine
 
@@ -801,8 +804,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
-`opposition-research.yml`, and
-`student-qmd.yml` at `@v3` -- see the
+`opposition-research.yml`,
+`student-qmd.yml`, and
+`update-quarto-extensions.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

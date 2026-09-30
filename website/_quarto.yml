@@ -95,6 +95,7 @@ website:
           - reference/ai-code-review.qmd
           - reference/small-model-agent.qmd
           - reference/bump-submodule.qmd
+          - reference/update-quarto-extensions.qmd
           - reference/sync-shared-fragments.qmd
           - reference/sync-upstream.qmd
           - reference/request-dependabot-review.qmd

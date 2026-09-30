@@ -224,7 +224,8 @@ while `opposition-research`, `check-dependency-updates`,
 `check-quarto-manuscript`, `check-quarto-links`,
 `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `cleanup-pr-previews`, and `student-qmd`
+`check-informal-definitions`, `cleanup-pr-previews`, `student-qmd`,
+and `update-quarto-extensions`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`).
 
 ### Layout

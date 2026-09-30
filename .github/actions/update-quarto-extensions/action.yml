@@ -1,0 +1,80 @@
+name: Update Quarto extensions
+description: >-
+  Update vendored Quarto extensions in-place to upstream semver tags.
+  Preserves local directory layout (flat vs nested), checks for uncommitted local
+  modifications against published tags, and outputs update details. Does not commit
+  or push anything -- the calling reusable workflow (update-quarto-extensions.yml)
+  hands the modified files to open-sync-pr for that.
+inputs:
+  extensions-dir:
+    description: Path to the directory containing vendored Quarto extensions.
+    required: false
+    default: _extensions
+  extension-repos:
+    description: >-
+      Mapping of extension names to upstream GitHub repositories (owner/repo).
+      Can be formatted as YAML/JSON or multiline key-value pairs. Built-in
+      defaults cover common d-morrison extensions.
+    required: false
+    default: ''
+  dry-run:
+    description: When true, detect and log updates without modifying files.
+    required: false
+    default: 'false'
+  allow-local-edits:
+    description: >-
+      When true, overwrite vendored copies even if they differ from all
+      published upstream tags. Default false fails loudly to protect
+      uncommitted local edits.
+    required: false
+    default: 'false'
+  token:
+    description: GitHub API token for querying releases and downloading tags.
+    required: false
+    default: ''
+
+outputs:
+  updated:
+    description: "'true' when any extension was updated; 'false' otherwise."
+    value: ${{ steps.update.outputs.updated }}
+  pr-title:
+    description: Generated pull request title.
+    value: ${{ steps.update.outputs.pr-title }}
+  pr-body:
+    description: Generated pull request body.
+    value: ${{ steps.update.outputs.pr-body }}
+  updated-extensions:
+    description: Comma-separated names of updated extensions.
+    value: ${{ steps.update.outputs.updated-extensions }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run Quarto extensions updater
+      id: update
+      shell: bash
+      env:
+        EXTENSIONS_DIR: ${{ inputs.extensions-dir }}
+        REPO_MAP: ${{ inputs.extension-repos }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        ALLOW_LOCAL_EDITS: ${{ inputs.allow-local-edits }}
+        GH_TOKEN: ${{ inputs.token || github.token }}
+        SCRIPT_PATH: ${{ github.action_path }}/../../workflows/scripts/update-quarto-extensions.py
+      run: |
+        set -euo pipefail
+        DRY_FLAG=""
+        if [ "$DRY_RUN" = "true" ]; then
+          DRY_FLAG="--dry-run"
+        fi
+        ALLOW_FLAG=""
+        if [ "$ALLOW_LOCAL_EDITS" = "true" ]; then
+          ALLOW_FLAG="--allow-local-edits"
+        fi
+
+        python3 "$SCRIPT_PATH" \
+          --extensions-dir "$EXTENSIONS_DIR" \
+          --repo-map "$REPO_MAP" \
+          $DRY_FLAG \
+          $ALLOW_FLAG \
+          --set-output "$GITHUB_OUTPUT" \
+          --summary-file "${GITHUB_STEP_SUMMARY:-}"
