@@ -35,3 +35,5 @@ jobs:
     #   compact-history: true       # orphan-squash gh-pages to one commit after
     #                               # pruning, so deleted snapshots stop bloating
     #                               # the repo. Branch-based Pages only.
+    #   publish-workflow: ''        # base-branch publish workflow name/pattern
+    #   wait-for-publish: true      # wait for publish before pruning merged PRs
