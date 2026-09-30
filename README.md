@@ -635,7 +635,7 @@ no fixes since -- including non-breaking ones, like `cleanup-pr-previews`'s
 `compact-history` input, which does not exist at `@v1` at all.
 Pin
 
-`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
+`preview.yml`, `preview-deploy.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `lint-changed-files.yml`,
@@ -656,8 +656,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
+`cleanup-pr-previews.yml`,
 `opposition-research.yml`, and `student-qmd.yml`
-only ever shipped at `@v3` (too new to exist at the `@v2` tag).
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
 `quarto-publish.yml` additionally has a genuine
 
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
@@ -773,7 +774,7 @@ When adding a new third-party action, pin it the same way.
 
 First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
 templates intentionally track the moving major tag (currently `@v1`, except
-`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`preview.yml`, `preview-deploy.yml`,
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
@@ -799,6 +800,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
+`cleanup-pr-previews.yml`,
 `opposition-research.yml`, and
 `student-qmd.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.

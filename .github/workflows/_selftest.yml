@@ -4184,12 +4184,11 @@ jobs:
       # claude-code-review.yml is exempt from the v2 comparison because it
       # reinstates checks: read as a breaking change for @v3 (gha#833).
       # cleanup-pr-previews.yml is exempt from the v2 comparison because it
-      # adds actions: read as a breaking change for @v3 (gha#994) to inspect
-      # workflow runs for wait-for-publish. slide-major-tag.yml does not pass
-      # --exempt-workflow and continues to block sliding v2 over this commit,
-      # ensuring existing @v2 callers without actions: read never break.
-      # A caller-side grant sweep adding actions: read across consumer repos
-      # is required before sliding @v3 or tagging new releases.
+      # adds actions: read for @v3 (gha#994) to inspect workflow runs for
+      # wait-for-publish. Note that v2 is frozen; slide-major-tag.yml targets
+      # the active latest major tag (v3) and does not pass --exempt-workflow,
+      # which blocks sliding v3 over this commit until caller repos grant
+      # actions: read (tracked in gha#996).
       - name: Assert no callee permission widening against v2
         shell: bash
         run: |

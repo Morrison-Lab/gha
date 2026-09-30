@@ -92,6 +92,8 @@ jobs:
                 if [ -n "$wf_declared_name" ]; then
                   echo "Resolved publish-workflow filename '${TARGET_WORKFLOW}' to declared workflow name '${wf_declared_name}'."
                   TARGET_WORKFLOW="$wf_declared_name"
+                else
+                  echo "::warning::Could not resolve publish-workflow filename '${TARGET_WORKFLOW}' via GitHub API. Keeping raw filename; unmatched runs will safely keep previews."
                 fi
                 ;;
             esac

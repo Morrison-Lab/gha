@@ -79,7 +79,7 @@ input tables and a copy-paste example.
 change cut `@v2`, so any capability pinned there has picked up no fixes since -
 including non-breaking ones, like `cleanup-pr-previews`'s `compact-history`
 input, which does not exist at `@v1` at all. **Pin `preview.yml`,
-`preview-deploy.yml`, `cleanup-pr-previews.yml`, and `quarto-publish.yml` to
+`preview-deploy.yml`, and `quarto-publish.yml` to
 `@v2`**; `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `lint-changed-files.yml`,
@@ -100,8 +100,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
 `check-informal-definitions.yml`,
+`cleanup-pr-previews.yml`,
 `opposition-research.yml`, and `student-qmd.yml`
-only ever shipped at `@v3` (too new to exist at the `@v2` tag).
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
 the `gh-pages` branch instead - required if the same repo also uses the
