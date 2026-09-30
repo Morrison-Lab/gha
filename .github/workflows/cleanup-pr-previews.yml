@@ -79,6 +79,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          declare -A PR_ACTION=()
+
           # Remove preview dirs whose PR is no longer open, in the currently
           # checked-out gh-pages working tree. Sets the global REMOVED count.
           prune_stale() {
@@ -91,6 +93,16 @@ jobs:
             for dir in "$PREVIEW_DIR"/pr-*/; do
               [ -d "$dir" ] || continue
               pr_number=$(basename "$dir" | sed 's/pr-//')
+
+              # Check memoized disposition from earlier attempt (e.g. during compaction push-race retries)
+              if [ -n "${PR_ACTION[$pr_number]:-}" ]; then
+                if [ "${PR_ACTION[$pr_number]}" = "remove" ]; then
+                  rm -rf "$dir"
+                  REMOVED=$((REMOVED + 1))
+                fi
+                continue
+              fi
+
               echo "Checking PR #${pr_number}..."
 
               if pr_json=$(gh pr view "$pr_number" \
@@ -120,11 +132,13 @@ jobs:
               fi
 
               if [ "$pr_state" = "OPEN" ]; then
+                PR_ACTION["$pr_number"]="keep"
                 echo "PR #${pr_number} is still open - keeping preview"
                 continue
               fi
 
               if [ "$pr_state" = "NOT_FOUND" ] || [ -z "$pr_merged_at" ] || [ "$pr_merged_at" = "null" ]; then
+                PR_ACTION["$pr_number"]="remove"
                 echo "PR #${pr_number} is ${pr_state} (not merged) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
@@ -132,6 +146,7 @@ jobs:
               fi
 
               if [ "$WAIT_FOR_PUBLISH" != "true" ] || [ "$PUBLISH_WORKFLOW" = "none" ] || [ "$PUBLISH_WORKFLOW" = "false" ]; then
+                PR_ACTION["$pr_number"]="remove"
                 echo "PR #${pr_number} was merged (publish check disabled) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
@@ -182,6 +197,7 @@ jobs:
               ' <<< "$runs_json" | head -n1)
 
               if [ -n "$commit_runs_success" ]; then
+                PR_ACTION["$pr_number"]="remove"
                 echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow '${commit_runs_success}' succeeded) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
@@ -197,6 +213,7 @@ jobs:
               ' <<< "$runs_json" | head -n1)
 
               if [ -n "$commit_runs_pending" ]; then
+                PR_ACTION["$pr_number"]="keep"
                 echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow ${commit_runs_pending}) - keeping preview"
                 continue
               fi
@@ -206,6 +223,7 @@ jobs:
                 deploy_commit_found=$(git log -100 --format="%s" HEAD 2>/dev/null \
                   | grep -E -i "deploy.*${merge_oid:0:8}" | head -n1 || true)
                 if [ -n "$deploy_commit_found" ]; then
+                  PR_ACTION["$pr_number"]="remove"
                   echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '${deploy_commit_found}') - removing preview at ${dir}"
                   rm -rf "$dir"
                   REMOVED=$((REMOVED + 1))
@@ -226,6 +244,7 @@ jobs:
               ' <<< "$base_runs_json" | head -n1)
 
               if [ -z "$base_runs_match" ] && [ -z "$commit_runs_match" ]; then
+                PR_ACTION["$pr_number"]="remove"
                 echo "PR #${pr_number} merged at ${merge_oid:0:7} (no publish workflow detected on ${check_base}) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
@@ -259,12 +278,14 @@ jobs:
               ' <<< "$base_runs_json")
 
               if [ -n "$subsequent_success" ]; then
+                PR_ACTION["$pr_number"]="remove"
                 echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow ${subsequent_success} succeeded) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
                 continue
               fi
 
+              PR_ACTION["$pr_number"]="keep"
               echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow on ${check_base} has not succeeded yet) - keeping preview"
             done
           }
