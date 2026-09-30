@@ -29,6 +29,25 @@ on:
           normally. Default false (incremental commit, history preserved).
         type: boolean
         default: false
+      publish-workflow:
+        description: >-
+          Workflow name pattern for the base-branch publish/deploy workflow that
+          must succeed before a merged PR preview is removed (e.g. 'Quarto Publish*'
+          or 'Deploy Website'). Matches against the workflow's declared display
+          name (`name:`). If a workflow filename (ending in .yml or .yaml) is
+          provided, it is automatically resolved to its declared workflow name via
+          the GitHub API. If empty (default), auto-detects workflows with 'publish'
+          or 'deploy' in their name (excluding preview workflows). Set to 'none'
+          or 'false' to disable waiting for publish workflows.
+        type: string
+        default: ''
+      wait-for-publish:
+        description: >-
+          When true (default), wait until the base branch's publish/deploy workflow
+          succeeds before removing preview directories for merged PRs. When false,
+          merged PR previews are removed immediately regardless of publish status.
+        type: boolean
+        default: true
 
 jobs:
   cleanup:
@@ -41,11 +60,13 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
+      actions: read
     steps:
       - name: Check out gh-pages branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: gh-pages
+          fetch-depth: 100
 
       - name: Prune stale previews and publish
         id: cleanup
@@ -53,10 +74,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PREVIEW_DIR: ${{ inputs.preview-dir }}
           COMPACT: ${{ inputs.compact-history }}
+          PUBLISH_WORKFLOW: ${{ inputs.publish-workflow }}
+          WAIT_FOR_PUBLISH: ${{ inputs.wait-for-publish }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          declare -A PR_ACTION=()
+
+          TARGET_WORKFLOW="$PUBLISH_WORKFLOW"
+          if [ -n "$TARGET_WORKFLOW" ] && [ "$TARGET_WORKFLOW" != "none" ] && [ "$TARGET_WORKFLOW" != "false" ]; then
+            case "$TARGET_WORKFLOW" in
+              *.yml|*.yaml)
+                wf_fname=$(basename "$TARGET_WORKFLOW")
+                wf_declared_name=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$wf_fname" --jq '.name // empty' 2>/dev/null || true)
+                if [ -n "$wf_declared_name" ]; then
+                  echo "Resolved publish-workflow filename '${TARGET_WORKFLOW}' to declared workflow name '${wf_declared_name}'."
+                  TARGET_WORKFLOW="$wf_declared_name"
+                else
+                  echo "::warning::Could not resolve publish-workflow filename '${TARGET_WORKFLOW}' via GitHub API. Keeping raw filename; unmatched runs will safely keep previews."
+                fi
+                ;;
+            esac
+          fi
 
           # Remove preview dirs whose PR is no longer open, in the currently
           # checked-out gh-pages working tree. Sets the global REMOVED count.
@@ -66,17 +107,29 @@ jobs:
               echo "No $PREVIEW_DIR directory found, nothing to prune."
               return 0
             fi
-            local dir pr_number pr_state http_status
+            local dir pr_number pr_json pr_state pr_merged_at merge_oid base_ref http_status
             for dir in "$PREVIEW_DIR"/pr-*/; do
               [ -d "$dir" ] || continue
               pr_number=$(basename "$dir" | sed 's/pr-//')
+
+              # Check memoized disposition from earlier attempt (e.g. during compaction push-race retries)
+              if [ -n "${PR_ACTION[$pr_number]:-}" ]; then
+                if [ "${PR_ACTION[$pr_number]}" = "remove" ]; then
+                  rm -rf "$dir"
+                  REMOVED=$((REMOVED + 1))
+                fi
+                continue
+              fi
+
               echo "Checking PR #${pr_number}..."
 
-              if pr_state=$(gh pr view "$pr_number" \
+              if pr_json=$(gh pr view "$pr_number" \
                 --repo "$GITHUB_REPOSITORY" \
-                --json state \
-                --jq '.state' 2>/dev/null); then
-                : # got the PR state
+                --json state,mergedAt,mergeCommit,baseRefName 2>/dev/null); then
+                pr_state=$(jq -r '.state // empty' <<< "$pr_json")
+                pr_merged_at=$(jq -r '.mergedAt // empty' <<< "$pr_json")
+                merge_oid=$(jq -r '.mergeCommit.oid // empty' <<< "$pr_json")
+                base_ref=$(jq -r '.baseRefName // empty' <<< "$pr_json")
               else
                 # The query failed. Distinguish "PR does not exist" (safe to
                 # delete the preview) from a transient error (skip, to avoid
@@ -87,19 +140,176 @@ jobs:
                   | head -n1 | awk '{print $2}') || true
                 if [ "$http_status" = "404" ]; then
                   pr_state="NOT_FOUND"
+                  pr_merged_at=""
+                  merge_oid=""
+                  base_ref=""
                 else
                   echo "Warning: could not query PR #${pr_number} (HTTP ${http_status:-unknown}); skipping to avoid accidental deletion." >&2
                   continue
                 fi
               fi
 
-              if [ "$pr_state" != "OPEN" ]; then
-                echo "PR #${pr_number} is ${pr_state} - removing preview at ${dir}"
+              if [ "$pr_state" = "OPEN" ]; then
+                PR_ACTION["$pr_number"]="keep"
+                echo "PR #${pr_number} is still open - keeping preview"
+                continue
+              fi
+
+              if [ "$pr_state" = "NOT_FOUND" ] || [ -z "$pr_merged_at" ] || [ "$pr_merged_at" = "null" ]; then
+                PR_ACTION["$pr_number"]="remove"
+                echo "PR #${pr_number} is ${pr_state} (not merged) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
-              else
-                echo "PR #${pr_number} is still open - keeping preview"
+                continue
               fi
+
+              if [ "$WAIT_FOR_PUBLISH" != "true" ] || [ "$PUBLISH_WORKFLOW" = "none" ] || [ "$PUBLISH_WORKFLOW" = "false" ]; then
+                PR_ACTION["$pr_number"]="remove"
+                echo "PR #${pr_number} was merged (publish check disabled) - removing preview at ${dir}"
+                rm -rf "$dir"
+                REMOVED=$((REMOVED + 1))
+                continue
+              fi
+
+              # PR was merged. Verify that the merged main publish workflow has succeeded and deployed.
+              local check_base="${base_ref:-main}"
+              local jq_filter='
+                def is_preview:
+                  ((.workflowName // "") | ascii_downcase | contains("preview")) or ((.name // "") | ascii_downcase | contains("preview"));
+
+                def matches($target; $p):
+                  ($target | ascii_downcase) as $t
+                  | ($p | ascii_downcase) as $pat
+                  | if $pat == "" then
+                      ($t | contains("publish") or contains("deploy") or contains("pages-build-deployment"))
+                    elif ($pat | endswith("*")) and ($pat | startswith("*")) then
+                      ($t | contains($pat[1:-1]))
+                    elif $pat | endswith("*") then
+                      ($t | startswith($pat[:-1]))
+                    elif $pat | startswith("*") then
+                      ($t | endswith($pat[1:]))
+                    else
+                      ($t == $pat)
+                    end;
+              '
+
+              local runs_json="[]" commit_runs_match="" commit_runs_success="" commit_runs_pending="" deploy_commit_found=""
+              if [ -n "$merge_oid" ]; then
+                runs_json=$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$merge_oid" \
+                  --json headSha,conclusion,status,name,workflowName,event 2>/dev/null || echo "[]")
+              fi
+
+              commit_runs_match=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
+                .[]
+                | select(is_preview | not)
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
+                | (.workflowName // .name)
+              ' <<< "$runs_json" | head -n1)
+
+              commit_runs_success=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
+                .[]
+                | select(is_preview | not)
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
+                | select(.status == "completed" and .conclusion == "success")
+                | (.workflowName // .name)
+              ' <<< "$runs_json" | head -n1)
+
+              if [ -n "$commit_runs_success" ]; then
+                PR_ACTION["$pr_number"]="remove"
+                echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow '${commit_runs_success}' succeeded) - removing preview at ${dir}"
+                rm -rf "$dir"
+                REMOVED=$((REMOVED + 1))
+                continue
+              fi
+
+              commit_runs_pending=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
+                .[]
+                | select(is_preview | not)
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
+                | select(.status != "completed")
+                | "\(.workflowName // .name): \(.status)"
+              ' <<< "$runs_json" | head -n1)
+
+              if [ -n "$commit_runs_pending" ]; then
+                PR_ACTION["$pr_number"]="keep"
+                echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow ${commit_runs_pending}) - keeping preview"
+                continue
+              fi
+
+              # Check if a deploy commit for merge_oid exists in gh-pages git history
+              if [ -n "$merge_oid" ]; then
+                deploy_commit_found=$(git log -100 --format="%s" HEAD 2>/dev/null \
+                  | grep -E -i "deploy.*${merge_oid:0:8}" | head -n1 || true)
+                if [ -n "$deploy_commit_found" ]; then
+                  PR_ACTION["$pr_number"]="remove"
+                  echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '${deploy_commit_found}') - removing preview at ${dir}"
+                  rm -rf "$dir"
+                  REMOVED=$((REMOVED + 1))
+                  continue
+                fi
+              fi
+
+              # Check push runs on the base branch
+              local base_runs_json base_runs_match subsequent_success
+              base_runs_json=$(gh run list --repo "$GITHUB_REPOSITORY" --branch "$check_base" --event push \
+                -L 100 --json headSha,conclusion,status,name,workflowName,createdAt 2>/dev/null || echo "[]")
+
+              base_runs_match=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
+                .[]
+                | select(is_preview | not)
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
+                | (.workflowName // .name)
+              ' <<< "$base_runs_json" | head -n1)
+
+              if [ -z "$base_runs_match" ] && [ -z "$commit_runs_match" ]; then
+                if [ -n "$PUBLISH_WORKFLOW" ] && [ "$PUBLISH_WORKFLOW" != "none" ] && [ "$PUBLISH_WORKFLOW" != "false" ]; then
+                  PR_ACTION["$pr_number"]="keep"
+                  echo "::warning::Configured publish-workflow '${PUBLISH_WORKFLOW}' matched no workflow runs on ${check_base} or merge commit ${merge_oid:0:7}. Keeping preview at ${dir} to avoid premature deletion."
+                  continue
+                fi
+                PR_ACTION["$pr_number"]="remove"
+                echo "PR #${pr_number} merged at ${merge_oid:0:7} (no publish workflow detected on ${check_base}) - removing preview at ${dir}"
+                rm -rf "$dir"
+                REMOVED=$((REMOVED + 1))
+                continue
+              fi
+
+              subsequent_success=""
+              while IFS=$'\t' read -r sha status conclusion wf_name; do
+                [ -n "$sha" ] || continue
+                if [ "$status" = "completed" ] && [ "$conclusion" = "success" ]; then
+                  if [ "$sha" = "$merge_oid" ]; then
+                    subsequent_success="$wf_name on merge commit"
+                    break
+                  elif [ -n "$merge_oid" ]; then
+                    # Query GitHub compare API to verify sha contains merge_oid without requiring local git objects
+                    local cmp_status
+                    cmp_status=$(gh api "repos/$GITHUB_REPOSITORY/compare/${merge_oid}...${sha}" \
+                      --jq '.status' 2>/dev/null || echo "")
+                    if [ "$cmp_status" = "ahead" ] || [ "$cmp_status" = "identical" ]; then
+                      subsequent_success="$wf_name at ${sha:0:7}"
+                      break
+                    fi
+                  fi
+                fi
+              done < <(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
+                .[]
+                | select(is_preview | not)
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
+                | [.headSha // "", .status // "", .conclusion // "", .workflowName // .name // ""]
+                | @tsv
+              ' <<< "$base_runs_json")
+
+              if [ -n "$subsequent_success" ]; then
+                PR_ACTION["$pr_number"]="remove"
+                echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow ${subsequent_success} succeeded) - removing preview at ${dir}"
+                rm -rf "$dir"
+                REMOVED=$((REMOVED + 1))
+                continue
+              fi
+
+              PR_ACTION["$pr_number"]="keep"
+              echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow on ${check_base} has not succeeded yet) - keeping preview"
             done
           }
 

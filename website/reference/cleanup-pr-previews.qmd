@@ -7,15 +7,18 @@ The housekeeping half of the PR-preview family. On a schedule, it deletes
 
 ## Inputs
 
-| Input             | Type    | Default        | Description                                                                                                                                                                                                                           |
-| ----------------- | ------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preview-dir`     | string  | `'pr-preview'` | Directory on `gh-pages` that holds the per-PR preview subdirectories.                                                                                                                                                                 |
-| `compact-history` | boolean | `false`        | Orphan-squash the `gh-pages` branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses). |
+| Input              | Type    | Default        | Description                                                                                                                                                                                                                           |
+| ------------------ | ------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preview-dir`      | string  | `'pr-preview'` | Directory on `gh-pages` that holds the per-PR preview subdirectories.                                                                                                                                                                 |
+| `compact-history`  | boolean | `false`        | Orphan-squash the `gh-pages` branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses). |
+| `publish-workflow` | string  | `''`           | Workflow name pattern for the base-branch publish/deploy workflow that must succeed before a merged PR preview is removed (e.g. `'Quarto Publish*'` or `'Deploy Website'`). Matches against the workflow's declared display name (`name:`). If a workflow filename (`.yml` or `.yaml`) is provided, it is resolved via the GitHub API. Defaults to auto-detecting workflows with `'publish'` or `'deploy'` in their name. Set to `'none'` or `'false'` to disable. |
+| `wait-for-publish` | boolean | `true`         | When `true` (default), wait until the base branch's publish/deploy workflow succeeds before removing preview directories for merged PRs. When `false`, merged PR previews are removed immediately regardless of publish status.     |
 
 ## Permissions
 
-Grant `contents: write` (commit the deletions to `gh-pages`) and
-`pull-requests: read`.
+Grant `contents: write` (commit the deletions to `gh-pages`),
+`pull-requests: read`, and `actions: read` (query workflow runs
+to ensure merged PR previews are not pruned before deployment).
 
 ## Example
 
@@ -49,12 +52,15 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
-    uses: Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v2
+      actions: read
+    uses: Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v3
     # with:
     #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews
     #   compact-history: true       # orphan-squash gh-pages to one commit after
     #                               # pruning, so deleted snapshots stop bloating
     #                               # the repo. Branch-based Pages only.
+    #   publish-workflow: ''        # base-branch publish workflow name/pattern
+    #   wait-for-publish: true      # wait for publish before pruning merged PRs
 ```
 
 See

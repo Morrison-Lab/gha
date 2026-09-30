@@ -295,6 +295,19 @@ jobs:
           python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py
 
+  cleanup-pr-previews-workflow-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run cleanup-pr-previews workflow contract tests
+        run: |
+          python3 .github/workflows/scripts/tests/run-cleanup-pr-previews-tests.py --self-test
+          python3 .github/workflows/scripts/tests/run-cleanup-pr-previews-tests.py
+
   bundle-repo-actions-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -4170,13 +4183,18 @@ jobs:
 
       # claude-code-review.yml is exempt from the v2 comparison because it
       # reinstates checks: read as a breaking change for @v3 (gha#833).
-      # slide-major-tag.yml does not pass --exempt-workflow and continues to block
-      # sliding v2 over this commit.
+      # cleanup-pr-previews.yml is exempt from the v2 comparison because it
+      # adds actions: read for @v3 (gha#994) to inspect workflow runs for
+      # wait-for-publish. Note that v2 is frozen; slide-major-tag.yml targets
+      # the active latest major tag (v3) and does not pass --exempt-workflow,
+      # which blocks sliding v3 over this commit until caller repos grant
+      # actions: read (tracked in gha#996).
       - name: Assert no callee permission widening against v2
         shell: bash
         run: |
           python3 .github/workflows/scripts/audit_callee_permissions.py --base-ref v2 \
-            --exempt-workflow .github/workflows/claude-code-review.yml
+            --exempt-workflow .github/workflows/claude-code-review.yml \
+            --exempt-workflow .github/workflows/cleanup-pr-previews.yml
 
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,

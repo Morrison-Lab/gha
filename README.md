@@ -100,7 +100,7 @@ not reference `@main` from consumers.
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `submodules`, `render-profile`, `output-dir`, `formats`, `extra-preview-labels`, `fail-on-render-warning`, `forbid-log-patterns`, `detect-changed-chapters`, `changed-chapters-banner`, `highlight-changes`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `max-elements-for-pairwise`, `banner-index`, `docx-tracked-changes`, `docx-tracked-changes-glob` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | `pages-base-url`, `pages-base-path` |
 | `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
-| `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
+| `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history`, `publish-workflow`, `wait-for-publish` |
 | `altdoc-multiversion-docs.yml` | Render an altdoc-based R package's Quarto docs and deploy multiple versions side by side on `gh-pages` (`/dev/`, `/latest-tag/`, `/vX.Y.Z/`, plus PR previews and a root redirect) | `r-packages`, `needs`, `apt-packages`, `setup-julia`, `checkout-submodules`, `default-branch`, `quarto-config-path`, `docs-base-url`, `preview-branch`, `timeout-minutes`, `rewrite-pr-preview-links`, `rewrite-issue-links`, `dispatch-version`, `dispatch-release-tag`, `legacy-paths`, `root-landing-target`, `version-dropdown-title-template`, `version-in-navbar-title` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change -- avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
@@ -306,8 +306,9 @@ that need to write must have the **caller** grant it on the calling job:
   authorizes a label read on an issue object that is a pull request against
   the pull-requests permission.
 
-- `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
-  `contents: write`, `pull-requests: read`.
+- `cleanup-pr-previews` (commits deletions to `gh-pages` and queries
+  workflow runs to verify deployment before pruning) → grant
+  `contents: write`, `pull-requests: read`, `actions: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` (open a PR) → grant
   `contents: write`, `pull-requests: write`, and enable Settings → Actions →
   General → "Allow GitHub Actions to create and approve pull requests" so the
@@ -634,7 +635,7 @@ no fixes since -- including non-breaking ones, like `cleanup-pr-previews`'s
 `compact-history` input, which does not exist at `@v1` at all.
 Pin
 
-`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
+`preview.yml`, `preview-deploy.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `lint-changed-files.yml`,
@@ -655,8 +656,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
+`cleanup-pr-previews.yml`,
 `opposition-research.yml`, and `student-qmd.yml`
-only ever shipped at `@v3` (too new to exist at the `@v2` tag).
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
 `quarto-publish.yml` additionally has a genuine
 
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
@@ -772,7 +774,7 @@ When adding a new third-party action, pin it the same way.
 
 First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
 templates intentionally track the moving major tag (currently `@v1`, except
-`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`preview.yml`, `preview-deploy.yml`,
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
@@ -798,6 +800,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
+`cleanup-pr-previews.yml`,
 `opposition-research.yml`, and
 `student-qmd.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.

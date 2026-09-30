@@ -29,9 +29,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
-    uses: Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v2
+      actions: read
+    uses: Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v3
     # with:
     #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews
     #   compact-history: true       # orphan-squash gh-pages to one commit after
     #                               # pruning, so deleted snapshots stop bloating
     #                               # the repo. Branch-based Pages only.
+    #   publish-workflow: ''        # base-branch publish workflow name/pattern
+    #   wait-for-publish: true      # wait for publish before pruning merged PRs

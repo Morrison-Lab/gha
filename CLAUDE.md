@@ -200,7 +200,7 @@ Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-pac
 and Quarto repositories (see [`README.md`](README.md)). Each capability ships as a
 composite action plus a `workflow_call` reusable workflow. Consumers pin the
 major tag each capability's own reference page documents (`@v1` for most,
-`@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
+`@v2` for `preview`, `preview-deploy`, `quarto-publish`,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-junk-files`, `check-links`,
 `check-non-standard-chars`, `claude`,
@@ -224,8 +224,8 @@ while `opposition-research`, `check-dependency-updates`,
 `check-quarto-manuscript`, `check-quarto-links`,
 `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, and `student-qmd`
-only ever shipped at `@v3`.
+`check-informal-definitions`, `cleanup-pr-previews`, and `student-qmd`
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`).
 
 ### Layout
 
