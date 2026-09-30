@@ -149,7 +149,7 @@ When adding a new third-party action, pin it the same way.
 First-party `Morrison-Lab/gha/*` self-references and most
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) templates
 intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
-`preview-deploy.yml`, `cleanup-pr-previews.yml`, `quarto-publish.yml`,
+`preview-deploy.yml`, `quarto-publish.yml`,
 `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
@@ -170,12 +170,14 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
 `check-informal-definitions.yml`,
+`check-math-definitions.yml`,
 `check-merge-drops.yml`,
 `check-repo-hygiene.yml`, `check-quarto-website.yml`,
 `check-quarto-book.yml`, `check-quarto-manuscript.yml`,
 `check-quarto-links.yml`, `check-orphaned-images.yml`,
 `check-r-package.yml`, `check-python-package.yml`,
 `check-typed-output.yml`,
+`cleanup-pr-previews.yml`,
 `opposition-research.yml`, and
 `student-qmd.yml` at
 `@v3` - see the
