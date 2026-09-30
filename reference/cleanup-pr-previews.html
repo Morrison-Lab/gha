@@ -868,12 +868,24 @@ cookieconsent.run({
 <td><code>false</code></td>
 <td>Orphan-squash the <code>gh-pages</code> branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses).</td>
 </tr>
+<tr class="odd">
+<td><code>publish-workflow</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Workflow name pattern for the base-branch publish/deploy workflow that must succeed before a merged PR preview is removed (e.g.&nbsp;<code>'Quarto Publish*'</code> or <code>'Deploy Website'</code>). Matches against the workflow’s declared display name (<code>name:</code>). If a workflow filename (<code>.yml</code> or <code>.yaml</code>) is provided, it is resolved via the GitHub API. Defaults to auto-detecting workflows with <code>'publish'</code> or <code>'deploy'</code> in their name. Set to <code>'none'</code> or <code>'false'</code> to disable.</td>
+</tr>
+<tr class="even">
+<td><code>wait-for-publish</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>When <code>true</code> (default), wait until the base branch’s publish/deploy workflow succeeds before removing preview directories for merged PRs. When <code>false</code>, merged PR previews are removed immediately regardless of publish status.</td>
+</tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: write</code> (commit the deletions to <code>gh-pages</code>) and <code>pull-requests: read</code>.</p>
+<p>Grant <code>contents: write</code> (commit the deletions to <code>gh-pages</code>), <code>pull-requests: read</code>, and <code>actions: read</code> (query workflow runs to ensure merged PR previews are not pruned before deployment).</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
@@ -894,12 +906,15 @@ cookieconsent.run({
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v2</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   compact-history: true       # orphan-squash gh-pages to one commit after</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # pruning, so deleted snapshots stop bloating</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # the repo. Branch-based Pages only.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v3</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   compact-history: true       # orphan-squash gh-pages to one commit after</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # pruning, so deleted snapshots stop bloating</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # the repo. Branch-based Pages only.</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   publish-workflow: ''        # base-branch publish workflow name/pattern</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   wait-for-publish: true      # wait for publish before pruning merged PRs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/cleanup-pr-previews.yml"><code>examples/cleanup-pr-previews.yml</code></a> for the full caller stub.</p>
 
 
