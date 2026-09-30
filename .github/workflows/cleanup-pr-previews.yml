@@ -31,12 +31,14 @@ on:
         default: false
       publish-workflow:
         description: >-
-          Workflow name or filename pattern for the base-branch publish/deploy
-          workflow that must succeed before a merged PR preview is removed
-          (e.g. 'quarto-publish.yml' or 'Quarto Publish*'). If empty (default),
-          auto-detects workflows with 'publish' or 'deploy' in their name
-          (excluding preview workflows). Set to 'none' or 'false' to disable
-          waiting for publish workflows.
+          Workflow name pattern for the base-branch publish/deploy workflow that
+          must succeed before a merged PR preview is removed (e.g. 'Quarto Publish*'
+          or 'Deploy Website'). Matches against the workflow's declared display
+          name (`name:`). If a workflow filename (ending in .yml or .yaml) is
+          provided, it is automatically resolved to its declared workflow name via
+          the GitHub API. If empty (default), auto-detects workflows with 'publish'
+          or 'deploy' in their name (excluding preview workflows). Set to 'none'
+          or 'false' to disable waiting for publish workflows.
         type: string
         default: ''
       wait-for-publish:
@@ -80,6 +82,20 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           declare -A PR_ACTION=()
+
+          TARGET_WORKFLOW="$PUBLISH_WORKFLOW"
+          if [ -n "$TARGET_WORKFLOW" ] && [ "$TARGET_WORKFLOW" != "none" ] && [ "$TARGET_WORKFLOW" != "false" ]; then
+            case "$TARGET_WORKFLOW" in
+              *.yml|*.yaml)
+                wf_fname=$(basename "$TARGET_WORKFLOW")
+                wf_declared_name=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$wf_fname" --jq '.name // empty' 2>/dev/null || true)
+                if [ -n "$wf_declared_name" ]; then
+                  echo "Resolved publish-workflow filename '${TARGET_WORKFLOW}' to declared workflow name '${wf_declared_name}'."
+                  TARGET_WORKFLOW="$wf_declared_name"
+                fi
+                ;;
+            esac
+          fi
 
           # Remove preview dirs whose PR is no longer open, in the currently
           # checked-out gh-pages working tree. Sets the global REMOVED count.
@@ -171,7 +187,7 @@ jobs:
                     elif $pat | startswith("*") then
                       ($t | endswith($pat[1:]))
                     else
-                      ($t == $pat or $t == ($pat + ".yml") or $t == ($pat + ".yaml"))
+                      ($t == $pat)
                     end;
               '
 
@@ -181,14 +197,14 @@ jobs:
                   --json headSha,conclusion,status,name,workflowName,event 2>/dev/null || echo "[]")
               fi
 
-              commit_runs_match=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
+              commit_runs_match=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
                 .[]
                 | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | (.workflowName // .name)
               ' <<< "$runs_json" | head -n1)
 
-              commit_runs_success=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
+              commit_runs_success=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
                 .[]
                 | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
@@ -204,7 +220,7 @@ jobs:
                 continue
               fi
 
-              commit_runs_pending=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
+              commit_runs_pending=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
                 .[]
                 | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
@@ -236,7 +252,7 @@ jobs:
               base_runs_json=$(gh run list --repo "$GITHUB_REPOSITORY" --branch "$check_base" --event push \
                 -L 100 --json headSha,conclusion,status,name,workflowName,createdAt 2>/dev/null || echo "[]")
 
-              base_runs_match=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
+              base_runs_match=$(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
                 .[]
                 | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
@@ -244,6 +260,11 @@ jobs:
               ' <<< "$base_runs_json" | head -n1)
 
               if [ -z "$base_runs_match" ] && [ -z "$commit_runs_match" ]; then
+                if [ -n "$PUBLISH_WORKFLOW" ] && [ "$PUBLISH_WORKFLOW" != "none" ] && [ "$PUBLISH_WORKFLOW" != "false" ]; then
+                  PR_ACTION["$pr_number"]="keep"
+                  echo "::warning::Configured publish-workflow '${PUBLISH_WORKFLOW}' matched no workflow runs on ${check_base} or merge commit ${merge_oid:0:7}. Keeping preview at ${dir} to avoid premature deletion."
+                  continue
+                fi
                 PR_ACTION["$pr_number"]="remove"
                 echo "PR #${pr_number} merged at ${merge_oid:0:7} (no publish workflow detected on ${check_base}) - removing preview at ${dir}"
                 rm -rf "$dir"
@@ -269,7 +290,7 @@ jobs:
                     fi
                   fi
                 fi
-              done < <(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
+              done < <(jq -r --arg pat "$TARGET_WORKFLOW" "$jq_filter"'
                 .[]
                 | select(is_preview | not)
                 | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))

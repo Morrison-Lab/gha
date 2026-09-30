@@ -105,7 +105,7 @@ class TestCleanupPrPreviewsContract(unittest.TestCase):
         self.assertEqual(inputs["wait-for-publish"].get("default"), True)
         self.assertEqual(inputs["publish-workflow"].get("default"), "")
 
-    def test_permissions_are_not_widened(self):
+    def test_cleanup_job_permissions(self):
         """Verify permissions block includes actions:read for gh run list (gha#994, gha#995)."""
         wf = load_yaml(DEFAULT_WORKFLOW)
         cleanup_job = wf.get("jobs", {}).get("cleanup", {})
@@ -131,28 +131,28 @@ class TestCleanupPrPreviewsContract(unittest.TestCase):
 class TestPublishWorkflowMatcher(unittest.TestCase):
     def test_auto_detect_matches_publish_and_deploy(self):
         self.assertTrue(matches_publish_workflow("Quarto Publish (website)", "Quarto Publish (website)"))
-        self.assertTrue(matches_publish_workflow("Deploy Website", "deploy-website.yml"))
+        self.assertTrue(matches_publish_workflow("Deploy Website", "Deploy Website"))
         self.assertTrue(matches_publish_workflow("pages build and deployment", "pages-build-deployment"))
 
     def test_auto_detect_excludes_preview(self):
         self.assertFalse(matches_publish_workflow("Website Preview Deploy", "Website Preview Deploy"))
-        self.assertFalse(matches_publish_workflow("Deploy preview for PR", "preview-deploy.yml"))
-        self.assertFalse(matches_publish_workflow("PR Preview Publish", "preview.yml"))
+        self.assertFalse(matches_publish_workflow("Deploy preview for PR", "Deploy preview for PR"))
+        self.assertFalse(matches_publish_workflow("PR Preview Publish", "PR Preview Publish"))
 
     def test_custom_target_workflow_pattern(self):
-        self.assertTrue(matches_publish_workflow("Quarto Publish Docs", "publish.yml", "quarto publish*"))
-        self.assertTrue(matches_publish_workflow("Quarto Publish", "quarto-publish.yml", "quarto-publish.yml"))
-        self.assertTrue(matches_publish_workflow("Quarto Publish", "quarto-publish.yml", "quarto-publish*"))
-        self.assertFalse(matches_publish_workflow("Other Build", "build.yml", "quarto-publish*"))
-        self.assertTrue(matches_publish_workflow("Custom Site Deploy", "custom.yml", "custom site deploy"))
+        self.assertTrue(matches_publish_workflow("Quarto Publish Docs", "Quarto Publish Docs", "quarto publish*"))
+        self.assertTrue(matches_publish_workflow("Quarto Publish", "Quarto Publish", "quarto publish"))
+        self.assertTrue(matches_publish_workflow("Quarto Publish", "Quarto Publish", "quarto publish*"))
+        self.assertFalse(matches_publish_workflow("Other Build", "Other Build", "quarto publish*"))
+        self.assertTrue(matches_publish_workflow("Custom Site Deploy", "Custom Site Deploy", "custom site deploy"))
 
     def test_unanchored_glob_substring_not_matched(self):
         """A glob like 'quarto-publish*' must NOT match 'not-quarto-publish-workflow' (Finding 3)."""
         self.assertFalse(
             matches_publish_workflow(
                 "Not Quarto Publish Workflow",
-                "not-quarto-publish-workflow.yml",
-                "quarto-publish*",
+                "Not Quarto Publish Workflow",
+                "quarto publish*",
             )
         )
 
@@ -161,14 +161,14 @@ class TestPublishWorkflowMatcher(unittest.TestCase):
         self.assertTrue(
             matches_publish_workflow(
                 "Quarto Publish (website)",
-                "quarto-publish.yml",
+                "Quarto Publish (website)",
                 "Quarto Publish (website)",
             )
         )
         self.assertTrue(
             matches_publish_workflow(
                 "Quarto Publish [website]",
-                "quarto-publish.yml",
+                "Quarto Publish [website]",
                 "Quarto Publish [website]",
             )
         )
@@ -205,35 +205,35 @@ class TestPruneStaleJqLogic(unittest.TestCase):
         self.assertFalse(
             matches_publish_workflow(
                 "Unpublished Draft Check",
-                "unpublished-draft.yml",
+                "Unpublished Draft Check",
                 "publish",
             )
         )
         self.assertFalse(
             matches_publish_workflow(
                 "Auto-undeploy Check",
-                "auto-undeploy.yml",
+                "Auto-undeploy Check",
                 "Deploy",
             )
         )
         self.assertTrue(
             matches_publish_workflow(
                 "Publish",
-                "publish.yml",
+                "Publish",
                 "publish",
             )
         )
         self.assertTrue(
             matches_publish_workflow(
                 "Deploy",
-                "deploy.yml",
+                "Deploy",
                 "deploy",
             )
         )
         self.assertTrue(
             matches_publish_workflow(
                 "Deploy Website",
-                "deploy.yml",
+                "Deploy Website",
                 "*deploy*",
             )
         )
