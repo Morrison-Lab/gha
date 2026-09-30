@@ -109,8 +109,41 @@ class TestPublishWorkflowMatcher(unittest.TestCase):
     def test_custom_target_workflow_pattern(self):
         self.assertTrue(matches_publish_workflow("Quarto Publish Docs", "publish.yml", "quarto publish*"))
         self.assertTrue(matches_publish_workflow("Quarto Publish", "quarto-publish.yml", "quarto-publish.yml"))
+        self.assertTrue(matches_publish_workflow("Quarto Publish", "quarto-publish.yml", "quarto-publish*"))
         self.assertFalse(matches_publish_workflow("Other Build", "build.yml", "quarto-publish*"))
         self.assertTrue(matches_publish_workflow("Custom Site Deploy", "custom.yml", "custom site deploy"))
+
+
+class TestPruneStaleJqLogic(unittest.TestCase):
+    def test_non_publish_commit_runs_do_not_match(self):
+        """Non-publish workflows on commit must not count as matching publish workflows (Finding 1)."""
+        runs = [
+            {"workflowName": "selftest", "name": "selftest", "status": "completed", "conclusion": "success"},
+            {"workflowName": "CodeQL", "name": "CodeQL", "status": "completed", "conclusion": "success"},
+            {"workflowName": "Claude Code Review", "name": "Claude Code Review", "status": "completed", "conclusion": "skipped"},
+        ]
+        matching = [
+            r for r in runs
+            if matches_publish_workflow(r.get("name", ""), r.get("workflowName", ""))
+        ]
+        self.assertEqual(matching, [])
+
+    def test_publish_commit_runs_matched(self):
+        runs = [
+            {"workflowName": "selftest", "name": "selftest", "status": "completed", "conclusion": "success"},
+            {"workflowName": "Quarto Publish (website)", "name": "Quarto Publish (website)", "status": "completed", "conclusion": "success"},
+        ]
+        matching = [
+            r for r in runs
+            if matches_publish_workflow(r.get("name", ""), r.get("workflowName", ""))
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["workflowName"], "Quarto Publish (website)")
+
+    def test_wildcard_glob_conversion(self):
+        pat = "quarto-publish*"
+        regex_pat = pat.replace("*", ".*")
+        self.assertTrue(bool(re.search(regex_pat, "quarto-publish.yml", re.I)))
 
 
 def main():
@@ -120,6 +153,7 @@ def main():
 
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestCleanupPrPreviewsContract)
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPublishWorkflowMatcher))
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPruneStaleJqLogic))
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)

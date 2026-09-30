@@ -140,12 +140,21 @@ jobs:
               local check_base="${base_ref:-main}"
               local wf_pattern="publish|deploy|pages-build-deployment"
               if [ -n "$PUBLISH_WORKFLOW" ]; then
-                wf_pattern="$PUBLISH_WORKFLOW"
+                wf_pattern="${PUBLISH_WORKFLOW//\*/.*}"
               fi
 
-              local runs_json commit_runs_success commit_runs_pending deploy_commit_found
-              runs_json=$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$merge_oid" \
-                --json headSha,conclusion,status,name,workflowName,event 2>/dev/null || echo "[]")
+              local runs_json="[]" commit_runs_match="" commit_runs_success="" commit_runs_pending="" deploy_commit_found=""
+              if [ -n "$merge_oid" ]; then
+                runs_json=$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$merge_oid" \
+                  --json headSha,conclusion,status,name,workflowName,event 2>/dev/null || echo "[]")
+              fi
+
+              commit_runs_match=$(jq -r --arg pat "$wf_pattern" '
+                .[]
+                | select((.workflowName // .name // "") | test("preview"; "i") | not)
+                | select((.workflowName // .name // "") | test($pat; "i"))
+                | (.workflowName // .name)
+              ' <<< "$runs_json" | head -n1)
 
               commit_runs_success=$(jq -r --arg pat "$wf_pattern" '
                 .[]
@@ -176,13 +185,15 @@ jobs:
               fi
 
               # Check if a deploy commit for merge_oid exists in gh-pages git history
-              deploy_commit_found=$(git log -100 --format="%s" HEAD 2>/dev/null \
-                | grep -E -i "deploy.*${merge_oid:0:8}" | head -n1 || true)
-              if [ -n "$deploy_commit_found" ]; then
-                echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '${deploy_commit_found}') - removing preview at ${dir}"
-                rm -rf "$dir"
-                REMOVED=$((REMOVED + 1))
-                continue
+              if [ -n "$merge_oid" ]; then
+                deploy_commit_found=$(git log -100 --format="%s" HEAD 2>/dev/null \
+                  | grep -E -i "deploy.*${merge_oid:0:8}" | head -n1 || true)
+                if [ -n "$deploy_commit_found" ]; then
+                  echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '${deploy_commit_found}') - removing preview at ${dir}"
+                  rm -rf "$dir"
+                  REMOVED=$((REMOVED + 1))
+                  continue
+                fi
               fi
 
               # Check push runs on the base branch
@@ -197,7 +208,7 @@ jobs:
                 | (.workflowName // .name)
               ' <<< "$base_runs_json" | head -n1)
 
-              if [ -z "$base_runs_match" ] && [ "$runs_json" = "[]" ]; then
+              if [ -z "$base_runs_match" ] && [ -z "$commit_runs_match" ]; then
                 echo "PR #${pr_number} merged at ${merge_oid:0:7} (no publish workflow detected on ${check_base}) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
@@ -208,9 +219,18 @@ jobs:
               while IFS=$'\t' read -r sha status conclusion wf_name; do
                 [ -n "$sha" ] || continue
                 if [ "$status" = "completed" ] && [ "$conclusion" = "success" ]; then
-                  if [ "$sha" = "$merge_oid" ] || git merge-base --is-ancestor "$merge_oid" "$sha" 2>/dev/null; then
-                    subsequent_success="$wf_name at ${sha:0:7}"
+                  if [ "$sha" = "$merge_oid" ]; then
+                    subsequent_success="$wf_name on merge commit"
                     break
+                  elif [ -n "$merge_oid" ]; then
+                    # Query GitHub compare API to verify sha contains merge_oid without requiring local git objects
+                    local cmp_status
+                    cmp_status=$(gh api "repos/$GITHUB_REPOSITORY/compare/${merge_oid}...${sha}" \
+                      --jq '.status' 2>/dev/null || echo "")
+                    if [ "$cmp_status" = "ahead" ] || [ "$cmp_status" = "identical" ]; then
+                      subsequent_success="$wf_name at ${sha:0:7}"
+                      break
+                    fi
                   fi
                 fi
               done < <(jq -r --arg pat "$wf_pattern" '
