@@ -147,6 +147,24 @@ inputs:
   typed-output-fail:
     description: Fail when typed output is found (the check warns only by default).
     default: 'false'
+  check-informal-definitions:
+    description: 'Flag technical concepts defined in running prose rather than in formal Quarto def divs (::: {#def-...}).'
+    default: 'true'
+  informal-definitions-globs:
+    description: Space-separated git pathspecs of tracked files to check for informal definitions.
+    default: '*.qmd'
+  informal-definitions-paths-ignore:
+    description: Patterns to skip for informal definitions check.
+    default: ''
+  informal-definitions-diff-scoped:
+    description: Report only informal definition findings on lines added since base-ref.
+    default: 'false'
+  informal-definitions-base-ref:
+    description: Git ref to diff against for diff-scoped informal definitions check.
+    default: ''
+  informal-definitions-fail:
+    description: Fail when informal definitions are found (the check warns only by default).
+    default: 'false'
   check-bibliography-dois:
     description: Validate DOIs in BibTeX bibliography files (.bib).
     default: 'true'
@@ -274,6 +292,16 @@ runs:
         diff-scoped: ${{ inputs.typed-output-diff-scoped }}
         base-ref: ${{ inputs.typed-output-base-ref }}
         fail: ${{ inputs.typed-output-fail }}
+
+    - name: Check informal definitions in prose
+      if: inputs.check-informal-definitions != 'false'
+      uses: Morrison-Lab/gha/check-informal-definitions@v3
+      with:
+        globs: ${{ inputs.informal-definitions-globs }}
+        paths-ignore: ${{ inputs.informal-definitions-paths-ignore }}
+        diff-scoped: ${{ inputs.informal-definitions-diff-scoped }}
+        base-ref: ${{ inputs.informal-definitions-base-ref }}
+        fail: ${{ inputs.informal-definitions-fail }}
 
     - name: Check bibliography DOIs
       if: inputs.check-bibliography-dois != 'false'

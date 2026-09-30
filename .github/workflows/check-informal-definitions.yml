@@ -1,0 +1,71 @@
+name: Check informal definitions in prose (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Target directory or file path to scan.
+        type: string
+        default: '.'
+      globs:
+        description: Space-separated file globs to check.
+        type: string
+        default: '*.qmd'
+      paths-ignore:
+        description: Comma- or newline-separated list of paths or glob patterns to ignore.
+        type: string
+        default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .venv, venv'
+      fail:
+        description: Whether to fail the workflow if informal definitions are detected.
+        type: boolean
+        default: false
+      diff-scoped:
+        description: Report only lines added since base-ref.
+        type: boolean
+        default: false
+      base-ref:
+        description: Git ref/SHA to diff against when diff-scoped is true.
+        type: string
+        default: ''
+      diff:
+        description: Path to unified diff file to scan added lines from.
+        type: string
+        default: ''
+      output-markdown:
+        description: Path to write Markdown findings report.
+        type: string
+        default: ''
+      output-json:
+        description: Path to write structured JSON findings report.
+        type: string
+        default: ''
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+
+jobs:
+  check-informal-definitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check informal definitions in prose
+        uses: Morrison-Lab/gha/check-informal-definitions@v3
+        with:
+          path: ${{ inputs.path }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          diff-scoped: ${{ inputs.diff-scoped }}
+          base-ref: ${{ inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || '') }}
+          diff: ${{ inputs.diff }}
+          output-markdown: ${{ inputs.output-markdown }}
+          output-json: ${{ inputs.output-json }}
+          python-version: ${{ inputs.python-version }}

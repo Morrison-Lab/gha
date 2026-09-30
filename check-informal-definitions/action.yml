@@ -1,0 +1,56 @@
+name: Check informal definitions in prose
+description: >-
+  Flag technical concepts defined in running prose rather than inside formal
+  Quarto definition divs (`::: {#def-...}`).
+inputs:
+  path:
+    description: Target directory or file path to scan.
+    default: '.'
+  globs:
+    description: Space-separated file globs to check.
+    default: '*.qmd'
+  paths-ignore:
+    description: Comma- or newline-separated list of paths or glob patterns to ignore.
+    default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .venv, venv'
+  fail:
+    description: Whether to fail the workflow if informal definitions are detected.
+    default: 'false'
+  diff-scoped:
+    description: Report only lines added since base-ref.
+    default: 'false'
+  base-ref:
+    description: Git ref/SHA to diff against when diff-scoped is true.
+    default: ''
+  diff:
+    description: Path to unified diff file to scan added lines from.
+    default: ''
+  output-markdown:
+    description: Path to write Markdown findings report.
+    default: ''
+  output-json:
+    description: Path to write structured JSON findings report.
+    default: ''
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check informal definitions in prose
+      shell: bash
+      env:
+        INFORMAL_DEFS_PATH: ${{ inputs.path }}
+        INFORMAL_DEFS_GLOBS: ${{ inputs.globs }}
+        INFORMAL_DEFS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        INFORMAL_DEFS_FAIL: ${{ inputs.fail }}
+        INFORMAL_DEFS_DIFF_SCOPED: ${{ inputs.diff-scoped }}
+        INFORMAL_DEFS_BASE_REF: ${{ inputs.base-ref }}
+        INFORMAL_DEFS_DIFF_FILE: ${{ inputs.diff }}
+        INFORMAL_DEFS_OUTPUT_MARKDOWN: ${{ inputs.output-markdown }}
+        INFORMAL_DEFS_OUTPUT_JSON: ${{ inputs.output-json }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-informal-definitions.py"

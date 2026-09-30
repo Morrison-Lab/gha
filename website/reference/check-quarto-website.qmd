@@ -41,6 +41,10 @@ plus website-specific checks:
   tracked images that no source file references (warn-only by default)
 - [`check-typed-output.yml`](check-typed-output.qmd):
   typed or faked code output in Quarto sources (warn-only by default)
+- [`check-informal-definitions.yml`](check-informal-definitions.qmd):
+  flags technical concepts defined in running prose
+  rather than formal Quarto definition divs (`::: {#def-...}`)
+  (warn-only by default)
 - [`check-bibliography-dois.yml`](check-bibliography-dois.qmd):
   validates BibTeX bibliography entries in `.bib` files
 
@@ -100,6 +104,12 @@ in an offline environment).
 | `typed-output-diff-scoped` | boolean | `false` | Report only findings on lines added since `typed-output-base-ref`. |
 | `typed-output-base-ref` | string | `''` | Base ref for diff-scoped typed output check. |
 | `typed-output-fail` | boolean | `false` | Fail on typed code output; the check warns only by default, whatever `fail` says. |
+| `check-informal-definitions` | boolean | `true` | Enable check for informal definitions in prose. |
+| `informal-definitions-globs` | string | `'*.qmd'` | Space-separated git pathspecs of tracked files to check. |
+| `informal-definitions-paths-ignore` | string | `''` | Patterns to skip for informal definitions check. |
+| `informal-definitions-diff-scoped` | boolean | `false` | Report only findings on lines added since `informal-definitions-base-ref`. |
+| `informal-definitions-base-ref` | string | `''` | Base ref for diff-scoped informal definitions check. |
+| `informal-definitions-fail` | boolean | `false` | Fail on informal definitions; the check warns only by default, whatever `fail` says. |
 | `check-bibliography-dois` | boolean | `true` | Enable bibliography DOI validation. |
 | `bib-exclude-keys` | string | `''` | BibTeX keys to skip for DOI validation. |
 

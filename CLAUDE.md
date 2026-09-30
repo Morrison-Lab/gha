@@ -223,7 +223,8 @@ while `opposition-research`, `check-dependency-updates`,
 `check-quarto-website`, `check-quarto-book`,
 `check-quarto-manuscript`, `check-quarto-links`,
 `check-orphaned-images`, `check-r-package`,
-`check-python-package`, `check-typed-output`, and `student-qmd`
+`check-python-package`, `check-typed-output`,
+`check-informal-definitions`, and `student-qmd`
 only ever shipped at `@v3`.
 
 ### Layout
@@ -255,6 +256,11 @@ only ever shipped at `@v3`.
   it is a whole-tree scan, warn-only, because measuring how much
   typed output a corpus carries is half of what it is for, and a warning
   over legacy occurrences reddens nothing.
+  `check-informal-definitions/` (Python, gha#970) flags technical concepts
+  defined in running prose rather than in formal Quarto definition divs
+  (`::: {#def-...}`).
+  Like `check-typed-output/`, it supports both whole-tree
+  and diff-scoped modes, defaulting to whole-tree and warn-only (`fail: false`).
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
   every known misspelling the corpus already carries, and unknown jargon
@@ -339,6 +345,7 @@ only ever shipped at `@v3`.
   a name search cannot see a computed name;
   `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
   `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
+  `check-informal-definitions/` bundles the composite action, parser script, and pytest suite for detecting informal technical definitions in Quarto prose;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
   per assessment source and checks it against the source.
   The writer (`make_student_qmd.py`) and the checker
@@ -1641,6 +1648,12 @@ the first draft read only a leading class and missed two of
 `Morrison-Lab/mln`'s occurrences -- and the merge-base anchor, which is
 the one mutation no other case caught.
 
+`check-informal-definitions/tests/test_check_informal_definitions.py` is a pytest
+suite over Quarto div stack parsing, bold defining terms, `\eqdef` / `\triangleq`
+operators outside def divs, display-math naming sentences, nested section heading
+scopes, inline code span exclusions, directive comments, and diff scoping.
+CI runs it in the `informal-definitions` job in `_selftest.yml`.
+
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and
 bullet-marker normalization.
@@ -2123,6 +2136,10 @@ Run it with `python3 -m pytest check-one-function-per-file/tests/ -v`.
 `check-duplicate-roxygen/tests/test_check_duplicate_roxygen.py` is a pytest
 suite testing roxygen block parsing, function signature extraction, duplicate parameter detection across functions and files, recommendation formulation (`@inheritParams` and `@inheritDotParams`), opt-out directives, and diff-scoping.
 Run it with `python3 -m pytest check-duplicate-roxygen/tests/ -v`.
+
+`check-informal-definitions/tests/test_check_informal_definitions.py` is a pytest
+suite testing Quarto div stack parsing, bold defining terms, math operators outside def divs, display-math naming sentences, nested section scopes, and diff scoping.
+Run it with `python3 -m pytest check-informal-definitions/tests/ -v`.
 
 `student-qmd/tests/test_student_qmd.py` is a pytest suite driving the writer
 and the checker against Quarto projects built in `tmp_path` per case

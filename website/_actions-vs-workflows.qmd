@@ -1,3 +1,4 @@
+<!-- check-informal-definitions: ignore-file -->
 ## Actions vs. workflows
 
 :::{.callout-note}
