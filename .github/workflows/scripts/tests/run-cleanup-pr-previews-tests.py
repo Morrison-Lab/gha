@@ -200,10 +200,43 @@ class TestPruneStaleJqLogic(unittest.TestCase):
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0]["workflowName"], "Quarto Publish (website)")
 
-    def test_wildcard_glob_conversion(self):
-        pat = "quarto-publish*"
-        regex_pat = pat.replace("*", ".*")
-        self.assertTrue(bool(re.search(regex_pat, "quarto-publish.yml", re.I)))
+    def test_literal_pattern_does_not_substring_match(self):
+        """A literal pattern without wildcards must not match unrelated names containing the substring (Finding 1)."""
+        self.assertFalse(
+            matches_publish_workflow(
+                "Unpublished Draft Check",
+                "unpublished-draft.yml",
+                "publish",
+            )
+        )
+        self.assertFalse(
+            matches_publish_workflow(
+                "Auto-undeploy Check",
+                "auto-undeploy.yml",
+                "Deploy",
+            )
+        )
+        self.assertTrue(
+            matches_publish_workflow(
+                "Publish",
+                "publish.yml",
+                "publish",
+            )
+        )
+        self.assertTrue(
+            matches_publish_workflow(
+                "Deploy",
+                "deploy.yml",
+                "deploy",
+            )
+        )
+        self.assertTrue(
+            matches_publish_workflow(
+                "Deploy Website",
+                "deploy.yml",
+                "*deploy*",
+            )
+        )
 
 
 def main():

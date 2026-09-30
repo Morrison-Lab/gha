@@ -156,7 +156,7 @@ jobs:
                     elif $pat | startswith("*") then
                       ($t | endswith($pat[1:]))
                     else
-                      ($t == $pat or ($t | contains($pat)))
+                      ($t == $pat or $t == ($pat + ".yml") or $t == ($pat + ".yaml"))
                     end;
               '
 
