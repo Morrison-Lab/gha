@@ -872,7 +872,7 @@ cookieconsent.run({
 <td><code>publish-workflow</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Workflow name or filename pattern for the base-branch publish/deploy workflow that must succeed before a merged PR preview is removed (e.g.&nbsp;<code>'quarto-publish.yml'</code> or <code>'Quarto Publish*'</code>). Defaults to auto-detecting workflows with <code>'publish'</code> or <code>'deploy'</code> in their name. Set to <code>'none'</code> or <code>'false'</code> to disable.</td>
+<td>Workflow name pattern for the base-branch publish/deploy workflow that must succeed before a merged PR preview is removed (e.g.&nbsp;<code>'Quarto Publish*'</code> or <code>'Deploy Website'</code>). Matches against the workflow’s declared display name (<code>name:</code>). If a workflow filename (<code>.yml</code> or <code>.yaml</code>) is provided, it is resolved via the GitHub API. Defaults to auto-detecting workflows with <code>'publish'</code> or <code>'deploy'</code> in their name. Set to <code>'none'</code> or <code>'false'</code> to disable.</td>
 </tr>
 <tr class="even">
 <td><code>wait-for-publish</code></td>
