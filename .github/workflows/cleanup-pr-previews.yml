@@ -182,7 +182,7 @@ jobs:
               ' <<< "$runs_json" | head -n1)
 
               if [ -n "$commit_runs_success" ]; then
-                echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow '\''${commit_runs_success}'\'' succeeded) - removing preview at ${dir}"
+                echo "PR #${pr_number} merged at ${merge_oid:0:7} (publish workflow '${commit_runs_success}' succeeded) - removing preview at ${dir}"
                 rm -rf "$dir"
                 REMOVED=$((REMOVED + 1))
                 continue
@@ -206,7 +206,7 @@ jobs:
                 deploy_commit_found=$(git log -100 --format="%s" HEAD 2>/dev/null \
                   | grep -E -i "deploy.*${merge_oid:0:8}" | head -n1 || true)
                 if [ -n "$deploy_commit_found" ]; then
-                  echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '\''${deploy_commit_found}'\'') - removing preview at ${dir}"
+                  echo "PR #${pr_number} merged at ${merge_oid:0:7} (deploy commit found in gh-pages history: '${deploy_commit_found}') - removing preview at ${dir}"
                   rm -rf "$dir"
                   REMOVED=$((REMOVED + 1))
                   continue
