@@ -3,7 +3,7 @@
 
 Scans `_extensions/**/_extension.yml` to find vendored Quarto extensions,
 resolves their upstream GitHub repositories from an input mapping (with
-built-in defaults for common d-morrison extensions), queries upstream tags,
+built-in defaults for common extensions), queries upstream tags,
 verifies that local vendored copies have not been edited locally, and updates
 them in-place while strictly preserving directory layout (flat vs nested).
 

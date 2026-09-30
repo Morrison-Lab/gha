@@ -14,7 +14,7 @@ release tag, and never modifies `_quarto.yml`.
 
 | Input               | Type    | Default                              | Description                                                                                                   |
 | ------------------- | ------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `extension-repos`   | string  | `''`                                 | Mapping of extension names to upstream GitHub repositories (`owner/repo`). Built-in defaults cover common d-morrison extensions. |
+| `extension-repos`   | string  | `''`                                 | Mapping of extension names to upstream GitHub repositories (`owner/repo`). Built-in defaults cover common extensions.             |
 | `extensions-dir`    | string  | `_extensions`                        | Directory holding vendored Quarto extensions.                                                                 |
 | `base-branch`       | string  | `main`                               | Base branch to open the PR against.                                                                           |
 | `pr-branch`         | string  | `automated/update-quarto-extensions` | Head branch for the automation PR.                                                                            |

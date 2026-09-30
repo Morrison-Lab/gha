@@ -14,7 +14,7 @@ inputs:
     description: >-
       Mapping of extension names to upstream GitHub repositories (owner/repo).
       Can be formatted as YAML/JSON or multiline key-value pairs. Built-in
-      defaults cover common d-morrison extensions.
+      defaults cover common extensions.
     required: false
     default: ''
   dry-run:
