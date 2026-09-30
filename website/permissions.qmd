@@ -62,8 +62,9 @@ already include the right `permissions:` blocks; copy them as-is.
 - `cleanup-pr-previews` commits deletions to `gh-pages` and queries
   workflow runs to verify deployment before pruning merged PR previews,
   so grant `contents: write`, `pull-requests: read`, `actions: read`.
-- `bump-submodule`, `sync-shared-fragments`, `sync-upstream` open a PR, so grant
-  `contents: write`, `pull-requests: write`, and enable Settings -> Actions ->
+- `bump-submodule`, `sync-shared-fragments`, `sync-upstream`,
+  `update-quarto-extensions` open a PR, so grant `contents: write`,
+  `pull-requests: write`, and enable Settings -> Actions ->
   General -> "Allow GitHub Actions to create and approve pull requests".
 - `report-failure` files or updates the issue tracking a failing workflow, so
   grant `issues: write` on the reporting job -- and nothing else. It performs

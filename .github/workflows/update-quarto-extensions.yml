@@ -1,0 +1,107 @@
+name: Update Quarto extensions (reusable)
+
+# Update vendored Quarto extensions (_extensions/**/_extension.yml) in-place
+# to their newest upstream semver tags and open or refresh an automation PR when
+# an update is available. Preserves the consumer repo's layout (flat vs nested),
+# fails loudly on uncommitted local edits against published tags, and never
+# touches _quarto.yml. The caller stub (examples/update-quarto-extensions.yml)
+# owns the schedule / workflow_dispatch triggers.
+
+on:
+  workflow_call:
+    inputs:
+      extension-repos:
+        description: >-
+          Mapping of extension names to upstream GitHub repositories (owner/repo).
+          Can be formatted as YAML/JSON or multiline key-value pairs. Built-in
+          defaults cover common extensions (code-language-labels,
+          div-anchors, equation-anchors, slidebreak, revealjs-html-links).
+        type: string
+        default: ''
+      extensions-dir:
+        description: Directory holding vendored Quarto extensions.
+        type: string
+        default: _extensions
+      base-branch:
+        description: Base branch to open the PR against.
+        type: string
+        default: main
+      pr-branch:
+        description: Head branch for the automation PR.
+        type: string
+        default: automated/update-quarto-extensions
+      labels:
+        description: Comma-separated labels to apply to the automation PR.
+        type: string
+        default: dependencies, quarto
+      dry-run:
+        description: >-
+          When true, detect and log updates without modifying files or opening
+          a PR.
+        type: boolean
+        default: false
+      allow-local-edits:
+        description: >-
+          When true, overwrite vendored copies even if they differ from all
+          published upstream tags. Default false fails loudly to protect
+          uncommitted local modifications.
+        type: boolean
+        default: false
+    secrets:
+      WORKFLOW_TOKEN:
+        required: false
+    outputs:
+      updated:
+        description: 'true when any extension was updated; false otherwise.'
+        value: ${{ jobs.update.outputs.updated }}
+      pr-url:
+        description: URL of the opened or updated PR (empty when unchanged).
+        value: ${{ jobs.update.outputs.pr-url }}
+      updated-extensions:
+        description: Comma-separated names of updated extensions.
+        value: ${{ jobs.update.outputs.updated-extensions }}
+
+concurrency:
+  group: update-quarto-extensions-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      pr-url: ${{ steps.sync.outputs.pr-url }}
+      updated-extensions: ${{ steps.update.outputs.updated-extensions }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+
+      - name: Update Quarto extensions
+        id: update
+        uses: Morrison-Lab/gha/.github/actions/update-quarto-extensions@v3
+        with:
+          extensions-dir: ${{ inputs.extensions-dir }}
+          extension-repos: ${{ inputs.extension-repos }}
+          dry-run: ${{ inputs.dry-run }}
+          allow-local-edits: ${{ inputs.allow-local-edits }}
+          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+
+      - name: Open PR if files changed
+        id: sync
+        if: ${{ !inputs.dry-run && steps.update.outputs.updated == 'true' }}
+        uses: Morrison-Lab/gha/open-sync-pr@v3
+        with:
+          branch: ${{ inputs.pr-branch }}
+          base: ${{ inputs.base-branch }}
+          paths: ${{ inputs.extensions-dir }}
+          labels: ${{ inputs.labels }}
+          commit-message: ${{ steps.update.outputs.pr-title }}
+          pr-title: ${{ steps.update.outputs.pr-title }}
+          pr-body: ${{ steps.update.outputs.pr-body }}
+          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}

@@ -39,8 +39,9 @@ only ever shipped at
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
-`opposition-research.yml`, and
-`student-qmd.yml`
+`opposition-research.yml`,
+`student-qmd.yml`, and
+`update-quarto-extensions.yml`
 only ever shipped at
 `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
 See
@@ -178,8 +179,9 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-r-package.yml`, `check-python-package.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
-`opposition-research.yml`, and
-`student-qmd.yml` at
+`opposition-research.yml`,
+`student-qmd.yml`, and
+`update-quarto-extensions.yml` at
 `@v3` - see the
 versioning note above), so
 they are **not** SHA-pinned.
