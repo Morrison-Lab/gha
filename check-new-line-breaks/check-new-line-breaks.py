@@ -102,6 +102,8 @@ _ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
 # genuine boundary after a word "p." before an uppercase sentence. The digit
 # follower is what #878 made a sentence opener, which is how the locator began
 # splitting; `pp.` is already protected by `_ABBREVS`.
+# The accepted cost: a sentence ending in a bare "p." whose next sentence
+# opens with a digit is no longer split (a test pins this).
 _PAGE_LOCATOR_RE = re.compile(r"(?<!\w)(p)\.(?=\s+\d)")
 
 # Lowercase abbreviation forms, protected ONLY on the lowercase-follower branch
