@@ -276,3 +276,16 @@ Whenever starting or working on a Pull Request:
 - **Do:** Trigger AI review (or let the automated PR review run) after completing code pushes, and request human review only after the AI review is clean/approved (or upon an impasse).
 - **Don't:** Manually trigger a redundant `@claude review` comment when an automated review is already running or triggered by the push/ready event.
 - **Don't:** Request human review when the PR is first opened empty, before code pushes are complete, or before the AI review has passed / produced a clean verdict.
+
+<!-- ai-config:begin (managed by Morrison-Lab/ai-config scripts/wire-repo-config.py) -->
+## Cross-project agent rules (ai-config)
+
+This repository follows the maintainer's cross-project agent rules in
+[Morrison-Lab/ai-config](https://github.com/Morrison-Lab/ai-config).
+If your harness has not already loaded them (Claude Code loads them through
+the ai-config plugin), read
+[AGENTS.md](https://github.com/Morrison-Lab/ai-config/blob/main/AGENTS.md)
+before starting work, and follow it alongside this file.
+This file's own instructions add to those rules, and win only where they are
+more specific.
+<!-- ai-config:end -->
