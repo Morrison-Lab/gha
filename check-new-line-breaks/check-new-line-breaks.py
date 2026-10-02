@@ -263,6 +263,12 @@ _BARE_URL_RE = re.compile(r"https?://\S*[^\s.,;:!?)\]]")
 _ENTITY_RE = re.compile(
     r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
 )
+# TeX math (gha#998): a `;` inside `$f(x; \theta)$` separates arguments and
+# never ends a clause, and breaking the source line inside the math to please
+# the check is worse than the long line. The inline form follows Pandoc's
+# tex_math_dollars rule: no space after the opening `$` or before the closing
+# one, and an escaped `\$` is not a delimiter.
+_MATH_RE = re.compile(r"\$\$.+?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<![\s\\])\$")
 # One home for each default; action.yml and the reusable workflow declare
 # the same values, and a test pins all of them together.
 _DEFAULT_FAIL = True
@@ -273,7 +279,7 @@ _DEFAULT_CLAUSE_MIN_LENGTH = 80
 def strip_inline_markup(text: str) -> str:
     """Drop non-prose markup, leaving the prose around it.
 
-    Removes inline code spans, link targets, autolinks, bare URLs, and HTML
+    Removes inline code spans, link targets, autolinks, bare URLs, TeX math, and HTML
     character entities -- every construct that can carry a ``;`` that is not a
     clause boundary, or inflate a line's length without adding visible text.
     The spec sanctions the length half of this directly: rule 13 says a line
@@ -294,7 +300,7 @@ def strip_inline_markup(text: str) -> str:
     # `]` keeps a bracketed link's visible text attached to its own sentence.
     text = _CODE_SPAN_RE.sub("", text)
     text = _LINK_TARGET_RE.sub("]", text)
-    for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE):
+    for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE, _MATH_RE):
         text = pattern.sub("", text)
     return text
 
@@ -405,6 +411,7 @@ def prose_line_numbers(text: str) -> Set[int]:
     fence_char: Optional[str] = None
     in_html_comment = False
     in_bq_code = False
+    in_display_math = False
 
     for idx, line in enumerate(lines, start=1):
         stripped = line.strip()
@@ -437,6 +444,12 @@ def prose_line_numbers(text: str) -> Set[int]:
                 in_code, fence_len, fence_char = False, 0, None
             continue
         if in_code:
+            continue
+
+        # A multi-line `$$ ... $$` display block holds TeX, not prose (gha#998).
+        if in_display_math or stripped.startswith("$$"):
+            if stripped.count("$$") % 2 == 1:
+                in_display_math = not in_display_math
             continue
 
         if _BQ_RE.match(line):

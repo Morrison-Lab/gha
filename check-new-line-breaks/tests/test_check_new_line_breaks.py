@@ -1105,6 +1105,41 @@ def test_semicolon_only_inside_code_span_is_not_a_clause_break():
     assert not nlb.has_late_semicolon(text, min_length=10)
 
 
+def test_semicolon_inside_inline_math_is_not_a_clause_break():
+    """A `;` separating math arguments ends no clause (gha#998)."""
+    text = (
+        "The general model is $\\E{Y \\mid A, L} = A \\gamma(L; \\beta)$, "
+        "with the function gamma known and equal to zero at zero."
+    )
+    assert len(text) > 80
+    assert ";" not in nlb.strip_inline_markup(text)
+    assert not nlb.has_late_semicolon(text)
+
+
+def test_semicolon_in_prose_beside_inline_math_is_still_a_clause_break():
+    """Stripping math must leave a prose `;` next to it in place."""
+    text = (
+        "The estimate is $\\hat\\theta = 0.3$ in the first sample; "
+        "the second sample gives a noticeably larger value for it."
+    )
+    assert len(text) > 80
+    assert nlb.has_late_semicolon(text)
+
+
+def test_escaped_dollar_is_not_a_math_delimiter():
+    """`\\$5; \\$6` is currency, so its `;` stays visible to the check."""
+    text = "It costs \\$5; the other one costs \\$6, so pick the cheaper option today."
+    assert ";" in nlb.strip_inline_markup(text)
+
+
+def test_display_math_block_lines_are_not_prose():
+    """Lines inside a multi-line `$$` block are TeX, not prose (gha#998)."""
+    text = "Intro sentence.\n$$\nf(Y; \\theta) = g(A; \\alpha). B. C.\n$$\nAfter it."
+    prose = nlb.prose_line_numbers(text)
+    assert 3 not in prose
+    assert {1, 5} <= prose
+
+
 def test_semicolon_inside_a_multi_backtick_code_span_is_not_a_clause_break():
     # #337 review round 3: `[^`]*` matched the empty span formed by the two
     # opening backticks of a ``...``, so an N-backtick span -- CommonMark's
