@@ -876,12 +876,12 @@ cookieconsent.run({
 </section>
 <section id="rule-2-banned-idiom" class="level2">
 <h2 class="anchored" data-anchor-id="rule-2-banned-idiom">Rule 2: banned-idiom</h2>
-<p>A case-insensitive, whole-phrase match against a list of idioms, cliches and slang. The bundled list is <a href="https://github.com/Morrison-Lab/gha/blob/main/check-quarto-prose/banned-idioms.txt"><code>banned-idioms.txt</code></a>. It holds more than 40 entries, such as “under the hood”, “low-hanging fruit”, “deep dive”, “at the end of the day”, “rule of thumb” and “a bit of a”. Read the file for the full set.</p>
+<p>A case-insensitive, whole-phrase match against a list of idioms, cliches and slang. The bundled list is <a href="https://github.com/Morrison-Lab/gha/blob/main/check-quarto-prose/banned-idioms.txt"><code>banned-idioms.txt</code></a>. It holds more than 40 entries, such as <code>under the hood</code>, <code>low-hanging fruit</code>, <code>deep dive</code>, <code>at the end of the day</code>, <code>rule of thumb</code> and <code>a bit of a</code>. Read the file for the full set.</p>
 <p>List syntax:</p>
 <ul>
 <li>One phrase per line. Blank lines and <code>#</code> comments are skipped.</li>
-<li>A space or a hyphen in a phrase matches any run of horizontal whitespace (spaces, tabs, a non-breaking space), a hyphen, or a single line break, so “hand-wavy” also finds “hand wavy” and a phrase wrapped by semantic line breaks. A phrase never matches across a blank line.</li>
-<li>A word ending in <code>*</code> also matches the rest of that word: <code>cherry-pick*</code> finds “cherry-picked” and “cherry-picking”. Use it only where every continuation of the stem is the same idiom. The bundled list uses no star: it spells out “dive into”, “dives into”, “dived into”, “diving into” and “dove into” instead of <code>dive*</code>, because the stem would also match “diverges into”, and “game changer”, “game changers” and “game changing” instead of <code>game chang*</code>, which would also match “game changes”.</li>
+<li>A space or a hyphen in a phrase matches any run of horizontal whitespace (spaces, tabs, a non-breaking space), a hyphen, or a single line break, so <code>hand-wavy</code> also finds <code>hand wavy</code> and a phrase wrapped by semantic line breaks. A phrase never matches across a blank line.</li>
+<li>A word ending in <code>*</code> also matches the rest of that word: <code>cherry-pick*</code> finds <code>cherry-picked</code> and <code>cherry-picking</code>. Use it only where every continuation of the stem is the same idiom. The bundled list uses no star: it spells out <code>dive into</code>, <code>dives into</code>, <code>dived into</code>, <code>diving into</code> and <code>dove into</code> instead of <code>dive*</code>, because the stem would also match “diverges into”, and <code>game changer</code>, <code>game changers</code> and <code>game changing</code> instead of <code>game chang*</code>, which would also match “game changes”.</li>
 <li>Matching is whole-phrase, so <code>under the hood</code> does not match “under the hoodie”.</li>
 </ul>
 <p>The <code>idioms-file</code> input replaces the bundled list with your own file in the same format. A named file that is missing or lists no phrases is an error, not a silent fall back to the bundled list.</p>
@@ -905,7 +905,7 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="limits">Limits</h2>
 <p>A phrase list cannot see context.</p>
 <ul>
-<li>Some entries have a literal use. A bare “lean” is not listed, because “lean statistics” and “lean on a library” are literal, so only figurative forms such as “lean toward” are. “Rule of thumb” in a quotation, or “red herring” in a discussion of the fallacy, is a false positive. Exempt it.</li>
+<li>Some entries have a literal use. A bare “lean” is not listed, because “lean statistics” and “lean on a library” are literal, so only figurative forms such as <code>lean toward</code> are. <code>Rule of thumb</code> in a quotation, or <code>red herring</code> in a discussion of the fallacy, is a false positive. Exempt it.</li>
 <li>A phrase the list does not contain is not flagged, however figurative it is. The list is a floor, not a full style check.</li>
 <li>The notes-div test is a first-line and nested-div test. An example buried in the middle of plain notes text is not found.</li>
 <li>Matching sees prose line by line after masking. A code span that spans two lines is not recognised, so a phrase inside one may be reported.</li>
