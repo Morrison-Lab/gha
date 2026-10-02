@@ -279,8 +279,12 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`).
   `idioms-file` input) against text in which every unscanned region has been
   replaced by a placeholder character of the same length, so line numbers
   survive and no phrase can match through a code span or math.
-  A trailing `*` on a list word matches its inflections, and a line break
-  inside a phrase is allowed but a blank line is not.
+  A trailing `*` on a list word matches the rest of that word, so the list
+  spells out inflections of stems like "dive" and "pan" that would also match
+  "diverges" and "panels".
+  A line break inside a phrase is allowed but a blank line is not.
+  A diff-scoped run reads files from `HEAD`, not the working tree, and lines
+  are counted by newline alone, as git counts them.
   `check-formatting/` wraps `posit-dev/setup-air` and
   `air format --check -- <path>`.
   It has no helper script: Air is a Rust binary, so there is no R

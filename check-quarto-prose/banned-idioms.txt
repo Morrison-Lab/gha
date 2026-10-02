@@ -12,7 +12,10 @@
 #   or a line break (but never a blank line), so "hand-wavy" also finds
 #   "hand wavy".
 #   A word ending in * also matches the rest of that word, so "cherry-pick*"
-#   finds "cherry-picked" and "cherry-picking".
+#   finds "cherry-picked" and "cherry-picking". Use it only where every
+#   continuation of the stem is the same idiom. A stem like "dive" or "pan"
+#   would also match "diverges" and "panels", so those are listed one
+#   inflection per line instead.
 #
 # A phrase list cannot see context. Some entries have a literal use or are
 # fair to quote. Exempt one with <!-- prose-allow: phrase --> on the line, or
@@ -22,7 +25,14 @@
 # lean on a library). Only the figurative forms are.
 
 # "which way does this course lean" and similar
-lean* toward*
+lean toward
+leans toward
+leaned toward
+leaning toward
+lean towards
+leans towards
+leaned towards
+leaning towards
 which way does this course lean
 
 # Software and engineering metaphors
@@ -33,7 +43,10 @@ kitchen sink
 sanity check*
 plug and chug*
 hand-wav*
-nail* down
+nail down
+nails down
+nailed down
+nailing down
 the bottom line
 in the weeds
 circle back
@@ -49,7 +62,10 @@ game chang*
 at the end of the day
 move the needle
 bang for the buck
-boil* down to
+boil down to
+boils down to
+boiled down to
+boiling down to
 in a nutshell
 tip of the iceberg
 elephant in the room
@@ -70,7 +86,14 @@ rock solid
 cherry-pick*
 
 # Vague or colloquial phrasing
-dive* into
+dive into
+dives into
+dived into
+diving into
+dove into
 wrap* your head around
-pan* out
+pan out
+pans out
+panned out
+panning out
 a bit of a

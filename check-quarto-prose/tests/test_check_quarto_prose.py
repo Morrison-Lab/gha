@@ -658,3 +658,114 @@ def test_action_defaults_agree_with_the_script() -> None:
     assert f"default: '{cqp._DEFAULT_GLOBS}'" in text
     assert "default: 'true'" in text  # fail
     assert cqp._DEFAULT_FAIL is True
+
+
+# ----------------------------------------------- round 1 review regressions
+
+
+def test_long_whitespace_run_does_not_backtrack_exponentially() -> None:
+    import time
+
+    start = time.perf_counter()
+    scan("We look under the" + " " * 5000 + "xood now.\n")
+    scan("hand" + " " * 5000 + "wavy\n")
+    assert time.perf_counter() - start < 1.0
+
+
+def test_closing_an_empty_notes_div_clears_its_pending_check() -> None:
+    assert scan("::: notes\n:::\n\nExample of a thing.\n") == []
+
+
+def test_unclosed_empty_notes_div_closed_by_longer_fence_clears_pending() -> None:
+    assert scan("::::: notes\n::: inner\n:::::\n\nExample of a thing.\n") == []
+
+
+@pytest.mark.parametrize("sep", ["\x0c", " ", "\x85", "\r", "\x1c"])
+def test_line_numbers_count_newlines_only(sep: str) -> None:
+    found = scan(f"a{sep}b\nWe move the needle.\n")
+    assert rules(found) == [("banned-idiom", 2)]
+
+
+def test_crlf_line_numbers_match_git() -> None:
+    found = scan("a\r\nb\r\nWe move the needle.\r\n")
+    assert rules(found) == [("banned-idiom", 3)]
+
+
+def test_dive_inflections_are_flagged_and_lookalikes_are_not() -> None:
+    assert len(scan("The text dives into proofs.\n")) == 1
+    assert len(scan("We dived into it and dove into it, diving into more.\n")) == 3
+    assert scan("The path diverges into two branches.\n") == []
+    assert scan("Three panels out of six were blank.\n") == []
+    assert scan("Panel out of range.\n") == []
+    assert len(scan("It all pans out, or panned out.\n")) == 2
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "We nailed down the cause.\n",
+        "It boils down to cost.\n",
+        "She leaned towards theory.\n",
+    ],
+)
+def test_explicit_inflections_match(text: str) -> None:
+    assert len(scan(text)) == 1
+
+
+def test_unmatched_display_math_ends_at_a_blank_line() -> None:
+    found = scan("Cost is $$ a lot.\n\nWe move the needle.\n")
+    assert rules(found) == [("banned-idiom", 3)]
+
+
+def test_unmatched_display_math_ends_at_a_heading() -> None:
+    found = scan("Cost is $$ a lot.\n# Heading\nWe move the needle.\n")
+    assert rules(found) == [("banned-idiom", 3)]
+
+
+def test_unmatched_display_math_ends_at_end_of_file() -> None:
+    found = scan("Cost is $$ a lot.\nWe move the needle.\n")
+    assert rules(found) == [("banned-idiom", 2)]
+
+
+def test_display_math_with_a_closer_still_hides_its_content() -> None:
+    assert scan("$$\nmove the needle\n$$\n") == []
+
+
+def test_non_breaking_space_between_phrase_words_matches() -> None:
+    assert len(scan("We move the needle.\n")) == 1
+    assert len(scan("We move\tthe  needle.\n")) == 1
+
+
+def _dirty_repo(repo: Path) -> str:
+    base = _head(repo)
+    with (repo / "page.qmd").open("a", encoding="utf-8") as fh:
+        fh.write("A clean added line.\n")
+    _commit(repo, "clean edit")
+    (repo / "page.qmd").write_text(
+        "# Page\n\nThis is a deep dive, written long ago.\n"
+        "We move the needle here.\n",
+        encoding="utf-8",
+    )
+    return base
+
+
+def test_diff_scoped_scan_reads_committed_content_not_the_working_tree(
+    repo: Path,
+) -> None:
+    base = _dirty_repo(repo)
+    result = _run(repo, base_ref=base)
+    assert result.returncode == 0, result.stdout
+    assert "move the needle" not in result.stdout
+
+
+def test_base_ref_all_reads_the_working_tree(repo: Path) -> None:
+    _dirty_repo(repo)
+    result = _run(repo, base_ref="all")
+    assert result.returncode == 1
+    assert "line=4::banned-idiom:" in result.stdout
+
+
+def test_action_description_names_the_notes_triggers() -> None:
+    text = _ACTION_YML.read_text(encoding="utf-8")
+    for trigger in ("thm-", "exr-", "Note:"):
+        assert trigger in text

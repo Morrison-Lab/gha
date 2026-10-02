@@ -1,9 +1,9 @@
 name: Check Quarto prose
 description: >-
   Diff-scoped, blocking prose check over tracked .qmd and .md files. Reports
-  two rules as annotations: notes-div-content (a notes div that holds an
-  example, remark or definition, which belongs in an #exm-, #rem- or #def-
-  div) and banned-idiom (an idiom, cliche or slang phrase from a list).
+  two rules as annotations: notes-div-content (a notes div that holds a
+  nested div with an exm-, rem-, def-, thm- or exr- id, or whose first
+  non-blank line starts with Example, Remark or Note:) and banned-idiom (an idiom, cliche or slang phrase from a list).
   Only lines a diff adds are reported, and with no base-ref the check is
   skipped rather than widened to the whole tree. Code fences, inline code,
   math, HTML comments, and front matter other than title, subtitle and

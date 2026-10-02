@@ -21,6 +21,13 @@ It never falls back to scanning the whole tree.
 Pass `base-ref: all` to scan every tracked file once you are ready to clean
 the backlog.
 
+A diff-scoped run reads each file as committed at `HEAD`, the same content
+the diff was computed from, so an uncommitted edit cannot shift the line
+numbers the diff reported.
+Only `base-ref: all` reads the working tree.
+Lines are counted by newline alone, as git counts them, so a form feed or a
+Unicode line separator in a file does not move a finding to the wrong line.
+
 The check is blocking by default.
 Only an explicit `fail: false` (trimmed, case-insensitive) turns findings into
 warnings.
@@ -65,12 +72,17 @@ List syntax:
 
 - One phrase per line.
   Blank lines and `#` comments are skipped.
-- A space or a hyphen in a phrase matches a space, a hyphen, or a single line
-  break, so "hand-wavy" also finds "hand wavy" and a phrase wrapped by
-  semantic line breaks.
+- A space or a hyphen in a phrase matches any run of horizontal whitespace
+  (spaces, tabs, a non-breaking space), a hyphen, or a single line break, so
+  "hand-wavy" also finds "hand wavy" and a phrase wrapped by semantic line
+  breaks.
   A phrase never matches across a blank line.
 - A word ending in `*` also matches the rest of that word: `cherry-pick*`
   finds "cherry-picked" and "cherry-picking".
+  Use it only where every continuation of the stem is the same idiom.
+  The bundled list spells out "dive into", "dives into", "dived into",
+  "diving into" and "dove into" instead of `dive*`, because the stem would
+  also match "diverges into".
 - Matching is whole-phrase, so `under the hood` does not match "under the
   hoodie".
 
@@ -84,6 +96,9 @@ fall back to the bundled list.
 - fenced code blocks, including a fence nested in a longer fence, and
   executable chunks;
 - inline code, inline and display math, and HTML comments;
+  a `$$` with no closing `$$` hides nothing past the next blank line, the
+  next heading or the end of the file, because Pandoc display math cannot
+  cross a blank line;
 - link destinations and bare URLs, attribute braces such as
   `{#sec-deep-dive}`, shortcodes, and citation or cross-reference keys such as
   `@sec-deep-dive`;

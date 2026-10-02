@@ -4907,6 +4907,23 @@ jobs:
       - name: Check with no base-ref, expecting a skip
         uses: ./check-quarto-prose
 
+      # A composite step's log cannot be captured, so run the script as the
+      # action does and assert the skip message itself. A bare pass would
+      # also be what a check that examined nothing prints.
+      - name: Assert the no-base-ref run says it skipped
+        shell: bash
+        env:
+          CQP_BASE_REF: ''
+        run: |
+          set -euo pipefail
+          out=$(python3 -u check-quarto-prose/check-quarto-prose.py)
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q '^::warning::Skipping the prose check'
+          if printf '%s\n' "$out" | grep -q '^::error'; then
+            echo '::error::The skipped run reported findings.'
+            exit 1
+          fi
+
       # Stage a clean page, a page with a banned phrase, and a page with an
       # example in a notes div. The check reads tracked files, so staging is
       # enough and nothing is committed.

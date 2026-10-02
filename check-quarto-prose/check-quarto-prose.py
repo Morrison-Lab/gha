@@ -93,6 +93,7 @@ _CODE_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 _CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 _ALLOW_RE = re.compile(r"<!--\s*prose-allow:\s*(.*?)\s*-->", re.IGNORECASE | re.DOTALL)
 _COMMENT_ONLY_RE = re.compile(r"^\s*<!--.*-->\s*$", re.DOTALL)
+_ENDS_MATH_RE = re.compile(r"^\s*$|^ {0,3}#{1,6}(?:\s|$)")
 _KEY_RE = re.compile(r"^([A-Za-z_][\w-]*)\s*:(.*)$")
 
 # Inline constructs whose text is not prose. Order matters little: each
@@ -145,46 +146,40 @@ class _Div(NamedTuple):
 # ---------------------------------------------------------------- git helpers
 
 
-def _run_git(args: List[str], cwd: Optional[str] = None) -> Optional[str]:
-    try:
-        proc = subprocess.run(
-            [*_GIT, *args],
-            capture_output=True,
-            check=False,
-            encoding="utf-8",
-            errors="replace",
-            cwd=cwd,
-        )
-    except FileNotFoundError:
-        return None
-    if proc.returncode != 0:
-        return None
-    return proc.stdout
+def _git(args: List[str], cwd: Optional[str] = None) -> str:
+    """Return git's stdout.
 
-
-def _run_git_checked(args: List[str], cwd: Optional[str] = None) -> str:
-    """Return stdout, or raise RuntimeError with git's stderr."""
+    Raise RuntimeError with git's stderr when git is missing or exits
+    non-zero. Output is decoded here, not by subprocess, so a lone carriage
+    return in a file is not turned into a line break and line numbers keep
+    matching git's.
+    """
     try:
-        proc = subprocess.run(
-            [*_GIT, *args],
-            capture_output=True,
-            check=False,
-            encoding="utf-8",
-            errors="replace",
-            cwd=cwd,
-        )
+        proc = subprocess.run([*_GIT, *args], capture_output=True, check=False, cwd=cwd)
     except FileNotFoundError as exc:
         raise RuntimeError("git is not available") from exc
     if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or "").strip() or (
+        detail = proc.stderr.decode("utf-8", errors="replace").strip() or (
             f"git {' '.join(args)} exited {proc.returncode}"
         )
         raise RuntimeError(detail)
-    return proc.stdout
+    return proc.stdout.decode("utf-8", errors="replace")
 
 
 def _ref_exists(ref: str, cwd: str) -> bool:
-    return _run_git(["rev-parse", "--verify", f"{ref}^{{commit}}"], cwd=cwd) is not None
+    try:
+        _git(["rev-parse", "--verify", f"{ref}^{{commit}}"], cwd=cwd)
+    except RuntimeError:
+        return False
+    return True
+
+
+def _lines_of(text: str) -> List[str]:
+    """Split on newlines only, as git counts lines (not on form feeds etc.)."""
+    lines = [ln[:-1] if ln.endswith("\r") else ln for ln in text.split("\n")]
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
 
 
 def _normalize_path(path: str) -> str:
@@ -215,7 +210,7 @@ def _added_line_numbers(
     base_ref: str, pathspecs: List[str], cwd: Optional[str] = None
 ) -> Dict[str, Set[int]]:
     """{file: {new-file line numbers added}} vs the merge base of base_ref and HEAD."""
-    diff = _run_git_checked(
+    diff = _git(
         ["diff", "--unified=0", "--no-color", f"{base_ref}...HEAD", "--", *pathspecs],
         cwd=cwd,
     )
@@ -223,7 +218,7 @@ def _added_line_numbers(
     cur_path: Optional[str] = None
     new_lineno = 0
     in_hunk = False
-    for raw in diff.splitlines():
+    for raw in diff.split("\n"):
         if raw.startswith("diff ") or raw.startswith("--- "):
             in_hunk = False
             continue
@@ -245,7 +240,7 @@ def _added_line_numbers(
 
 
 def _tracked_files(pathspecs: List[str], cwd: Optional[str] = None) -> List[str]:
-    out = _run_git_checked(["ls-files", "-z", "--", *pathspecs], cwd=cwd)
+    out = _git(["ls-files", "-z", "--", *pathspecs], cwd=cwd)
     return [_normalize_path(p) for p in out.split("\0") if p]
 
 
@@ -303,10 +298,16 @@ def _norm(text: str) -> str:
     return re.sub(r"[\s-]+", " ", text.replace("*", "").lower()).strip()
 
 
-# Between the words of a phrase: spaces, a hyphen joining two word
-# characters, or one line break (never a blank line, so a phrase cannot span
-# two paragraphs).
-_SEP = r"(?:[ \t]+|(?<=\w)-(?=\w)|[ \t]*\n(?![ \t]*\n)[ \t]*)+"
+# Between the words of a phrase: one line break (never a blank line, so a
+# phrase cannot span two paragraphs), a run of horizontal whitespace
+# (including a non-breaking space), or a hyphen joining two word characters.
+# The alternatives cannot match the same text two ways and the group is not
+# repeated, so a long run of spaces cannot make the match backtrack
+# exponentially.
+_HSPACE = r"[^\S\n]"
+_SEP = (
+    rf"(?:{_HSPACE}*\n(?!{_HSPACE}*\n){_HSPACE}*|{_HSPACE}+|(?<=\w)-(?=\w))"
+)
 
 
 def _phrase_regex(phrase: str) -> "re.Pattern[str]":
@@ -436,18 +437,35 @@ class _Scan:
         first_body = self._front_matter()
         fence: Optional[Tuple[str, int]] = None
         in_comment = False
-        in_math = False
-        for idx in range(first_body, len(self.lines)):
+        # An unclosed `$$` must not hide the rest of the file. Pandoc does not
+        # let display math cross a blank line, and a heading ends it too, so an
+        # open `$$` is abandoned there (and at the end of the file) and its
+        # line is read again with the `$$` treated as plain text.
+        math_open: Optional[Tuple[int, bool, int, Set[int]]] = None
+        literal_dollars: Set[int] = set()
+        idx = first_body
+        while idx <= len(self.lines):
+            if math_open is not None and (
+                idx == len(self.lines) or _ENDS_MATH_RE.match(self.lines[idx])
+            ):
+                idx, in_comment = self._abandon_math(math_open, literal_dollars)
+                math_open = None
+                continue
+            if idx == len(self.lines):
+                break
             lineno = idx + 1
             raw = self.lines[idx]
+            idx += 1
             if fence is not None:
                 fence = self._in_fence(raw, fence)
                 self.masked.append(_MASK * len(raw))
                 continue
-            if in_math:
-                in_math = "$$" not in raw
+            if math_open is not None:
+                if "$$" in raw:
+                    math_open = None
                 self.masked.append(_MASK * len(raw))
                 continue
+            was_comment = in_comment
             if not in_comment:
                 opened = _CODE_FENCE_RE.match(raw)
                 if opened and not (
@@ -471,13 +489,30 @@ class _Scan:
                 self.masked.append(_MASK * len(raw))
                 continue
             text = _DISPLAY_MATH_PAIR_RE.sub(_mask_span, text)
-            if "$$" in text:
+            opens_math = "$$" in text and (lineno - 1) not in literal_dollars
+            if opens_math:
+                math_open = (
+                    lineno - 1,
+                    was_comment,
+                    len(self.findings),
+                    set(self._pending),
+                )
                 cut = text.index("$$")
                 text = text[:cut] + _MASK * (len(text) - cut)
-                in_math = True
             self._consume_first_line(text, lineno)
             self.masked.append(_mask_inline(text))
         return self
+
+    def _abandon_math(
+        self, opened: Tuple[int, bool, int, Set[int]], literal: Set[int]
+    ) -> Tuple[int, bool]:
+        """Undo an unclosed `$$`; return the line index and comment state to resume at."""
+        line_idx, in_comment, n_findings, pending = opened
+        literal.add(line_idx)
+        del self.masked[line_idx:]
+        del self.findings[n_findings:]
+        self._pending = pending
+        return line_idx, in_comment
 
     # -- front matter
 
@@ -576,10 +611,20 @@ class _Scan:
         """
         for depth in range(len(self._stack) - 1, -1, -1):
             if self._stack[depth].colons == colons:
-                del self._stack[depth:]
+                self._drop_from(depth)
                 return
         if self._stack:
-            self._stack.pop()
+            self._drop_from(len(self._stack) - 1)
+
+    def _drop_from(self, depth: int) -> None:
+        """Close the div at ``depth`` and every div inside it.
+
+        A closed notes div no longer waits for a first line, so an empty one
+        cannot claim the first line that follows it.
+        """
+        for closed in self._stack[depth:]:
+            self._pending.discard(closed.start)
+        del self._stack[depth:]
 
 
 def _find_idioms(
@@ -638,7 +683,7 @@ def scan_text(
     path: str, text: str, idioms: List[Idiom], allow: List[Allow]
 ) -> List[Finding]:
     """All findings in one file's text, before diff scoping."""
-    scan = _Scan(path, text.splitlines()).run()
+    scan = _Scan(path, _lines_of(text)).run()
     findings = scan.findings + _find_idioms(path, scan, idioms, allow)
     return sorted(findings, key=lambda f: (f.line, f.rule))
 
@@ -683,12 +728,19 @@ def collect_findings(
         added = _added_line_numbers(base_ref, pathspecs, cwd=cwd)
         candidates = sorted(added)
     files = [
-        p for p in candidates if not _ignored(p, ignores) and (Path(cwd) / p).is_file()
+        p
+        for p in candidates
+        if not _ignored(p, ignores) and (not whole_tree or (Path(cwd) / p).is_file())
     ]
     in_scope: List[Finding] = []
     dropped = 0
     for rel in files:
-        text = (Path(cwd) / rel).read_text(encoding="utf-8", errors="replace")
+        # The diff counts lines in HEAD, so read HEAD, not an edited working tree.
+        if whole_tree:
+            raw = (Path(cwd) / rel).read_bytes()
+            text = raw.decode("utf-8", errors="replace")
+        else:
+            text = _git(["show", f"HEAD:{rel}"], cwd=cwd)
         for finding in scan_text(rel, text, idioms, allow):
             lines = range(finding.line, finding.end_line + 1)
             if whole_tree or any(n in added.get(rel, set()) for n in lines):
@@ -749,8 +801,11 @@ def main() -> int:
         print(f"::error::check-quarto-prose: path {target!r} does not exist.")
         return 1
     cwd = str(Path(target).resolve())
-    inside = _run_git(["rev-parse", "--is-inside-work-tree"], cwd=cwd)
-    if inside is None or inside.strip() != "true":
+    try:
+        inside = _git(["rev-parse", "--is-inside-work-tree"], cwd=cwd).strip()
+    except RuntimeError:
+        inside = ""
+    if inside != "true":
         print(f"::error::check-quarto-prose: {target!r} is not a git repository.")
         return 1
 
