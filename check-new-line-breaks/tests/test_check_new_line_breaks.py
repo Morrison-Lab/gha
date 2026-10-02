@@ -1180,6 +1180,54 @@ def test_prose_after_a_display_math_closer_is_still_prose():
     assert 3 in nlb.prose_line_numbers(text)
 
 
+def test_tex_math_environment_lines_are_not_prose():
+    text = (
+        "Prose before.\n"
+        "\\begin{align*}\n"
+        "x &= y && \\text{(a; b)} \\\\\n"
+        "\\end{align*}\n"
+        "Prose after. More prose.\n"
+    )
+    assert nlb.prose_line_numbers(text) == {1, 5}
+
+
+def test_unclosed_tex_math_environment_ends_at_a_blank_line():
+    text = "\\begin{equation}\nx = y\n\nProse here. More prose.\n"
+    assert nlb.prose_line_numbers(text) == {4}
+
+
+def test_tex_math_environment_after_a_list_marker_is_not_prose():
+    text = "- \\begin{align}\n  x &= y; z \\\\\n  \\end{align}\n"
+    assert nlb.prose_line_numbers(text) == set()
+
+
+def test_starred_environment_needs_its_starred_end():
+    text = "\\begin{align*}\nx\n\\end{align}\ny\n\\end{align*}\nProse. More.\n"
+    assert nlb.prose_line_numbers(text) == {6}
+
+
+def test_semicolon_in_tex_math_environment_is_not_flagged(tmp_path):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n\\begin{align}\n"
+        "x &= y && \\text{(exchangeability at } k = 0\\text{; positivity: }"
+        " \\Pr[A_0 = a_0] > 0\\text{)} \\\\\n"
+        "\\end{align}\n"
+    )
+    _commit(tmp_path, "add math")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert violations == []
+
+
+def test_non_math_tex_environment_stays_prose():
+    text = "\\begin{itemize} is how LaTeX opens a list. It is not math.\n"
+    assert 1 in nlb.prose_line_numbers(text)
+
+
 def test_semicolon_inside_a_multi_backtick_code_span_is_not_a_clause_break():
     # #337 review round 3: `[^`]*` matched the empty span formed by the two
     # opening backticks of a ``...``, so an N-backtick span -- CommonMark's

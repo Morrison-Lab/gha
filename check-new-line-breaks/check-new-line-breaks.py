@@ -272,6 +272,13 @@ _ENTITY_RE = re.compile(
 _MATH_RE = re.compile(
     r"\$\$.+?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<![\s\\])\$(?!\d)"
 )
+# A raw TeX math environment such as `\begin{align}` is TeX, not prose:
+# Pandoc's raw_tex extension passes it through as raw TeX, which MathJax and
+# LaTeX then typeset. The opener may follow a blockquote or list marker.
+_TEX_MATH_ENV_RE = re.compile(
+    r"(?:>\s*|[-*+]\s+|\d+[.)]\s+)*"
+    r"\\begin\{(equation|align|alignat|gather|multline|flalign|eqnarray)(\*?)\}"
+)
 # One home for each default; action.yml and the reusable workflow declare
 # the same values, and a test pins all of them together.
 _DEFAULT_FAIL = True
@@ -415,6 +422,7 @@ def prose_line_numbers(text: str) -> Set[int]:
     in_html_comment = False
     in_bq_code = False
     in_display_math = False
+    tex_env_end: Optional[str] = None
 
     for idx, line in enumerate(lines, start=1):
         stripped = line.strip()
@@ -447,6 +455,22 @@ def prose_line_numbers(text: str) -> Set[int]:
                 in_code, fence_len, fence_char = False, 0, None
             continue
         if in_code:
+            continue
+
+        # A raw TeX math environment holds until its own `\end{...}`. Pandoc
+        # carries it across blank lines, but stopping at a blank line here
+        # keeps an unclosed `\begin` from hiding the rest of the file. A line
+        # that closes the environment is skipped whole, so prose after the
+        # `\end{...}` on the same line goes unchecked.
+        if tex_env_end is not None:
+            if tex_env_end in stripped or not stripped:
+                tex_env_end = None
+            continue
+        env_m = _TEX_MATH_ENV_RE.match(stripped)
+        if env_m and not in_display_math:
+            end = "\\end{" + env_m.group(1) + env_m.group(2) + "}"
+            if end not in stripped:
+                tex_env_end = end
             continue
 
         # A `$$ ... $$` display block spanning lines holds TeX, not prose
