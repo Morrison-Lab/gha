@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Diff-scoped prose check for Quarto and Markdown sources.
 
@@ -90,8 +91,8 @@ _FIRST_LINE_RE = re.compile(
 _DIV_FENCE_RE = re.compile(r"^\s*(:{3,})\s*(.*?)\s*$")
 _CODE_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 _CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
-_ALLOW_RE = re.compile(r"<!--\s*prose-allow:\s*(.*?)\s*-->", re.IGNORECASE)
-_COMMENT_ONLY_RE = re.compile(r"^\s*<!--.*-->\s*$")
+_ALLOW_RE = re.compile(r"<!--\s*prose-allow:\s*(.*?)\s*-->", re.IGNORECASE | re.DOTALL)
+_COMMENT_ONLY_RE = re.compile(r"^\s*<!--.*-->\s*$", re.DOTALL)
 _KEY_RE = re.compile(r"^([A-Za-z_][\w-]*)\s*:(.*)$")
 
 # Inline constructs whose text is not prose. Order matters little: each

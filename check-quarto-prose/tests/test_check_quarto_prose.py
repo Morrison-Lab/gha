@@ -458,7 +458,7 @@ def test_bare_star_word_is_an_error(tmp_path: Path) -> None:
 def _init_repo(root: Path) -> Path:
     for args in (
         ["init", "-q", "-b", "main"],
-        ["config", "user.email", "t@example.invalid"],
+        ["config", "user.email", "t@example.invalid"],  # phi-allow: synthetic fixture
         ["config", "user.name", "t"],
         ["config", "commit.gpgsign", "false"],
     ):
