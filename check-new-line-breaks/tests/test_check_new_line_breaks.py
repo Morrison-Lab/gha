@@ -399,6 +399,27 @@ def test_abbreviation_before_digit_does_not_split():
     ]
 
 
+def test_page_locator_before_digit_does_not_split():
+    """A citation's `p. N` locator is not a sentence end (gha#998)."""
+    assert nlb.split_sentences("The book says so [@h, p. 331].") == [
+        "The book says so [@h, p. 331]."
+    ]
+    assert nlb.split_sentences("See [@h, Chapter 7, p. 194] for it.") == [
+        "See [@h, Chapter 7, p. 194] for it."
+    ]
+
+
+def test_page_locator_protection_needs_a_digit_follower():
+    """`p.` before an uppercase word still splits, so `p` stays out of _ABBREVS."""
+    assert nlb.split_sentences("Plot variable p. Then fit it.") == [
+        "Plot variable p.",
+        "Then fit it.",
+    ]
+    assert nlb.split_sentences("Step one ends at p. 2 more steps follow.") == [
+        "Step one ends at p. 2 more steps follow."
+    ]
+
+
 def test_digit_start_line_is_flagged_end_to_end():
     """The detector, not just the splitter: a line with a digit-led sentence reports."""
     flagged = nlb.classify_line(
@@ -1082,6 +1103,161 @@ def test_trailing_semicolon_is_not_a_clause_break():
 def test_semicolon_only_inside_code_span_is_not_a_clause_break():
     text = "Invoke the helper with `for x in xs; do thing; done` and read its output."
     assert not nlb.has_late_semicolon(text, min_length=10)
+
+
+def test_semicolon_inside_inline_math_is_not_a_clause_break():
+    """A `;` separating math arguments ends no clause (gha#998)."""
+    text = (
+        "The general model is $\\E{Y \\mid A, L} = A \\gamma(L; \\beta)$, "
+        "with the function gamma known and equal to zero at zero."
+    )
+    assert len(text) > 80
+    assert ";" not in nlb.strip_inline_markup(text)
+    assert not nlb.has_late_semicolon(text)
+
+
+def test_semicolon_in_prose_beside_inline_math_is_still_a_clause_break():
+    """Stripping math must leave a prose `;` next to it in place."""
+    text = (
+        "The estimate is $\\hat\\theta = 0.3$ in the first sample; "
+        "the second sample gives a noticeably larger value for it."
+    )
+    assert len(text) > 80
+    assert nlb.has_late_semicolon(text)
+
+
+def test_escaped_dollar_is_not_a_math_delimiter():
+    """`\\$5; \\$6` is currency, so its `;` stays visible to the check."""
+    text = "It costs \\$5; the other one costs \\$6, so pick the cheaper option today."
+    assert ";" in nlb.strip_inline_markup(text)
+
+
+def test_hyphenated_price_range_is_not_inline_math():
+    """`$5-$10` is currency: Pandoc does not close math on a `$` before a digit."""
+    text = "The price range is $5-$10; that is too expensive for a casual reader to justify."
+    assert "$5-$10;" in nlb.strip_inline_markup(text)
+
+
+def test_display_math_block_lines_are_not_prose():
+    """Lines inside a multi-line `$$` block are TeX, not prose (gha#998)."""
+    text = "Intro sentence.\n$$\nf(Y; \\theta) = g(A; \\alpha). B. C.\n$$\nAfter it."
+    prose = nlb.prose_line_numbers(text)
+    assert 3 not in prose
+    assert {1, 5} <= prose
+
+
+def test_display_math_opened_after_text_does_not_hide_later_prose():
+    """A `$$` opener that does not start its line must still be tracked."""
+    text = "Text before: $$\nx\n$$\nProse one. Prose two.\nMore prose.\n"
+    prose = nlb.prose_line_numbers(text)
+    assert 2 not in prose
+    assert {1, 4, 5} <= prose
+
+
+def test_display_math_closer_with_label_ends_the_block():
+    text = "$$\nx = 1\n$$ {#eq-x}\nProse after the block.\n"
+    prose = nlb.prose_line_numbers(text)
+    assert {1, 2, 3}.isdisjoint(prose)
+    assert 4 in prose
+
+
+def test_one_line_display_math_keeps_its_prose():
+    """Balanced `$$...$$` on one line is math inside a prose line."""
+    text = "$$x = 1$$ is the formula. And another sentence follows it here.\n"
+    assert 1 in nlb.prose_line_numbers(text)
+
+
+def test_unclosed_display_math_ends_at_a_blank_line():
+    """A stray `$$` must not hide everything after it."""
+    text = "$$\nx\n\nAfter. Two.\n"
+    prose = nlb.prose_line_numbers(text)
+    assert 2 not in prose
+    assert 4 in prose
+
+
+def test_prose_after_a_display_math_closer_is_still_prose():
+    text = "$$\nx\n$$ and prose here. More prose.\n"
+    assert 3 in nlb.prose_line_numbers(text)
+
+
+def test_tex_math_environment_lines_are_not_prose():
+    text = (
+        "Prose before.\n"
+        "\\begin{align*}\n"
+        "x &= y && \\text{(a; b)} \\\\\n"
+        "\\end{align*}\n"
+        "Prose after. More prose.\n"
+    )
+    assert nlb.prose_line_numbers(text) == {1, 5}
+
+
+def test_unclosed_tex_math_environment_ends_at_a_blank_line():
+    text = "\\begin{equation}\nx = y\n\nProse here. More prose.\n"
+    assert nlb.prose_line_numbers(text) == {4}
+
+
+def test_tex_math_environment_after_a_list_marker_is_not_prose():
+    text = "- \\begin{align}\n  x &= y; z \\\\\n  \\end{align}\n"
+    assert nlb.prose_line_numbers(text) == set()
+
+
+def test_tex_math_environment_after_prose_on_its_line():
+    text = (
+        "Explanation: \\begin{align}\n"
+        "x &= y; z \\\\\n"
+        "\\end{align}\n"
+        "Prose. More.\n"
+    )
+    assert nlb.prose_line_numbers(text) == {1, 4}
+
+
+@pytest.mark.parametrize(
+    "first",
+    [
+        "Use `\\begin{align}`",
+        "See \\begin{align} in the LaTeX docs.",
+    ],
+)
+def test_tex_environment_named_in_prose_opens_nothing(first):
+    text = first + "\nNext prose. Two; here.\nMore prose.\n"
+    assert nlb.prose_line_numbers(text) == {1, 2, 3}
+
+
+def test_display_math_wrapping_a_tex_environment_keeps_later_prose():
+    text = "$$\\begin{align}\na;b\n\\end{align}$$\nAfter prose. Two.\nMore.\n"
+    assert nlb.prose_line_numbers(text) == {4, 5}
+
+
+def test_tex_opener_inside_display_math_opens_nothing():
+    text = "$$\nx = \\begin{align}\n$$\nAfter prose. Two.\n"
+    assert nlb.prose_line_numbers(text) == {4}
+
+
+def test_starred_environment_needs_its_starred_end():
+    text = "\\begin{align*}\nx\n\\end{align}\ny\n\\end{align*}\nProse. More.\n"
+    assert nlb.prose_line_numbers(text) == {6}
+
+
+def test_semicolon_in_tex_math_environment_is_not_flagged(tmp_path):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n\\begin{align}\n"
+        "x &= y && \\text{(exchangeability at } k = 0\\text{; positivity: }"
+        " \\Pr[A_0 = a_0] > 0\\text{)} \\\\\n"
+        "\\end{align}\n"
+    )
+    _commit(tmp_path, "add math")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert violations == []
+
+
+def test_non_math_tex_environment_stays_prose():
+    text = "\\begin{itemize} is how LaTeX opens a list. It is not math.\n"
+    assert 1 in nlb.prose_line_numbers(text)
 
 
 def test_semicolon_inside_a_multi_backtick_code_span_is_not_a_clause_break():

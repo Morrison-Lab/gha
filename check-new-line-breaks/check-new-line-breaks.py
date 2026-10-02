@@ -97,6 +97,15 @@ def _abbrev_pattern(forms) -> str:
 
 _ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
 
+# A page locator (`[@key, p. 331]`) is protected only when a digit follows
+# (gha#998). `p` cannot join `_ABBREVS` outright: that would also protect a
+# genuine boundary after a word "p." before an uppercase sentence. The digit
+# follower is what #878 made a sentence opener, which is how the locator began
+# splitting; `pp.` is already protected by `_ABBREVS`.
+# The accepted cost: a sentence ending in a bare "p." whose next sentence
+# opens with a digit is no longer split (a test pins this).
+_PAGE_LOCATOR_RE = re.compile(r"(?<!\w)(p)\.(?=\s+\d)")
+
 # Lowercase abbreviation forms, protected ONLY on the lowercase-follower branch
 # (#389) -- applied *after* the uppercase branch has already run (see
 # split_sentences). This is the fix for a cross-branch leak caught over three
@@ -209,6 +218,7 @@ def split_sentences(text: str) -> List[str]:
     if not text:
         return []
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
+    protected = _PAGE_LOCATOR_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, protected)
     protected = _NUM_MARKER_RE.sub(
         lambda m: m.group(1) + m.group(2)[:-1] + _PLACEHOLDER + m.group(3), protected
     )
@@ -253,6 +263,26 @@ _BARE_URL_RE = re.compile(r"https?://\S*[^\s.,;:!?)\]]")
 _ENTITY_RE = re.compile(
     r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
 )
+# TeX math (gha#998): a `;` inside `$f(x; \theta)$` separates arguments and
+# never ends a clause, and breaking the source line inside the math to please
+# the check is worse than the long line. The inline form follows Pandoc's
+# tex_math_dollars rule: no space after the opening `$` or before the closing
+# one, a closing `$` followed by a digit is not a delimiter (so `$5-$10` is
+# currency), and an escaped `\$` is not a delimiter either.
+_MATH_RE = re.compile(
+    r"\$\$.+?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<![\s\\])\$(?!\d)"
+)
+# A raw TeX math environment such as `\begin{align}` is TeX, not prose:
+# Pandoc's raw_tex extension passes it through as raw TeX, which MathJax and
+# LaTeX then typeset. The opener may follow a blockquote or list marker, or
+# end a line of prose.
+_TEX_MATH_ENV_OPEN = (
+    r"\\begin\{(equation|align|alignat|gather|multline|flalign|eqnarray)(\*?)\}"
+)
+_TEX_MATH_ENV_RE = re.compile(
+    r"(?:>\s*|[-*+]\s+|\d+[.)]\s+)*" + _TEX_MATH_ENV_OPEN
+)
+_TEX_MATH_ENV_TAIL_RE = re.compile(_TEX_MATH_ENV_OPEN + r"\s*$")
 # One home for each default; action.yml and the reusable workflow declare
 # the same values, and a test pins all of them together.
 _DEFAULT_FAIL = True
@@ -263,7 +293,7 @@ _DEFAULT_CLAUSE_MIN_LENGTH = 80
 def strip_inline_markup(text: str) -> str:
     """Drop non-prose markup, leaving the prose around it.
 
-    Removes inline code spans, link targets, autolinks, bare URLs, and HTML
+    Removes inline code spans, link targets, autolinks, bare URLs, TeX math, and HTML
     character entities -- every construct that can carry a ``;`` that is not a
     clause boundary, or inflate a line's length without adding visible text.
     The spec sanctions the length half of this directly: rule 13 says a line
@@ -284,7 +314,7 @@ def strip_inline_markup(text: str) -> str:
     # `]` keeps a bracketed link's visible text attached to its own sentence.
     text = _CODE_SPAN_RE.sub("", text)
     text = _LINK_TARGET_RE.sub("]", text)
-    for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE):
+    for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE, _MATH_RE):
         text = pattern.sub("", text)
     return text
 
@@ -395,6 +425,8 @@ def prose_line_numbers(text: str) -> Set[int]:
     fence_char: Optional[str] = None
     in_html_comment = False
     in_bq_code = False
+    in_display_math = False
+    tex_env_end: Optional[str] = None
 
     for idx, line in enumerate(lines, start=1):
         stripped = line.strip()
@@ -428,6 +460,54 @@ def prose_line_numbers(text: str) -> Set[int]:
             continue
         if in_code:
             continue
+
+        # A raw TeX math environment holds until its own `\end{...}`. Pandoc
+        # carries it across blank lines, but stopping at a blank line here
+        # keeps an unclosed `\begin` from hiding the rest of the file. A line
+        # that closes the environment is skipped whole, so prose after the
+        # `\end{...}` on the same line goes unchecked.
+        if tex_env_end is not None:
+            if tex_env_end in stripped or not stripped:
+                tex_env_end = None
+            continue
+        # An opener that ends a line of prose opens the environment too, but
+        # its own line stays prose, as a line opening a `$$` block after text
+        # does. An opener named mid-sentence or inside a code span, or on a
+        # line carrying `$$` (left to the display-math handling below), opens
+        # nothing.
+        env_m = _TEX_MATH_ENV_RE.match(stripped)
+        tail_m = None
+        if not env_m and "$$" not in stripped:
+            tail_m = _TEX_MATH_ENV_TAIL_RE.search(stripped)
+        m = env_m or tail_m
+        if m and not in_display_math:
+            end = "\\end{" + m.group(1) + m.group(2) + "}"
+            if end not in stripped:
+                tex_env_end = end
+            if env_m:
+                continue
+
+        # A `$$ ... $$` display block spanning lines holds TeX, not prose
+        # (gha#998). An odd count of `$$` on a line opens or closes one, and a
+        # blank line ends it, as it ends the paragraph, so a stray `$$` cannot
+        # hide the rest of the file. A line that opens a block after some
+        # text stays prose; a line whose `$$` are balanced stays prose too,
+        # and strip_inline_markup removes its math.
+        # Pandoc's manual: "there can be no blank lines between the opening
+        # and closing $$ delimiters", so a blank line inside one means the
+        # closer is missing. Prose after a closer (not a `{#eq-...}` label)
+        # stays prose.
+        toggles_display = stripped.count("$$") % 2 == 1
+        if in_display_math:
+            if toggles_display or not stripped:
+                in_display_math = False
+            tail = stripped.rpartition("$$")[2].strip()
+            if not (toggles_display and tail and not tail.startswith("{")):
+                continue
+        elif toggles_display:
+            in_display_math = True
+            if stripped.startswith("$$"):
+                continue
 
         if _BQ_RE.match(line):
             inner = re.sub(r"^\s*>\s?", "", line)
