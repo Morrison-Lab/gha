@@ -452,12 +452,18 @@ def prose_line_numbers(text: str) -> Set[int]:
         # hide the rest of the file. A line that opens a block after some
         # text stays prose; a line whose `$$` are balanced stays prose too,
         # and strip_inline_markup removes its math.
+        # Pandoc's manual: "there can be no blank lines between the opening
+        # and closing $$ delimiters", so a blank line inside one means the
+        # closer is missing. Prose after a closer (not a `{#eq-...}` label)
+        # stays prose.
         toggles_display = stripped.count("$$") % 2 == 1
         if in_display_math:
             if toggles_display or not stripped:
                 in_display_math = False
-            continue
-        if toggles_display:
+            tail = stripped.rpartition("$$")[2].strip()
+            if not (toggles_display and tail and not tail.startswith("{")):
+                continue
+        elif toggles_display:
             in_display_math = True
             if stripped.startswith("$$"):
                 continue

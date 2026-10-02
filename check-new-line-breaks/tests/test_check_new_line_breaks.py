@@ -1169,6 +1169,11 @@ def test_unclosed_display_math_ends_at_a_blank_line():
     assert 4 in prose
 
 
+def test_prose_after_a_display_math_closer_is_still_prose():
+    text = "$$\nx\n$$ and prose here. More prose.\n"
+    assert 3 in nlb.prose_line_numbers(text)
+
+
 def test_semicolon_inside_a_multi_backtick_code_span_is_not_a_clause_break():
     # #337 review round 3: `[^`]*` matched the empty span formed by the two
     # opening backticks of a ``...``, so an N-backtick span -- CommonMark's
