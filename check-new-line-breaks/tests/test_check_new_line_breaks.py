@@ -1132,6 +1132,12 @@ def test_escaped_dollar_is_not_a_math_delimiter():
     assert ";" in nlb.strip_inline_markup(text)
 
 
+def test_hyphenated_price_range_is_not_inline_math():
+    """`$5-$10` is currency: Pandoc does not close math on a `$` before a digit."""
+    text = "The price range is $5-$10; that is too expensive for a casual reader to justify."
+    assert "$5-$10;" in nlb.strip_inline_markup(text)
+
+
 def test_display_math_block_lines_are_not_prose():
     """Lines inside a multi-line `$$` block are TeX, not prose (gha#998)."""
     text = "Intro sentence.\n$$\nf(Y; \\theta) = g(A; \\alpha). B. C.\n$$\nAfter it."

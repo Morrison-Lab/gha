@@ -267,8 +267,11 @@ _ENTITY_RE = re.compile(
 # never ends a clause, and breaking the source line inside the math to please
 # the check is worse than the long line. The inline form follows Pandoc's
 # tex_math_dollars rule: no space after the opening `$` or before the closing
-# one, and an escaped `\$` is not a delimiter.
-_MATH_RE = re.compile(r"\$\$.+?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<![\s\\])\$")
+# one, a closing `$` followed by a digit is not a delimiter (so `$5-$10` is
+# currency), and an escaped `\$` is not a delimiter either.
+_MATH_RE = re.compile(
+    r"\$\$.+?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<![\s\\])\$(?!\d)"
+)
 # One home for each default; action.yml and the reusable workflow declare
 # the same values, and a test pins all of them together.
 _DEFAULT_FAIL = True
