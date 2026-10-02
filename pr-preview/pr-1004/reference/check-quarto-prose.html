@@ -861,6 +861,7 @@ cookieconsent.run({
 <section id="diff-scoped-like-check-typos" class="level2">
 <h2 class="anchored" data-anchor-id="diff-scoped-like-check-typos">Diff-scoped, like check-typos</h2>
 <p>Only findings on lines a diff adds are reported, so a first run over an existing repository does not reflag the prose it already has. On a pull request the reusable workflow passes the base commit as <code>base-ref</code>. With no <code>base-ref</code>, or a <code>base-ref</code> this clone cannot see (a shallow clone, for example), the check is skipped with a warning. It never falls back to scanning the whole tree. Pass <code>base-ref: all</code> to scan every tracked file once you are ready to clean the backlog.</p>
+<p>A diff-scoped run reads each file as committed at <code>HEAD</code>, the same content the diff was computed from, so an uncommitted edit cannot shift the line numbers the diff reported. Only <code>base-ref: all</code> reads the working tree. Lines are counted by newline alone, as git counts them, so a form feed or a Unicode line separator in a file does not move a finding to the wrong line.</p>
 <p>The check is blocking by default. Only an explicit <code>fail: false</code> (trimmed, case-insensitive) turns findings into warnings.</p>
 </section>
 <section id="rule-1-notes-div-content" class="level2">
@@ -879,8 +880,8 @@ cookieconsent.run({
 <p>List syntax:</p>
 <ul>
 <li>One phrase per line. Blank lines and <code>#</code> comments are skipped.</li>
-<li>A space or a hyphen in a phrase matches a space, a hyphen, or a single line break, so “hand-wavy” also finds “hand wavy” and a phrase wrapped by semantic line breaks. A phrase never matches across a blank line.</li>
-<li>A word ending in <code>*</code> also matches the rest of that word: <code>cherry-pick*</code> finds “cherry-picked” and “cherry-picking”.</li>
+<li>A space or a hyphen in a phrase matches any run of horizontal whitespace (spaces, tabs, a non-breaking space), a hyphen, or a single line break, so “hand-wavy” also finds “hand wavy” and a phrase wrapped by semantic line breaks. A phrase never matches across a blank line.</li>
+<li>A word ending in <code>*</code> also matches the rest of that word: <code>cherry-pick*</code> finds “cherry-picked” and “cherry-picking”. Use it only where every continuation of the stem is the same idiom. The bundled list uses no star: it spells out “dive into”, “dives into”, “dived into”, “diving into” and “dove into” instead of <code>dive*</code>, because the stem would also match “diverges into”, and “game changer”, “game changers” and “game changing” instead of <code>game chang*</code>, which would also match “game changes”.</li>
 <li>Matching is whole-phrase, so <code>under the hood</code> does not match “under the hoodie”.</li>
 </ul>
 <p>The <code>idioms-file</code> input replaces the bundled list with your own file in the same format. A named file that is missing or lists no phrases is an error, not a silent fall back to the bundled list.</p>
@@ -888,7 +889,7 @@ cookieconsent.run({
 <h3 class="anchored" data-anchor-id="what-is-not-scanned">What is not scanned</h3>
 <ul>
 <li>fenced code blocks, including a fence nested in a longer fence, and executable chunks;</li>
-<li>inline code, inline and display math, and HTML comments;</li>
+<li>inline code, inline and display math, and HTML comments; a <code>$$</code> with no closing <code>$$</code> hides nothing past the next blank line, the next heading or the end of the file, because Pandoc display math cannot cross a blank line;</li>
 <li>link destinations and bare URLs, attribute braces such as <code>{#sec-deep-dive}</code>, shortcodes, and citation or cross-reference keys such as <code>@sec-deep-dive</code>;</li>
 <li>YAML front matter keys other than <code>title</code>, <code>subtitle</code> and <code>description</code>.</li>
 </ul>
@@ -933,7 +934,7 @@ cookieconsent.run({
 <td><code>globs</code></td>
 <td>string</td>
 <td><code>'*.qmd *.md'</code></td>
-<td>Space-separated git pathspecs of tracked files to scan (recursive).</td>
+<td>Space-separated git pathspecs of tracked files to scan (recursive). An empty value uses the default.</td>
 </tr>
 <tr class="even">
 <td><code>paths-ignore</code></td>
