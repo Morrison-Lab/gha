@@ -274,11 +274,15 @@ _MATH_RE = re.compile(
 )
 # A raw TeX math environment such as `\begin{align}` is TeX, not prose:
 # Pandoc's raw_tex extension passes it through as raw TeX, which MathJax and
-# LaTeX then typeset. The opener may follow a blockquote or list marker.
-_TEX_MATH_ENV_RE = re.compile(
-    r"(?:>\s*|[-*+]\s+|\d+[.)]\s+)*"
+# LaTeX then typeset. The opener may follow a blockquote or list marker, or
+# end a line of prose.
+_TEX_MATH_ENV_OPEN = (
     r"\\begin\{(equation|align|alignat|gather|multline|flalign|eqnarray)(\*?)\}"
 )
+_TEX_MATH_ENV_RE = re.compile(
+    r"(?:>\s*|[-*+]\s+|\d+[.)]\s+)*" + _TEX_MATH_ENV_OPEN
+)
+_TEX_MATH_ENV_TAIL_RE = re.compile(_TEX_MATH_ENV_OPEN + r"\s*$")
 # One home for each default; action.yml and the reusable workflow declare
 # the same values, and a test pins all of them together.
 _DEFAULT_FAIL = True
@@ -466,12 +470,22 @@ def prose_line_numbers(text: str) -> Set[int]:
             if tex_env_end in stripped or not stripped:
                 tex_env_end = None
             continue
+        # An opener that ends a line of prose opens the environment too, but
+        # its own line stays prose, as a line opening a `$$` block after text
+        # does. An opener named mid-sentence or inside a code span, or on a
+        # line carrying `$$` (left to the display-math handling below), opens
+        # nothing.
         env_m = _TEX_MATH_ENV_RE.match(stripped)
-        if env_m and not in_display_math:
-            end = "\\end{" + env_m.group(1) + env_m.group(2) + "}"
+        tail_m = None
+        if not env_m and "$$" not in stripped:
+            tail_m = _TEX_MATH_ENV_TAIL_RE.search(stripped)
+        m = env_m or tail_m
+        if m and not in_display_math:
+            end = "\\end{" + m.group(1) + m.group(2) + "}"
             if end not in stripped:
                 tex_env_end = end
-            continue
+            if env_m:
+                continue
 
         # A `$$ ... $$` display block spanning lines holds TeX, not prose
         # (gha#998). An odd count of `$$` on a line opens or closes one, and a

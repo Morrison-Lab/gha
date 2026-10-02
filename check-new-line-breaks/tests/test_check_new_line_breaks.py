@@ -1201,6 +1201,38 @@ def test_tex_math_environment_after_a_list_marker_is_not_prose():
     assert nlb.prose_line_numbers(text) == set()
 
 
+def test_tex_math_environment_after_prose_on_its_line():
+    text = (
+        "Explanation: \\begin{align}\n"
+        "x &= y; z \\\\\n"
+        "\\end{align}\n"
+        "Prose. More.\n"
+    )
+    assert nlb.prose_line_numbers(text) == {1, 4}
+
+
+@pytest.mark.parametrize(
+    "first",
+    [
+        "Use `\\begin{align}`",
+        "See \\begin{align} in the LaTeX docs.",
+    ],
+)
+def test_tex_environment_named_in_prose_opens_nothing(first):
+    text = first + "\nNext prose. Two; here.\nMore prose.\n"
+    assert nlb.prose_line_numbers(text) == {1, 2, 3}
+
+
+def test_display_math_wrapping_a_tex_environment_keeps_later_prose():
+    text = "$$\\begin{align}\na;b\n\\end{align}$$\nAfter prose. Two.\nMore.\n"
+    assert nlb.prose_line_numbers(text) == {4, 5}
+
+
+def test_tex_opener_inside_display_math_opens_nothing():
+    text = "$$\nx = \\begin{align}\n$$\nAfter prose. Two.\n"
+    assert nlb.prose_line_numbers(text) == {4}
+
+
 def test_starred_environment_needs_its_starred_end():
     text = "\\begin{align*}\nx\n\\end{align}\ny\n\\end{align*}\nProse. More.\n"
     assert nlb.prose_line_numbers(text) == {6}
