@@ -64,8 +64,8 @@ A case-insensitive, whole-phrase match against a list of idioms, cliches and
 slang.
 The bundled list is
 [`banned-idioms.txt`](https://github.com/Morrison-Lab/gha/blob/main/check-quarto-prose/banned-idioms.txt).
-It holds more than 40 entries, such as "under the hood", "low-hanging fruit",
-"deep dive", "at the end of the day", "rule of thumb" and "a bit of a".
+It holds more than 40 entries, such as `under the hood`, `low-hanging fruit`,
+`deep dive`, `at the end of the day`, `rule of thumb` and `a bit of a`.
 Read the file for the full set.
 
 List syntax:
@@ -74,16 +74,16 @@ List syntax:
   Blank lines and `#` comments are skipped.
 - A space or a hyphen in a phrase matches any run of horizontal whitespace
   (spaces, tabs, a non-breaking space), a hyphen, or a single line break, so
-  "hand-wavy" also finds "hand wavy" and a phrase wrapped by semantic line
+  `hand-wavy` also finds `hand wavy` and a phrase wrapped by semantic line
   breaks.
   A phrase never matches across a blank line.
 - A word ending in `*` also matches the rest of that word: `cherry-pick*`
-  finds "cherry-picked" and "cherry-picking".
+  finds `cherry-picked` and `cherry-picking`.
   Use it only where every continuation of the stem is the same idiom.
-  The bundled list uses no star: it spells out "dive into", "dives into",
-  "dived into", "diving into" and "dove into" instead of `dive*`, because
-  the stem would also match "diverges into", and "game changer",
-  "game changers" and "game changing" instead of `game chang*`, which
+  The bundled list uses no star: it spells out `dive into`, `dives into`,
+  `dived into`, `diving into` and `dove into` instead of `dive*`, because
+  the stem would also match "diverges into", and `game changer`,
+  `game changers` and `game changing` instead of `game chang*`, which
   would also match "game changes".
 - Matching is whole-phrase, so `under the hood` does not match "under the
   hoodie".
@@ -125,8 +125,8 @@ A phrase list cannot see context.
 
 - Some entries have a literal use.
   A bare "lean" is not listed, because "lean statistics" and "lean on a
-library" are literal, so only figurative forms such as "lean toward" are.
-  "Rule of thumb" in a quotation, or "red herring" in a discussion of the
+library" are literal, so only figurative forms such as `lean toward` are.
+  `Rule of thumb` in a quotation, or `red herring` in a discussion of the
 fallacy, is a false positive.
   Exempt it.
 - A phrase the list does not contain is not flagged, however figurative it is.

@@ -4903,6 +4903,15 @@ jobs:
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-quarto-prose/tests/ -q
 
+      # The capability's own reference page quotes its banned phrases, so
+      # scan that real page: a quoted phrase outside a code span fails here
+      # instead of the first time someone edits the page.
+      - name: Check this capability's own reference page
+        uses: ./check-quarto-prose
+        with:
+          base-ref: all
+          globs: website/reference/check-quarto-prose.qmd
+
       # With no base-ref the check skips rather than scanning the tree.
       - name: Check with no base-ref, expecting a skip
         uses: ./check-quarto-prose
