@@ -97,6 +97,13 @@ def _abbrev_pattern(forms) -> str:
 
 _ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
 
+# A page locator (`[@key, p. 331]`) is protected only when a digit follows
+# (gha#998). `p` cannot join `_ABBREVS` outright: that would also protect a
+# genuine boundary after a word "p." before an uppercase sentence. The digit
+# follower is what #878 made a sentence opener, which is how the locator began
+# splitting; `pp.` is already protected by `_ABBREVS`.
+_PAGE_LOCATOR_RE = re.compile(r"(?<!\w)(p)\.(?=\s+\d)")
+
 # Lowercase abbreviation forms, protected ONLY on the lowercase-follower branch
 # (#389) -- applied *after* the uppercase branch has already run (see
 # split_sentences). This is the fix for a cross-branch leak caught over three
@@ -209,6 +216,7 @@ def split_sentences(text: str) -> List[str]:
     if not text:
         return []
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
+    protected = _PAGE_LOCATOR_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, protected)
     protected = _NUM_MARKER_RE.sub(
         lambda m: m.group(1) + m.group(2)[:-1] + _PLACEHOLDER + m.group(3), protected
     )

@@ -399,6 +399,27 @@ def test_abbreviation_before_digit_does_not_split():
     ]
 
 
+def test_page_locator_before_digit_does_not_split():
+    """A citation's `p. N` locator is not a sentence end (gha#998)."""
+    assert nlb.split_sentences("The book says so [@h, p. 331].") == [
+        "The book says so [@h, p. 331]."
+    ]
+    assert nlb.split_sentences("See [@h, Chapter 7, p. 194] for it.") == [
+        "See [@h, Chapter 7, p. 194] for it."
+    ]
+
+
+def test_page_locator_protection_needs_a_digit_follower():
+    """`p.` before an uppercase word still splits, so `p` stays out of _ABBREVS."""
+    assert nlb.split_sentences("Plot variable p. Then fit it.") == [
+        "Plot variable p.",
+        "Then fit it.",
+    ]
+    assert nlb.split_sentences("Step one ends at p. 2 more steps follow.") == [
+        "Step one ends at p. 2 more steps follow."
+    ]
+
+
 def test_digit_start_line_is_flagged_end_to_end():
     """The detector, not just the splitter: a line with a digit-led sentence reports."""
     flagged = nlb.classify_line(
