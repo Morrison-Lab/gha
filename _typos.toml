@@ -1,0 +1,7 @@
+# Configuration for crate-ci/typos, read by check-typos in this repo's CI.
+# https://github.com/crate-ci/typos
+
+[default.extend-words]
+# "thm-" is the Quarto cross-reference prefix for a theorem, named in the
+# check-quarto-prose rule and docs. typos reads it as a misspelling of "them".
+thm = "thm"

@@ -222,7 +222,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
 `check-quarto-manuscript`, `check-quarto-links`,
-`check-orphaned-images`, `check-r-package`,
+`check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
 `check-informal-definitions`, `cleanup-pr-previews`, `student-qmd`,
 and `update-quarto-extensions`
@@ -267,6 +267,20 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`).
   every known misspelling the corpus already carries, and unknown jargon
   is not an error, so there is no `inst/WORDLIST` to grow into the way
   `spellcheck.yml` does.
+  `check-quarto-prose/` (Python, stdlib only) takes `check-typos`'s base-ref
+  model for a prose rule set rather than a wrapped binary: skip when there is
+  no base-ref or the ref is unreachable, `all` for the whole tree, and a
+  finding is in scope when any line of its span is a line the diff adds.
+  It has two rules.
+  `notes-div-content` tracks div nesting by colon-run length, so a longer
+  closing fence ends an unclosed inner div, and a theorem-like div after
+  the notes div closed is not read as inside it.
+  `banned-idiom` matches a phrase list (`banned-idioms.txt`, or the
+  `idioms-file` input) against text in which every unscanned region has been
+  replaced by a placeholder character of the same length, so line numbers
+  survive and no phrase can match through a code span or math.
+  A trailing `*` on a list word matches its inflections, and a line break
+  inside a phrase is allowed but a blank line is not.
   `check-formatting/` wraps `posit-dev/setup-air` and
   `air format --check -- <path>`.
   It has no helper script: Air is a Rust binary, so there is no R
@@ -2141,6 +2155,28 @@ Run it with `python3 -m pytest check-duplicate-roxygen/tests/ -v`.
 `check-informal-definitions/tests/test_check_informal_definitions.py` is a pytest
 suite testing Quarto div stack parsing, bold defining terms, math operators outside def divs, display-math naming sentences, nested section scopes, and diff scoping.
 Run it with `python3 -m pytest check-informal-definitions/tests/ -v`.
+
+`check-quarto-prose/tests/test_check_quarto_prose.py` is a pytest suite over
+the scanner (called as a module) and the driver (run as a subprocess against
+throwaway git repos in `tmp_path`, nothing committed).
+The cases to keep if it is trimmed are the negatives, each of which fails
+under a named mutation: a phrase inside a four-backtick fence that holds a
+three-backtick fence passes while the same phrase after the fence closes is
+reported, an `#exm-` div after a closed notes div passes, a longer closing
+fence ends an unclosed inner div, an allow comment exempts only the phrase it
+names, an empty `base-ref` skips instead of scanning, and a phrase on an
+untouched line is not reported while one on an added line is.
+Six mutations were confirmed to turn a named case red: closing a fence on any
+fence line, matching a closing div fence by innermost-only, disabling the
+allow comment, defaulting an empty base-ref to `all`, dropping diff scoping,
+and disabling the first-line test.
+CI runs it in the `quarto-prose` job in `_selftest.yml`, which then calls the
+local composite over a fixture staged into the index: a clean page, a page
+with a banned phrase and a page with an example in a notes div (the last two
+must fail), then one call per input a wiring typo would silently drop
+(`paths-ignore`, `fail`, `idioms-file`, `allow-file`).
+Every call names the fixture in `globs`, because this repo's own docs quote
+the banned phrases and a whole-tree call would flag them.
 
 `student-qmd/tests/test_student_qmd.py` is a pytest suite driving the writer
 and the checker against Quarto projects built in `tmp_path` per case

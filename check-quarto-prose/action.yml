@@ -1,0 +1,64 @@
+name: Check Quarto prose
+description: >-
+  Diff-scoped, blocking prose check over tracked .qmd and .md files. Reports
+  two rules as annotations: notes-div-content (a notes div that holds an
+  example, remark or definition, which belongs in an #exm-, #rem- or #def-
+  div) and banned-idiom (an idiom, cliche or slang phrase from a list).
+  Only lines a diff adds are reported, and with no base-ref the check is
+  skipped rather than widened to the whole tree. Code fences, inline code,
+  math, HTML comments, and front matter other than title, subtitle and
+  description are never scanned.
+inputs:
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked source files to scan. Git
+      pathspecs match at any depth, so this is recursive by default.
+    default: '*.qmd *.md'
+  paths-ignore:
+    description: >-
+      Comma- or newline-separated globs (`*`, `?`, `**`) of source files to
+      skip. A plain directory name skips everything under it.
+    default: ''
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only findings on lines added since this
+      ref are reported. Diff mode needs the base commit in history (checkout
+      with fetch-depth: 0). When no base-ref is given, or it is not a commit
+      this clone can see, the check is skipped with a warning rather than
+      falling back to a whole-tree scan, which would reflag prose the corpus
+      already carries. Pass `all` to scan every tracked file.
+    default: ''
+  idioms-file:
+    description: >-
+      Path (relative to the repository root) to a phrase list that replaces
+      the bundled `banned-idioms.txt`: one phrase per line, `#` comments, and
+      a trailing `*` on a word to match its inflections. A named but missing
+      or empty file is an error rather than a silent fall back to the
+      bundled list.
+    default: ''
+  allow-file:
+    description: >-
+      Path (relative to the repository root) to a file of exemptions, one per
+      line: `path-glob: phrase`, or a bare `phrase` to allow it everywhere.
+      Use it for a phrase a file quotes on purpose. A single line can be
+      exempted in the source with `<!-- prose-allow: phrase -->`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a finding is reported (else non-blocking
+      warnings). Defaults to blocking ('true'); read fail-closed, so only an
+      explicit `false` (trimmed, case-insensitive) opts out.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Check Quarto prose
+      shell: bash
+      env:
+        CQP_GLOBS: ${{ inputs.globs }}
+        CQP_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CQP_BASE_REF: ${{ inputs.base-ref }}
+        CQP_IDIOMS_FILE: ${{ inputs.idioms-file }}
+        CQP_ALLOW_FILE: ${{ inputs.allow-file }}
+        CQP_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-quarto-prose.py"

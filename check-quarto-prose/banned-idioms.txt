@@ -1,0 +1,76 @@
+# Idioms, cliches and slang that check-quarto-prose flags in prose.
+#
+# The house style is plain, literal prose that a reader with English as a
+# second language, or a literal reading style, can take at face value.
+# See https://github.com/Morrison-Lab/psw for the prose rules themselves.
+#
+# Format
+#   One phrase per line. Blank lines and lines starting with # are skipped,
+#   and so is anything after a space followed by #.
+#   Matching is case-insensitive and whole-phrase: "ballpark" does not match
+#   "ballparkx". A space or a hyphen in a phrase matches a space, a hyphen,
+#   or a line break (but never a blank line), so "hand-wavy" also finds
+#   "hand wavy".
+#   A word ending in * also matches the rest of that word, so "cherry-pick*"
+#   finds "cherry-picked" and "cherry-picking".
+#
+# A phrase list cannot see context. Some entries have a literal use or are
+# fair to quote. Exempt one with <!-- prose-allow: phrase --> on the line, or
+# list it in an allow-file.
+#
+# Why bare "lean" is not listed: it is an ordinary word (lean statistics,
+# lean on a library). Only the figurative forms are.
+
+# "which way does this course lean" and similar
+lean* toward*
+which way does this course lean
+
+# Software and engineering metaphors
+under the hood
+out of the box
+heavy lifting
+kitchen sink
+sanity check*
+plug and chug*
+hand-wav*
+nail* down
+the bottom line
+in the weeds
+circle back
+touch base
+think outside the box
+hit the ground running
+
+# Business and self-help cliches
+low-hanging fruit
+silver bullet*
+deep dive*
+game chang*
+at the end of the day
+move the needle
+bang for the buck
+boil* down to
+in a nutshell
+tip of the iceberg
+elephant in the room
+red herring*
+barking up the wrong tree
+bark* up the wrong tree
+cut* corners
+cutting corners
+grain of salt
+
+# Estimation and procedure idioms
+rule of thumb
+ballpark*
+ballpark figure
+back of the envelope
+by the book
+rock solid
+cherry-pick*
+
+# Vague or colloquial phrasing
+dive* into
+wrap* your head around
+pan* out
+a bit of a
