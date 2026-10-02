@@ -80,9 +80,11 @@ List syntax:
 - A word ending in `*` also matches the rest of that word: `cherry-pick*`
   finds "cherry-picked" and "cherry-picking".
   Use it only where every continuation of the stem is the same idiom.
-  The bundled list spells out "dive into", "dives into", "dived into",
-  "diving into" and "dove into" instead of `dive*`, because the stem would
-  also match "diverges into".
+  The bundled list uses no star: it spells out "dive into", "dives into",
+  "dived into", "diving into" and "dove into" instead of `dive*`, because
+  the stem would also match "diverges into", and "game changer",
+  "game changers" and "game changing" instead of `game chang*`, which
+  would also match "game changes".
 - Matching is whole-phrase, so `under the hood` does not match "under the
   hoodie".
 
@@ -140,7 +142,7 @@ may be reported.
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
-| `globs` | string | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to scan (recursive). |
+| `globs` | string | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to scan (recursive). An empty value uses the default. |
 | `paths-ignore` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of files to skip. |
 | `base-ref` | string | `''` | Git ref to diff against; empty uses the PR base on pull requests and skips on push; `all` scans every tracked file. |
 | `idioms-file` | string | `''` | Phrase list replacing the bundled one, relative to the repository root. |

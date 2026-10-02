@@ -12,7 +12,8 @@ inputs:
   globs:
     description: >-
       Space-separated git pathspecs of tracked source files to scan. Git
-      pathspecs match at any depth, so this is recursive by default.
+      pathspecs match at any depth, so this is recursive by default. An
+      empty value uses the default.
     default: '*.qmd *.md'
   paths-ignore:
     description: >-

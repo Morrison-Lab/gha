@@ -11,11 +11,11 @@
 #   "ballparkx". A space or a hyphen in a phrase matches a space, a hyphen,
 #   or a line break (but never a blank line), so "hand-wavy" also finds
 #   "hand wavy".
-#   A word ending in * also matches the rest of that word, so "cherry-pick*"
-#   finds "cherry-picked" and "cherry-picking". Use it only where every
-#   continuation of the stem is the same idiom. A stem like "dive" or "pan"
-#   would also match "diverges" and "panels", so those are listed one
-#   inflection per line instead.
+#   A word ending in * also matches the rest of that word. Use it only
+#   where every continuation of the stem is the same idiom. Most stems are
+#   not like that: "dive" or "pan" would match "diverges" and "panels", and
+#   "chang*" would match "game changes". So every entry here lists its
+#   inflections one per line, and none uses the star.
 #
 # A phrase list cannot see context. Some entries have a literal use or are
 # fair to quote. Exempt one with <!-- prose-allow: phrase --> on the line, or
@@ -40,9 +40,18 @@ under the hood
 out of the box
 heavy lifting
 kitchen sink
-sanity check*
-plug and chug*
-hand-wav*
+sanity check
+sanity checks
+sanity checked
+sanity checking
+plug and chug
+plugs and chugs
+plugging and chugging
+hand-wave
+hand-waves
+hand-waved
+hand-waving
+hand-wavy
 nail down
 nails down
 nailed down
@@ -56,9 +65,15 @@ hit the ground running
 
 # Business and self-help cliches
 low-hanging fruit
-silver bullet*
-deep dive*
-game chang*
+silver bullet
+silver bullets
+deep dive
+deep dives
+deep dived
+deep diving
+game changer
+game changers
+game changing
 at the end of the day
 move the needle
 bang for the buck
@@ -69,21 +84,30 @@ boiling down to
 in a nutshell
 tip of the iceberg
 elephant in the room
-red herring*
+red herring
+red herrings
 barking up the wrong tree
-bark* up the wrong tree
-cut* corners
+bark up the wrong tree
+barks up the wrong tree
+barked up the wrong tree
+cut corners
+cuts corners
 cutting corners
 grain of salt
 
 # Estimation and procedure idioms
 rule of thumb
-ballpark*
-ballpark figure
+ballpark
+ballparks
+ballparked
+ballparking
 back of the envelope
 by the book
 rock solid
-cherry-pick*
+cherry-pick
+cherry-picks
+cherry-picked
+cherry-picking
 
 # Vague or colloquial phrasing
 dive into
@@ -91,7 +115,10 @@ dives into
 dived into
 diving into
 dove into
-wrap* your head around
+wrap your head around
+wraps your head around
+wrapped your head around
+wrapping your head around
 pan out
 pans out
 panned out

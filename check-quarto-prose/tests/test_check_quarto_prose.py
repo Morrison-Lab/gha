@@ -409,9 +409,21 @@ def test_allow_comment_inside_code_is_not_an_allowance() -> None:
     assert len(scan(text)) == 1
 
 
-def test_allow_comment_matches_the_inflected_text_too() -> None:
+def test_allow_comment_names_the_inflected_text() -> None:
     assert scan("It was cherry-picked. <!-- prose-allow: cherry-picked -->\n") == []
-    assert scan("It was cherry-picked. <!-- prose-allow: cherry-pick -->\n") == []
+    # Each inflection is its own list entry, so the stem does not cover it.
+    assert len(scan("It was cherry-picked. <!-- prose-allow: cherry-pick -->\n")) == 1
+
+
+def test_custom_list_wildcard_still_covers_inflections(tmp_path: Path) -> None:
+    path = tmp_path / "mine.txt"
+    path.write_text("tangent*\n", encoding="utf-8")
+    custom = cqp.load_idioms(path)
+    assert len(scan("A tangent, tangents and tangential.\n", idioms=custom)) == 3
+    assert (
+        scan("It was tangential. <!-- prose-allow: tangential -->\n", idioms=custom)
+        == []
+    )
 
 
 def test_allow_file_exempts_by_path_glob_and_phrase(tmp_path: Path) -> None:
@@ -769,3 +781,159 @@ def test_action_description_names_the_notes_triggers() -> None:
     text = _ACTION_YML.read_text(encoding="utf-8")
     for trigger in ("thm-", "exr-", "Note:"):
         assert trigger in text
+
+
+# ------------------------------------------------------------- round 2 cases
+
+
+def test_default_list_uses_no_wildcard() -> None:
+    assert [i.text for i in _IDIOMS if "*" in i.text] == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "A game changer.",
+        "Game changers arrive.",
+        "A game changing result.",
+        "A hand wavy claim.",
+        "She hand waves it away.",
+        "He hand-waved it.",
+        "Stop hand-waving.",
+        "Two deep dives.",
+        "A deep dive.",
+        "We deep dived.",
+        "She cuts corners.",
+        "They cut corners.",
+        "We are cutting corners.",
+        "Silver bullets do not exist.",
+        "A red herring.",
+        "Two red herrings.",
+        "He barks up the wrong tree.",
+        "They barked up the wrong tree.",
+        "Plugging and chugging.",
+        "Sanity checking the data.",
+        "A ballparked answer.",
+        "Try to wrap your head around it.",
+    ],
+)
+def test_explicit_inflections_are_flagged(text: str) -> None:
+    assert len(scan(text + "\n")) >= 1, text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The game changes after the break.",
+        "A game change in the rules.",
+        "Deep diversity of species.",
+        "A deep divergence in the series.",
+        "The cutter corners of the square.",
+        "The cutlery corners of the box.",
+        "A hand-waveform plot.",
+        "A silver bulletin board.",
+        "A red herringbone pattern.",
+        "The ballparkx entrance.",
+    ],
+)
+def test_lookalike_words_are_not_flagged(text: str) -> None:
+    assert scan(text + "\n") == [], text
+
+
+def test_remedy_names_the_matched_text_and_works() -> None:
+    found = scan("They hand-waved it.\n")
+    assert len(found) == 1
+    message = found[0].message
+    assert "<!-- prose-allow: hand-waved -->" in message
+    assert "*" not in message
+    assert scan("They hand-waved it. <!-- prose-allow: hand-waved -->\n") == []
+
+
+def test_remedy_names_the_inflected_text_not_the_list_entry() -> None:
+    found = scan("A game changing result.\n")
+    assert "<!-- prose-allow: game changing -->" in found[0].message
+
+
+def test_step_summary_shows_the_allow_comment_visibly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    findings = scan("This is a deep dive.\n")
+    cqp._write_summary(findings, True, "all")
+    body = summary.read_text(encoding="utf-8")
+    assert "&lt;!-- prose-allow: deep dive -->" in body
+    assert "<!--" not in body
+
+
+def test_leading_bom_does_not_hide_front_matter() -> None:
+    text = "﻿---\nauthor: under the hood\ntitle: Plain\n---\nBody.\n"
+    assert cqp.scan_text("page.qmd", text, _IDIOMS, []) == []
+
+
+def test_leading_bom_keeps_line_numbers() -> None:
+    text = "﻿# Page\n\nWe move the needle.\n"
+    found = cqp.scan_text("page.qmd", text, _IDIOMS, [])
+    assert rules(found) == [(cqp.RULE_IDIOM, 3)]
+
+
+def test_bom_file_through_the_driver(repo: Path) -> None:
+    (repo / "page.qmd").write_bytes(
+        b"\xef\xbb\xbf---\nauthor: under the hood\n---\nClean body.\n"
+    )
+    _commit(repo, "bom")
+    assert _run(repo, base_ref="all").returncode == 0
+
+
+@pytest.mark.parametrize(
+    "first_line",
+    [
+        "Example-based approach to teaching.",
+        "Examples-driven design.",
+        "Remarkable result.",
+        "Remark-worthy.",
+        "Examplesque prose.",
+    ],
+)
+def test_notes_first_word_only_counts_as_a_whole_word(first_line: str) -> None:
+    assert scan(f"::: notes\n{first_line}\n:::\n") == []
+
+
+@pytest.mark.parametrize(
+    "first_line",
+    ["Example", "Example.", "Example, then", "Examples of this", "Remark: x", "Example 3"],
+)
+def test_notes_example_followed_by_a_boundary_is_flagged(first_line: str) -> None:
+    found = scan(f"::: notes\n{first_line}\n:::\n")
+    assert rules(found) == [(cqp.RULE_NOTES, 2)]
+
+
+def test_empty_globs_fall_back_to_the_documented_default(repo: Path) -> None:
+    (repo / "page.qmd").write_text("Clean.\n", encoding="utf-8")
+    (repo / "notes.txt").write_text("under the hood\n", encoding="utf-8")
+    _commit(repo, "txt only")
+    assert _run(repo, base_ref="all", globs="").returncode == 0
+    (repo / "extra.md").write_text("We move the needle.\n", encoding="utf-8")
+    _commit(repo, "md")
+    assert _run(repo, base_ref="all", globs="").returncode == 1
+
+
+def test_removed_dash_line_does_not_end_the_hunk(repo: Path) -> None:
+    (repo / "page.qmd").write_text("# Page\n\n-- x\n", encoding="utf-8")
+    base = _commit(repo, "dash line")
+    (repo / "page.qmd").write_text(
+        "# Page\n\n++ We move the needle here.\n", encoding="utf-8"
+    )
+    _commit(repo, "plus line")
+    result = _run(repo, base_ref=base)
+    assert result.returncode == 1, result.stdout
+    assert "::error file=page.qmd,line=3::banned-idiom:" in result.stdout
+
+
+def test_added_line_numbers_survive_header_lookalikes(repo: Path) -> None:
+    (repo / "page.qmd").write_text("# Page\n\n-- x\n", encoding="utf-8")
+    base = _commit(repo, "dash line")
+    (repo / "page.qmd").write_text("# Page\n\n++ y\n", encoding="utf-8")
+    _commit(repo, "plus line")
+    added = cqp._added_line_numbers(base, ["*.qmd"], cwd=str(repo))
+    assert added == {"page.qmd": {3}}

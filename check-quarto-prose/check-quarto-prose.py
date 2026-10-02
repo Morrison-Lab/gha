@@ -84,7 +84,7 @@ _FRONT_MATTER_KEYS = {"title", "subtitle", "description"}
 _THEOREM_ID_RE = re.compile(r"#((?:exm|rem|def|thm|exr)-[^\s}]*)")
 _NOTES_CLASS_RE = re.compile(r"^notes$|(?:^|[\s{])\.notes(?=[\s}]|$)")
 _FIRST_LINE_RE = re.compile(
-    r"^\s*(?:(?:\*\*|__|\*|_)\s*)?(?:(?:example|remark)s?\b"
+    r"^\s*(?:(?:\*\*|__|\*|_)\s*)?(?:(?:example|remark)s?(?![\w-])"
     r"|note\s*(?:\*\*|__|\*|_)?\s*:)",
     re.IGNORECASE,
 )
@@ -219,8 +219,14 @@ def _added_line_numbers(
     new_lineno = 0
     in_hunk = False
     for raw in diff.split("\n"):
-        if raw.startswith("diff ") or raw.startswith("--- "):
+        # Only "diff " can start a new file's header: a content line always
+        # begins with "+", "-", " " or "\", so it cannot be mistaken for one.
+        if raw.startswith("diff "):
             in_hunk = False
+            continue
+        # Inside a hunk, "--- x" is a removed line "-- x" and "+++ y" is an
+        # added line "++ y". Only before the first "@@" are they headers.
+        if raw.startswith("--- ") and not in_hunk:
             continue
         if raw.startswith("+++ ") and not in_hunk:
             cur_path = _diff_new_file_path(raw)
@@ -673,7 +679,7 @@ def _find_idioms(
                 RULE_IDIOM,
                 f'banned-idiom: "{shown}" is an idiom, cliche or slang. Say it '
                 "in plain, literal words, or add "
-                f"<!-- prose-allow: {idiom.text.replace('*', '')} --> if it is a quotation.",
+                f"<!-- prose-allow: {shown} --> if it is a quotation.",
             )
         )
     return findings
@@ -683,6 +689,8 @@ def scan_text(
     path: str, text: str, idioms: List[Idiom], allow: List[Allow]
 ) -> List[Finding]:
     """All findings in one file's text, before diff scoping."""
+    if text.startswith("﻿"):
+        text = text[1:]  # a byte-order mark is not part of the first line
     scan = _Scan(path, _lines_of(text)).run()
     findings = scan.findings + _find_idioms(path, scan, idioms, allow)
     return sorted(findings, key=lambda f: (f.line, f.rule))
@@ -718,7 +726,7 @@ def collect_findings(
     if not base_ref:
         return [], True, 0, 0
     whole_tree = base_ref == "all"
-    pathspecs = globs or ["."]
+    pathspecs = globs or _DEFAULT_GLOBS.split()
     added: Dict[str, Set[int]] = {}
     if whole_tree:
         candidates = _tracked_files(pathspecs, cwd=cwd)
@@ -778,7 +786,9 @@ def _write_summary(findings: List[Finding], whole_tree: bool, base_ref: str) -> 
         "| --- | --- | --- | --- |",
     ]
     for f in findings:
-        message = f.message.replace("|", "\\|")
+        # "<" would start an HTML comment, which the summary hides, and the
+        # remedy is an HTML comment. "&lt;" renders as "<".
+        message = f.message.replace("<", "&lt;").replace("|", "\\|")
         lines.append(f"| `{f.path}` | {f.line} | `{f.rule}` | {message} |")
     lines.extend(["", f"Prose rules: {_PSW_URL}", ""])
     with open(summary, "a", encoding="utf-8") as fh:
@@ -822,7 +832,7 @@ def main() -> int:
         print(f"::error::check-quarto-prose: {exc}")
         return 1
 
-    globs = os.environ.get("CQP_GLOBS", _DEFAULT_GLOBS).split()
+    globs = os.environ.get("CQP_GLOBS", "").split() or _DEFAULT_GLOBS.split()
     ignores = _compile_ignores(_split_list(os.environ.get("CQP_PATHS_IGNORE", "")))
     base_ref = os.environ.get("CQP_BASE_REF", "").strip()
     fail = _env_fail()
