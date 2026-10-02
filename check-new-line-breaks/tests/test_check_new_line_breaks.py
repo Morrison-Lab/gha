@@ -1140,6 +1140,35 @@ def test_display_math_block_lines_are_not_prose():
     assert {1, 5} <= prose
 
 
+def test_display_math_opened_after_text_does_not_hide_later_prose():
+    """A `$$` opener that does not start its line must still be tracked."""
+    text = "Text before: $$\nx\n$$\nProse one. Prose two.\nMore prose.\n"
+    prose = nlb.prose_line_numbers(text)
+    assert 2 not in prose
+    assert {1, 4, 5} <= prose
+
+
+def test_display_math_closer_with_label_ends_the_block():
+    text = "$$\nx = 1\n$$ {#eq-x}\nProse after the block.\n"
+    prose = nlb.prose_line_numbers(text)
+    assert {1, 2, 3}.isdisjoint(prose)
+    assert 4 in prose
+
+
+def test_one_line_display_math_keeps_its_prose():
+    """Balanced `$$...$$` on one line is math inside a prose line."""
+    text = "$$x = 1$$ is the formula. And another sentence follows it here.\n"
+    assert 1 in nlb.prose_line_numbers(text)
+
+
+def test_unclosed_display_math_ends_at_a_blank_line():
+    """A stray `$$` must not hide everything after it."""
+    text = "$$\nx\n\nAfter. Two.\n"
+    prose = nlb.prose_line_numbers(text)
+    assert 2 not in prose
+    assert 4 in prose
+
+
 def test_semicolon_inside_a_multi_backtick_code_span_is_not_a_clause_break():
     # #337 review round 3: `[^`]*` matched the empty span formed by the two
     # opening backticks of a ``...``, so an N-backtick span -- CommonMark's

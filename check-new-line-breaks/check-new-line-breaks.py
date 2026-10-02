@@ -446,11 +446,21 @@ def prose_line_numbers(text: str) -> Set[int]:
         if in_code:
             continue
 
-        # A multi-line `$$ ... $$` display block holds TeX, not prose (gha#998).
-        if in_display_math or stripped.startswith("$$"):
-            if stripped.count("$$") % 2 == 1:
-                in_display_math = not in_display_math
+        # A `$$ ... $$` display block spanning lines holds TeX, not prose
+        # (gha#998). An odd count of `$$` on a line opens or closes one, and a
+        # blank line ends it, as it ends the paragraph, so a stray `$$` cannot
+        # hide the rest of the file. A line that opens a block after some
+        # text stays prose; a line whose `$$` are balanced stays prose too,
+        # and strip_inline_markup removes its math.
+        toggles_display = stripped.count("$$") % 2 == 1
+        if in_display_math:
+            if toggles_display or not stripped:
+                in_display_math = False
             continue
+        if toggles_display:
+            in_display_math = True
+            if stripped.startswith("$$"):
+                continue
 
         if _BQ_RE.match(line):
             inner = re.sub(r"^\s*>\s?", "", line)
