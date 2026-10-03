@@ -27,8 +27,10 @@ script instead, which keeps the audit's verdict unambiguous.
 **Scope.**  Workflow files only: ``.github/workflows`` by default, and
 ``_selftest.yml`` also runs it over ``examples/``.  Composite ``action.yml``
 files are not scanned; none references the payload's base SHA today.
-Matching is textual, so dotted and bracketed property access are both
-caught, but an expression that never spells out ``base.sha``, such as
+Matching runs over the parsed strings and, separately, over the raw text of
+whole-line comments, which PyYAML discards but which carry the ``examples/``
+stubs' optional ``with:`` values.  Dotted and bracketed property access are
+both caught, but an expression that never spells out ``base.sha``, such as
 ``toJSON(github.event.pull_request.base)``, is not.
 
 Usage::
@@ -102,6 +104,7 @@ def violations(path: pathlib.Path, doc) -> list[str]:
     # interpret is an error rather than a clean result.
     require_jobs(path, doc)
     _require_mapping(path, "workflow-level 'env'", doc.get("env"))
+    # Consumed only for its refusal of a malformed job-level with:/secrets:.
     list(iter_job_inputs(path, doc))
     exempt = set()
     for job_id, job in doc["jobs"].items():
@@ -127,6 +130,25 @@ def violations(path: pathlib.Path, doc) -> list[str]:
     return found
 
 
+_COMMENT_LINE = re.compile(r"^\s*#")
+
+
+def commented_violations(path: pathlib.Path) -> list[str]:
+    """Flag the pattern on a whole-line YAML comment.
+
+    PyYAML drops comments, so the parsed walk cannot see them, but the
+    ``examples/`` stubs show their optional ``with:`` values as commented-out
+    lines that consumers uncomment.  A stale ``base.sha`` there is copied into
+    a live workflow, so it is checked here as raw text.
+    """
+    found = []
+    text = path.read_text(encoding="utf-8")
+    for number, line in enumerate(text.splitlines(), start=1):
+        if _COMMENT_LINE.match(line) and BASE_SHA.search(_normalise(line)):
+            found.append(f"{path}:{number}: commented line carries pull_request.base.sha")
+    return found
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflows-dir", default=".github/workflows", type=pathlib.Path)
@@ -145,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     for path in files:
         try:
             found.extend(violations(path, load_workflow(path)))
+            found.extend(commented_violations(path))
         except Unparsable as exc:
             print(f"::error::audit-pr-diff-base: {exc}", file=sys.stderr)
             return 2

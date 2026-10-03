@@ -3553,8 +3553,11 @@ fixed separately, in two of those four.
 
 The third, `audit_pr_diff_base.py` (gha#1007), fails any workflow that hands
 `github.event.pull_request.base.sha` to a step by any route: it scans every
-string in the workflow outside the `on:` block and display names, so `with:`,
+string in the workflow outside the `on:` block and the workflow's own
+`name`/`run-name`, so `with:`,
 `run:`, `env:` at any level, matrix values and job outputs are all covered.
+It also scans whole-line comments as raw text, because PyYAML drops them and
+the `examples/` stubs show their optional `with:` values commented out.
 `_selftest.yml` runs it over `.github/workflows` and, in a second invocation,
 over `examples/`; the suite itself exercises fixtures only.
 On `pull_request` the checkout is GitHub's merge ref, built on the base

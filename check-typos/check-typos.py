@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Diff-scoped spellcheck wrapping crate-ci/typos.
 

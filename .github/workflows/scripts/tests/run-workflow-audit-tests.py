@@ -228,6 +228,28 @@ def main() -> int:
                 2,
             ),
             (
+                "a commented-out example with: line from base.sha fails",
+                "a.yml",
+                "jobs:\n  call:\n    uses: o/r/.github/workflows/x.yml@v3\n"
+                "    # with:\n"
+                f"    #   base-ref: {EXPR} {BASE_SHA} }}}}\n",
+                1,
+            ),
+            (
+                "a commented-out HEAD^1 example passes",
+                "a.yml",
+                "jobs:\n  call:\n    uses: o/r/.github/workflows/x.yml@v3\n"
+                "    # with:\n"
+                f"    #   base-ref: {EXPR} github.event_name == 'pull_request' && 'HEAD^1' || '' }}}}\n",
+                0,
+            ),
+            (
+                "a step with: that is not a mapping is an error",
+                "a.yml",
+                steps("- uses: ./check-phi", "  with: just-a-string"),
+                2,
+            ),
+            (
                 "a job-level env that is not a mapping is an error",
                 "a.yml",
                 "jobs:\n  run:\n    env: just-a-string\n    steps:\n      - run: echo\n",
