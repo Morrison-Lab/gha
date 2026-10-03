@@ -1,0 +1,26 @@
+# Copy to .github/workflows/check-quarto-prose.yml in your repo.
+# Blocks a pull request that adds an idiom, cliche or slang phrase to a .qmd
+# or .md file, or that puts an example, remark or definition in a notes div.
+# Diff-scoped: only lines the PR adds are reported, so a first run over an
+# existing repo does not reflag the prose it already has. Pass base-ref: all
+# to scan the whole tree once you are ready to clean it.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check Quarto prose
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-prose.yml@v3
+    # with:
+    #   globs: '*.qmd'                          # pathspecs to check (recursive)
+    #   paths-ignore: 'CHANGELOG.md,vendor/**'  # skip known-noisy paths
+    #   idioms-file: '.github/idioms.txt'       # replaces the bundled phrase list
+    #   allow-file: '.github/prose-allow.txt'   # 'path-glob: phrase' exemptions
+    #   fail: false                             # warn-only instead of blocking (defaults to true)
+    #   base-ref: all                           # whole-tree scan instead of the PR diff

@@ -69,6 +69,7 @@ not reference `@main` from consumers.
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus checks for long fenced code blocks, list-item merge splices, and blank lines that split a table | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks`, `base-ref`, `fail-on-item-splices`, `fail-on-table-splits` |
 | `check-new-line-breaks.yml` | Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length` |
 | `check-typed-output.yml` | Flag typed ("faked") code output in `.qmd` files -- a `# ->` / `#>` / `# Output:` comment standing in for a printed value inside a code fence, or a hand-written output block right after one -- whole-tree or diff-scoped, warn-only by default | `python-version`, `patterns`, `globs`, `paths-ignore`, `fail`, `diff-scoped` |
+| `check-quarto-prose.yml` | Diff-scoped, blocking prose check over `.qmd` and `.md` files: a notes div that holds an example, remark or definition, and a phrase from a list of idioms, cliches and slang (bundled or your own); code, math, comments and most front matter are not scanned | `globs`, `paths-ignore`, `base-ref`, `idioms-file`, `allow-file`, `fail` |
 | `check-informal-definitions.yml` | Flag technical concepts defined in running prose rather than inside formal Quarto definition divs (`::: {#def-...}`) -- whole-tree or diff-scoped | `globs`, `paths-ignore`, `fail`, `diff-scoped`, `base-ref` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
@@ -129,7 +130,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
-  `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-website`,
+  `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-prose`, `check-quarto-website`,
   `check-r-package`, `check-repo-hygiene`, `check-secrets`,
   `check-typed-output`, `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
@@ -654,7 +655,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-links.yml`,
-`check-quarto-manuscript.yml`, `check-quarto-website.yml`,
+`check-quarto-manuscript.yml`, `check-quarto-prose.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
@@ -800,7 +801,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-links.yml`,
-`check-quarto-manuscript.yml`, `check-quarto-website.yml`,
+`check-quarto-manuscript.yml`, `check-quarto-prose.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,

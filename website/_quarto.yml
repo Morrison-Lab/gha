@@ -59,6 +59,7 @@ website:
           - reference/student-qmd.qmd
           - reference/check-links.qmd
           - reference/check-quarto-links.qmd
+          - reference/check-quarto-prose.qmd
           - reference/check-orphaned-images.qmd
           - reference/lint-yaml.qmd
           - reference/lint-markdown.qmd

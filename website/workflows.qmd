@@ -34,6 +34,7 @@ input tables and a copy-paste example.
 | [`lint-markdown.yml`](reference/lint-markdown.qmd)                         | markdownlint-cli2 over tracked Markdown with a bundled config, plus checks for long fenced code blocks, list-item merge splices, and blank lines that split a table                                                                                                | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks`, `base-ref`, `fail-on-item-splices`, `fail-on-table-splits`                                              |
 | [`check-new-line-breaks.yml`](reference/check-new-line-breaks.qmd)         | Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line                                                                                                     | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length`                                                                                  |
 | [`check-typed-output.yml`](reference/check-typed-output.qmd) | Flag typed ("faked") code output in `.qmd` files -- a `# ->` / `#>` / `# Output:` comment standing in for a printed value inside a code fence, or a hand-written output block right after one -- whole-tree or diff-scoped, warn-only by default | `python-version`, `patterns`, `globs`, `paths-ignore`, `fail`, `diff-scoped` |
+| [`check-quarto-prose.yml`](reference/check-quarto-prose.qmd) | Diff-scoped, blocking prose check over `.qmd` and `.md` files: a notes div that holds an example, remark or definition, and a phrase from a list of idioms, cliches and slang | `globs`, `paths-ignore`, `base-ref`, `idioms-file`, `allow-file`, `fail` |
 | [`check-informal-definitions.yml`](reference/check-informal-definitions.qmd) | Flag technical concepts defined in running prose rather than inside formal Quarto definition divs (`::: {#def-...}`) -- whole-tree or diff-scoped | `globs`, `paths-ignore`, `fail`, `diff-scoped`, `base-ref` |
 | [`lint-qmd.yml`](reference/lint-qmd.qmd)                                   | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length`                                                                                                                   |
 | [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd)               | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally                                                                                                | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`                                                              |
@@ -97,7 +98,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-links.yml`,
-`check-quarto-manuscript.yml`, `check-quarto-website.yml`,
+`check-quarto-manuscript.yml`, `check-quarto-prose.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
 `check-informal-definitions.yml`,
@@ -181,6 +182,10 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   and lychee reads a `.qmd` as plain text, so `check-links.yml` never sees it.
   It reads the sources, so no render is needed, and it resolves a link in an
   included subfile from the page that includes it, as Quarto does.
+- `check-quarto-prose.yml` blocks a pull request that adds an idiom, cliche
+  or slang phrase to a `.qmd` or `.md` file, or that puts an example, remark
+  or definition in a notes div.
+  It reports only the lines a diff adds.
 - `check-orphaned-images.yml` reports tracked images that no tracked source
   file names, warning by default.
 - `check-news.yml` enforces a `NEWS.md` changelog entry on each PR.

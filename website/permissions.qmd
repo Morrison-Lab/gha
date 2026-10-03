@@ -19,7 +19,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-non-standard-chars`, `check-one-function-per-file`,
   `check-orphaned-images`, `check-phi`,
   `check-python-package`, `check-quarto-book`, `check-quarto-links`,
-  `check-quarto-manuscript`, `check-quarto-website`,
+  `check-quarto-manuscript`, `check-quarto-prose`, `check-quarto-website`,
   `check-r-package`, `check-repo-hygiene`, `check-secrets`,
   `check-typed-output`, `check-typos`,
   `cursor-code-review`, `lint-changed-files`,
