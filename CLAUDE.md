@@ -3540,10 +3540,10 @@ There is no live `uses:` of the restore composite against this checkout:
 restoring this repo's own `.github/workflows/` mid-selftest would clobber
 later steps.
 
-`.github/workflows/scripts/tests/run-workflow-audit-tests.py` covers the two
-workflow-wide audits `_selftest.yml` runs and the discovery module beneath
-them (gha#716, gha#720).
-Both audits used to be inline `run:` blocks in `_selftest.yml` grepping
+`.github/workflows/scripts/tests/run-workflow-audit-tests.py` covers the
+three workflow-wide audits `_selftest.yml` runs and the discovery module
+beneath them (gha#716, gha#720, gha#1007).
+The first two used to be inline `run:` blocks in `_selftest.yml` grepping
 `.github/workflows/*.yml`; they are now `audit_workflow_token_usage.py` and
 `audit_workflow_action_pins.py`, sharing `workflow_discovery.py` with
 `run-permissions-docs-tests.py` and `run-workflow-job-guard-tests.py`.
@@ -3551,10 +3551,11 @@ That is one copy of the discovery rule in the repo rather than four places for
 it to drift back to `*.yml` only --- which is the drift #712 and #716 each
 fixed separately, in two of those four.
 
-The same suite covers `audit_pr_diff_base.py` (gha#1007), which fails any
-workflow, or any `examples/` caller, that hands
-`github.event.pull_request.base.sha` to a step through `with:`, `env:`, `run:`
-or a reusable-workflow call's `with:`.
+The third, `audit_pr_diff_base.py` (gha#1007), fails any workflow that hands
+`github.event.pull_request.base.sha` to a step through `with:`, `run:`, a
+reusable-workflow call's `with:`, or `env:` at step, job or workflow level.
+`_selftest.yml` runs it over `.github/workflows` and, in a second invocation,
+over `examples/`; the suite itself exercises fixtures only.
 On `pull_request` the checkout is GitHub's merge ref, built on the base
 branch's current tip, and the payload's `base.sha` can lag that tip, so a
 diff from it scans the base's newer commits as if the PR added them

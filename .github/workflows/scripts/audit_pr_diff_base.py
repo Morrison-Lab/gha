@@ -12,13 +12,23 @@ commit's first parent, so that is what a diff base should be.
 
 **Every value a step or a reusable-workflow call receives is audited, not
 only a key named ``base-ref``.**  The same SHA reaches a checker as
-``base-ref:``, as an ``env:`` variable, or interpolated into a ``run:``
-script, and ``_selftest.yml`` used all three spellings before gha#1007.
+``base-ref:``, as an ``env:`` variable (on the step, the job, or the whole
+workflow, since steps inherit the last two), or interpolated into a ``run:``
+script, and ``_selftest.yml`` used three of those spellings before gha#1007.
 
 **One exemption: ``actions/checkout``'s ``ref:``.**  Checking out the base
 commit itself, as ``version-check.yml`` does to read the base's version,
 names a commit rather than diffing from it, so a lagging SHA there is the
-commit the caller asked for.
+commit the caller asked for.  Any other legitimate use (logging the SHA,
+say) has no opt-out marker: read it from ``$GITHUB_EVENT_PATH`` inside the
+script instead, which keeps the audit's verdict unambiguous.
+
+**Scope.**  Workflow files only: ``.github/workflows`` by default, and
+``_selftest.yml`` also runs it over ``examples/``.  Composite ``action.yml``
+files are not scanned; none references the payload's base SHA today.
+Matching is textual, so dotted and bracketed property access are both
+caught, but an expression that never spells out ``base.sha``, such as
+``toJSON(github.event.pull_request.base)``, is not.
 
 Usage::
 
@@ -40,16 +50,21 @@ from workflow_discovery import (  # noqa: E402
     iter_job_inputs,
     iter_steps,
     load_workflow,
+    require_jobs,
     require_workflows,
     skip_if_restored,
 )
 
-# Whitespace-tolerant, and covering the index spelling too, so a reflowed
-# expression is not a bypass.
+# Whitespace-tolerant. Bracketed string access (`github['event']...`) is
+# rewritten to dots by `_normalise` first, so either spelling matches.
 BASE_SHA = re.compile(
-    r"github\s*\.\s*event\s*\.\s*pull_request\s*\.\s*base\s*"
-    r"(?:\.\s*sha\b|\[\s*['\"]sha['\"]\s*\])"
+    r"github\s*\.\s*event\s*\.\s*pull_request\s*\.\s*base\s*\.\s*sha\b"
 )
+_BRACKET = re.compile(r"\[\s*['\"]([A-Za-z0-9_-]+)['\"]\s*\]")
+
+
+def _normalise(text: str) -> str:
+    return _BRACKET.sub(r".\1", text)
 
 
 def _strings(value):
@@ -64,6 +79,20 @@ def _strings(value):
             yield from _strings(item)
 
 
+def _mentions(value) -> bool:
+    return any(BASE_SHA.search(_normalise(s)) for s in _strings(value))
+
+
+def _env_block(path: pathlib.Path, where: str, block) -> dict:
+    if block is None:
+        return {}
+    if not isinstance(block, dict):
+        raise Unparsable(
+            f"{path}: {where} 'env' is {type(block).__name__}, not a mapping"
+        )
+    return block
+
+
 def _is_checkout(step) -> bool:
     uses = step.get("uses")
     return isinstance(uses, str) and uses.split("@", 1)[0] == "actions/checkout"
@@ -71,8 +100,19 @@ def _is_checkout(step) -> bool:
 
 def violations(path: pathlib.Path, doc) -> list[str]:
     found = []
+    jobs = require_jobs(path, doc)
+    # Workflow- and job-level env reach every step through inheritance.
+    for key, value in _env_block(path, "workflow", doc.get("env")).items():
+        if _mentions(value):
+            found.append(f"{path}: workflow-level 'env.{key}' carries pull_request.base.sha")
+    for job_id, job in jobs.items():
+        if not isinstance(job, dict):
+            continue  # iter_job_inputs below refuses this shape
+        for key, value in _env_block(path, f"job '{job_id}'", job.get("env")).items():
+            if _mentions(value):
+                found.append(f"{path}: job '{job_id}' 'env.{key}' carries pull_request.base.sha")
     for job_id, block_name, key, value in iter_job_inputs(path, doc):
-        if any(BASE_SHA.search(s) for s in _strings(value)):
+        if _mentions(value):
             found.append(
                 f"{path}: job '{job_id}' passes pull_request.base.sha as "
                 f"'{block_name}.{key}'"
@@ -92,13 +132,13 @@ def violations(path: pathlib.Path, doc) -> list[str]:
             for key, value in block.items():
                 if block_name == "with" and str(key) == "ref" and _is_checkout(step):
                     continue
-                if any(BASE_SHA.search(s) for s in _strings(value)):
+                if _mentions(value):
                     found.append(
                         f"{path}: job '{job_id}' step {index}{named} passes "
                         f"pull_request.base.sha as '{block_name}.{key}'"
                     )
         run = step.get("run")
-        if isinstance(run, str) and BASE_SHA.search(run):
+        if isinstance(run, str) and _mentions(run):
             found.append(
                 f"{path}: job '{job_id}' step {index} interpolates "
                 "pull_request.base.sha into 'run'"

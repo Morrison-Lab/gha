@@ -40,8 +40,8 @@ from workflow_discovery import (  # noqa: E402
 # Assembled rather than typed, so this fixture text cannot itself be mistaken
 # for a real expression by anything scanning this repo.
 EXPR = "$" + "{{"
-# Likewise assembled, so a grep for the stale-base pattern (gha#1007) finds
-# only real uses.
+# Likewise assembled, for the same reason: the stale-base audit's own fixtures
+# (gha#1007) should not read as uses of the pattern they test for.
 BASE_SHA = "github.event.pull_request.base" + ".sha"
 
 PINNED = "actions/checkout@1111111111111111111111111111111111111111"
@@ -169,6 +169,30 @@ def main() -> int:
                     "  with:",
                     f"    base-ref: {EXPR} github.event.pull_request.base['sha'] }}}}",
                 ),
+                1,
+            ),
+            (
+                "the all-bracket spelling fails",
+                "a.yml",
+                steps(
+                    "- uses: ./check-phi",
+                    "  with:",
+                    f"    base-ref: {EXPR} github['event']['pull_request']['base']['sha'] }}}}",
+                ),
+                1,
+            ),
+            (
+                "a workflow-level env: from base.sha fails",
+                "a.yml",
+                f"env:\n  BASE: {EXPR} {BASE_SHA} }}}}\n" + steps("- run: echo"),
+                1,
+            ),
+            (
+                "a job-level env: from base.sha fails",
+                "a.yml",
+                "jobs:\n  run:\n"
+                f"    env:\n      BASE: {EXPR} {BASE_SHA} }}}}\n"
+                "    steps:\n      - run: echo\n",
                 1,
             ),
             (
