@@ -48,8 +48,8 @@ inputs:
   base-ref:
     description: >-
       Git ref/SHA to diff against when `diff-scoped` is 'true'; the diff is
-      taken from its merge base with HEAD. The reusable workflow passes the
-      PR base SHA automatically. Ignored otherwise.
+      taken from its merge base with HEAD. On a pull request the reusable workflow
+      passes `HEAD^1`, the base tip GitHub built the merge ref on. Ignored otherwise.
     default: ''
 runs:
   using: composite

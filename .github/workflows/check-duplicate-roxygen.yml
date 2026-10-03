@@ -51,7 +51,10 @@ jobs:
           path: ${{ inputs.path }}
           # On PRs, scan only files added/modified relative to the base; on pushes,
           # diff against the commit before the push; otherwise checks whole tree.
-          base-ref: ${{ inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1')) }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on. The payload's pull_request.base.sha can lag that tip,
+          # counting the base's newer commits as added by the PR (gha#1007).
+          base-ref: ${{ inputs.base-ref || (github.event_name == 'pull_request' && 'HEAD^1' || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1')) }}
           paths-ignore: ${{ inputs.paths-ignore }}
           extensions: ${{ inputs.extensions }}
           min-desc-length: ${{ inputs.min-desc-length }}

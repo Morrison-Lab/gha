@@ -50,7 +50,7 @@ existed is treated as pre-existing drift, same as an untouched file.
 | `config` | string | `''` | Path (relative to `path`) to a typos config file. Empty lets typos auto-discover `_typos.toml`, `typos.toml`, or `.typos.toml`. A named but missing file is an error. |
 | `globs` | string | `''` | Space-separated git pathspecs of tracked files to check. Empty checks every tracked file typos would consider (recursive by default). |
 | `paths-ignore` | string | `''` | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
-| `base-ref` | string | `''` | Git ref/SHA to diff against. Only added lines, plus filename typos on paths the three-dot diff added or renamed. Empty uses the PR base SHA on `pull_request` runs and skips on push. Pass `all` to scan the whole tracked tree. |
+| `base-ref` | string | `''` | Git ref/SHA to diff against. Only added lines, plus filename typos on paths the three-dot diff added or renamed. Empty uses `HEAD^1`, the base tip GitHub built the merge ref on, on `pull_request` runs and skips on push. Pass `all` to scan the whole tracked tree. |
 | `fail` | boolean | `true` | Fail the workflow when a typo is found; otherwise non-blocking. |
 
 ## Permissions

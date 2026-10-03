@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline tests for the two workflow audits `_selftest.yml` runs (gha#716).
+"""Offline tests for the workflow audits `_selftest.yml` runs (gha#716, gha#1007).
 
 These cover the AUDITS, not just the discovery underneath them, and that
 distinction is the point: this repo's real tree carries 63 ``.yml`` workflows
@@ -28,6 +28,7 @@ import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+import audit_pr_diff_base as diffbase  # noqa: E402
 import audit_workflow_action_pins as pins  # noqa: E402
 import audit_workflow_token_usage as token  # noqa: E402
 from workflow_discovery import (  # noqa: E402
@@ -39,6 +40,9 @@ from workflow_discovery import (  # noqa: E402
 # Assembled rather than typed, so this fixture text cannot itself be mistaken
 # for a real expression by anything scanning this repo.
 EXPR = "$" + "{{"
+# Likewise assembled, so a grep for the stale-base pattern (gha#1007) finds
+# only real uses.
+BASE_SHA = "github.event.pull_request.base" + ".sha"
 
 PINNED = "actions/checkout@1111111111111111111111111111111111111111"
 
@@ -127,6 +131,81 @@ def main() -> int:
                 f"token: a .{ext} violation fails",
                 audit(token, bad) == 1,
             )
+
+        # -------------------------------------------------- diff-base audit
+        def steps(*lines: str) -> str:
+            return "jobs:\n  run:\n    steps:\n" + "".join(
+                f"      {line}\n" for line in lines
+            )
+
+        diffbase_cases = (
+            (
+                "a with: base-ref from base.sha fails",
+                "a.yaml",
+                steps(
+                    "- uses: ./check-phi",
+                    "  with:",
+                    f"    base-ref: {EXPR} github.event_name == 'pull_request' && {BASE_SHA} || '' }}}}",
+                ),
+                1,
+            ),
+            (
+                "an env: value from base.sha fails",
+                "a.yml",
+                steps("- run: echo", "  env:", f"    BASE: {EXPR} {BASE_SHA} }}}}"),
+                1,
+            ),
+            (
+                "base.sha interpolated into run: fails",
+                "a.yml",
+                steps(f"- run: bash check.sh \"{EXPR} {BASE_SHA} }}}}\""),
+                1,
+            ),
+            (
+                "the index spelling base['sha'] fails",
+                "a.yml",
+                steps(
+                    "- uses: ./check-phi",
+                    "  with:",
+                    f"    base-ref: {EXPR} github.event.pull_request.base['sha'] }}}}",
+                ),
+                1,
+            ),
+            (
+                "a reusable-workflow call's with: from base.sha fails",
+                "a.yml",
+                "jobs:\n  call:\n    uses: o/r/.github/workflows/x.yml@v3\n"
+                f"    with:\n      base-ref: {EXPR} {BASE_SHA} }}}}\n",
+                1,
+            ),
+            (
+                "a non-checkout step's ref: from base.sha fails",
+                "a.yml",
+                steps("- uses: ./check-phi", "  with:", f"    ref: {EXPR} {BASE_SHA} }}}}"),
+                1,
+            ),
+            (
+                "actions/checkout's ref: from base.sha is exempt",
+                "a.yml",
+                steps(f"- uses: {PINNED}", "  with:", f"    ref: {EXPR} {BASE_SHA} }}}}"),
+                0,
+            ),
+            (
+                "a HEAD^1 base-ref passes",
+                "a.yml",
+                steps(
+                    "- uses: ./check-phi",
+                    "  with:",
+                    f"    base-ref: {EXPR} github.event_name == 'pull_request' && 'HEAD^1' || '' }}}}",
+                ),
+                0,
+            ),
+        )
+        for n, (label, name, body, want) in enumerate(diffbase_cases):
+            case_dir = root / f"diffbase-{n}"
+            write(case_dir, name, body)
+            got = audit(diffbase, case_dir)
+            check(f"diffbase: {label}", got == want, f"exit {got}, want {want}")
 
         # ------------------------------------------------------ pins audit
         pins_clean = root / "pins-clean"
@@ -455,7 +534,7 @@ def main() -> int:
             "steps-not-list": "jobs:\n  run:\n    steps: not-a-list\n",
             "step-not-mapping": "jobs:\n  run:\n    steps:\n      - just-a-string\n",
         }
-        for name, module in (("token", token), ("pins", pins)):
+        for name, module in (("token", token), ("pins", pins), ("diffbase", diffbase)):
             for shape, body in malformed.items():
                 bad = root / f"{name}-{shape}"
                 write(bad, "a.yml", body)
@@ -464,7 +543,7 @@ def main() -> int:
                     audit(module, bad) == 2,
                 )
 
-        for name, module in (("token", token), ("pins", pins)):
+        for name, module in (("token", token), ("pins", pins), ("diffbase", diffbase)):
             unparsable = root / f"{name}-unparsable"
             write(unparsable, "a.yml", "jobs:\n  run:\n   - bad\n  : : :\n")
             check(
@@ -513,6 +592,10 @@ def main() -> int:
         check(
             "token: skips restored workflows directory with exit 0",
             audit(token, restored) == 0,
+        )
+        check(
+            "diffbase: skips restored workflows directory with exit 0",
+            audit(diffbase, restored) == 0,
         )
 
     if failures:

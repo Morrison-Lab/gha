@@ -69,7 +69,7 @@ jobs:
         uses: ./check-one-function-per-file
         with:
           python-version: '3.x'
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
           fail: 'true'
 
   duplicate-roxygen:
@@ -131,7 +131,7 @@ jobs:
         uses: ./check-duplicate-roxygen
         with:
           python-version: '3.x'
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
           fail: 'true'
 
   math-definitions:
@@ -245,7 +245,7 @@ jobs:
       - name: Lint Markdown
         uses: ./lint-markdown
         with:
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
       - name: Run list-item merge splice detector unit tests
         run: node lint-markdown/tests/test_list_item_splices.mjs
       - name: Run split-table detector unit tests
@@ -777,7 +777,7 @@ jobs:
             spellcheck/tests/**
             check-typos/tests/**
             check-extra/tests/**
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
   # fixtures per detector, incl. the csv_phi_header line-1/suffix edge cases), so
@@ -850,7 +850,7 @@ jobs:
         uses: ./check-new-line-breaks
         with:
           globs: '*.md *.qmd'
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
       # The clause check (#336) is on by default, so the step above already
       # covers it. This one covers the opt-out, and covers that `action.yml`
       # parses and that the clause_breaks=False path runs to completion.
@@ -860,7 +860,7 @@ jobs:
         uses: ./check-new-line-breaks
         with:
           globs: '*.md *.qmd'
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
           clause-breaks: 'false'
   diff-scoped-guard:
     runs-on: ubuntu-latest
@@ -896,7 +896,7 @@ jobs:
       - name: Run the guard against this checkout
         run: |
           set +e
-          bash .github/workflows/scripts/check-diff-scoped.sh "${{ github.event.pull_request.base.sha || format('origin/{0}', github.event.repository.default_branch) }}"
+          bash .github/workflows/scripts/check-diff-scoped.sh "${{ github.event_name == 'pull_request' && 'HEAD^1' || format('origin/{0}', github.event.repository.default_branch) }}"
           rc=$?
           set -e
           if [ "$rc" = 1 ]; then
@@ -953,7 +953,7 @@ jobs:
       - name: Check this PR's merges for dropped content
         uses: ./check-merge-drops
         with:
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event.before || '' }}
       - name: Commit a one-sided merge fixture
         id: fixture
         shell: bash
@@ -1058,7 +1058,7 @@ jobs:
           globs: '*.md *.qmd'
           fail: 'true'
           diff-scoped: 'true'
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
       # A clean tree cannot reach the failing path, so stage a page with
       # typed output (whole-tree mode reads the index, so no commit is
       # needed) and assert the blocking call really fails.
@@ -1204,7 +1204,7 @@ jobs:
           globs: '*.qmd'
           fail: 'true'
           diff-scoped: 'true'
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
       # A clean tree cannot reach the failing path, so stage a page with an
       # informal definition in prose and assert the blocking call really fails.
       - name: Stage a page with an informal definition
@@ -4215,6 +4215,17 @@ jobs:
       - name: Assert all third-party actions in workflows are SHA-pinned
         shell: bash
         run: python3 .github/workflows/scripts/audit_workflow_action_pins.py
+
+      # On pull_request the checkout is GitHub's merge ref, and the payload's
+      # base.sha can lag the tip it was built on, so a diff from base.sha
+      # scans the base branch's newer commits too (gha#1007). Run over the
+      # consumer examples as well, since consumers copy their `with:` values.
+      - name: Assert no workflow diffs from pull_request.base.sha
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/workflows/scripts/audit_pr_diff_base.py
+          python3 .github/workflows/scripts/audit_pr_diff_base.py --workflows-dir examples
 
       - name: Run callee permissions audit unit tests
         shell: bash

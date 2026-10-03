@@ -1343,6 +1343,9 @@ line/file count, `NLB_SCOPE=committed` forces the old behavior even when the
 tree is dirty, and a base branch that advances after the current branch
 diverged is still not flagged, pinning that the merge-base anchor is
 unchanged.
+gha#1007 adds a merge-ref case: on a merge commit built the way GitHub builds
+`refs/pull/N/merge`, `HEAD^1` scopes the check to the PR's own line, and a
+stale `base.sha` control also flags the line the base gained afterwards.
 Run it with
 `python3 -m pytest check-new-line-breaks/tests/ -q`; CI runs it as the
 `new-line-breaks-tests` job in `_selftest.yml`, alongside a `new-line-breaks`
@@ -3547,6 +3550,21 @@ Both audits used to be inline `run:` blocks in `_selftest.yml` grepping
 That is one copy of the discovery rule in the repo rather than four places for
 it to drift back to `*.yml` only --- which is the drift #712 and #716 each
 fixed separately, in two of those four.
+
+The same suite covers `audit_pr_diff_base.py` (gha#1007), which fails any
+workflow, or any `examples/` caller, that hands
+`github.event.pull_request.base.sha` to a step through `with:`, `env:`, `run:`
+or a reusable-workflow call's `with:`.
+On `pull_request` the checkout is GitHub's merge ref, built on the base
+branch's current tip, and the payload's `base.sha` can lag that tip, so a
+diff from it scans the base's newer commits as if the PR added them
+(Morrison-Lab/lds#184 measured 12 extra commits).
+A diff base is `HEAD^1`, the merge commit's first parent.
+`actions/checkout`'s `ref:` is exempt, because checking out the base commit
+itself, as `version-check.yml` does, is not a diff.
+Unlike the two audits above, this one deliberately reads `run:` text too:
+GitHub expands `${{ }}` inside a `run:` block, so an interpolation there is a
+real use rather than inert heredoc content.
 
 **Parsing replaced grepping because a line anchor cannot see either thing that
 matters here.**

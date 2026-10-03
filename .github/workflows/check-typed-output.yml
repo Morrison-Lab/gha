@@ -62,4 +62,7 @@ jobs:
           diff-scoped: ${{ inputs.diff-scoped }}
           # The PR base when there is one; on a push there is none, so a
           # diff-scoped run skips rather than scanning the whole tree.
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on. The payload's pull_request.base.sha can lag that tip,
+          # counting the base's newer commits as added by the PR (gha#1007).
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
