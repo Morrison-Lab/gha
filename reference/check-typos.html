@@ -905,7 +905,7 @@ cookieconsent.run({
 <td><code>base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Git ref/SHA to diff against. Only added lines, plus filename typos on paths the three-dot diff added or renamed. Empty uses the PR base SHA on <code>pull_request</code> runs and skips on push. Pass <code>all</code> to scan the whole tracked tree.</td>
+<td>Git ref/SHA to diff against. Only added lines, plus filename typos on paths the three-dot diff added or renamed. Empty uses <code>HEAD^1</code>, the base tip GitHub built the merge ref on, on <code>pull_request</code> runs and skips on push. Pass <code>all</code> to scan the whole tracked tree.</td>
 </tr>
 <tr class="even">
 <td><code>fail</code></td>

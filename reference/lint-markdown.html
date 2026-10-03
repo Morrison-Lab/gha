@@ -944,7 +944,7 @@ cookieconsent.run({
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false                         # warn instead of failing on markdownlint errors</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-code-block-lines: '150'         # fenced code block line-count threshold</span></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   base-ref: ${{ github.event_name == 'pull_request' &amp;&amp; 'HEAD^1' || '' }} # diff-scope the list-item splice check on PRs (HEAD^1: the base the merge ref was built on)</span></span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-item-splices: true          # fail when a list-item merge splice is detected</span></span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-table-splits: true          # fail when a blank line splits a GFM table</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-markdown.yml</code>).</p>
