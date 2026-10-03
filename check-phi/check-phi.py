@@ -15,7 +15,7 @@ Design notes:
 - **Values are never printed.** A leaked SSN in a CI log is still a leak, so
   findings report only ``file:line:col`` plus the detector name — never the
   matched text.
-- **Diff-scoped by default.** When ``PHI_BASE_REF`` is set (a PR's base SHA),
+- **Diff-scoped by default.** When ``PHI_BASE_REF`` is set (on a PR, ``HEAD^1``),
   only lines *added* by the PR are scanned, so pre-existing fixtures don't
   re-trip the check on every unrelated edit. Otherwise the whole tracked tree
   is scanned (``git ls-files``), which is what runs on ``push``.

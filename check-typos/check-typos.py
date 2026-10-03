@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Diff-scoped spellcheck wrapping crate-ci/typos.
 
@@ -10,7 +11,7 @@ checker, so it does not need a curated wordlist.
 
 Design notes:
 - **Diff-scoped, by default.** Only lines *added* since ``TYPOS_BASE_REF``
-  (a PR's base SHA) are checked, so a corpus's pre-existing typos are not
+  (on a PR, ``HEAD^1``) are checked, so a corpus's pre-existing typos are not
   reflagged on every unrelated edit. Filename findings have no line number
   (crate-ci/typos 1.49.0, measured 2026-08-26), so they use a path filter
   instead: in scope only when the PR added or renamed that path. A

@@ -27,8 +27,9 @@ inputs:
     default: ''
   base-ref:
     description: >-
-      Git ref/SHA to diff against; when set, only added lines are scanned. The
-      reusable workflow passes the PR base SHA automatically. Diff mode needs
+      Git ref/SHA to diff against; when set, only added lines are scanned. On a
+      pull request the reusable workflow passes `HEAD^1`, the base tip
+      GitHub built the merge ref on. Diff mode needs
       the base commit in history, so check out with `fetch-depth: 0`; on a
       shallow clone the scan falls back to the whole tree with a warning.
     default: ''

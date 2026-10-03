@@ -53,4 +53,7 @@ jobs:
           source-extensions: ${{ inputs.source-extensions }}
           paths-ignore: ${{ inputs.paths-ignore }}
           fail: ${{ inputs.fail }}
-          base-ref: ${{ inputs.added-only && github.event.pull_request.base.sha || '' }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on. The payload's pull_request.base.sha can lag that tip,
+          # counting the base's newer commits as added by the PR (gha#1007).
+          base-ref: ${{ inputs.added-only && 'HEAD^1' || '' }}

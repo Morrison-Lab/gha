@@ -50,8 +50,8 @@ inputs:
     description: >-
       Git ref/SHA to diff against; only lines added since this ref are
       checked, plus filename typos on paths this ref's three-dot diff
-      added or renamed. The reusable workflow passes the PR base SHA
-      automatically.
+      added or renamed. On a pull request the reusable workflow passes
+      `HEAD^1`, the base tip GitHub built the merge ref on.
       Diff mode needs the base commit in history (checkout with
       fetch-depth: 0); when the diff can't be computed (e.g. a shallow
       clone, or no base-ref given on a push run), the check is skipped

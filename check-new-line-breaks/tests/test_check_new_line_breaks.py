@@ -1055,6 +1055,53 @@ def test_base_branch_advancing_is_not_flagged_via_merge_base_worktree_scope(
     assert ("notes.md", 3) in [(v.path, v.line) for v in naive_violations]
 
 
+def test_merge_ref_first_parent_scopes_to_the_pr_when_base_sha_is_stale(tmp_path):
+    # On pull_request, the reusable workflow checks out GitHub's merge ref:
+    # a merge commit of the PR head INTO the base branch's current tip. The
+    # payload's pull_request.base.sha can name an older base commit, and the
+    # merge base of that older commit and the merge ref is the older commit
+    # itself, so every line the base branch gained since then reads as added
+    # by the PR (gha#1007, Morrison-Lab/lds#184). HEAD^1, the merge's first
+    # parent, is the tip the merge was built on, so only the PR's own lines
+    # remain.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "shared base")
+    trunk = _current_branch(tmp_path)
+    stale_base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True,
+        capture_output=True, encoding="utf-8",
+    ).stdout.strip()
+
+    _checkout(tmp_path, "-b", "pr")
+    (tmp_path / "pr.md").write_text("- The PR adds this. On one line.\n")
+    _commit(tmp_path, "PR's own violation")
+
+    _checkout(tmp_path, trunk)
+    (tmp_path / "trunk.md").write_text("- Trunk added this. After the PR forked.\n")
+    _commit(tmp_path, "trunk advances past the payload's base.sha")
+
+    # Build the merge ref the way GitHub does: the head merged into the
+    # base's current tip, with that tip as the first parent.
+    _checkout(tmp_path, "--detach", trunk)
+    subprocess.run(
+        ["git", "merge", "-q", "--no-ff", "--no-edit", "pr"],
+        cwd=tmp_path, check=True,
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD^1")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("pr.md", 1)]
+
+    # The control: the payload's stale base.sha also scans trunk's newer
+    # line, which is the defect the HEAD^1 base exists to avoid.
+    stale_violations, stale_skipped = _find(tmp_path, base_ref=stale_base_sha)
+    assert not stale_skipped
+    assert sorted((v.path, v.line) for v in stale_violations) == [
+        ("pr.md", 1), ("trunk.md", 1),
+    ]
+
+
 def test_empty_diff_reports_zero_and_passes(tmp_path, capsys):
     # No changes at all, committed or otherwise: the reported count must
     # read zero rather than being silently indistinguishable from a pass

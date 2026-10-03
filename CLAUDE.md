@@ -1343,6 +1343,9 @@ line/file count, `NLB_SCOPE=committed` forces the old behavior even when the
 tree is dirty, and a base branch that advances after the current branch
 diverged is still not flagged, pinning that the merge-base anchor is
 unchanged.
+gha#1007 adds a merge-ref case: on a merge commit built the way GitHub builds
+`refs/pull/N/merge`, `HEAD^1` scopes the check to the PR's own line, and a
+stale `base.sha` control also flags the line the base gained afterwards.
 Run it with
 `python3 -m pytest check-new-line-breaks/tests/ -q`; CI runs it as the
 `new-line-breaks-tests` job in `_selftest.yml`, alongside a `new-line-breaks`
@@ -3537,16 +3540,37 @@ There is no live `uses:` of the restore composite against this checkout:
 restoring this repo's own `.github/workflows/` mid-selftest would clobber
 later steps.
 
-`.github/workflows/scripts/tests/run-workflow-audit-tests.py` covers the two
-workflow-wide audits `_selftest.yml` runs and the discovery module beneath
-them (gha#716, gha#720).
-Both audits used to be inline `run:` blocks in `_selftest.yml` grepping
+`.github/workflows/scripts/tests/run-workflow-audit-tests.py` covers the
+three workflow-wide audits `_selftest.yml` runs and the discovery module
+beneath them (gha#716, gha#720, gha#1007).
+The first two used to be inline `run:` blocks in `_selftest.yml` grepping
 `.github/workflows/*.yml`; they are now `audit_workflow_token_usage.py` and
 `audit_workflow_action_pins.py`, sharing `workflow_discovery.py` with
 `run-permissions-docs-tests.py` and `run-workflow-job-guard-tests.py`.
 That is one copy of the discovery rule in the repo rather than four places for
 it to drift back to `*.yml` only --- which is the drift #712 and #716 each
 fixed separately, in two of those four.
+
+The third, `audit_pr_diff_base.py` (gha#1007), fails any workflow that hands
+`github.event.pull_request.base.sha` to a step by any route: it scans every
+string in the workflow outside the `on:` block and the workflow's own
+`name`/`run-name`, so `with:`,
+`run:`, `env:` at any level, matrix values and job outputs are all covered.
+It also scans commented-out `key: value` lines as raw text, because PyYAML
+drops comments and the `examples/` stubs show their optional `with:` values
+commented out; a prose comment explaining the pattern is not flagged.
+`_selftest.yml` runs it over `.github/workflows` and, in a second invocation,
+over `examples/`; the suite itself exercises fixtures only.
+On `pull_request` the checkout is GitHub's merge ref, built on the base
+branch's current tip, and the payload's `base.sha` can lag that tip, so a
+diff from it scans the base's newer commits as if the PR added them
+(Morrison-Lab/lds#184 measured 12 extra commits).
+A diff base is `HEAD^1`, the merge commit's first parent.
+`actions/checkout`'s `ref:` is exempt, because checking out the base commit
+itself, as `version-check.yml` does, is not a diff.
+Unlike the two audits above, this one deliberately reads `run:` text too:
+GitHub expands `${{ }}` inside a `run:` block, so an interpolation there is a
+real use rather than inert heredoc content.
 
 **Parsing replaced grepping because a line anchor cannot see either thing that
 matters here.**

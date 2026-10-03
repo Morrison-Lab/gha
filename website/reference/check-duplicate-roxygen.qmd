@@ -25,7 +25,7 @@ can opt out by adding a comment directive:
 | `paths-ignore` | string | `'.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'` | Comma- or newline-separated paths or glob patterns to ignore. |
 | `extensions` | string | `'.R, .r'` | Comma- or space-separated list of file extensions to check. |
 | `min-desc-length` | string | `'10'` | Minimum character length of parameter description to consider for duplication. |
-| `base-ref` | string | `''` | Git ref to diff against for diff-scoped checking (e.g. `origin/main`). On pull requests and pushes, defaults to the PR base ref or previous commit automatically for diff-scoping. |
+| `base-ref` | string | `''` | Git ref to diff against for diff-scoped checking (e.g. `origin/main`). On pull requests and pushes, defaults to `HEAD^1` (the base tip GitHub built the merge ref on) or the previous commit automatically for diff-scoping. |
 | `fail` | boolean | `true` | Whether to fail the workflow if duplicate roxygen documentation is detected. |
 | `python-version` | string | `'3.x'` | Python version to set up. |
 

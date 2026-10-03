@@ -17,8 +17,9 @@ inputs:
   base-ref:
     description: >-
       Start of the range (exclusive): merges reachable from `head-ref` but
-      not from this ref are checked. The reusable workflow passes the PR base
-      SHA, or the pre-push SHA on a push. Needs full history (checkout with
+      not from this ref are checked. On a pull request the reusable workflow
+      passes `HEAD^1`, the base tip GitHub built the merge ref on, or the
+      pre-push SHA on a push. Needs full history (checkout with
       fetch-depth: 0). Empty, or an all-zero SHA, skips the check with a
       warning rather than walking all of history.
     default: ''

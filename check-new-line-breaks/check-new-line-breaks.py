@@ -6,8 +6,8 @@ a single source line -- a diff-scoped check for semantic line breaks (one
 clause/sentence per line).
 
 Design notes:
-- **Diff-scoped, always.** Only lines *added* since ``NLB_BASE_REF`` (a PR's
-  base SHA) are checked, so a corpus that has already accumulated long lines
+- **Diff-scoped, always.** Only lines *added* since ``NLB_BASE_REF`` (on a PR,
+  ``HEAD^1``) are checked, so a corpus that has already accumulated long lines
   (commonly because markdownlint's MD013 is disabled for exactly this
   reason) never gets reflagged on every unrelated edit.
 - **Working-tree-aware scope.** When a *tracked* file the globs match (and
