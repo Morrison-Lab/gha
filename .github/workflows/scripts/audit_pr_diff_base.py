@@ -10,11 +10,12 @@ Morrison-Lab/lds#184: 12 commits and 29 files the PR never touched).  The
 base the checked-out tree was actually built from is ``HEAD^1``, the merge
 commit's first parent, so that is what a diff base should be.
 
-**Every value a step or a reusable-workflow call receives is audited, not
-only a key named ``base-ref``.**  The same SHA reaches a checker as
-``base-ref:``, as an ``env:`` variable (on the step, the job, or the whole
-workflow, since steps inherit the last two), or interpolated into a ``run:``
-script, and ``_selftest.yml`` used three of those spellings before gha#1007.
+**Every string in the workflow is audited, not only a key named
+``base-ref``.**  The same SHA reaches a checker as ``base-ref:``, as an
+``env:`` variable at any level, interpolated into a ``run:`` script, or
+indirectly through a matrix value or a job output, and ``_selftest.yml`` used
+three of those spellings before gha#1007.  Only the ``on:`` block and the
+workflow's display names are skipped, since neither feeds a step.
 
 **One exemption: ``actions/checkout``'s ``ref:``.**  Checking out the base
 commit itself, as ``version-check.yml`` does to read the base's version,
@@ -55,10 +56,12 @@ from workflow_discovery import (  # noqa: E402
     skip_if_restored,
 )
 
-# Whitespace-tolerant. Bracketed string access (`github['event']...`) is
+# Whitespace-tolerant, and case-insensitive because GitHub's expression
+# property names are. Bracketed string access (`github['event']...`) is
 # rewritten to dots by `_normalise` first, so either spelling matches.
 BASE_SHA = re.compile(
-    r"github\s*\.\s*event\s*\.\s*pull_request\s*\.\s*base\s*\.\s*sha\b"
+    r"github\s*\.\s*event\s*\.\s*pull_request\s*\.\s*base\s*\.\s*sha\b",
+    re.IGNORECASE,
 )
 _BRACKET = re.compile(r"\[\s*['\"]([A-Za-z0-9_-]+)['\"]\s*\]")
 
@@ -67,30 +70,21 @@ def _normalise(text: str) -> str:
     return _BRACKET.sub(r".\1", text)
 
 
-def _strings(value):
-    """Yield every string inside a scalar, list, or mapping value."""
+def _require_mapping(path: pathlib.Path, where: str, block) -> None:
+    if block is not None and not isinstance(block, dict):
+        raise Unparsable(f"{path}: {where} is {type(block).__name__}, not a mapping")
+
+
+def _walk(value, where: str):
+    """Yield ``(location, string)`` for every string under ``value``."""
     if isinstance(value, str):
-        yield value
+        yield where, value
     elif isinstance(value, dict):
-        for item in value.values():
-            yield from _strings(item)
+        for key, item in value.items():
+            yield from _walk(item, f"{where}.{key}")
     elif isinstance(value, list):
-        for item in value:
-            yield from _strings(item)
-
-
-def _mentions(value) -> bool:
-    return any(BASE_SHA.search(_normalise(s)) for s in _strings(value))
-
-
-def _env_block(path: pathlib.Path, where: str, block) -> dict:
-    if block is None:
-        return {}
-    if not isinstance(block, dict):
-        raise Unparsable(
-            f"{path}: {where} 'env' is {type(block).__name__}, not a mapping"
-        )
-    return block
+        for index, item in enumerate(value):
+            yield from _walk(item, f"{where}[{index}]")
 
 
 def _is_checkout(step) -> bool:
@@ -98,51 +92,38 @@ def _is_checkout(step) -> bool:
     return isinstance(uses, str) and uses.split("@", 1)[0] == "actions/checkout"
 
 
+# Top-level keys that never feed a step: the trigger block (which PyYAML
+# parses `on:` as the boolean True) and display names.
+_SKIPPED_TOP_LEVEL = {"on", True, "name", "run-name"}
+
+
 def violations(path: pathlib.Path, doc) -> list[str]:
-    found = []
-    jobs = require_jobs(path, doc)
-    # Workflow- and job-level env reach every step through inheritance.
-    for key, value in _env_block(path, "workflow", doc.get("env")).items():
-        if _mentions(value):
-            found.append(f"{path}: workflow-level 'env.{key}' carries pull_request.base.sha")
-    for job_id, job in jobs.items():
-        if not isinstance(job, dict):
-            continue  # iter_job_inputs below refuses this shape
-        for key, value in _env_block(path, f"job '{job_id}'", job.get("env")).items():
-            if _mentions(value):
-                found.append(f"{path}: job '{job_id}' 'env.{key}' carries pull_request.base.sha")
-    for job_id, block_name, key, value in iter_job_inputs(path, doc):
-        if _mentions(value):
-            found.append(
-                f"{path}: job '{job_id}' passes pull_request.base.sha as "
-                f"'{block_name}.{key}'"
-            )
+    # Refuse malformed shapes before walking, so a block the audit could not
+    # interpret is an error rather than a clean result.
+    require_jobs(path, doc)
+    _require_mapping(path, "workflow-level 'env'", doc.get("env"))
+    list(iter_job_inputs(path, doc))
+    exempt = set()
+    for job_id, job in doc["jobs"].items():
+        _require_mapping(path, f"job '{job_id}' 'env'", job.get("env"))
     for job_id, index, step in iter_steps(path, doc):
-        uses = step.get("uses")
-        named = f" ({uses})" if isinstance(uses, str) else ""
         for block_name in ("with", "env"):
-            block = step.get(block_name)
-            if block is None:
-                continue
-            if not isinstance(block, dict):
-                raise Unparsable(
-                    f"{path}: job '{job_id}' step {index} has '{block_name}' "
-                    f"as {type(block).__name__}, not a mapping"
-                )
-            for key, value in block.items():
-                if block_name == "with" and str(key) == "ref" and _is_checkout(step):
-                    continue
-                if _mentions(value):
-                    found.append(
-                        f"{path}: job '{job_id}' step {index}{named} passes "
-                        f"pull_request.base.sha as '{block_name}.{key}'"
-                    )
-        run = step.get("run")
-        if isinstance(run, str) and _mentions(run):
-            found.append(
-                f"{path}: job '{job_id}' step {index} interpolates "
-                "pull_request.base.sha into 'run'"
+            _require_mapping(
+                path, f"job '{job_id}' step {index} '{block_name}'", step.get(block_name)
             )
+        if _is_checkout(step) and "ref" in (step.get("with") or {}):
+            exempt.add(f"jobs.{job_id}.steps[{index}].with.ref")
+
+    # Every string anywhere else in the workflow: step inputs, env at any
+    # level, run scripts, matrix values, job outputs, container env, `if:`.
+    # A lagging SHA can reach a checker through any of them.
+    found = []
+    for key, value in doc.items():
+        if key in _SKIPPED_TOP_LEVEL:
+            continue
+        for where, text in _walk(value, str(key)):
+            if where not in exempt and BASE_SHA.search(_normalise(text)):
+                found.append(f"{path}: '{where}' carries pull_request.base.sha")
     return found
 
 

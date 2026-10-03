@@ -196,6 +196,44 @@ def main() -> int:
                 1,
             ),
             (
+                "an upper-cased property name fails",
+                "a.yml",
+                steps(
+                    "- uses: ./check-phi",
+                    "  with:",
+                    f"    base-ref: {EXPR} github.event.pull_request.BASE.SHA }}}}",
+                ),
+                1,
+            ),
+            (
+                "a matrix value relaying base.sha fails",
+                "a.yml",
+                "jobs:\n  run:\n    strategy:\n      matrix:\n"
+                f"        base: ['{EXPR} {BASE_SHA} }}}}']\n"
+                "    steps:\n      - run: echo\n",
+                1,
+            ),
+            (
+                "a mention inside the on: block is not a step value",
+                "a.yml",
+                "on:\n  workflow_call:\n    inputs:\n      base-ref:\n"
+                f"        description: not {BASE_SHA}, which can lag\n"
+                + steps("- run: echo"),
+                0,
+            ),
+            (
+                "a workflow-level env that is not a mapping is an error",
+                "a.yml",
+                "env: just-a-string\n" + steps("- run: echo"),
+                2,
+            ),
+            (
+                "a job-level env that is not a mapping is an error",
+                "a.yml",
+                "jobs:\n  run:\n    env: just-a-string\n    steps:\n      - run: echo\n",
+                2,
+            ),
+            (
                 "a reusable-workflow call's with: from base.sha fails",
                 "a.yml",
                 "jobs:\n  call:\n    uses: o/r/.github/workflows/x.yml@v3\n"

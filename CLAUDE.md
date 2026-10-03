@@ -3552,8 +3552,9 @@ it to drift back to `*.yml` only --- which is the drift #712 and #716 each
 fixed separately, in two of those four.
 
 The third, `audit_pr_diff_base.py` (gha#1007), fails any workflow that hands
-`github.event.pull_request.base.sha` to a step through `with:`, `run:`, a
-reusable-workflow call's `with:`, or `env:` at step, job or workflow level.
+`github.event.pull_request.base.sha` to a step by any route: it scans every
+string in the workflow outside the `on:` block and display names, so `with:`,
+`run:`, `env:` at any level, matrix values and job outputs are all covered.
 `_selftest.yml` runs it over `.github/workflows` and, in a second invocation,
 over `examples/`; the suite itself exercises fixtures only.
 On `pull_request` the checkout is GitHub's merge ref, built on the base
