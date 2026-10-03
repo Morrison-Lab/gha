@@ -227,7 +227,7 @@ jobs:
 
       - name: Cache Julia packages
         if: inputs.setup-julia && inputs.julia-project != ''
-        uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0
+        uses: julia-actions/cache@e32267b41e0fa7df82a3d53e8c7273620d52c586 # v3.4.0
 
       - name: Install apt packages
         if: runner.os == 'Linux' && inputs.apt-packages != '' && inputs.linux-container == ''
@@ -341,7 +341,7 @@ jobs:
 
       - name: Cache Julia packages
         if: inputs.setup-julia && inputs.julia-project != ''
-        uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0
+        uses: julia-actions/cache@e32267b41e0fa7df82a3d53e8c7273620d52c586 # v3.4.0
 
       - name: Install apt packages
         if: inputs.apt-packages != ''
