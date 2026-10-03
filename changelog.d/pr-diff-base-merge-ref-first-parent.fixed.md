@@ -7,7 +7,7 @@
   The payload's SHA can lag that tip, so every commit the base gained in between
   counted as added by the PR (Morrison-Lab/lds#184 measured 12 extra commits and 29 extra files).
   They now diff from `HEAD^1`, the merge commit's first parent.
-  In the four that take a `base-ref` input (`check-duplicate-roxygen`,
+  In the four of these that take a `base-ref` input (`check-duplicate-roxygen`,
   `check-informal-definitions`, `check-one-function-per-file` and `check-typos`),
   a caller's explicit value still wins.
   A new `audit_pr_diff_base.py` audit in `_selftest.yml` fails any workflow

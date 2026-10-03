@@ -28,8 +28,9 @@ script instead, which keeps the audit's verdict unambiguous.
 ``_selftest.yml`` also runs it over ``examples/``.  Composite ``action.yml``
 files are not scanned; none references the payload's base SHA today.
 Matching runs over the parsed strings and, separately, over the raw text of
-whole-line comments, which PyYAML discards but which carry the ``examples/``
-stubs' optional ``with:`` values.  Dotted and bracketed property access are
+commented-out ``key: value`` lines, which PyYAML discards but which carry the
+``examples/`` stubs' optional ``with:`` values.  Prose comments explaining
+the pattern are not flagged.  Dotted and bracketed property access are
 both caught, but an expression that never spells out ``base.sha``, such as
 ``toJSON(github.event.pull_request.base)``, is not.
 
@@ -130,11 +131,13 @@ def violations(path: pathlib.Path, doc) -> list[str]:
     return found
 
 
-_COMMENT_LINE = re.compile(r"^\s*#")
+# A commented-out YAML key (`#   base-ref: ...`), the form a stub's optional
+# values take. Prose comments that explain the pattern are left alone.
+_COMMENTED_KEY = re.compile(r"^\s*#\s*[\w-]+\s*:")
 
 
 def commented_violations(path: pathlib.Path) -> list[str]:
-    """Flag the pattern on a whole-line YAML comment.
+    """Flag the pattern on a commented-out ``key: value`` line.
 
     PyYAML drops comments, so the parsed walk cannot see them, but the
     ``examples/`` stubs show their optional ``with:`` values as commented-out
@@ -144,8 +147,8 @@ def commented_violations(path: pathlib.Path) -> list[str]:
     found = []
     text = path.read_text(encoding="utf-8")
     for number, line in enumerate(text.splitlines(), start=1):
-        if _COMMENT_LINE.match(line) and BASE_SHA.search(_normalise(line)):
-            found.append(f"{path}:{number}: commented line carries pull_request.base.sha")
+        if _COMMENTED_KEY.match(line) and BASE_SHA.search(_normalise(line)):
+            found.append(f"{path}:{number}: commented-out value carries pull_request.base.sha")
     return found
 
 
@@ -176,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
         for line in found:
             print(line)
         print(
-            "::error::A step above is handed pull_request.base.sha (see "
+            "::error::A value above hands a step pull_request.base.sha (see "
             "gha#1007). On pull_request the checkout is GitHub's merge ref, "
             "built on the base branch's current tip, and the payload's "
             "base.sha can lag that tip, so a diff from it counts the base's "

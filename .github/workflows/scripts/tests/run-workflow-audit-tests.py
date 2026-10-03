@@ -244,6 +244,13 @@ def main() -> int:
                 0,
             ),
             (
+                "a prose comment explaining the pattern passes",
+                "a.yml",
+                f"# Do not diff from {BASE_SHA}; it can lag the merge ref.\n"
+                + steps("- run: echo"),
+                0,
+            ),
+            (
                 "a step with: that is not a mapping is an error",
                 "a.yml",
                 steps("- uses: ./check-phi", "  with: just-a-string"),
