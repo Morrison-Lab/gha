@@ -860,7 +860,7 @@ cookieconsent.run({
 <p>Block a pull request that adds an idiom, cliche or slang phrase to a <code>.qmd</code> or <code>.md</code> file, or that puts an example, remark or definition in a notes div. The house style is plain, literal prose that a reader with English as a second language, or a literal reading style, can take at face value. The prose rules themselves live in <a href="https://github.com/Morrison-Lab/psw">Morrison-Lab/psw</a>. This check enforces two of them mechanically and does not restate them.</p>
 <section id="diff-scoped-like-check-typos" class="level2">
 <h2 class="anchored" data-anchor-id="diff-scoped-like-check-typos">Diff-scoped, like check-typos</h2>
-<p>Only findings on lines a diff adds are reported, so a first run over an existing repository does not reflag the prose it already has. On a pull request the reusable workflow passes the base commit as <code>base-ref</code>. With no <code>base-ref</code>, or a <code>base-ref</code> this clone cannot see (a shallow clone, for example), the check is skipped with a warning. It never falls back to scanning the whole tree. Pass <code>base-ref: all</code> to scan every tracked file once you are ready to clean the backlog.</p>
+<p>Only findings on lines a diff adds are reported, so a first run over an existing repository does not reflag the prose it already has. On a pull request the reusable workflow passes <code>HEAD^1</code> as <code>base-ref</code>: the base tip GitHub built the merge ref on, which the payload’s <code>base.sha</code> can lag. With no <code>base-ref</code>, or a <code>base-ref</code> this clone cannot see (a shallow clone, for example), the check is skipped with a warning. It never falls back to scanning the whole tree. Pass <code>base-ref: all</code> to scan every tracked file once you are ready to clean the backlog.</p>
 <p>A diff-scoped run reads each file as committed at <code>HEAD</code>, the same content the diff was computed from, so an uncommitted edit cannot shift the line numbers the diff reported. Only <code>base-ref: all</code> reads the working tree. Lines are counted by newline alone, as git counts them, so a form feed or a Unicode line separator in a file does not move a finding to the wrong line.</p>
 <p>The check is blocking by default. Only an explicit <code>fail: false</code> (trimmed, case-insensitive) turns findings into warnings.</p>
 </section>
@@ -946,7 +946,7 @@ cookieconsent.run({
 <td><code>base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Git ref to diff against; empty uses the PR base on pull requests and skips on push; <code>all</code> scans every tracked file.</td>
+<td>Git ref to diff against; empty uses <code>HEAD^1</code>, the base tip of the merge ref, on pull requests and skips on push; <code>all</code> scans every tracked file.</td>
 </tr>
 <tr class="even">
 <td><code>idioms-file</code></td>
