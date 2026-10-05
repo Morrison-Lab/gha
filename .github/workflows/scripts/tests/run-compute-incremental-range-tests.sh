@@ -295,15 +295,16 @@ out=$(run_in "$full" "$tmp/comments-verdict-no-diff.json")
 check "verdict no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "verdict no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
-# 21-25. Base-branch commits merged into the PR branch are not unreviewed
+# 21-31. Base-branch commits merged into the PR branch are not unreviewed
 #        PR commits (observed on Morrison-Lab/lds#369). The PR branch merges
 #        main ("Update branch") after a reviewed round, so PRIOR..HEAD holds
 #        main's squash merges of OTHER PRs. Counting them made every later
 #        round's truthful "no new content" verdict fail closed as
 #        unreviewed-commits-skipped, and such a round stamps no boundary, so
 #        the PR could never go green. Only commits NOT reachable from the
-#        base branch are PR content; a base that cannot be fetched keeps the
-#        old count (fail closed).
+#        base are PR content -- and only when the base is the default branch
+#        (arg 5); every other case keeps the old count (fail closed).
+has() { grep -qF -- "$1" <<<"$2" && echo yes || echo no; }
 borigin="$tmp/borigin"
 mkdir -p "$borigin"
 ( cd "$borigin"
@@ -319,6 +320,8 @@ mkdir -p "$borigin"
   # main moves on after the update, as it did on lds#369.
   $GIT checkout -q main
   echo m3 > m3.txt; $GIT add m3.txt; $GIT commit -q -m "subject-main-squash-3"
+  # A branch the PR author controls, holding a commit no round reviewed.
+  $GIT branch stage feature
   $GIT config uploadpack.allowReachableSHA1InWant true
 )
 bsha() { ( cd "$borigin" && $GIT rev-parse "$1" ); }
@@ -329,22 +332,31 @@ comments_for "$B_PRIOR" "$tmp/comments-bprior.json"
 bfull="$tmp/bfull"
 $GIT clone -q "file://$borigin" "$bfull"
 ( cd "$bfull" && $GIT checkout -q --detach "$B_MERGED" )
+brun() {
+  # $1 = checkout dir, $2 = head, $3 = count file, then base-ref, default-branch.
+  local dir="$1" head="$2" cf="$3"; shift 3
+  ( cd "$dir" && bash "$script" "$tmp/comments-bprior.json" "$head" "$cf" "$@" )
+}
 
 # 21. Control: with no base ref the two main commits still count (the
 #     pre-fix behaviour, kept as the fail-closed default).
 cf="$tmp/bcount-nobase.txt"
-( cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" ) >/dev/null
+brun "$bfull" "$B_MERGED" "$cf" >/dev/null
 check "base merge, no base ref: main commits still counted (fail closed)" "2" "$(cat "$cf")"
 
-# 22. With the base ref: zero unreviewed PR commits, and the section says why.
+# 22. Base = default branch: zero unreviewed PR commits, and the section
+#     names the base commits by the base tip SHA, which resolves here.
 cf="$tmp/bcount-base.txt"
-out=$(cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" main)
+out=$(brun "$bfull" "$B_MERGED" "$cf" main main)
+B_TIP8=$(bsha main | cut -c1-8)
 check "base merge: base-branch commits not counted as unreviewed" "0" "$(cat "$cf")"
-check "base merge: names the base-branch commits as excluded" "yes" "$(grep -q 'subject-main-squash-1' <<<"$out" && grep -q 'already on .main.' <<<"$out" && echo yes || echo no)"
-check "base merge: no mandatory-review demand for base commits" "no" "$(grep -q 'Mandatory review requirement' <<<"$out" && echo yes || echo no)"
+check "base merge: names the base-branch commits as excluded" "yes" "$(has 'subject-main-squash-1' "$out")"
+check "base merge: says how many base commits were excluded" "yes" "$(has "also holds 2 commit(s) already on \`main\`" "$out")"
+check "base merge: cites the base tip SHA" "yes" "$(has "at \`$B_TIP8\`" "$out")"
+check "base merge: no mandatory-review demand for base commits" "no" "$(has 'Mandatory review requirement' "$out")"
 
-# 23. A genuine PR commit after the merge is still counted, and listed;
-#     the base commits are not.
+# 23. A genuine PR commit after the merge is still counted and listed; the
+#     base commits are not, and the printed command runs in the checkout.
 ( cd "$borigin"
   $GIT checkout -q feature
   echo f2 > f2.txt; $GIT add f2.txt; $GIT commit -q -m "subject-pr-own-2"
@@ -353,22 +365,39 @@ check "base merge: no mandatory-review demand for base commits" "no" "$(grep -q 
 B_OWN2=$(bsha feature)
 ( cd "$bfull" && $GIT fetch -q origin && $GIT checkout -q --detach "$B_OWN2" )
 cf="$tmp/bcount-own2.txt"
-out=$(cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_OWN2" "$cf" main)
+out=$(brun "$bfull" "$B_OWN2" "$cf" main main)
 check "base merge + own commit: only the PR's own commit counts" "1" "$(cat "$cf")"
-check "base merge + own commit: lists subject-pr-own-2 for review" "yes" "$(grep -q 'subject-pr-own-2' <<<"$out" && echo yes || echo no)"
-check "base merge + own commit: still demands review of it" "yes" "$(grep -q 'Mandatory review requirement:\*\* 1 unreviewed' <<<"$out" && echo yes || echo no)"
+check "base merge + own commit: lists subject-pr-own-2 for review" "yes" "$(has 'subject-pr-own-2' "$out")"
+check "base merge + own commit: still demands review of it" "yes" "$(has 'Mandatory review requirement:** 1 unreviewed' "$out")"
+log_cmd=$(sed -n 's/^    \$ \(git log --oneline .*\)$/\1/p' <<<"$out")
+check "base merge + own commit: printed log command names the base tip SHA" "yes" "$(has "--not $B_TIP8" "$log_cmd")"
+check "base merge + own commit: printed log command runs in the checkout" "yes" \
+  "$( (cd "$bfull" && eval "$log_cmd") 2>/dev/null | grep -q 'subject-pr-own-2' && echo yes || echo no)"
 
-# 24. A base ref that cannot be fetched fails closed to the full count.
+# 24. Base refs that must not exclude anything keep the full count.
 cf="$tmp/bcount-badbase.txt"
-( cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" no-such-branch ) >/dev/null
+brun "$bfull" "$B_MERGED" "$cf" no-such-branch no-such-branch >/dev/null
 check "unfetchable base ref: fails closed to the full count" "2" "$(cat "$cf")"
-cf="$tmp/bcount-evilbase.txt"
-( cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" "--upload-pack=touch $tmp/pwned" ) >/dev/null
-check "malformed base ref: rejected, fails closed to the full count" "2" "$(cat "$cf")"
+cf="$tmp/bcount-malformed.txt"
+brun "$bfull" "$B_MERGED" "$cf" 'bad..name' 'bad..name' >/dev/null
+check "malformed base ref (check-ref-format): fails closed to the full count" "2" "$(cat "$cf")"
+cf="$tmp/bcount-nodefault.txt"
+brun "$bfull" "$B_MERGED" "$cf" main >/dev/null
+check "default branch unknown: fails closed to the full count" "2" "$(cat "$cf")"
 
-# 25. SHALLOW production topology: depth-1 checkout of the PR head with
-#     actions/checkout's narrow refspec, and main moved past the merged
-#     point. The base must be fetched (and deepened) by the script.
+# 25. MAJOR: a base that is not the default branch never excludes. The PR
+#     author pushes unreviewed work to `stage`, retargets the PR at it,
+#     pushes the same commit to the PR, and retargets back; with `stage` as
+#     the base the commit would be reachable from the base and vanish from
+#     the count.
+cf="$tmp/bcount-stage.txt"
+out=$(brun "$bfull" "$B_OWN2" "$cf" stage main)
+check "non-default base (stage): full count kept" "3" "$(cat "$cf")"
+check "non-default base (stage): unreviewed commit still listed" "yes" "$(has 'subject-pr-own-2' "$out")"
+
+# 26. SHALLOW checkout of the PR head with actions/checkout's narrow
+#     refspec, main moved past the merged point. The script fetches and
+#     deepens the base itself, and the base count matches the full clone's.
 ( cd "$borigin" && $GIT update-ref refs/pull/2/head "$B_MERGED" )
 bshallow="$tmp/bshallow"
 mkdir -p "$bshallow"
@@ -380,10 +409,119 @@ mkdir -p "$bshallow"
   $GIT checkout -q --detach refs/remotes/pull/2/head
 )
 cf="$tmp/bcount-shallow.txt"
-out=$(cd "$bshallow" && DEEPEN_STEP=1 bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" main)
+out=$(cd "$bshallow" && DEEPEN_STEP=1 bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" main main)
 check "shallow base merge: base-branch commits not counted" "0" "$(cat "$cf")"
-check "shallow base merge: script fetched the base ref itself" "yes" "$(grep -q 'already on .main.' <<<"$out" && echo yes || echo no)"
-check "malformed base ref: never handed to git as an option" "no" "$([ -e "$tmp/pwned" ] && echo yes || echo no)"
+check "shallow base merge: base count matches the full clone (2)" "yes" "$(has "also holds 2 commit(s) already on \`main\`" "$out")"
+
+# 27. MINOR 3: the range must not shrink. A long base merge (12 main
+#     commits) with the base NOT advanced past the merged point, at a
+#     DEEPEN_STEP smaller than that merge: the old code fetched the base
+#     at a fixed depth after deepening, cutting the range it had deepened,
+#     and the walk to the prior alone never reaches the merged commits.
+lorigin="$tmp/lorigin"
+mkdir -p "$lorigin"
+( cd "$lorigin"
+  $GIT init -q
+  echo base > base.txt; $GIT add base.txt; $GIT commit -q -m "subject-base0"
+  $GIT checkout -q -b feature
+  echo f1 > f1.txt; $GIT add f1.txt; $GIT commit -q -m "subject-pr-own-1"
+  $GIT checkout -q main
+  for i in $(seq 1 12); do echo "$i" > "m$i.txt"; $GIT add "m$i.txt"; $GIT commit -q -m "subject-long-main-$i"; done
+  $GIT checkout -q feature
+  $GIT merge -q --no-ff main -m "Merge branch 'main' into feature"
+  $GIT checkout -q main
+  $GIT config uploadpack.allowReachableSHA1InWant true
+  $GIT update-ref refs/pull/3/head feature
+)
+L_PRIOR=$( cd "$lorigin" && $GIT rev-parse feature^1 )
+L_HEAD=$( cd "$lorigin" && $GIT rev-parse feature )
+comments_for "$L_PRIOR" "$tmp/comments-lprior.json"
+lshallow="$tmp/lshallow"
+mkdir -p "$lshallow"
+( cd "$lshallow"
+  $GIT init -q
+  $GIT remote add origin "file://$lorigin"
+  $GIT config remote.origin.fetch '+refs/pull/3/head:refs/remotes/pull/3/head'
+  $GIT fetch -q --depth=1 origin
+  $GIT checkout -q --detach refs/remotes/pull/3/head
+)
+cf="$tmp/lcount-nobase.txt"
+( cd "$lshallow" && DEEPEN_STEP=3 bash "$script" "$tmp/comments-lprior.json" "$L_HEAD" "$cf" ) >/dev/null
+check "long base merge, shallow, no base: whole range counted (12), not cut at the prior" "12" "$(cat "$cf")"
+cf="$tmp/lcount-base.txt"
+out=$( cd "$lshallow" && DEEPEN_STEP=3 bash "$script" "$tmp/comments-lprior.json" "$L_HEAD" "$cf" main main )
+check "long base merge, shallow: zero own commits" "0" "$(cat "$cf")"
+check "long base merge, shallow: all 12 base commits counted as base" "yes" "$(has 'also holds 12 commit(s)' "$out")"
+check "long base merge, shallow: history not shortened (range still 12)" "12" \
+  "$(cd "$lshallow" && git rev-list --count --no-merges "$L_PRIOR..$L_HEAD")"
+
+# 28. TEST 5: the real pull_request checkout -- refs/pull/N/merge at
+#     depth 1, narrow refspec -- with an own commit after the base merge
+#     and a merge that resolved a conflict by hand (MINOR 4: its file must
+#     still be shown).
+corigin="$tmp/corigin"
+mkdir -p "$corigin"
+( cd "$corigin"
+  $GIT init -q
+  echo base > shared.txt; $GIT add shared.txt; $GIT commit -q -m "subject-base0"
+  $GIT checkout -q -b feature
+  echo pr > shared.txt; $GIT add shared.txt; $GIT commit -q -m "subject-pr-own-1"
+  $GIT checkout -q main
+  echo main > shared.txt; $GIT add shared.txt; $GIT commit -q -m "subject-main-conflicting"
+  echo m > m.txt; $GIT add m.txt; $GIT commit -q -m "subject-main-other"
+  $GIT checkout -q feature
+  $GIT merge -q main -m "Merge branch 'main' into feature" >/dev/null 2>&1 || true
+  echo resolved-by-hand > shared.txt; $GIT add shared.txt
+  $GIT commit -q -m "Merge branch 'main' into feature"
+  echo f2 > f2.txt; $GIT add f2.txt; $GIT commit -q -m "subject-pr-own-2"
+  # GitHub's merge ref: the PR head merged into the base tip.
+  pr_head=$($GIT rev-parse feature)
+  mref=$($GIT commit-tree "$($GIT rev-parse 'feature^{tree}')" -p main -p "$pr_head" -m "Merge pull request #4")
+  $GIT update-ref refs/pull/4/merge "$mref"
+  $GIT config uploadpack.allowReachableSHA1InWant true
+)
+C_PRIOR=$( cd "$corigin" && $GIT rev-parse feature~1^1 )
+C_HEAD=$( cd "$corigin" && $GIT rev-parse feature )
+comments_for "$C_PRIOR" "$tmp/comments-cprior.json"
+cmerge="$tmp/cmerge"
+mkdir -p "$cmerge"
+( cd "$cmerge"
+  $GIT init -q
+  $GIT remote add origin "file://$corigin"
+  $GIT config remote.origin.fetch '+refs/pull/4/merge:refs/remotes/pull/4/merge'
+  $GIT fetch -q --depth=1 origin
+  $GIT checkout -q --detach refs/remotes/pull/4/merge
+)
+check "merge-ref precondition: prior unreachable before the script runs" "no" \
+  "$(cd "$cmerge" && git cat-file -e "$C_PRIOR" 2>/dev/null && echo yes || echo no)"
+cf="$tmp/ccount.txt"
+out=$(cd "$cmerge" && DEEPEN_STEP=1 bash "$script" "$tmp/comments-cprior.json" "$C_HEAD" "$cf" main main)
+check "merge-ref checkout: only the PR's own commit counts" "1" "$(cat "$cf")"
+check "merge-ref checkout: lists subject-pr-own-2" "yes" "$(has 'subject-pr-own-2' "$out")"
+check "merge-ref checkout: base commits excluded and named" "yes" "$(has 'also holds 2 commit(s)' "$out")"
+check "merge-ref checkout: conflict-resolving merge listed with its file" "yes" \
+  "$(grep -A1 "Merge branch 'main' into feature" <<<"$out" | grep -q '        shared.txt' && echo yes || echo no)"
+
+# 29. DEEPEN_MAX reached before the base meets HEAD: fail closed to the
+#     full count. main advances 20 commits past the merged point; the prior
+#     and the range are reached within the cap, the base is not.
+( cd "$borigin"
+  $GIT checkout -q main
+  for i in $(seq 1 20); do echo "$i" > "late$i.txt"; $GIT add "late$i.txt"; $GIT commit -q -m "subject-main-late-$i"; done
+)
+bcap="$tmp/bcap"
+mkdir -p "$bcap"
+( cd "$bcap"
+  $GIT init -q
+  $GIT remote add origin "file://$borigin"
+  $GIT config remote.origin.fetch '+refs/pull/2/head:refs/remotes/pull/2/head'
+  $GIT fetch -q --depth=1 origin
+  $GIT checkout -q --detach refs/remotes/pull/2/head
+)
+cf="$tmp/bcount-cap.txt"
+out=$(cd "$bcap" && DEEPEN_STEP=1 DEEPEN_MAX=4 bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" main main)
+check "deepen cap before base meets HEAD: full count kept (fail closed)" "2" "$(cat "$cf")"
+check "deepen cap before base meets HEAD: no base exclusion claimed" "no" "$(has 'already on' "$out")"
 
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2

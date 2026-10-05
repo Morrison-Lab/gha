@@ -7,7 +7,7 @@
 # So the workflow computes the range with git itself and hands it to the
 # reviewer as authoritative.
 #
-# Usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file] [base-ref]
+# Usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file] [base-ref] [default-branch]
 #
 # The argument is a file holding ONE JSON array of the PR's issue comments
 # (all pages merged; the caller runs `gh api --paginate | jq -s 'add // []'`).
@@ -18,8 +18,11 @@
 # Runs inside the PR checkout. That checkout is fetch-depth: 1, so the prior
 # SHA is normally NOT reachable at first: the script deepens the fetch in
 # DEEPEN_STEP-commit increments (default 50) until the prior commit is an
-# ancestor of HEAD, giving up -- and emitting nothing -- once DEEPEN_MAX
-# (default 500) is reached or the repository is no longer shallow (a
+# ancestor of HEAD and no commit in PRIOR..HEAD is a shallow boundary (a
+# merge of the base brings in commits the walk to the prior alone never
+# deepens, which undercounted the range), giving up once DEEPEN_MAX
+# (default 500) is reached or the repository is no longer shallow -- and
+# emitting nothing if the prior is still unreachable then (a
 # force-pushed-away or otherwise orphaned prior SHA). Without the deepening
 # this feature is inert on every real round, which is exactly what gha#717's
 # review round 1 measured.
@@ -32,12 +35,20 @@
 # gha#965 guard reads, with a nonzero count, as a skipped review; such a
 # round stamps no `Reviewed commit:` boundary, so the next round's range
 # grows instead of moving and the PR can never go green. When BASE_REF (arg
-# 4, or the env var) names the PR's base branch, the script fetches it and
-# counts only commits NOT reachable from it. Excluding a commit reachable
-# from the base tip is always sound -- it is on the base, not in the PR's
-# diff -- and a base too shallow to reach one merely leaves it counted, so
-# every failure here errs toward the old count: an empty, malformed or
-# unfetchable base ref keeps the full PRIOR..HEAD count (fail closed).
+# 4, or the env var) names the PR's base AND equals DEFAULT_BRANCH (arg 5,
+# or the env var), the repository's default branch, the script fetches it
+# and counts only commits NOT reachable from it.
+#
+# Only the default branch qualifies. A PR author can push an unreviewed
+# commit to a branch of their own, retarget the PR at it, push the commit
+# to the PR, and retarget back; retargeting does not re-run the review, so
+# excluding commits reachable from an arbitrary base would let that commit
+# through unreviewed. Moving the default branch takes write access to it.
+#
+# Every other case keeps the full PRIOR..HEAD count (fail closed): an empty
+# or malformed base ref, a base that is not the default branch, a base that
+# cannot be fetched, a range left incomplete at DEEPEN_MAX, or a base that
+# never meets HEAD's history within it.
 #
 # Stdout: the markdown section, or nothing when the range is not computable
 # (first round, unparseable comments, unreachable prior, prior == head).
@@ -49,10 +60,11 @@
 # carrying backticks cannot close the block early.
 set -euo pipefail
 
-COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file] [base-ref]}"
+COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file] [base-ref] [default-branch]}"
 HEAD_PARAM="${2:-}"
 COUNT_FILE="${3:-}"
 BASE_REF="${4:-${BASE_REF:-}}"
+DEFAULT_BRANCH="${5:-${DEFAULT_BRANCH:-}}"
 DEEPEN_STEP="${DEEPEN_STEP:-50}"
 DEEPEN_MAX="${DEEPEN_MAX:-500}"
 
@@ -237,56 +249,81 @@ if [ -z "$PRIOR" ] || [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
   exit 0
 fi
 
-# Deepen a shallow checkout until the prior commit is an ancestor of HEAD.
-# Order matters inside the loop: once the repository is no longer shallow,
-# an un-reached prior is orphaned (force-push) and no fetch will change
-# that -- give up rather than loop.
-deepened=0
-until git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; do
-  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" != "true" ]; then
-    exit 0
+# Base exclusion is eligible only when the base IS the repository's default
+# branch, and its name is a valid branch name. A PR author can retarget a PR
+# at a branch they pushed an unreviewed commit to, and retargeting does not
+# re-run the review; the default branch takes write access to move.
+BASE_TRACK="refs/gha-incremental-range/base"
+BASE_OK=""
+if [ -n "$BASE_REF" ] && [ "$BASE_REF" = "$DEFAULT_BRANCH" ] \
+   && git check-ref-format "refs/heads/$BASE_REF" 2>/dev/null; then
+  # Fetch the base BEFORE the deepen loop, at depth 1 on a shallow checkout,
+  # so the loop below deepens it together with HEAD. Fetching it afterwards
+  # at a fixed depth placed new shallow boundaries inside history the loop
+  # had already deepened, shortening the range. On a full clone no depth is
+  # passed, since --depth would make the repository shallow.
+  depth_arg=()
+  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+    depth_arg=(--depth=1)
   fi
-  if [ "$deepened" -ge "$DEEPEN_MAX" ]; then
-    exit 0
+  if git fetch -q --no-tags ${depth_arg[@]+"${depth_arg[@]}"} origin \
+       "+refs/heads/$BASE_REF:$BASE_TRACK" 2>/dev/null; then
+    BASE_OK=1
+  fi
+fi
+
+# The range is ready when the prior is an ancestor of HEAD, no commit in
+# PRIOR..HEAD is a shallow boundary (a boundary hides its parents, which
+# can belong to the range: merging the base brings in commits the
+# first-parent walk to the prior never deepens), and, when the base was
+# fetched, the base meets HEAD's history.
+range_ready() {
+  git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null || return 1
+  local shallow_file
+  shallow_file=$(git rev-parse --git-path shallow 2>/dev/null || true)
+  if [ -n "$shallow_file" ] && [ -s "$shallow_file" ] \
+     && git rev-list "$PRIOR..$HEAD_NOW" 2>/dev/null | grep -qxF -f "$shallow_file"; then
+    return 1
+  fi
+  if [ -n "$BASE_OK" ] && ! git merge-base "$HEAD_NOW" "$BASE_TRACK" >/dev/null 2>&1; then
+    return 1
+  fi
+  return 0
+}
+
+# Deepen a shallow checkout until the range is ready. Once the repository
+# is no longer shallow, nothing a fetch does will change the answer.
+deepened=0
+until range_ready; do
+  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" != "true" ] \
+     || [ "$deepened" -ge "$DEEPEN_MAX" ]; then
+    break
   fi
   # Deepen against the checked-out SHA explicitly: a bare
   # `git fetch --deepen` covers only the default refs/heads/* refspec, and
   # the ordinary pull_request checkout is refs/pull/<n>/merge -- not on any
   # branch -- so the bare form never reaches the prior there (gha#717
   # review round 2, confirmed against both checkout topologies).
-  git fetch -q --deepen="$DEEPEN_STEP" origin "$HEAD_NOW" 2>/dev/null || git fetch -q --deepen="$DEEPEN_STEP" 2>/dev/null || exit 0
+  wants=("$HEAD_NOW")
+  if [ -n "$BASE_OK" ]; then
+    wants+=("+refs/heads/$BASE_REF:$BASE_TRACK")
+  fi
+  git fetch -q --no-tags --deepen="$DEEPEN_STEP" origin "${wants[@]}" 2>/dev/null \
+    || git fetch -q --deepen="$DEEPEN_STEP" 2>/dev/null || break
   deepened=$((deepened + DEEPEN_STEP))
 done
 
-# Fetch the base branch into a private ref, deepening it until it meets
-# HEAD's history (a merge base exists). Runs AFTER the loop above, so the
-# prior is already reachable. A depth fetch can only mark base-reachable
-# commits shallow, and those are excluded below anyway, so it cannot hide a
-# PR commit from the range. Any failure leaves BASE_TIP empty: no exclusion.
+# An unreachable prior (orphaned by a force-push, or past DEEPEN_MAX): emit
+# nothing, as before.
+if ! git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; then
+  exit 0
+fi
+
+# Exclude base commits only from a complete range whose base meets HEAD;
+# otherwise keep the full count (fail closed).
 BASE_TIP=""
-BASE_TRACK="refs/gha-incremental-range/base"
-if [ -n "$BASE_REF" ] && [[ "$BASE_REF" != -* ]] \
-   && git check-ref-format --branch "$BASE_REF" >/dev/null 2>&1; then
-  # --depth only on an already-shallow checkout: on a full clone it would
-  # make the repository shallow under the reviewer's own git commands.
-  depth_arg=()
-  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
-    depth_arg=(--depth="$DEEPEN_STEP")
-  fi
-  if git fetch -q --no-tags ${depth_arg[@]+"${depth_arg[@]}"} origin \
-       "+refs/heads/$BASE_REF:$BASE_TRACK" 2>/dev/null; then
-    deepened=0
-    until git merge-base "$HEAD_NOW" "$BASE_TRACK" >/dev/null 2>&1; do
-      if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" != "true" ] \
-         || [ "$deepened" -ge "$DEEPEN_MAX" ]; then
-        break
-      fi
-      git fetch -q --no-tags --deepen="$DEEPEN_STEP" origin \
-        "+refs/heads/$BASE_REF:$BASE_TRACK" 2>/dev/null || break
-      deepened=$((deepened + DEEPEN_STEP))
-    done
-    BASE_TIP=$(git rev-parse -q --verify "$BASE_TRACK^{commit}" 2>/dev/null || true)
-  fi
+if [ -n "$BASE_OK" ] && range_ready; then
+  BASE_TIP=$(git rev-parse -q --verify "$BASE_TRACK^{commit}" 2>/dev/null || true)
 fi
 
 RANGE=("$PRIOR..$HEAD_NOW")
@@ -303,6 +340,14 @@ COMMIT_COUNT=$(git rev-list --count --no-merges "${RANGE[@]}" 2>/dev/null || ech
 write_count "$COMMIT_COUNT"
 BASE_COUNT=$((ALL_COUNT - COMMIT_COUNT))
 
+# A branch name may hold a backtick; a double-backtick code span with
+# padding keeps one from closing the span early.
+if [[ "$BASE_REF" == *'`'* ]]; then
+  BASE_MD="\`\` $BASE_REF \`\`"
+else
+  BASE_MD="\`$BASE_REF\`"
+fi
+
 BASE_NOTE=()
 if [ "$BASE_COUNT" -gt 0 ]; then
   BASE_LOG=$(comm -23 \
@@ -311,10 +356,43 @@ if [ "$BASE_COUNT" -gt 0 ]; then
     | git log --oneline --no-walk=sorted --stdin 2>/dev/null | sed 's/^/    /' || true)
   BASE_NOTE=(
     ''
-    "The range also holds $BASE_COUNT commit(s) already on \`$BASE_REF\` (the PR's base branch), which reached this branch only by merging the base. They are not this PR's content, add nothing to its diff, and are not counted as unreviewed:"
+    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch and this PR's base, at \`${BASE_TIP:0:8}\`), which reached this branch only by merging the base. They are not this PR's content, add nothing to its diff, and are not counted as unreviewed:"
     ''
     "$BASE_LOG"
   )
+fi
+
+# Merge commits are never counted (--no-merges), but one that resolved a
+# conflict can change files itself. With base commits excluded the stat
+# below no longer covers them, so list every merge in the range that is not
+# itself on the base, with the files it changed relative to EVERY parent
+# (git's combined diff: the conflict resolutions).
+MERGE_NOTE=()
+if [ -n "$BASE_TIP" ] && [ "$BASE_COUNT" -gt 0 ]; then
+  MERGE_LINES=()
+  while IFS= read -r m; do
+    [ -n "$m" ] || continue
+    MERGE_LINES+=("    $(git log --oneline -1 "$m" 2>/dev/null || echo "$m")")
+    if files=$(git diff-tree --cc --name-only --no-commit-id "$m" 2>/dev/null); then
+      if [ -n "$files" ]; then
+        while IFS= read -r f; do
+          MERGE_LINES+=("        $f")
+        done <<<"$files"
+      else
+        MERGE_LINES+=("        (no file differs from every parent)")
+      fi
+    else
+      MERGE_LINES+=("        (could not compute: examine this merge by hand)")
+    fi
+  done < <(git rev-list --merges "${RANGE[@]}" 2>/dev/null || true)
+  if [ "${#MERGE_LINES[@]}" -gt 0 ]; then
+    MERGE_NOTE=(
+      ''
+      "Merge commits in the range, each with the files it changed relative to every parent (conflict resolutions, which no listed commit carries). Examine any file listed here:"
+      ''
+      "${MERGE_LINES[@]}"
+    )
+  fi
 fi
 
 if [ "$COMMIT_COUNT" = "0" ]; then
@@ -323,27 +401,31 @@ if [ "$COMMIT_COUNT" = "0" ]; then
     '' \
     "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The workflow computed the range with git itself. It holds no commit of this PR's own: every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the base branch." \
     ${BASE_NOTE[@]+"${BASE_NOTE[@]}"} \
+    ${MERGE_NOTE[@]+"${MERGE_NOTE[@]}"} \
     '' \
-    "Review the PR's full diff against its base as usual, including any merge commit that resolved a conflict."
+    "Review the PR's full diff against its base as usual."
   exit 0
 fi
 
 LOG=$(git log --oneline --no-merges "${RANGE[@]}" 2>/dev/null | sed 's/^/    /' || true)
 
+if [ -n "$BASE_TIP" ]; then
+  # Name the base by its tip SHA: the checkout holds the base only under
+  # the private ref, so a branch name here would not resolve.
+  LOG_CMD="git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8} --not ${BASE_TIP:0:8}"
+else
+  LOG_CMD="git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8}"
+fi
+
 if [ -n "$BASE_TIP" ] && [ "$BASE_COUNT" -gt 0 ]; then
   # A PRIOR..HEAD stat would list the base's files as if the PR changed
-  # them; name the files the PR's own commits touch instead.
-  STAT_CMD="git log --no-merges --name-only --format= ${PRIOR:0:8}..${HEAD_NOW:0:8} --not ${BASE_REF} | sort -u"
+  # them; name the files the PR's own commits touch instead (merge commits
+  # are listed separately below).
+  STAT_CMD="git log --no-merges --name-only --format= ${PRIOR:0:8}..${HEAD_NOW:0:8} --not ${BASE_TIP:0:8} | sort -u"
   STAT=$(git log --no-merges --name-only --format= "${RANGE[@]}" 2>/dev/null | sed '/^$/d' | sort -u | sed 's/^/    /' || true)
 else
   STAT_CMD="git diff --stat ${PRIOR:0:8} ${HEAD_NOW:0:8}"
   STAT=$(git diff --stat "$PRIOR" "$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
-fi
-
-if [ -n "$BASE_TIP" ]; then
-  LOG_CMD="git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8} --not ${BASE_REF}"
-else
-  LOG_CMD="git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8}"
 fi
 
 printf '%s\n' \
@@ -356,6 +438,7 @@ printf '%s\n' \
   '' \
   "    \$ $STAT_CMD" \
   "$STAT" \
+  ${MERGE_NOTE[@]+"${MERGE_NOTE[@]}"} \
   ${BASE_NOTE[@]+"${BASE_NOTE[@]}"} \
   '' \
   "**Mandatory review requirement:** $COMMIT_COUNT unreviewed commit(s) exist in this range (${PRIOR:0:8}..${HEAD_NOW:0:8}). You MUST examine these commits and the diff above. Every commit in this range must be thoroughly reviewed."
