@@ -295,7 +295,7 @@ out=$(run_in "$full" "$tmp/comments-verdict-no-diff.json")
 check "verdict no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "verdict no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
-# 21-32. Base-branch commits merged into the PR branch are not unreviewed
+# 21-33. Base-branch commits merged into the PR branch are not unreviewed
 #        PR commits (observed on Morrison-Lab/lds#369). The PR branch merges
 #        main ("Update branch") after a reviewed round, so PRIOR..HEAD holds
 #        main's squash merges of OTHER PRs. Counting them made every later
@@ -598,6 +598,40 @@ out=$( cd "$linc" && DEEPEN_STEP=1 DEEPEN_MAX=1 bash "$script" "$tmp/comments-lp
 check "incomplete range at cap: count stays nonzero" "yes" "$([ "$(cat "$cf")" -ge 1 ] && echo yes || echo no)"
 check "incomplete range at cap: says the range is incomplete" "yes" "$(has 'Range incomplete' "$out")"
 check "incomplete range at cap: excludes nothing" "no" "$(has 'already on' "$out")"
+
+# 33. An octopus merge (main and a side branch merged into the PR at once)
+#     is outside remerge-diff's reach: git 2.43 prints a warning on STDOUT
+#     instead, which must not be listed as a file name, and the merge must
+#     be counted by parent count, not by whatever that output holds.
+oorigin="$tmp/oorigin"
+mkdir -p "$oorigin"
+( cd "$oorigin"
+  $GIT init -q
+  echo base > base.txt; $GIT add base.txt; $GIT commit -q -m "subject-base0"
+  $GIT checkout -q -b feature
+  echo f1 > f1.txt; $GIT add f1.txt; $GIT commit -q -m "subject-pr-own-1"
+  $GIT checkout -q -b side main
+  echo s1 > s1.txt; $GIT add s1.txt; $GIT commit -q -m "subject-side-1"
+  $GIT checkout -q main
+  echo m1 > m1.txt; $GIT add m1.txt; $GIT commit -q -m "subject-main-1"
+  $GIT checkout -q feature
+  $GIT merge -q --no-ff main side -m "Octopus merge of main and side"
+  $GIT checkout -q main
+)
+O_PRIOR=$( cd "$oorigin" && $GIT rev-parse feature^1 )
+O_HEAD=$( cd "$oorigin" && $GIT rev-parse feature )
+check "octopus precondition: the merge has three parents" "4" \
+  "$(cd "$oorigin" && git rev-list --parents -n1 "$O_HEAD" | wc -w | tr -d ' ')"
+comments_for "$O_PRIOR" "$tmp/comments-o.json"
+oclone="$tmp/oclone"
+$GIT clone -q "file://$oorigin" "$oclone"
+( cd "$oclone" && $GIT checkout -q --detach "$O_HEAD" )
+cf="$tmp/ocount.txt"
+out=$(cd "$oclone" && bash "$script" "$tmp/comments-o.json" "$O_HEAD" "$cf" main main)
+check "octopus merge: counted with the side commit (1 + 1)" "2" "$(cat "$cf")"
+check "octopus merge: listed with the octopus note" "yes" \
+  "$(has '(octopus merge: re-merge not supported; examine by hand; counted)' "$out")"
+check "octopus merge: no git warning listed as a file" "no" "$(has 'warning' "$out")"
 
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2

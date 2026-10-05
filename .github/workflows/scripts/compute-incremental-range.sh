@@ -377,7 +377,19 @@ if [ -n "$BASE_TIP" ]; then
   while IFS= read -r m; do
     [ -n "$m" ] || continue
     MERGE_LINES+=("    $(git log --oneline -1 "$m" 2>/dev/null || echo "$m")")
-    if files=$(git show --remerge-diff --format= --name-only "$m" 2>/dev/null); then
+    # remerge-diff does not handle octopus merges (git 2.43 says so in a
+    # warning on STDOUT, which would otherwise be listed as a file name, and
+    # a git that moved it to stderr would leave the output empty -- an
+    # uncounted merge). Detect them by parent count and always count them.
+    parents=$(git rev-list --parents -n1 "$m" 2>/dev/null | wc -w)
+    if [ "$parents" -gt 3 ]; then
+      MERGE_FLAGGED=$((MERGE_FLAGGED + 1))
+      MERGE_LINES+=("        (octopus merge: re-merge not supported; examine by hand; counted)")
+    elif [ "$parents" -lt 3 ]; then
+      MERGE_FLAGGED=$((MERGE_FLAGGED + 1))
+      MERGE_LINES+=("        (parents could not be read: examine this merge by hand; counted)")
+    elif files=$(git show --remerge-diff --format= --name-only "$m" 2>/dev/null) \
+         && ! grep -q '^diff: warning:' <<<"$files"; then
       files=$(sed '/^$/d' <<<"$files")
       if [ -n "$files" ]; then
         MERGE_FLAGGED=$((MERGE_FLAGGED + 1))
@@ -430,7 +442,7 @@ if [ "$BASE_COUNT" -gt 0 ] && [ -n "$BASE_TIP" ]; then
     | git log --oneline --no-walk=sorted --stdin 2>/dev/null | sed 's/^/    /' || true)
   BASE_NOTE=(
     ''
-    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch and this PR's base, at \`${BASE_TIP:0:8}\`), which reached this branch only by merging the base. They are not this PR's own commits and are not counted as unreviewed themselves; the merges that brought them in are checked below, since a merge can still change what the PR does to their files:"
+    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch and this PR's base, at \`${BASE_TIP:0:8}\`), which reached this branch only by merging the base. They are not this PR's own commits and are not counted as unreviewed themselves; the merges that brought them in are checked separately, since a merge can still change what the PR does to their files:"
     ''
     "$BASE_LOG"
   )
