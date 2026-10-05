@@ -295,6 +295,96 @@ out=$(run_in "$full" "$tmp/comments-verdict-no-diff.json")
 check "verdict no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "verdict no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
+# 21-25. Base-branch commits merged into the PR branch are not unreviewed
+#        PR commits (observed on Morrison-Lab/lds#369). The PR branch merges
+#        main ("Update branch") after a reviewed round, so PRIOR..HEAD holds
+#        main's squash merges of OTHER PRs. Counting them made every later
+#        round's truthful "no new content" verdict fail closed as
+#        unreviewed-commits-skipped, and such a round stamps no boundary, so
+#        the PR could never go green. Only commits NOT reachable from the
+#        base branch are PR content; a base that cannot be fetched keeps the
+#        old count (fail closed).
+borigin="$tmp/borigin"
+mkdir -p "$borigin"
+( cd "$borigin"
+  $GIT init -q
+  echo base > base.txt; $GIT add base.txt; $GIT commit -q -m "subject-base0"
+  $GIT checkout -q -b feature
+  echo f1 > f1.txt; $GIT add f1.txt; $GIT commit -q -m "subject-pr-own-1"
+  $GIT checkout -q main
+  echo m1 > m1.txt; $GIT add m1.txt; $GIT commit -q -m "subject-main-squash-1"
+  echo m2 > m2.txt; $GIT add m2.txt; $GIT commit -q -m "subject-main-squash-2"
+  $GIT checkout -q feature
+  $GIT merge -q --no-ff main -m "Merge branch 'main' into feature"
+  # main moves on after the update, as it did on lds#369.
+  $GIT checkout -q main
+  echo m3 > m3.txt; $GIT add m3.txt; $GIT commit -q -m "subject-main-squash-3"
+  $GIT config uploadpack.allowReachableSHA1InWant true
+)
+bsha() { ( cd "$borigin" && $GIT rev-parse "$1" ); }
+B_PRIOR=$(bsha feature^1)        # the reviewed PR commit, before the merge
+B_MERGED=$(bsha feature)         # head after "Update branch"
+comments_for "$B_PRIOR" "$tmp/comments-bprior.json"
+
+bfull="$tmp/bfull"
+$GIT clone -q "file://$borigin" "$bfull"
+( cd "$bfull" && $GIT checkout -q --detach "$B_MERGED" )
+
+# 21. Control: with no base ref the two main commits still count (the
+#     pre-fix behaviour, kept as the fail-closed default).
+cf="$tmp/bcount-nobase.txt"
+( cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" ) >/dev/null
+check "base merge, no base ref: main commits still counted (fail closed)" "2" "$(cat "$cf")"
+
+# 22. With the base ref: zero unreviewed PR commits, and the section says why.
+cf="$tmp/bcount-base.txt"
+out=$(cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" main)
+check "base merge: base-branch commits not counted as unreviewed" "0" "$(cat "$cf")"
+check "base merge: names the base-branch commits as excluded" "yes" "$(grep -q 'subject-main-squash-1' <<<"$out" && grep -q 'already on .main.' <<<"$out" && echo yes || echo no)"
+check "base merge: no mandatory-review demand for base commits" "no" "$(grep -q 'Mandatory review requirement' <<<"$out" && echo yes || echo no)"
+
+# 23. A genuine PR commit after the merge is still counted, and listed;
+#     the base commits are not.
+( cd "$borigin"
+  $GIT checkout -q feature
+  echo f2 > f2.txt; $GIT add f2.txt; $GIT commit -q -m "subject-pr-own-2"
+  $GIT checkout -q main
+)
+B_OWN2=$(bsha feature)
+( cd "$bfull" && $GIT fetch -q origin && $GIT checkout -q --detach "$B_OWN2" )
+cf="$tmp/bcount-own2.txt"
+out=$(cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_OWN2" "$cf" main)
+check "base merge + own commit: only the PR's own commit counts" "1" "$(cat "$cf")"
+check "base merge + own commit: lists subject-pr-own-2 for review" "yes" "$(grep -q 'subject-pr-own-2' <<<"$out" && echo yes || echo no)"
+check "base merge + own commit: still demands review of it" "yes" "$(grep -q 'Mandatory review requirement:\*\* 1 unreviewed' <<<"$out" && echo yes || echo no)"
+
+# 24. A base ref that cannot be fetched fails closed to the full count.
+cf="$tmp/bcount-badbase.txt"
+( cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" no-such-branch ) >/dev/null
+check "unfetchable base ref: fails closed to the full count" "2" "$(cat "$cf")"
+cf="$tmp/bcount-evilbase.txt"
+( cd "$bfull" && bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" "--upload-pack=touch $tmp/pwned" ) >/dev/null
+check "malformed base ref: rejected, fails closed to the full count" "2" "$(cat "$cf")"
+
+# 25. SHALLOW production topology: depth-1 checkout of the PR head with
+#     actions/checkout's narrow refspec, and main moved past the merged
+#     point. The base must be fetched (and deepened) by the script.
+( cd "$borigin" && $GIT update-ref refs/pull/2/head "$B_MERGED" )
+bshallow="$tmp/bshallow"
+mkdir -p "$bshallow"
+( cd "$bshallow"
+  $GIT init -q
+  $GIT remote add origin "file://$borigin"
+  $GIT config remote.origin.fetch '+refs/pull/2/head:refs/remotes/pull/2/head'
+  $GIT fetch -q --depth=1 origin
+  $GIT checkout -q --detach refs/remotes/pull/2/head
+)
+cf="$tmp/bcount-shallow.txt"
+out=$(cd "$bshallow" && DEEPEN_STEP=1 bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" main)
+check "shallow base merge: base-branch commits not counted" "0" "$(cat "$cf")"
+check "shallow base merge: script fetched the base ref itself" "yes" "$(grep -q 'already on .main.' <<<"$out" && echo yes || echo no)"
+check "malformed base ref: never handed to git as an option" "no" "$([ -e "$tmp/pwned" ] && echo yes || echo no)"
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
   exit 1

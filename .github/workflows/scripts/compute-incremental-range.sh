@@ -7,7 +7,7 @@
 # So the workflow computes the range with git itself and hands it to the
 # reviewer as authoritative.
 #
-# Usage: compute-incremental-range.sh <comments-json-file>
+# Usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file] [base-ref]
 #
 # The argument is a file holding ONE JSON array of the PR's issue comments
 # (all pages merged; the caller runs `gh api --paginate | jq -s 'add // []'`).
@@ -24,6 +24,21 @@
 # this feature is inert on every real round, which is exactly what gha#717's
 # review round 1 measured.
 #
+# Base-branch commits are not PR commits (observed on Morrison-Lab/lds#369).
+# A PR branch that merges its base ("Update branch") after a reviewed round
+# carries the base's own commits -- squash merges of OTHER PRs -- into
+# PRIOR..HEAD. They contribute nothing to the PR's diff, so the reviewer
+# truthfully reports "no new content", which classify-review-verdict.sh's
+# gha#965 guard reads, with a nonzero count, as a skipped review; such a
+# round stamps no `Reviewed commit:` boundary, so the next round's range
+# grows instead of moving and the PR can never go green. When BASE_REF (arg
+# 4, or the env var) names the PR's base branch, the script fetches it and
+# counts only commits NOT reachable from it. Excluding a commit reachable
+# from the base tip is always sound -- it is on the base, not in the PR's
+# diff -- and a base too shallow to reach one merely leaves it counted, so
+# every failure here errs toward the old count: an empty, malformed or
+# unfetchable base ref keeps the full PRIOR..HEAD count (fail closed).
+#
 # Stdout: the markdown section, or nothing when the range is not computable
 # (first round, unparseable comments, unreachable prior, prior == head).
 # Every not-computable path exits 0: this is an optional enrichment, and it
@@ -34,9 +49,10 @@
 # carrying backticks cannot close the block early.
 set -euo pipefail
 
-COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file]}"
+COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file] [base-ref]}"
 HEAD_PARAM="${2:-}"
 COUNT_FILE="${3:-}"
+BASE_REF="${4:-${BASE_REF:-}}"
 DEEPEN_STEP="${DEEPEN_STEP:-50}"
 DEEPEN_MAX="${DEEPEN_MAX:-500}"
 
@@ -242,25 +258,104 @@ until git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; do
   deepened=$((deepened + DEEPEN_STEP))
 done
 
-LOG=$(git log --oneline --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
-if [ -z "$LOG" ]; then
+# Fetch the base branch into a private ref, deepening it until it meets
+# HEAD's history (a merge base exists). Runs AFTER the loop above, so the
+# prior is already reachable. A depth fetch can only mark base-reachable
+# commits shallow, and those are excluded below anyway, so it cannot hide a
+# PR commit from the range. Any failure leaves BASE_TIP empty: no exclusion.
+BASE_TIP=""
+BASE_TRACK="refs/gha-incremental-range/base"
+if [ -n "$BASE_REF" ] && [[ "$BASE_REF" != -* ]] \
+   && git check-ref-format --branch "$BASE_REF" >/dev/null 2>&1; then
+  # --depth only on an already-shallow checkout: on a full clone it would
+  # make the repository shallow under the reviewer's own git commands.
+  depth_arg=()
+  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+    depth_arg=(--depth="$DEEPEN_STEP")
+  fi
+  if git fetch -q --no-tags ${depth_arg[@]+"${depth_arg[@]}"} origin \
+       "+refs/heads/$BASE_REF:$BASE_TRACK" 2>/dev/null; then
+    deepened=0
+    until git merge-base "$HEAD_NOW" "$BASE_TRACK" >/dev/null 2>&1; do
+      if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" != "true" ] \
+         || [ "$deepened" -ge "$DEEPEN_MAX" ]; then
+        break
+      fi
+      git fetch -q --no-tags --deepen="$DEEPEN_STEP" origin \
+        "+refs/heads/$BASE_REF:$BASE_TRACK" 2>/dev/null || break
+      deepened=$((deepened + DEEPEN_STEP))
+    done
+    BASE_TIP=$(git rev-parse -q --verify "$BASE_TRACK^{commit}" 2>/dev/null || true)
+  fi
+fi
+
+RANGE=("$PRIOR..$HEAD_NOW")
+if [ -n "$BASE_TIP" ]; then
+  RANGE+=(--not "$BASE_TIP")
+fi
+
+ALL_COUNT=$(git rev-list --count --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null || echo "0")
+if [ "$ALL_COUNT" = "0" ]; then
   exit 0
 fi
 
-COMMIT_COUNT=$(git rev-list --count --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null || echo "0")
+COMMIT_COUNT=$(git rev-list --count --no-merges "${RANGE[@]}" 2>/dev/null || echo "$ALL_COUNT")
 write_count "$COMMIT_COUNT"
+BASE_COUNT=$((ALL_COUNT - COMMIT_COUNT))
 
-STAT=$(git diff --stat "$PRIOR" "$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
+BASE_NOTE=()
+if [ "$BASE_COUNT" -gt 0 ]; then
+  BASE_LOG=$(comm -23 \
+    <(git rev-list --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null | sort) \
+    <(git rev-list --no-merges "${RANGE[@]}" 2>/dev/null | sort) \
+    | git log --oneline --no-walk=sorted --stdin 2>/dev/null | sed 's/^/    /' || true)
+  BASE_NOTE=(
+    ''
+    "The range also holds $BASE_COUNT commit(s) already on \`$BASE_REF\` (the PR's base branch), which reached this branch only by merging the base. They are not this PR's content, add nothing to its diff, and are not counted as unreviewed:"
+    ''
+    "$BASE_LOG"
+  )
+fi
+
+if [ "$COMMIT_COUNT" = "0" ]; then
+  printf '%s\n' \
+    '## What changed since the last review round (computed)' \
+    '' \
+    "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The workflow computed the range with git itself. It holds no commit of this PR's own: every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the base branch." \
+    ${BASE_NOTE[@]+"${BASE_NOTE[@]}"} \
+    '' \
+    "Review the PR's full diff against its base as usual, including any merge commit that resolved a conflict."
+  exit 0
+fi
+
+LOG=$(git log --oneline --no-merges "${RANGE[@]}" 2>/dev/null | sed 's/^/    /' || true)
+
+if [ -n "$BASE_TIP" ] && [ "$BASE_COUNT" -gt 0 ]; then
+  # A PRIOR..HEAD stat would list the base's files as if the PR changed
+  # them; name the files the PR's own commits touch instead.
+  STAT_CMD="git log --no-merges --name-only --format= ${PRIOR:0:8}..${HEAD_NOW:0:8} --not ${BASE_REF} | sort -u"
+  STAT=$(git log --no-merges --name-only --format= "${RANGE[@]}" 2>/dev/null | sed '/^$/d' | sort -u | sed 's/^/    /' || true)
+else
+  STAT_CMD="git diff --stat ${PRIOR:0:8} ${HEAD_NOW:0:8}"
+  STAT=$(git diff --stat "$PRIOR" "$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
+fi
+
+if [ -n "$BASE_TIP" ]; then
+  LOG_CMD="git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8} --not ${BASE_REF}"
+else
+  LOG_CMD="git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8}"
+fi
 
 printf '%s\n' \
   '## What changed since the last review round (computed)' \
   '' \
   "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The range below was computed by the workflow with git itself. When you describe what changed since the last round, describe THIS range rather than deriving your own, and examine every commit and file in it:" \
   '' \
-  "    \$ git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8}" \
+  "    \$ $LOG_CMD" \
   "$LOG" \
   '' \
-  "    \$ git diff --stat ${PRIOR:0:8} ${HEAD_NOW:0:8}" \
+  "    \$ $STAT_CMD" \
   "$STAT" \
+  ${BASE_NOTE[@]+"${BASE_NOTE[@]}"} \
   '' \
   "**Mandatory review requirement:** $COMMIT_COUNT unreviewed commit(s) exist in this range (${PRIOR:0:8}..${HEAD_NOW:0:8}). You MUST examine these commits and the diff above. Every commit in this range must be thoroughly reviewed."
