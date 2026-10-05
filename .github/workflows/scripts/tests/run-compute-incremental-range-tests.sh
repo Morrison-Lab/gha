@@ -295,7 +295,7 @@ out=$(run_in "$full" "$tmp/comments-verdict-no-diff.json")
 check "verdict no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "verdict no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
-# 21-31. Base-branch commits merged into the PR branch are not unreviewed
+# 21-32. Base-branch commits merged into the PR branch are not unreviewed
 #        PR commits (observed on Morrison-Lab/lds#369). The PR branch merges
 #        main ("Update branch") after a reviewed round, so PRIOR..HEAD holds
 #        main's squash merges of OTHER PRs. Counting them made every later
@@ -496,7 +496,7 @@ check "merge-ref precondition: prior unreachable before the script runs" "no" \
   "$(cd "$cmerge" && git cat-file -e "$C_PRIOR" 2>/dev/null && echo yes || echo no)"
 cf="$tmp/ccount.txt"
 out=$(cd "$cmerge" && DEEPEN_STEP=1 bash "$script" "$tmp/comments-cprior.json" "$C_HEAD" "$cf" main main)
-check "merge-ref checkout: only the PR's own commit counts" "1" "$(cat "$cf")"
+check "merge-ref checkout: own commit plus the hand-resolved merge count" "2" "$(cat "$cf")"
 check "merge-ref checkout: lists subject-pr-own-2" "yes" "$(has 'subject-pr-own-2' "$out")"
 check "merge-ref checkout: base commits excluded and named" "yes" "$(has 'also holds 2 commit(s)' "$out")"
 check "merge-ref checkout: conflict-resolving merge listed with its file" "yes" \
@@ -522,6 +522,82 @@ cf="$tmp/bcount-cap.txt"
 out=$(cd "$bcap" && DEEPEN_STEP=1 DEEPEN_MAX=4 bash "$script" "$tmp/comments-bprior.json" "$B_MERGED" "$cf" main main)
 check "deepen cap before base meets HEAD: full count kept (fail closed)" "2" "$(cat "$cf")"
 check "deepen cap before base meets HEAD: no base exclusion claimed" "no" "$(has 'already on' "$out")"
+
+# 30-31. A merge whose result equals ONE parent hides from a combined diff,
+#        yet is exactly the bad resolution that matters. Each origin: the
+#        PR edits s, main edits s (conflicting) and k; the PR merges main.
+#        The base commits are excluded, so only the merge can keep the
+#        count nonzero -- at 7df594c the same range counted the main
+#        commits, so a no-diff verdict tripped the gha#965 guard.
+make_bad_merge() {
+  # $1 = origin dir, $2 = mode: take-side | revert-base
+  local dir="$1" mode="$2"
+  mkdir -p "$dir"
+  ( cd "$dir"
+    $GIT init -q
+    echo s0 > s.txt; echo k0 > k.txt; $GIT add s.txt k.txt; $GIT commit -q -m "subject-base0"
+    $GIT checkout -q -b feature
+    if [ "$mode" = take-side ]; then
+      echo s-pr > s.txt; $GIT add s.txt
+    else
+      echo pr > pr.txt; $GIT add pr.txt
+    fi
+    $GIT commit -q -m "subject-pr-own-1"
+    $GIT checkout -q main
+    if [ "$mode" = take-side ]; then
+      echo s-main > s.txt; $GIT add s.txt; $GIT commit -q -m "subject-main-edits-s"
+    fi
+    echo k-fixed > k.txt; $GIT add k.txt; $GIT commit -q -m "subject-main-fixes-k"
+    $GIT checkout -q feature
+    $GIT merge -q --no-commit main >/dev/null 2>&1 || true
+    if [ "$mode" = take-side ]; then
+      $GIT checkout -q --ours s.txt         # take the PR's side of the conflict
+    else
+      $GIT checkout -q HEAD -- k.txt        # revert main's k fix to the PR's copy
+    fi
+    $GIT add -A
+    $GIT commit -q -m "Merge branch 'main' into feature"
+    $GIT checkout -q main
+  )
+}
+for mode in take-side revert-base; do
+  morigin="$tmp/morigin-$mode"
+  make_bad_merge "$morigin" "$mode"
+  M_PRIOR=$( cd "$morigin" && $GIT rev-parse feature^1 )
+  M_HEAD=$( cd "$morigin" && $GIT rev-parse feature )
+  comments_for "$M_PRIOR" "$tmp/comments-m-$mode.json"
+  mclone="$tmp/mclone-$mode"
+  $GIT clone -q "file://$morigin" "$mclone"
+  ( cd "$mclone" && $GIT checkout -q --detach "$M_HEAD" )
+  if [ "$mode" = take-side ]; then want_file="s.txt"; else want_file="k.txt"; fi
+  cf="$tmp/mcount-$mode.txt"
+  out=$(cd "$mclone" && bash "$script" "$tmp/comments-m-$mode.json" "$M_HEAD" "$cf" main main)
+  check "$mode merge: base commits still excluded" "yes" "$(has "already on \`main\`" "$out")"
+  check "$mode merge: merge kept in the unreviewed count" "1" "$(cat "$cf")"
+  check "$mode merge: demands review" "yes" "$(has 'Mandatory review requirement:** 1 unreviewed' "$out")"
+  check "$mode merge: lists $want_file under the merge" "yes" \
+    "$(grep -A3 "Merge branch 'main' into feature" <<<"$out" | grep -qx "        $want_file" && echo yes || echo no)"
+  check "$mode merge: never claims the range holds nothing" "no" "$(has 'holds no commit of this PR' "$out")"
+done
+
+# 32. MINOR 2: DEEPEN_MAX reached with a shallow boundary still inside the
+#     range (12 merged main commits, cap 1). Only part of the range is
+#     visible: the script excludes nothing, says the range is incomplete,
+#     and keeps a nonzero count even with the base given.
+linc="$tmp/linc"
+mkdir -p "$linc"
+( cd "$linc"
+  $GIT init -q
+  $GIT remote add origin "file://$lorigin"
+  $GIT config remote.origin.fetch '+refs/pull/3/head:refs/remotes/pull/3/head'
+  $GIT fetch -q --depth=1 origin
+  $GIT checkout -q --detach refs/remotes/pull/3/head
+)
+cf="$tmp/lcount-inc.txt"
+out=$( cd "$linc" && DEEPEN_STEP=1 DEEPEN_MAX=1 bash "$script" "$tmp/comments-lprior.json" "$L_HEAD" "$cf" main main )
+check "incomplete range at cap: count stays nonzero" "yes" "$([ "$(cat "$cf")" -ge 1 ] && echo yes || echo no)"
+check "incomplete range at cap: says the range is incomplete" "yes" "$(has 'Range incomplete' "$out")"
+check "incomplete range at cap: excludes nothing" "no" "$(has 'already on' "$out")"
 
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2

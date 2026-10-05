@@ -47,8 +47,17 @@
 #
 # Every other case keeps the full PRIOR..HEAD count (fail closed): an empty
 # or malformed base ref, a base that is not the default branch, a base that
-# cannot be fetched, a range left incomplete at DEEPEN_MAX, or a base that
-# never meets HEAD's history within it.
+# cannot be fetched, or a base that never meets HEAD's history within
+# DEEPEN_MAX.
+#
+# Merges stay checked once base commits are excluded: a merge whose result
+# differs from git's automatic re-merge of its parents (a conflict resolved
+# by taking one side, a base change reverted) counts as unreviewed, and so
+# does one the re-merge cannot be computed for.
+#
+# A range still cut by a shallow boundary at DEEPEN_MAX has no knowable full
+# count: the script then excludes nothing, counts the visible part (at least
+# 1, so the guard can fire) and says the range is incomplete.
 #
 # Stdout: the markdown section, or nothing when the range is not computable
 # (first round, unparseable comments, unreachable prior, prior == head).
@@ -272,12 +281,11 @@ if [ -n "$BASE_REF" ] && [ "$BASE_REF" = "$DEFAULT_BRANCH" ] \
   fi
 fi
 
-# The range is ready when the prior is an ancestor of HEAD, no commit in
-# PRIOR..HEAD is a shallow boundary (a boundary hides its parents, which
+# The range is complete when the prior is an ancestor of HEAD and no commit
+# in PRIOR..HEAD is a shallow boundary (a boundary hides its parents, which
 # can belong to the range: merging the base brings in commits the
-# first-parent walk to the prior never deepens), and, when the base was
-# fetched, the base meets HEAD's history.
-range_ready() {
+# first-parent walk to the prior never deepens).
+range_complete() {
   git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null || return 1
   local shallow_file
   shallow_file=$(git rev-parse --git-path shallow 2>/dev/null || true)
@@ -285,6 +293,12 @@ range_ready() {
      && git rev-list "$PRIOR..$HEAD_NOW" 2>/dev/null | grep -qxF -f "$shallow_file"; then
     return 1
   fi
+  return 0
+}
+# The range is ready when it is complete and, when the base was fetched,
+# the base meets HEAD's history.
+range_ready() {
+  range_complete || return 1
   if [ -n "$BASE_OK" ] && ! git merge-base "$HEAD_NOW" "$BASE_TRACK" >/dev/null 2>&1; then
     return 1
   fi
@@ -319,10 +333,18 @@ if ! git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; then
   exit 0
 fi
 
+# The prior is reachable but a shallow boundary still sits inside the range
+# (DEEPEN_MAX reached): only part of the range is visible, so its count is
+# a lower bound. Say so, exclude nothing, and keep the count nonzero.
+INCOMPLETE=""
+if ! range_complete; then
+  INCOMPLETE=1
+fi
+
 # Exclude base commits only from a complete range whose base meets HEAD;
-# otherwise keep the full count (fail closed).
+# otherwise keep the full visible count (fail closed).
 BASE_TIP=""
-if [ -n "$BASE_OK" ] && range_ready; then
+if [ -z "$INCOMPLETE" ] && [ -n "$BASE_OK" ] && range_ready; then
   BASE_TIP=$(git rev-parse -q --verify "$BASE_TRACK^{commit}" 2>/dev/null || true)
 fi
 
@@ -332,74 +354,111 @@ if [ -n "$BASE_TIP" ]; then
 fi
 
 ALL_COUNT=$(git rev-list --count --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null || echo "0")
-if [ "$ALL_COUNT" = "0" ]; then
+if [ "$ALL_COUNT" = "0" ] && [ -z "$INCOMPLETE" ]; then
   exit 0
 fi
 
-COMMIT_COUNT=$(git rev-list --count --no-merges "${RANGE[@]}" 2>/dev/null || echo "$ALL_COUNT")
-write_count "$COMMIT_COUNT"
-BASE_COUNT=$((ALL_COUNT - COMMIT_COUNT))
+OWN_COUNT=$(git rev-list --count --no-merges "${RANGE[@]}" 2>/dev/null || echo "$ALL_COUNT")
+BASE_COUNT=$((ALL_COUNT - OWN_COUNT))
 
-# A branch name may hold a backtick; a double-backtick code span with
-# padding keeps one from closing the span early.
-if [[ "$BASE_REF" == *'`'* ]]; then
-  BASE_MD="\`\` $BASE_REF \`\`"
+# Merge commits are not counted by --no-merges, and while every base commit
+# was counted that was harmless: a merge of the base brought at least one
+# counted commit with it. Once base commits are excluded, a merge is the
+# only place a bad resolution shows -- a conflict resolved by taking one
+# side, or a base change silently reverted to the PR's old content. A
+# combined diff (--cc) hides both, since the result equals one parent. So
+# compare each merge with git's own automatic re-merge of its parents
+# (`git show --remerge-diff`, git >= 2.36): a merge whose result differs
+# from it in any file counts as unreviewed. A merge the re-merge cannot be
+# computed for counts too (fail closed).
+MERGE_FLAGGED=0
+MERGE_LINES=()
+if [ -n "$BASE_TIP" ]; then
+  while IFS= read -r m; do
+    [ -n "$m" ] || continue
+    MERGE_LINES+=("    $(git log --oneline -1 "$m" 2>/dev/null || echo "$m")")
+    if files=$(git show --remerge-diff --format= --name-only "$m" 2>/dev/null); then
+      files=$(sed '/^$/d' <<<"$files")
+      if [ -n "$files" ]; then
+        MERGE_FLAGGED=$((MERGE_FLAGGED + 1))
+        while IFS= read -r f; do
+          MERGE_LINES+=("        $f")
+        done <<<"$files"
+      else
+        MERGE_LINES+=("        (matches git's automatic merge of its parents)")
+      fi
+    else
+      MERGE_FLAGGED=$((MERGE_FLAGGED + 1))
+      MERGE_LINES+=("        (re-merge could not be computed: examine this merge by hand; counted)")
+    fi
+  done < <(git rev-list --merges "${RANGE[@]}" 2>/dev/null || true)
+fi
+
+COMMIT_COUNT=$((OWN_COUNT + MERGE_FLAGGED))
+# Backstop: a boundary commit inside the range has its parents hidden, so
+# rev-list already counts it (even a merge reads as parentless) and the
+# visible count is at least 1; keep that true whatever git does.
+if [ -n "$INCOMPLETE" ] && [ "$COMMIT_COUNT" -lt 1 ]; then
+  COMMIT_COUNT=1
+fi
+write_count "$COMMIT_COUNT"
+
+# A branch name may hold backticks; a code span fenced by a backtick run
+# longer than any run in the name, padded with spaces, keeps them inside.
+longest=0
+run=0
+for (( i = 0; i < ${#BASE_REF}; i++ )); do
+  if [ "${BASE_REF:i:1}" = '`' ]; then
+    run=$((run + 1))
+    [ "$run" -gt "$longest" ] && longest=$run
+  else
+    run=0
+  fi
+done
+if [ "$longest" -gt 0 ]; then
+  fence=$(printf '%*s' "$((longest + 1))" '' | tr ' ' '`')
+  BASE_MD="$fence $BASE_REF $fence"
 else
   BASE_MD="\`$BASE_REF\`"
 fi
 
 BASE_NOTE=()
-if [ "$BASE_COUNT" -gt 0 ]; then
+if [ "$BASE_COUNT" -gt 0 ] && [ -n "$BASE_TIP" ]; then
   BASE_LOG=$(comm -23 \
     <(git rev-list --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null | sort) \
     <(git rev-list --no-merges "${RANGE[@]}" 2>/dev/null | sort) \
     | git log --oneline --no-walk=sorted --stdin 2>/dev/null | sed 's/^/    /' || true)
   BASE_NOTE=(
     ''
-    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch and this PR's base, at \`${BASE_TIP:0:8}\`), which reached this branch only by merging the base. They are not this PR's content, add nothing to its diff, and are not counted as unreviewed:"
+    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch and this PR's base, at \`${BASE_TIP:0:8}\`), which reached this branch only by merging the base. They are not this PR's own commits and are not counted as unreviewed themselves; the merges that brought them in are checked below, since a merge can still change what the PR does to their files:"
     ''
     "$BASE_LOG"
   )
 fi
 
-# Merge commits are never counted (--no-merges), but one that resolved a
-# conflict can change files itself. With base commits excluded the stat
-# below no longer covers them, so list every merge in the range that is not
-# itself on the base, with the files it changed relative to EVERY parent
-# (git's combined diff: the conflict resolutions).
 MERGE_NOTE=()
-if [ -n "$BASE_TIP" ] && [ "$BASE_COUNT" -gt 0 ]; then
-  MERGE_LINES=()
-  while IFS= read -r m; do
-    [ -n "$m" ] || continue
-    MERGE_LINES+=("    $(git log --oneline -1 "$m" 2>/dev/null || echo "$m")")
-    if files=$(git diff-tree --cc --name-only --no-commit-id "$m" 2>/dev/null); then
-      if [ -n "$files" ]; then
-        while IFS= read -r f; do
-          MERGE_LINES+=("        $f")
-        done <<<"$files"
-      else
-        MERGE_LINES+=("        (no file differs from every parent)")
-      fi
-    else
-      MERGE_LINES+=("        (could not compute: examine this merge by hand)")
-    fi
-  done < <(git rev-list --merges "${RANGE[@]}" 2>/dev/null || true)
-  if [ "${#MERGE_LINES[@]}" -gt 0 ]; then
-    MERGE_NOTE=(
-      ''
-      "Merge commits in the range, each with the files it changed relative to every parent (conflict resolutions, which no listed commit carries). Examine any file listed here:"
-      ''
-      "${MERGE_LINES[@]}"
-    )
-  fi
+if [ "${#MERGE_LINES[@]}" -gt 0 ]; then
+  MERGE_NOTE=(
+    ''
+    "Merge commits in the range, each with the files where its result differs from git's own automatic merge of its parents (\`git show --remerge-diff\`): hand-resolved conflicts, a side taken wholesale, or a base change reverted. A merge with any such file is counted as unreviewed. Examine every file listed here:"
+    ''
+    "${MERGE_LINES[@]}"
+  )
+fi
+
+INCOMPLETE_NOTE=()
+if [ -n "$INCOMPLETE" ]; then
+  INCOMPLETE_NOTE=(
+    ''
+    "**Range incomplete:** the workflow stopped deepening this shallow checkout at its limit with part of ${PRIOR:0:8}..${HEAD_NOW:0:8} still beyond the shallow boundary, so the commits listed here are only the visible part of the range and the count is a lower bound. Review the PR's full diff against its base rather than only the commits listed."
+  )
 fi
 
 if [ "$COMMIT_COUNT" = "0" ]; then
   printf '%s\n' \
     '## What changed since the last review round (computed)' \
     '' \
-    "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The workflow computed the range with git itself. It holds no commit of this PR's own: every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the base branch." \
+    "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The workflow computed the range with git itself. It holds no commit of this PR's own, and no merge whose result differs from git's automatic merge: every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the base branch." \
     ${BASE_NOTE[@]+"${BASE_NOTE[@]}"} \
     ${MERGE_NOTE[@]+"${MERGE_NOTE[@]}"} \
     '' \
@@ -440,5 +499,6 @@ printf '%s\n' \
   "$STAT" \
   ${MERGE_NOTE[@]+"${MERGE_NOTE[@]}"} \
   ${BASE_NOTE[@]+"${BASE_NOTE[@]}"} \
+  ${INCOMPLETE_NOTE[@]+"${INCOMPLETE_NOTE[@]}"} \
   '' \
   "**Mandatory review requirement:** $COMMIT_COUNT unreviewed commit(s) exist in this range (${PRIOR:0:8}..${HEAD_NOW:0:8}). You MUST examine these commits and the diff above. Every commit in this range must be thoroughly reviewed."

@@ -13,9 +13,17 @@
   count, since a PR author can retarget at a branch of their own without
   re-running the review. An empty, malformed or unfetchable base, or a base
   that never meets the PR's history within `DEEPEN_MAX`, also keeps the full
-  count, so the guard still fails closed. Merge commits that resolved a
-  conflict are listed with the files they changed.
+  count, so the guard still fails closed.
+- **Merges stay counted when their result differs from git's own merge.**
+  Once base commits are excluded, each merge in the range is compared with
+  `git show --remerge-diff` (git 2.36 or later). A merge whose result differs
+  in any file is counted as unreviewed and listed with those files. That
+  covers a conflict resolved by taking one side, and a base change reverted
+  to the PR's old copy. A merge whose re-merge cannot be computed is counted
+  as well.
 - **`compute-incremental-range.sh` no longer undercounts a range on a shallow
   checkout.** It used to stop deepening once the prior commit was reachable,
   which could leave commits brought in by a merge beyond the shallow boundary
   and uncounted. It now deepens until no commit in the range is a boundary.
+  If `DEEPEN_MAX` stops it first, it excludes nothing, counts the visible part
+  of the range (at least 1), and tells the reviewer the range is incomplete.
