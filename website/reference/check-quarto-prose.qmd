@@ -1,0 +1,178 @@
+---
+title: "check-quarto-prose.yml"
+---
+
+Block a pull request that adds an idiom, cliche or slang phrase to a `.qmd` or
+`.md` file, or that puts an example, remark or definition in a notes div.
+The house style is plain, literal prose that a reader with English as a second
+language, or a literal reading style, can take at face value.
+The prose rules themselves live in
+[Morrison-Lab/psw](https://github.com/Morrison-Lab/psw).
+This check enforces two of them mechanically and does not restate them.
+
+## Diff-scoped, like check-typos
+
+Only findings on lines a diff adds are reported, so a first run over an
+existing repository does not reflag the prose it already has.
+On a pull request the reusable workflow passes the base commit as `base-ref`.
+With no `base-ref`, or a `base-ref` this clone cannot see (a shallow clone,
+for example), the check is skipped with a warning.
+It never falls back to scanning the whole tree.
+Pass `base-ref: all` to scan every tracked file once you are ready to clean
+the backlog.
+
+A diff-scoped run reads each file as committed at `HEAD`, the same content
+the diff was computed from, so an uncommitted edit cannot shift the line
+numbers the diff reported.
+Only `base-ref: all` reads the working tree.
+Lines are counted by newline alone, as git counts them, so a form feed or a
+Unicode line separator in a file does not move a finding to the wrong line.
+
+The check is blocking by default.
+Only an explicit `fail: false` (trimmed, case-insensitive) turns findings into
+warnings.
+
+## Rule 1: notes-div-content
+
+A `::: notes` div, or a `::: {.notes}` div, holds speaker notes.
+An example, remark or definition that sits in one is hidden from the rendered
+page and cannot be cross-referenced.
+The rule reports a notes div when either test is true:
+
+- its body contains a nested div whose id starts with `exm-`, `rem-`, `def-`,
+  `thm-` or `exr-`;
+- its first non-blank line starts with "Example", "Remark" or "Note:", in any
+  case, with optional bold or italic marks (`**Example 1.**`, `__Remark.__`).
+  "Examples" and "Remarks" count too.
+  "Note that ..." does not, because it has no colon.
+
+The annotation names the line of the nested div or the first line, and gives
+the fix: "Use an #exm-, #rem- or #def- div, not a notes div."
+
+The check tracks div nesting by the length of each colon run.
+A closing fence ends the nearest open div with the same number of colons, and
+any inner div left unclosed ends with it.
+A closing fence with no same-length match ends the innermost open div.
+So a `:::::` fence that closes an outer notes div ends it even if an inner
+`:::` div was never closed, and an `#exm-` div that follows is not read as
+inside the notes.
+Div fences inside fenced code, HTML comments and display math are ignored.
+
+## Rule 2: banned-idiom
+
+A case-insensitive, whole-phrase match against a list of idioms, cliches and
+slang.
+The bundled list is
+[`banned-idioms.txt`](https://github.com/Morrison-Lab/gha/blob/main/check-quarto-prose/banned-idioms.txt).
+It holds more than 40 entries, such as `under the hood`, `low-hanging fruit`,
+`deep dive`, `at the end of the day`, `rule of thumb` and `a bit of a`.
+Read the file for the full set.
+
+List syntax:
+
+- One phrase per line.
+  Blank lines and `#` comments are skipped.
+- A space or a hyphen in a phrase matches any run of horizontal whitespace
+  (spaces, tabs, a non-breaking space), a hyphen, or a single line break, so
+  `hand-wavy` also finds `hand wavy` and a phrase wrapped by semantic line
+  breaks.
+  A phrase never matches across a blank line.
+- A word ending in `*` also matches the rest of that word: `cherry-pick*`
+  finds `cherry-picked` and `cherry-picking`.
+  Use it only where every continuation of the stem is the same idiom.
+  The bundled list uses no star: it spells out `dive into`, `dives into`,
+  `dived into`, `diving into` and `dove into` instead of `dive*`, because
+  the stem would also match "diverges into", and `game changer`,
+  `game changers` and `game changing` instead of `game chang*`, which
+  would also match "game changes".
+- Matching is whole-phrase, so `under the hood` does not match "under the
+  hoodie".
+
+The `idioms-file` input replaces the bundled list with your own file in the
+same format.
+A named file that is missing or lists no phrases is an error, not a silent
+fall back to the bundled list.
+
+### What is not scanned
+
+- fenced code blocks, including a fence nested in a longer fence, and
+  executable chunks;
+- inline code, inline and display math, and HTML comments;
+  a `$$` with no closing `$$` hides nothing past the next blank line, the
+  next heading or the end of the file, because Pandoc display math cannot
+  cross a blank line;
+- link destinations and bare URLs, attribute braces such as
+  `{#sec-deep-dive}`, shortcodes, and citation or cross-reference keys such as
+  `@sec-deep-dive`;
+- YAML front matter keys other than `title`, `subtitle` and `description`.
+
+Link text, headings, table cells and image alt text are scanned.
+
+### Exempting a line
+
+Add `<!-- prose-allow: phrase -->` to the line that holds the phrase, for
+example when the line quotes someone else.
+The comment exempts only the phrases it names (comma-separated), and nothing
+else on the line.
+A comment alone on its own line exempts the line after it.
+
+For a whole file, use the `allow-file` input: one entry per line, either
+`path-glob: phrase` or a bare `phrase` that is allowed everywhere.
+
+## Limits
+
+A phrase list cannot see context.
+
+- Some entries have a literal use.
+  A bare "lean" is not listed, because "lean statistics" and "lean on a
+library" are literal, so only figurative forms such as `lean toward` are.
+  `Rule of thumb` in a quotation, or `red herring` in a discussion of the
+fallacy, is a false positive.
+  Exempt it.
+- A phrase the list does not contain is not flagged, however figurative it is.
+  The list is a floor, not a full style check.
+- The notes-div test is a first-line and nested-div test.
+  An example buried in the middle of plain notes text is not found.
+- Matching sees prose line by line after masking.
+  A code span that spans two lines is not recognised, so a phrase inside one
+may be reported.
+- Div attributes such as `title="..."` on a callout are not scanned.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `globs` | string | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to scan (recursive). An empty value uses the default. |
+| `paths-ignore` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of files to skip. |
+| `base-ref` | string | `''` | Git ref to diff against; empty uses the PR base on pull requests and skips on push; `all` scans every tracked file. |
+| `idioms-file` | string | `''` | Phrase list replacing the bundled one, relative to the repository root. |
+| `allow-file` | string | `''` | `path-glob: phrase` exemptions, relative to the repository root. |
+| `fail` | boolean | `true` | Fail the job on a finding (else warn only). |
+
+The composite action takes the same inputs, with `fail` as a string.
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+name: Check Quarto prose
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-prose.yml@v3
+    # with:
+    #   globs: '*.qmd'
+    #   idioms-file: '.github/idioms.txt'
+    #   allow-file: '.github/prose-allow.txt'
+    #   fail: false
+```
+
+See `check-quarto-prose.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.
