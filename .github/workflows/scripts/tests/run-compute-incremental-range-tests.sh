@@ -398,6 +398,9 @@ check "non-default base (stage): unreviewed commit still listed" "yes" "$(has 's
 # 26. SHALLOW checkout of the PR head with actions/checkout's narrow
 #     refspec, main moved past the merged point. The script fetches and
 #     deepens the base itself, and the base count matches the full clone's.
+#     Under git 2.55 this case is what catches deepening the base by its
+#     refspec: an up-to-date refspec sends no want, the base's boundary
+#     never moves, and nothing is excluded (git 2.43 passes it either way).
 ( cd "$borigin" && $GIT update-ref refs/pull/2/head "$B_MERGED" )
 bshallow="$tmp/bshallow"
 mkdir -p "$bshallow"

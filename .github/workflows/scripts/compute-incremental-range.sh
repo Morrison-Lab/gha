@@ -318,13 +318,31 @@ until range_ready; do
   # the ordinary pull_request checkout is refs/pull/<n>/merge -- not on any
   # branch -- so the bare form never reaches the prior there (gha#717
   # review round 2, confirmed against both checkout topologies).
+  #
+  # Deepen the base by its tip SHA too, never by its refspec. A refspec
+  # whose remote value equals the local ref is up to date, and git 2.55
+  # sends no want for it, so --deepen never moved the base's boundary: a
+  # base that had advanced past the merged point never met HEAD, and every
+  # round excluded nothing (git 2.43 still deepened it). An explicit SHA is
+  # always sent as a want, as HEAD_NOW already is.
   wants=("$HEAD_NOW")
   if [ -n "$BASE_OK" ]; then
-    wants+=("+refs/heads/$BASE_REF:$BASE_TRACK")
+    base_sha=$(git rev-parse -q --verify "$BASE_TRACK^{commit}" 2>/dev/null || true)
+    if [ -n "$base_sha" ]; then
+      wants+=("$base_sha")
+    fi
   fi
+  shallow_before=$(cat "$(git rev-parse --git-path shallow 2>/dev/null)" 2>/dev/null || true)
   git fetch -q --no-tags --deepen="$DEEPEN_STEP" origin "${wants[@]}" 2>/dev/null \
     || git fetch -q --deepen="$DEEPEN_STEP" 2>/dev/null || break
   deepened=$((deepened + DEEPEN_STEP))
+  # A deepen that moved no boundary will not move one next time either:
+  # stop rather than spin to DEEPEN_MAX (which, at a small DEEPEN_STEP, is
+  # hundreds of fetches).
+  shallow_after=$(cat "$(git rev-parse --git-path shallow 2>/dev/null)" 2>/dev/null || true)
+  if [ "$shallow_after" = "$shallow_before" ]; then
+    break
+  fi
 done
 
 # An unreachable prior (orphaned by a force-push, or past DEEPEN_MAX): emit
