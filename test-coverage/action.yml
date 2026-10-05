@@ -30,7 +30,8 @@ inputs:
   upload-test-results:
     description: >-
       Also generate a JUnit test-results report (testthat::JunitReporter) and
-      upload it to Codecov via codecov/test-results-action, powering Codecov's
+      upload it to Codecov via codecov/codecov-action (report_type:
+      test_results), powering Codecov's
       Test Analytics (failed/flaky-test reporting) -- separate from the
       Cobertura line-coverage upload above, which only measures which lines
       ran, not which tests passed or failed. On by default, matching the
@@ -159,13 +160,18 @@ runs:
           reporter = testthat::JunitReporter$new(junit_path)
         )
 
+    # codecov/test-results-action is deprecated, and its upload began failing
+    # with a TLS handshake error (gha#1012); codecov-action uploads JUnit
+    # results itself with report_type: test_results.
     - name: Upload test results to Codecov
       if: always() && inputs.upload-test-results == 'true'
-      uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+      uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
       with:
         token: ${{ inputs.token }}
         fail_ci_if_error: ${{ inputs.fail-ci-if-error }}
-        file: ${{ runner.temp }}/junit.xml
+        report_type: test_results
+        files: ${{ runner.temp }}/junit.xml
+        disable_search: true
 
     - name: Show testthat output
       if: always()
