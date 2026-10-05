@@ -202,7 +202,10 @@ $GIT clone -q "file://$origin" "$mergerepo"
 HEAD_MERGE=$(cd "$mergerepo" && $GIT rev-parse HEAD)
 merge_count_file="$tmp/merge-count.txt"
 out=$(cd "$mergerepo" && bash "$script" "$tmp/comments-c3.json" "$HEAD_MERGE" "$merge_count_file")
-check "merge commit not listed in log" "no" "$(grep -q 'Merge branch side' <<<"$out" && echo yes || echo no)"
+log_block=$(sed -n '/^    \$ git log/,/^$/p' <<<"$out")
+check "merge commit not listed in log" "no" "$(grep -q 'Merge branch side' <<<"$log_block" && echo yes || echo no)"
+check "clean merge listed only in the merge check, as matching git's merge" "yes" \
+  "$(grep -A1 'Merge branch side' <<<"$out" | grep -qF "(matches git's automatic merge of its parents)" && echo yes || echo no)"
 check "merge count excludes merge commit (c4, c5, side = 3)" "3" "$(cat "$merge_count_file")"
 
 # 14. Skipped review comment with structured payload skipped (gha#965).
@@ -295,7 +298,7 @@ out=$(run_in "$full" "$tmp/comments-verdict-no-diff.json")
 check "verdict no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "verdict no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
-# 21-33. Base-branch commits merged into the PR branch are not unreviewed
+# 21-34. Base-branch commits merged into the PR branch are not unreviewed
 #        PR commits (observed on Morrison-Lab/lds#369). The PR branch merges
 #        main ("Update branch") after a reviewed round, so PRIOR..HEAD holds
 #        main's squash merges of OTHER PRs. Counting them made every later
@@ -635,6 +638,59 @@ check "octopus merge: counted with the side commit (1 + 1)" "2" "$(cat "$cf")"
 check "octopus merge: listed with the octopus note" "yes" \
   "$(has '(octopus merge: re-merge not supported; examine by hand; counted)' "$out")"
 check "octopus merge: no git warning listed as a file" "no" "$(has 'warning' "$out")"
+
+# 34. A range holding ONLY a merge, no non-merge commit (gha#1011 review):
+#     HEAD = commit-tree of PRIOR's tree plus secret.txt, parents PRIOR and
+#     a main commit that is already an ancestor of PRIOR. git merge refuses
+#     this ("Already up to date"); anyone with push access can build it.
+#     `rev-list --no-merges PRIOR..HEAD` is empty, so an early exit on that
+#     count skipped the re-merge check and reported nothing with count 0.
+#     The merge must count in every path: default-branch base, no base, and
+#     a non-default base.
+sorigin="$tmp/sorigin"
+mkdir -p "$sorigin"
+( cd "$sorigin"
+  $GIT init -q
+  echo base > base.txt; $GIT add base.txt; $GIT commit -q -m "subject-base0"
+  echo m1 > m1.txt; $GIT add m1.txt; $GIT commit -q -m "subject-main-1"
+  $GIT checkout -q -b feature
+  echo f1 > f1.txt; $GIT add f1.txt; $GIT commit -q -m "subject-pr-own-1"
+  $GIT branch stage2 feature
+  prior=$($GIT rev-parse HEAD)
+  main_tip=$($GIT rev-parse main)
+  $GIT merge-base --is-ancestor "$main_tip" "$prior"
+  echo "secret" > secret.txt
+  $GIT add secret.txt
+  tree=$($GIT write-tree)
+  sneaky=$($GIT commit-tree "$tree" -p "$prior" -p "$main_tip" -m "Merge branch 'main' into feature")
+  $GIT reset -q --hard "$prior"
+  $GIT update-ref refs/heads/feature "$sneaky"
+  $GIT checkout -q main
+)
+S_PRIOR=$( cd "$sorigin" && $GIT rev-parse feature^1 )
+S_HEAD=$( cd "$sorigin" && $GIT rev-parse feature )
+check "merge-only precondition: no non-merge commit in range" "0" \
+  "$(cd "$sorigin" && git rev-list --count --no-merges "$S_PRIOR..$S_HEAD")"
+check "merge-only precondition: remerge-diff names secret.txt" "secret.txt" \
+  "$(cd "$sorigin" && git show --remerge-diff --format= --name-only "$S_HEAD" | sed '/^$/d')"
+comments_for "$S_PRIOR" "$tmp/comments-s.json"
+sclone="$tmp/sclone"
+$GIT clone -q "file://$sorigin" "$sclone"
+( cd "$sclone" && $GIT checkout -q --detach "$S_HEAD" )
+for variant in default-base no-base non-default-base; do
+  case "$variant" in
+    default-base)     args=(main main) ;;
+    no-base)          args=() ;;
+    non-default-base) args=(stage2 main) ;;
+  esac
+  cf="$tmp/scount-$variant.txt"
+  rm -f "$cf"
+  out=$(cd "$sclone" && bash "$script" "$tmp/comments-s.json" "$S_HEAD" "$cf" ${args[@]+"${args[@]}"})
+  check "merge-only range ($variant): merge counted" "1" "$(cat "$cf")"
+  check "merge-only range ($variant): secret.txt listed under the merge" "yes" \
+    "$(grep -A2 "Merge branch 'main' into feature" <<<"$out" | grep -qx '        secret.txt' && echo yes || echo no)"
+  check "merge-only range ($variant): demands review" "yes" "$(has 'Mandatory review requirement:** 1 unreviewed' "$out")"
+done
 
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
