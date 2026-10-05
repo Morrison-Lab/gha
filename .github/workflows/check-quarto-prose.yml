@@ -14,9 +14,9 @@ on:
       base-ref:
         description: >-
           Git ref/SHA to diff against; only findings on lines added since this
-          ref are reported. Empty (the default) uses the PR base SHA on
-          pull_request runs and skips on push. Pass `all` to scan every
-          tracked file.
+          ref are reported. Empty (the default) uses `HEAD^1`, the base tip
+          GitHub built the merge ref on, on pull_request runs and skips on
+          push. Pass `all` to scan every tracked file.
         type: string
         default: ''
       idioms-file:
@@ -60,4 +60,7 @@ jobs:
           # On PRs, check only lines added relative to the base; on a push
           # there is no base to diff against, so the check is skipped unless
           # the caller passed base-ref (including `all`).
-          base-ref: ${{ inputs.base-ref != '' && inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || '') }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on. The payload's pull_request.base.sha can lag that tip,
+          # counting the base's newer commits as added by the PR (gha#1007).
+          base-ref: ${{ inputs.base-ref != '' && inputs.base-ref || (github.event_name == 'pull_request' && 'HEAD^1' || '') }}

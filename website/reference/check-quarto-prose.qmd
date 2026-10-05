@@ -14,7 +14,8 @@ This check enforces two of them mechanically and does not restate them.
 
 Only findings on lines a diff adds are reported, so a first run over an
 existing repository does not reflag the prose it already has.
-On a pull request the reusable workflow passes the base commit as `base-ref`.
+On a pull request the reusable workflow passes `HEAD^1` as `base-ref`:
+the base tip GitHub built the merge ref on, which the payload's `base.sha` can lag.
 With no `base-ref`, or a `base-ref` this clone cannot see (a shallow clone,
 for example), the check is skipped with a warning.
 It never falls back to scanning the whole tree.
@@ -144,7 +145,7 @@ may be reported.
 | --- | --- | --- | --- |
 | `globs` | string | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to scan (recursive). An empty value uses the default. |
 | `paths-ignore` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of files to skip. |
-| `base-ref` | string | `''` | Git ref to diff against; empty uses the PR base on pull requests and skips on push; `all` scans every tracked file. |
+| `base-ref` | string | `''` | Git ref to diff against; empty uses `HEAD^1`, the base tip of the merge ref, on pull requests and skips on push; `all` scans every tracked file. |
 | `idioms-file` | string | `''` | Phrase list replacing the bundled one, relative to the repository root. |
 | `allow-file` | string | `''` | `path-glob: phrase` exemptions, relative to the repository root. |
 | `fail` | boolean | `true` | Fail the job on a finding (else warn only). |
