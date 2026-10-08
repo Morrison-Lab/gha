@@ -45,6 +45,7 @@ EXPECTED_COMPOSITE_INPUTS = (
     "formats",
     "fail-on-render-warning",
     "forbid-log-patterns",
+    "timezone",
     "detect-changed-chapters",
     "changed-chapters-banner",
     "changed-chapters-glob",

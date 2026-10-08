@@ -90,6 +90,13 @@ on:
         description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
         type: string
         default: ''
+      timezone:
+        description: >-
+          IANA time zone (e.g. 'America/Los_Angeles') exported as TZ for the render
+          and later steps, so date: last-modified stamps are not in UTC.
+          Empty leaves the runner's time zone unchanged.
+        type: string
+        default: ''
       checkout-submodules:
         description: Initialize the caller's git submodules before rendering.
         type: boolean
@@ -173,6 +180,7 @@ jobs:
           deno-v8-options: ${{ inputs.deno-v8-options }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
+          timezone: ${{ inputs.timezone }}
 
       - name: Stage rendered site
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

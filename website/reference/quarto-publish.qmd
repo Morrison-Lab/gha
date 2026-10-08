@@ -28,6 +28,7 @@ skip the deploy.
 | `deno-v8-options`          | string  | `'--max-old-space-size=12288,--max-heap-size=12288'` | Options passed to Deno V8 via `QUARTO_DENO_V8_OPTIONS` to raise the heap limit for large site renders.                                           |
 | `fail-on-render-warning`   | boolean | `false`                                           | Fail the build if Quarto emits any render warnings (`WARN` in the render log).                                                                   |
 | `forbid-log-patterns`      | string  | `''`                                              | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files).                              |
+| `timezone`                 | string  | `''`                                              | IANA time zone (e.g. `America/Los_Angeles`) exported as `TZ` for the render and later steps, so `date: last-modified` stamps are not in UTC. Empty leaves the runner's time zone unchanged. A value containing a newline or `=` is rejected. |
 | `checkout-submodules`      | boolean | `false`                                           | Initialize the caller's git submodules before rendering.                                                                                          |
 | `pre-render-artifact`      | string  | `''`                                              | Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip.     |
 | `pre-render-artifact-path` | string  | `''`                                              | Directory in the caller repo to extract `pre-render-artifact` into. Defaults to the workspace root.                                               |
@@ -115,6 +116,7 @@ jobs:
     #   fail-on-render-warning: true # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders
+    #   timezone: America/Los_Angeles # export TZ for the render (e.g. for date: last-modified)
     #   checkout-submodules: true
     #   pre-render-artifact: demo-media       # inject a prior job's artifact before render
     #   pre-render-artifact-path: website/media

@@ -44,6 +44,7 @@ EXPECTED_COMPOSITE_INPUTS = (
     "deno-v8-options",
     "fail-on-render-warning",
     "forbid-log-patterns",
+    "timezone",
 )
 
 EXPECTED_WORKFLOW_INPUTS = EXPECTED_COMPOSITE_INPUTS + (

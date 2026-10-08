@@ -46,6 +46,7 @@ jobs:
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders
+    #   timezone: America/Los_Angeles     # export TZ for the render (e.g. for date: last-modified)
     #   detect-changed-chapters: true      # expose which chapters differ from the deployed render
     #   changed-chapters-banner: true      # and list them on the preview home page
     #   highlight-changes: true            # and highlight modified/added text in rendered chapters
