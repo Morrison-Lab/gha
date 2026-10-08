@@ -42,7 +42,7 @@ esac
 # escape the blockquote and render as an unquoted paragraph the collapse step
 # would not fold.
 message="$(printf '%s' "${QUOTA_MESSAGE:-}" | tr '\n\r' '  ')"
-account="$(printf '%s' "${CLAUDE_ACCOUNT:-${CLAUDE_CODE_ACCOUNT_EMAIL:-${ACCOUNT_EMAIL:-}}}" | tr '\n\r' '  ')"
+account="$(printf '%s' "${CLAUDE_ACCOUNT:-}" | tr '\n\r' '  ')"
 
 printf '> [!WARNING]\n'
 case "$reason" in

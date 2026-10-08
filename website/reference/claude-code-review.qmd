@@ -57,6 +57,13 @@ variable unset while the agent is live, or the mention is answered twice.
 | `ANTHROPIC_API_KEY`       | no       | Direct Anthropic API key (or GitHub App via `/install-github-app`), used instead of `CLAUDE_CODE_OAUTH_TOKEN`. |
 | `SUBMODULES_TOKEN`        | no       | Read access to private submodules.                                                                             |
 
+## Variables
+
+| Variable                    | Required | Description                                                                                                                                                                                                                                                                       |
+| --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLAUDE_CODE_ACCOUNT_EMAIL` | no       | Email address or identifier of the Claude Code account associated with the OAuth token (set at repo or org level). Displayed in quota-skip notices. Falls back to `CLAUDE_ACCOUNT_EMAIL` or `CLAUDE_ACCOUNT`.                                                                   |
+| `CLAUDE_AGENT_DISABLED`     | no       | Set `true` on repos where `claude.yml` is disabled, allowing `claude-code-review.yml`'s `dispatch-on-comment` job to answer `@claude review` mentions directly.                                                                                                                   |
+
 ## Permissions
 
 Grant `contents: read`, `pull-requests: write`, `issues: write`,
