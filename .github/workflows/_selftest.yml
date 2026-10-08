@@ -1462,6 +1462,7 @@ jobs:
         with:
           quota-reason: midrun-429
           quota-message: "You've hit your session limit - resets 10:50pm (UTC)"
+          claude-account: "user@example.com" # phi-allow
           run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
       - name: Exercise build-self-review-skip-notice with an empty workflow-path
         id: skip-notice-incomplete-e2e
@@ -1579,6 +1580,10 @@ jobs:
             echo "::error::build-quota-skip-notice did not render the midrun-429 wording"
             exit 1
           fi
+          if ! grep -qF 'Account: `user@example.com`' "$BODY_FILE"; then # phi-allow
+            echo "::error::build-quota-skip-notice dropped the claude-account input"
+            exit 1
+          fi
           if ! grep -qF 'API message: You'"'"'ve hit your session limit' "$BODY_FILE"; then
             echo "::error::build-quota-skip-notice dropped the quota-message input"
             exit 1
@@ -1587,7 +1592,7 @@ jobs:
             echo "::error::midrun-429 notice still claims no secret is configured"
             exit 1
           fi
-          echo "build-quota-skip-notice rendered the midrun-429 notice with the API message"
+          echo "build-quota-skip-notice rendered the midrun-429 notice with the account and API message"
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually

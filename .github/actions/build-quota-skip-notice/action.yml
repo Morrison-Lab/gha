@@ -21,6 +21,12 @@ inputs:
       through env: into the script, never interpolated into a run: body.
     required: false
     default: ''
+  claude-account:
+    description: >-
+      The Claude account email or identifier associated with the token,
+      if known (e.g. from vars.CLAUDE_CODE_ACCOUNT_EMAIL).
+    required: false
+    default: ''
   run-url:
     description: Run URL (e.g. https://github.com/.../actions/runs/123)
     required: true
@@ -39,6 +45,7 @@ runs:
       env:
         QUOTA_REASON: ${{ inputs.quota-reason }}
         QUOTA_MESSAGE: ${{ inputs.quota-message }}
+        CLAUDE_ACCOUNT: ${{ inputs.claude-account }}
         RUN_URL: ${{ inputs.run-url }}
       run: |
         set -euo pipefail

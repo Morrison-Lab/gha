@@ -73,6 +73,15 @@ check "multiline message: collapsed onto the message line" true "$(contains "$go
 got="$(build rejected-at-door 'Invalid API key')"
 check "rejected-at-door: quotes a captured message" true "$(contains "$got" '> API message: Invalid API key')"
 
+# --- account parameter rendering --------------------------------------------
+got="$(CLAUDE_ACCOUNT="user@example.com" build midrun-429 "$api_msg")"  # phi-allow
+check "account: renders account line" true "$(contains "$got" '> Account: `user@example.com`')"  # phi-allow
+check "account: comes before API message" true "$(contains "$got" $'Account: `user@example.com`\n>\n> API message:')"  # phi-allow
+
+got="$(CLAUDE_ACCOUNT=$'user\n@example.com\r' build midrun-429 "$api_msg")"  # phi-allow
+check "multiline account: collapsed into single line" true "$(contains "$got" 'Account: `user @example.com `')"  # phi-allow
+check "multiline account: no line escapes blockquote" "0" "$(grep -cv '^>' <<<"$got")"
+
 # --- unknown / empty reason: the pre-gha#804 wording, unchanged --------------
 got="$(build '' '')"
 check "empty reason: falls back to the disjunction" true "$(contains "$got" 'No `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret is configured, or account API quota is exhausted')"
