@@ -56,6 +56,11 @@ def highlighter():
 
 
 @pytest.fixture(scope="session")
+def pruner():
+    return _load("gha_prune_stale_freeze", "prune-stale-freeze.py")
+
+
+@pytest.fixture(scope="session")
 def docx_generator():
     return _load("gha_create_docx_tracked_changes", "create-docx-tracked-changes.py")
 
