@@ -951,7 +951,7 @@ cookieconsent.run({
 <td><code>freeze-cache</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Restore and save Quarto <code>_freeze</code> directory via <code>actions/cache</code> keyed on <code>renv.lock</code> and commit SHA.</td>
+<td>Restore and save Quarto <code>_freeze</code> directory via <code>actions/cache</code> keyed on <code>renv.lock</code> and commit SHA. After the restore, frozen results of pages whose file, included subfiles or named data files changed since the cached commit are removed. The saved cache also seeds PR previews.</td>
 </tr>
 <tr class="odd">
 <td><code>deno-v8-options</code></td>
