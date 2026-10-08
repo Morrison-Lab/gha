@@ -270,3 +270,49 @@ def test_the_reusable_workflow_surfaces_every_output(workflow, action):
     for name in action["outputs"]:
         assert f"steps.build.outputs.{name} " in job_outputs[name] + " "
         assert f"jobs.build.outputs.{name} " in workflow_outputs[name]["value"] + " "
+
+
+TIMEZONE_STEP = "Set time zone"
+
+
+@pytest.mark.parametrize("composite", ["preview", "quarto-publish"])
+def test_timezone_defaults_empty_and_is_forwarded(composite):
+    action = yaml.safe_load((REPO_ROOT / composite / "action.yml").read_text(encoding="utf-8"))
+    assert action["inputs"]["timezone"]["default"] == ""
+    step = step_named(action["runs"]["steps"], TIMEZONE_STEP)
+    assert step["if"].endswith("inputs.timezone != ''")
+    assert step["env"]["TIMEZONE"] == "${{ inputs.timezone }}"
+    assert "${{" not in step["run"]
+
+
+@pytest.mark.parametrize("composite", ["preview", "quarto-publish"])
+@pytest.mark.parametrize(
+    ("value", "exported"),
+    [
+        ("America/Los_Angeles", "TZ=America/Los_Angeles\n"),
+        ("UTC\nPATH", None),
+        ("UTC\rPATH", None),
+        ("A=B", None),
+    ],
+)
+def test_timezone_step_exports_tz_and_rejects_unsafe_values(composite, value, exported, tmp_path):
+    import subprocess
+
+    action = yaml.safe_load((REPO_ROOT / composite / "action.yml").read_text(encoding="utf-8"))
+    run = step_named(action["runs"]["steps"], TIMEZONE_STEP)["run"]
+    env_file = tmp_path / "github_env"
+    env_file.write_text("")
+    result = subprocess.run(
+        ["bash", "-c", run],
+        env={"TIMEZONE": value, "GITHUB_ENV": str(env_file), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if exported is None:
+        assert result.returncode != 0
+        assert "::error::" in result.stdout
+        assert env_file.read_text() == ""
+    else:
+        assert result.returncode == 0, result.stderr
+        assert env_file.read_text() == exported

@@ -84,6 +84,13 @@ inputs:
       Newline-separated fixed string patterns that will fail the build if found
       in the Quarto render log.
     default: ''
+  timezone:
+    description: >-
+      IANA time zone (e.g. 'America/Los_Angeles') exported as `TZ` for the
+      render and later steps, so `date: last-modified` and similar stamps
+      are not in UTC. Empty (default) leaves the runner's time zone unchanged.
+      A value containing a newline or `=` is rejected.
+    default: ''
   detect-changed-chapters:
     description: >-
       Compare this run's render against the copy published on the deployed
@@ -194,6 +201,23 @@ runs:
         mkdir -p _preview_upload/meta
         echo "$PR_NUMBER" > _preview_upload/meta/pr-number.txt
         echo "$PREVIEW_ACTION" > _preview_upload/meta/action.txt
+
+    - name: Set time zone
+      if: github.event.action != 'closed' && inputs.timezone != ''
+      shell: bash
+      env:
+        TIMEZONE: ${{ inputs.timezone }}
+      run: |
+        set -euo pipefail
+        # The value is appended to GITHUB_ENV, so a newline would inject
+        # another variable and an `=` would corrupt the TZ assignment.
+        case "$TIMEZONE" in
+          *$'\n'* | *$'\r'* | *=*)
+            echo "::error::timezone must not contain a newline or '='"
+            exit 1
+            ;;
+        esac
+        echo "TZ=$TIMEZONE" >> "$GITHUB_ENV"
 
     - name: Set up Quarto
       if: github.event.action != 'closed'

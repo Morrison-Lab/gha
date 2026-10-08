@@ -97,6 +97,13 @@ on:
         description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
         type: string
         default: ''
+      timezone:
+        description: >-
+          IANA time zone (e.g. 'America/Los_Angeles') exported as TZ for the render
+          and later steps, so date: last-modified stamps are not in UTC.
+          Empty leaves the runner's time zone unchanged.
+        type: string
+        default: ''
       detect-changed-chapters:
         description: >-
           Compare this run's render against the copy published on the deployed
@@ -232,6 +239,7 @@ jobs:
           formats: ${{ inputs.formats }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
+          timezone: ${{ inputs.timezone }}
           detect-changed-chapters: ${{ inputs.detect-changed-chapters }}
           changed-chapters-banner: ${{ inputs.changed-chapters-banner }}
           highlight-changes: ${{ inputs.highlight-changes }}
