@@ -10,3 +10,7 @@
   is gone and to review the PR's full diff, and it writes a count of 1, so
   a no-diff claim in that round is classified `unreviewed-commits-skipped`
   ([gha#1010](https://github.com/Morrison-Lab/gha/issues/1010)).
+  The guard also now recognizes "no code changed", the wording the review
+  prompt's confirming-review guidance itself suggests.
+  A reviewer that honestly reports no new content after a pure rebase is
+  failed closed too, since the workflow cannot tell a rebase from a rewrite.

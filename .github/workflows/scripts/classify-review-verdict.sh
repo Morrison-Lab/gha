@@ -60,6 +60,7 @@ _CORE_PATTERNS = (
     r"no\s+new\s+diff|"
     r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
     r"no\s+new\s+commits|"
+    r"no\s+code\s+(?:has\s+)?changed|"
     r"no\s+substantive\s+(?:logic\s+)?changes|"
     r"head\s+has\s+not\s+moved|"
     r"unchanged\s+head|"
