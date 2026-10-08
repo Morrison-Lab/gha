@@ -38,9 +38,11 @@ case "${QUOTA_REASON:-}" in
   *) reason=unknown ;;
 esac
 
-# Single-line, so a message carrying a newline cannot escape the blockquote
-# and render as an unquoted paragraph the collapse step would not fold.
+# Single-line, so a message or account string carrying a newline cannot
+# escape the blockquote and render as an unquoted paragraph the collapse step
+# would not fold.
 message="$(printf '%s' "${QUOTA_MESSAGE:-}" | tr '\n\r' '  ')"
+account="$(printf '%s' "${CLAUDE_ACCOUNT:-}" | tr '\n\r' '  ')"
 
 printf '> [!WARNING]\n'
 case "$reason" in
@@ -57,6 +59,10 @@ case "$reason" in
     printf '> **Claude review skipped --- API credential or quota unavailable.** No `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset.\n'
     ;;
 esac
+if [[ -n "$account" ]]; then
+  printf '>\n'
+  printf '> Account: `%s`\n' "$account"
+fi
 if [[ -n "$message" ]]; then
   printf '>\n'
   printf '> API message: %s\n' "$message"

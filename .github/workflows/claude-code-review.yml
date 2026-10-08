@@ -1823,6 +1823,7 @@ jobs:
         with:
           quota-reason: ${{ steps.payload.outputs.quota_reason }}
           quota-message: ${{ steps.payload.outputs.quota_message }}
+          claude-account: ${{ vars.CLAUDE_CODE_ACCOUNT_EMAIL || vars.CLAUDE_ACCOUNT_EMAIL || vars.CLAUDE_ACCOUNT || '' }}
           run-url: ${{ steps.target.outputs.run_url }}
 
       - name: Post quota-exhausted comment

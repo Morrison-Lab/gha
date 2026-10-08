@@ -1,0 +1,124 @@
+# Idioms, cliches and slang that check-quarto-prose flags in prose.
+#
+# The house style is plain, literal prose that a reader with English as a
+# second language, or a literal reading style, can take at face value.
+# See https://github.com/Morrison-Lab/psw for the prose rules themselves.
+#
+# Format
+#   One phrase per line. Blank lines and lines starting with # are skipped,
+#   and so is anything after a space followed by #.
+#   Matching is case-insensitive and whole-phrase: "ballpark" does not match
+#   "ballparkx". A space or a hyphen in a phrase matches a space, a hyphen,
+#   or a line break (but never a blank line), so "hand-wavy" also finds
+#   "hand wavy".
+#   A word ending in * also matches the rest of that word. Use it only
+#   where every continuation of the stem is the same idiom. Most stems are
+#   not like that: "dive" or "pan" would match "diverges" and "panels", and
+#   "chang*" would match "game changes". So every entry here lists its
+#   inflections one per line, and none uses the star.
+#
+# A phrase list cannot see context. Some entries have a literal use or are
+# fair to quote. Exempt one with <!-- prose-allow: phrase --> on the line, or
+# list it in an allow-file.
+#
+# Why bare "lean" is not listed: it is an ordinary word (lean statistics,
+# lean on a library). Only the figurative forms are.
+
+# "which way does this course lean" and similar
+lean toward
+leans toward
+leaned toward
+leaning toward
+lean towards
+leans towards
+leaned towards
+leaning towards
+which way does this course lean
+
+# Software and engineering metaphors
+under the hood
+out of the box
+heavy lifting
+kitchen sink
+sanity check
+sanity checks
+sanity checked
+sanity checking
+plug and chug
+plugs and chugs
+plugging and chugging
+hand-wave
+hand-waves
+hand-waved
+hand-waving
+hand-wavy
+nail down
+nails down
+nailed down
+nailing down
+in the weeds
+circle back
+touch base
+think outside the box
+hit the ground running
+
+# Business and self-help cliches
+low-hanging fruit
+silver bullet
+silver bullets
+deep dive
+deep dives
+deep dived
+deep diving
+game changer
+game changers
+game changing
+at the end of the day
+move the needle
+bang for the buck
+boil down to
+boils down to
+boiled down to
+boiling down to
+in a nutshell
+tip of the iceberg
+elephant in the room
+red herring
+red herrings
+barking up the wrong tree
+bark up the wrong tree
+barks up the wrong tree
+barked up the wrong tree
+cut corners
+cuts corners
+cutting corners
+grain of salt
+
+# Estimation and procedure idioms
+rule of thumb
+ballpark
+ballparks
+ballparked
+ballparking
+back of the envelope
+rock solid
+cherry-pick
+cherry-picks
+cherry-picked
+cherry-picking
+
+# Vague or colloquial phrasing
+dive into
+dives into
+dived into
+diving into
+dove into
+wrap your head around
+wraps your head around
+wrapped your head around
+wrapping your head around
+pan out
+pans out
+panned out
+panning out
+a bit of a
