@@ -286,6 +286,19 @@ def test_timezone_defaults_empty_and_is_forwarded(composite):
 
 
 @pytest.mark.parametrize("composite", ["preview", "quarto-publish"])
+def test_timezone_is_set_after_setup_r_and_before_the_render(composite):
+    # r-lib/actions/setup-r exports TZ=UTC, so a TZ written to GITHUB_ENV
+    # before it never reaches the render.
+    steps = yaml.safe_load((REPO_ROOT / composite / "action.yml").read_text(encoding="utf-8"))["runs"]["steps"]
+    names = [step.get("name", "") for step in steps]
+    tz = names.index(TIMEZONE_STEP)
+    setup_r = [i for i, step in enumerate(steps) if "r-lib/actions/setup-r@" in step.get("uses", "")]
+    render = [i for i, name in enumerate(names) if name.startswith("Render Quarto")]
+    assert setup_r and render
+    assert max(setup_r) < tz < min(render)
+
+
+@pytest.mark.parametrize("composite", ["preview", "quarto-publish"])
 @pytest.mark.parametrize(
     ("value", "exported"),
     [

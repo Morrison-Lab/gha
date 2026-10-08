@@ -202,23 +202,6 @@ runs:
         echo "$PR_NUMBER" > _preview_upload/meta/pr-number.txt
         echo "$PREVIEW_ACTION" > _preview_upload/meta/action.txt
 
-    - name: Set time zone
-      if: github.event.action != 'closed' && inputs.timezone != ''
-      shell: bash
-      env:
-        TIMEZONE: ${{ inputs.timezone }}
-      run: |
-        set -euo pipefail
-        # The value is appended to GITHUB_ENV, so a newline would inject
-        # another variable and an `=` would corrupt the TZ assignment.
-        case "$TIMEZONE" in
-          *$'\n'* | *$'\r'* | *=*)
-            echo "::error::timezone must not contain a newline or '='"
-            exit 1
-            ;;
-        esac
-        echo "TZ=$TIMEZONE" >> "$GITHUB_ENV"
-
     - name: Set up Quarto
       if: github.event.action != 'closed'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
@@ -377,6 +360,25 @@ runs:
       # runners have 16 GB of RAM, so 12 GB leaves headroom for R and the
       # OS while lifting the binding constraint (gha#262).
       run: echo "QUARTO_DENO_V8_OPTIONS=--max-old-space-size=12288,--max-heap-size=12288" >> "$GITHUB_ENV"
+
+    - name: Set time zone
+      if: github.event.action != 'closed' && inputs.timezone != ''
+      shell: bash
+      env:
+        TIMEZONE: ${{ inputs.timezone }}
+      # Runs after setup-r, which exports TZ=UTC and would otherwise
+      # overwrite this value for the render.
+      run: |
+        set -euo pipefail
+        # The value is appended to GITHUB_ENV, so a newline would inject
+        # another variable and an `=` would corrupt the TZ assignment.
+        case "$TIMEZONE" in
+          *$'\n'* | *$'\r'* | *=*)
+            echo "::error::timezone must not contain a newline or '='"
+            exit 1
+            ;;
+        esac
+        echo "TZ=$TIMEZONE" >> "$GITHUB_ENV"
 
     - name: Render Quarto site
       if: github.event.action != 'closed'
