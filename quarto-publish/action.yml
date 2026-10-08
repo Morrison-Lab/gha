@@ -202,6 +202,7 @@ runs:
         fi
 
     - name: Restore Quarto freeze
+      id: restore-freeze
       if: inputs.freeze-cache == 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -211,6 +212,18 @@ runs:
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
           quarto-freezer-${{ runner.os }}-
+
+    # See the matching step in preview/action.yml: drop the frozen results of
+    # pages whose own file, included subfiles or data files changed since the
+    # restored cache was rendered, so the published site never serves them.
+    - name: Prune frozen results of changed pages
+      if: steps.restore-freeze.outputs.cache-matched-key != ''
+      shell: bash
+      env:
+        PROJECT_DIR: ${{ inputs.path }}
+        MATCHED_KEY: ${{ steps.restore-freeze.outputs.cache-matched-key }}
+        SCRIPT: ${{ github.action_path }}/../preview/prune-stale-freeze.py
+      run: python3 "$SCRIPT"
 
     - name: Configure Deno V8 heap cap for large site renders
       if: inputs.deno-v8-options != ''

@@ -586,6 +586,13 @@ to bypass the Quarto freeze cache (ensure caller workflows subscribe to
 both `labeled` and `unlabeled` event types to react to label changes, and
 configure `extra-preview-labels` with a JSON array string to extend the
 label allowlist for custom triggers).
+After restoring the freeze cache, the build drops the frozen results of every
+page whose own file, included subfiles, or named data files changed since the
+cached render (`preview/prune-stale-freeze.py`), so `clear freezer` is no
+longer needed when only a subfile changed; `quarto-publish.yml` does the same
+when `freeze-cache` is on.
+A publish with `freeze-cache: true` also seeds new PRs' previews, which fall
+back to the default branch's latest cache.
 Repos with bespoke build pipelines or custom post-render steps can maintain
 a local build workflow and still use `preview-deploy.yml` and
 `cleanup-pr-previews.yml` by producing the three-file `pr-preview-site` artifact

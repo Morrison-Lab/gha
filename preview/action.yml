@@ -315,6 +315,7 @@ runs:
         Rscript -e "tinytex::tlmgr_install(c('luacolor', 'lua-ul'))"
 
     - name: Restore Quarto freeze
+      id: restore-freeze
       if: github.event.action != 'closed' && !contains(github.event.pull_request.labels.*.name, 'clear freezer')
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -325,6 +326,19 @@ runs:
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.base.ref }}-
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
           quarto-freezer-${{ runner.os }}-
+
+    # `freeze: auto` notices a change to a page's own file only, so a page
+    # whose included subfile or data file changed would keep its stale
+    # results. Drop those pages' frozen results, so the cache can be kept for
+    # the rest instead of being discarded wholesale with `clear freezer`.
+    - name: Prune frozen results of changed pages
+      if: steps.restore-freeze.outputs.cache-matched-key != ''
+      shell: bash
+      env:
+        PROJECT_DIR: ${{ inputs.path }}
+        MATCHED_KEY: ${{ steps.restore-freeze.outputs.cache-matched-key }}
+        SCRIPT: ${{ github.action_path }}/prune-stale-freeze.py
+      run: python3 "$SCRIPT"
 
     - name: Raise Deno V8 heap cap for large site renders
       if: github.event.action != 'closed'
