@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Drop the frozen results a restored `_freeze` cache holds for changed pages.
 
 Why this exists
