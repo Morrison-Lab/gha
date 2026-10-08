@@ -564,6 +564,18 @@
     ]
   },
   {
+    "objectID": "reference/claude-code-review.html#variables",
+    "href": "reference/claude-code-review.html#variables",
+    "title": "claude-code-review.yml",
+    "section": "Variables",
+    "text": "Variables\n\n\n\n\n\n\n\n\nVariable\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_ACCOUNT_EMAIL\nno\nEmail address or identifier of the Claude Code account associated with the OAuth token (set at repo or org level). Displayed in quota-skip notices. Falls back to CLAUDE_ACCOUNT_EMAIL or CLAUDE_ACCOUNT.\n\n\nCLAUDE_AGENT_DISABLED\nno\nSet true on repos where claude.yml is disabled, allowing claude-code-review.yml’s dispatch-on-comment job to answer @claude review mentions directly.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "claude-code-review.yml"
+    ]
+  },
+  {
     "objectID": "reference/claude-code-review.html#permissions",
     "href": "reference/claude-code-review.html#permissions",
     "title": "claude-code-review.yml",

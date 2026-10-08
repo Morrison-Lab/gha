@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.18">
+<meta name="generator" content="quarto-1.10.19">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -81,9 +81,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b626d73c4c936ccc3cb08be7d45d1df6.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-f6e81f4864cb6d8b696b855696ff1c11.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
@@ -822,6 +822,7 @@ cookieconsent.run({
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
+  <li><a href="#variables" id="toc-variables" class="nav-link" data-scroll-target="#variables">Variables</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#the-require-review-gate" id="toc-the-require-review-gate" class="nav-link" data-scroll-target="#the-require-review-gate">The <code>require-review</code> gate</a></li>
   <li><a href="#the-require-clean-verdict-gate" id="toc-the-require-clean-verdict-gate" class="nav-link" data-scroll-target="#the-require-clean-verdict-gate">The <code>require-clean-verdict</code> gate</a></li>
@@ -1020,6 +1021,35 @@ cookieconsent.run({
 <td><code>SUBMODULES_TOKEN</code></td>
 <td>no</td>
 <td>Read access to private submodules.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="variables" class="level2">
+<h2 class="anchored" data-anchor-id="variables">Variables</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 2%">
+<col style="width: 88%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>CLAUDE_CODE_ACCOUNT_EMAIL</code></td>
+<td>no</td>
+<td>Email address or identifier of the Claude Code account associated with the OAuth token (set at repo or org level). Displayed in quota-skip notices. Falls back to <code>CLAUDE_ACCOUNT_EMAIL</code> or <code>CLAUDE_ACCOUNT</code>.</td>
+</tr>
+<tr class="even">
+<td><code>CLAUDE_AGENT_DISABLED</code></td>
+<td>no</td>
+<td>Set <code>true</code> on repos where <code>claude.yml</code> is disabled, allowing <code>claude-code-review.yml</code>’s <code>dispatch-on-comment</code> job to answer <code>@claude review</code> mentions directly.</td>
 </tr>
 </tbody>
 </table>
