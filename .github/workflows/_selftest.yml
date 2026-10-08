@@ -281,6 +281,7 @@ jobs:
         run: |
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py
+          python3 .github/workflows/scripts/tests/run-preview-deploy-metadata-tests.py
 
   quarto-publish-workflow-tests:
     runs-on: ubuntu-latest
