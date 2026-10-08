@@ -1462,7 +1462,7 @@ jobs:
         with:
           quota-reason: midrun-429
           quota-message: "You've hit your session limit - resets 10:50pm (UTC)"
-          claude-account: "user@example.com"
+          claude-account: "user@example.com" # phi-allow
           run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
       - name: Exercise build-self-review-skip-notice with an empty workflow-path
         id: skip-notice-incomplete-e2e
@@ -1580,7 +1580,7 @@ jobs:
             echo "::error::build-quota-skip-notice did not render the midrun-429 wording"
             exit 1
           fi
-          if ! grep -qF 'Account: `user@example.com`' "$BODY_FILE"; then
+          if ! grep -qF 'Account: `user@example.com`' "$BODY_FILE"; then # phi-allow
             echo "::error::build-quota-skip-notice dropped the claude-account input"
             exit 1
           fi

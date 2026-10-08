@@ -74,12 +74,12 @@ got="$(build rejected-at-door 'Invalid API key')"
 check "rejected-at-door: quotes a captured message" true "$(contains "$got" '> API message: Invalid API key')"
 
 # --- account parameter rendering --------------------------------------------
-got="$(CLAUDE_ACCOUNT="user@example.com" build midrun-429 "$api_msg")"
-check "account: renders account line" true "$(contains "$got" '> Account: `user@example.com`')"
-check "account: comes before API message" true "$(contains "$got" $'Account: `user@example.com`\n>\n> API message:')"
+got="$(CLAUDE_ACCOUNT="user@example.com" build midrun-429 "$api_msg")"  # phi-allow
+check "account: renders account line" true "$(contains "$got" '> Account: `user@example.com`')"  # phi-allow
+check "account: comes before API message" true "$(contains "$got" $'Account: `user@example.com`\n>\n> API message:')"  # phi-allow
 
-got="$(CLAUDE_ACCOUNT=$'user\n@example.com\r' build midrun-429 "$api_msg")"
-check "multiline account: collapsed into single line" true "$(contains "$got" 'Account: `user @example.com `')"
+got="$(CLAUDE_ACCOUNT=$'user\n@example.com\r' build midrun-429 "$api_msg")"  # phi-allow
+check "multiline account: collapsed into single line" true "$(contains "$got" 'Account: `user @example.com `')"  # phi-allow
 check "multiline account: no line escapes blockquote" "0" "$(grep -cv '^>' <<<"$got")"
 
 # --- unknown / empty reason: the pre-gha#804 wording, unchanged --------------
