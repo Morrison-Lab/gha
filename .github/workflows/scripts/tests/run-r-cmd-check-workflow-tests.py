@@ -702,12 +702,15 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
         wf.write_text(mutated)
 
         # 12. Dropping julia-actions/cache step must fail.
-        cache_step = (
-            "      - name: Cache Julia packages\n"
-            "        if: inputs.setup-julia && inputs.julia-project != ''\n"
-            "        uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0\n"
+        # Match any pin: Dependabot bumps the SHA and its version comment.
+        cache_match = re.search(
+            r"      - name: Cache Julia packages\n"
+            r"        if: inputs\.setup-julia && inputs\.julia-project != ''\n"
+            r"        uses: julia-actions/cache@[0-9a-f]{40} # v[0-9.]+\n",
+            mutated,
         )
-        if cache_step not in mutated:
+        cache_step = cache_match.group(0) if cache_match else ""
+        if not cache_step:
             print(
                 "::error::self-test: fixture workflow has no "
                 "julia-actions/cache step to mutate",
