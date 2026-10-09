@@ -116,12 +116,15 @@ out=$(DEEPEN_STEP=1 run_in "$prmerge" "$tmp/comments-c3.json")
 check "pr-merge-ref checkout: deepen reaches the prior and lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "pr-merge-ref checkout: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
-# 3. DEEPEN_MAX bounds the loop: a cap too small to reach the prior emits
-#    nothing rather than looping or failing.
+# 3. DEEPEN_MAX bounds the loop: a cap too small to reach the prior stops
+#    rather than looping or failing, and fails closed (gha#1010): the
+#    section says the boundary is unreachable and the count is nonzero.
 shallow2="$tmp/shallow2"
 $GIT clone -q --depth 1 "file://$origin" "$shallow2"
-out=$(DEEPEN_STEP=1 DEEPEN_MAX=1 run_in "$shallow2" "$tmp/comments-c3.json")
-check "deepen cap hit: emits nothing" "" "$out"
+cap_count="$tmp/cap-count.txt"
+out=$(cd "$shallow2" && DEEPEN_STEP=1 DEEPEN_MAX=1 bash "$script" "$tmp/comments-c3.json" "" "$cap_count")
+check "deepen cap hit: says the boundary is unreachable" "yes" "$(grep -q 'Previous review boundary unreachable' <<<"$out" && echo yes || echo no)"
+check "deepen cap hit: count is nonzero (fail closed)" "1" "$(cat "$cap_count")"
 
 # 4. Prior == head: emits nothing.
 comments_for "$C5" "$tmp/comments-c5.json"
@@ -149,10 +152,34 @@ jq -n --arg sha "$C3" '[{
 out=$(run_in "$full" "$tmp/comments-human.json")
 check "human-authored comment: emits nothing" "" "$out"
 
-# 8. Orphaned prior (full clone, valid-shaped SHA not in history): nothing.
+# 8. Orphaned prior (full clone, valid-shaped SHA not in history), the
+#    force-push case: fails closed with a nonzero count, so a "no new
+#    content" claim this round is classified unreviewed-commits-skipped
+#    (gha#1010). The count file's 0 here is what disabled that guard.
 comments_for "0123456789abcdef0123456789abcdef01234567" "$tmp/comments-orphan.json"
-out=$(run_in "$full" "$tmp/comments-orphan.json")
-check "orphaned prior: emits nothing" "" "$out"
+orphan_count="$tmp/orphan-count.txt"
+out=$(cd "$full" && bash "$script" "$tmp/comments-orphan.json" "" "$orphan_count")
+check "orphaned prior: says the boundary is unreachable" "yes" "$(grep -q 'Previous review boundary unreachable' <<<"$out" && echo yes || echo no)"
+check "orphaned prior: asks for the full diff" "yes" "$(grep -q "review the PR's full diff" <<<"$out" && echo yes || echo no)"
+check "orphaned prior: count is nonzero (fail closed)" "1" "$(cat "$orphan_count")"
+
+# 8b. Force-push topology: a real reviewed commit rewritten away. The prior
+#     exists in the object store (fetched earlier) but is not an ancestor of
+#     the new head, which is the shape a force-push leaves.
+fp="$tmp/forcepush"
+$GIT clone -q "file://$origin" "$fp"
+( cd "$fp"
+  $GIT checkout -q -b rewritten HEAD~2
+  echo rewritten > rewritten.txt
+  $GIT add rewritten.txt
+  $GIT commit -q -m "subject-rewritten"
+)
+FP_HEAD=$(cd "$fp" && git rev-parse HEAD)
+comments_for "$C5" "$tmp/comments-fp.json"
+fp_count="$tmp/fp-count.txt"
+out=$(cd "$fp" && bash "$script" "$tmp/comments-fp.json" "$FP_HEAD" "$fp_count")
+check "force-pushed prior (present but not an ancestor): says the boundary is unreachable" "yes" "$(grep -q 'Previous review boundary unreachable' <<<"$out" && echo yes || echo no)"
+check "force-pushed prior: count is nonzero (fail closed)" "1" "$(cat "$fp_count")"
 
 # 9. Missing comments file: nothing, exit 0.
 out=$(run_in "$full" "$tmp/does-not-exist.json")

@@ -21,9 +21,11 @@
 # ancestor of HEAD and no commit in PRIOR..HEAD is a shallow boundary (a
 # merge of the base brings in commits the walk to the prior alone never
 # deepens, which undercounted the range), giving up once DEEPEN_MAX
-# (default 500) is reached or the repository is no longer shallow -- and
-# emitting nothing if the prior is still unreachable then (a
-# force-pushed-away or otherwise orphaned prior SHA). Without the deepening
+# (default 500) is reached or the repository is no longer shallow. If the
+# prior is still unreachable then (a force-pushed-away or otherwise
+# orphaned prior SHA), the script fails closed: it says the boundary is
+# gone, asks for a full-diff review, and writes a count of 1 (gha#1010).
+# Without the deepening
 # this feature is inert on every real round, which is exactly what gha#717's
 # review round 1 measured.
 #
@@ -62,7 +64,8 @@
 # 1, so the guard can fire) and says the range is incomplete.
 #
 # Stdout: the markdown section, or nothing when the range is not computable
-# (first round, unparseable comments, unreachable prior, prior == head).
+# (first round, unparseable comments, prior == head). An unreachable prior
+# emits a fail-closed section instead (see the deepening note above).
 # Every not-computable path exits 0: this is an optional enrichment, and it
 # must never redden the review job it feeds (the same rule the guard's
 # denied-tools summary follows).
@@ -193,6 +196,7 @@ _CORE_PATTERNS = (
     r"no\s+new\s+diff|"
     r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
     r"no\s+new\s+commits|"
+    r"no\s+code\s+(?:has\s+)?changed|"
     r"no\s+substantive\s+(?:logic\s+)?changes|"
     r"head\s+has\s+not\s+moved|"
     r"unchanged\s+head|"
@@ -347,9 +351,21 @@ until range_ready; do
   fi
 done
 
-# An unreachable prior (orphaned by a force-push, or past DEEPEN_MAX): emit
-# nothing, as before.
+# An unreachable prior (orphaned by a force-push, or past DEEPEN_MAX): the
+# previous boundary is gone, so this round's range cannot be computed.
+# Fail closed (gha#1010): say so, and write a nonzero count so that a
+# "no new content" claim in this round is classified
+# unreviewed-commits-skipped instead of passing over commits nobody
+# reviewed. Emitting nothing here left the count at 0, which disabled
+# classify-review-verdict.sh's gha#965 guard.
 if ! git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; then
+  write_count 1
+  printf '%s\n' \
+    '## What changed since the last review round (computed)' \
+    '' \
+    "**Previous review boundary unreachable:** the prior round reviewed commit \`$PRIOR\`, which is not an ancestor of this checkout's head \`$HEAD_NOW\` (the branch was force-pushed or rebased, or the commit lies beyond the workflow's fetch limit). The commits since the last review cannot be computed, so treat every commit in this PR as unreviewed." \
+    '' \
+    "**Mandatory review requirement:** review the PR's full diff against its base. Do not state that there is no new content since the prior round."
   exit 0
 fi
 

@@ -2270,6 +2270,23 @@ run_test "Unreviewed commits with prose 'no new diff' fails closed to unreviewed
 All changes in this PR were reviewed in the previous round. No new commits or modifications have been made since the last review." \
 "false" "unreviewed-commits-skipped" "5"
 
+# gha#1010: the review prompt's confirming-review guidance offers "no code
+# changed since the last review" as a reason, so that wording must trip the
+# guard too; after a force-push the count is 1 and it would otherwise pass.
+run_test "Unreviewed commits with prose 'no code changed' fails closed (gha#1010)" "### Verdict
+
+**Ready for merge**
+
+No code changed since the last review; the prior verdict still stands." \
+"false" "unreviewed-commits-skipped" "1"
+
+run_test "Unreviewed commits (0) with 'no code changed' remains clean (gha#1010)" "### Verdict
+
+**Ready for merge**
+
+No code changed since the last review; the prior verdict still stands." \
+"true" "ready-for-merge" "0"
+
 run_test "Unreviewed commits with payload CLEAN but text 'no new diff' fails closed (gha#965)" "### Verdict
 
 **Ready for merge**

@@ -1108,7 +1108,9 @@ jobs:
       # shallow-checkout deepen loop, without which the prior SHA is
       # unreachable at fetch-depth: 1 and the feature is inert on every real
       # round (gha#717 review round 1). Every not-computable path emits
-      # nothing and the round proceeds exactly as before.
+      # nothing and the round proceeds exactly as before, except an
+      # unreachable prior (a force-push), which fails closed with a notice
+      # and an unreviewed-commit count of 1 (gha#1010).
       - name: Install the incremental-range script
         id: increment-scripts
         if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'

@@ -8,5 +8,5 @@
   its own;
   a reviewer-derived range has named one commit where the range held two
   and approved over the commit it missed.
-  Empty on a first round or when the prior commit is unreachable in the
-  checkout.
+  Empty on a first round;
+  an unreachable prior commit gets a fail-closed notice instead (#1010).

@@ -29,8 +29,9 @@ inputs:
     description: >-
       The computed what-changed-since-the-last-round section, from
       claude-code-review.yml's "Compute what changed since the last reviewed
-      commit" step (gha#709). Empty on a first round, or when the prior
-      reviewed commit is not reachable in this checkout. Computed by the
+      commit" step (gha#709). Empty on a first round. When the prior
+      reviewed commit is not reachable in this checkout (a force-push), it
+      says so and asks for a full-diff review (gha#1010). Computed by the
       workflow with git itself, because a reviewer deriving the range from
       comment history has misstated it and approved over the commit it
       missed.
