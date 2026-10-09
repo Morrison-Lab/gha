@@ -954,7 +954,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>WORKFLOW_TOKEN</code></td>
 <td>no</td>
-<td>Token used for the final push: a fine-grained personal access token with <strong>Contents: Read and write</strong> on the branch’s repository. Without it, or when pushing with it fails, the push uses <code>GITHUB_TOKEN</code>, which starts no workflow runs (see <a href="#ci-on-the-snapshot-commit">below</a>). Pass it explicitly from the caller’s <code>secrets:</code> block.</td>
+<td>Token used for the final push: a fine-grained personal access token with <strong>Contents: Read and write</strong> on the branch’s repository. Without it, or when pushing with it fails, the push uses <code>GITHUB_TOKEN</code>, which starts no workflow runs (see <a href="#ci-on-the-snapshot-commit">below</a>). Pass it explicitly from the caller’s <code>secrets:</code> block. Available from <code>@v3</code>; <code>@v2</code> rejects it as an unknown secret.</td>
 </tr>
 </tbody>
 </table>
@@ -1003,7 +1003,7 @@ cookieconsent.run({
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">update-snapshots</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v2</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v3</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
