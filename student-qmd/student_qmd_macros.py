@@ -121,8 +121,13 @@ def references(text: str, names: set[str]) -> set[str]:
     return found
 
 
-def prune_macros(lines: list[str], skip: list[bool] | None = None) -> list[str]:
+def prune_macros(
+    lines: list[str], skip: list[bool] | None = None, also_used_in: str = ""
+) -> list[str]:
     """`lines` without the macro definitions nothing uses.
+
+    A macro that `also_used_in` uses counts as used too, so a caller can
+    keep the macros that text it removed from `lines` needs.
 
     Every definition of a used name is kept, not only the first as epi204's
     script does: a later `\\def` of the same name replaces the earlier one in
@@ -138,7 +143,7 @@ def prune_macros(lines: list[str], skip: list[bool] | None = None) -> list[str]:
             in_def[i] = True
     names = {g.name for g in groups}
     content = "\n".join(line for line, d in zip(lines, in_def) if not d)
-    used = references(content, names)
+    used = references(content + "\n" + also_used_in, names)
     pending = set(used)
     while pending:
         body = "\n".join(

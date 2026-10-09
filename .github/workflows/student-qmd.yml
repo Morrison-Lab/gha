@@ -37,7 +37,7 @@ on:
         type: boolean
         default: false
       prune-macros:
-        description: Keep only the LaTeX macro definitions the student file uses.
+        description: Keep only the LaTeX macro definitions the source uses, answers included.
         type: boolean
         default: false
       require-answers:

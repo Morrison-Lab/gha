@@ -334,14 +334,19 @@ def body_mask(lines: list[str]) -> list[bool]:
 
 
 def prune_student_macros(lines: list[str], shown: list[str]) -> list[str]:
-    """Drop the macro definitions `shown` never uses.
+    """Drop the macro definitions that neither `shown` nor `lines` uses.
+
+    `lines` is the whole document, answers included, so a macro that only
+    an answer uses keeps its definition: a student writing an answer has
+    the notation the answer key uses.
 
     A definition inside an answer-key-only div is refused rather than
     dropped with the div: the check takes definitions out of its comparison,
     so an answer written into one would reach nothing that notices.
     """
     try:
-        before = Counter(g.name for g in macro_groups(lines, body_mask(lines)))
+        groups = macro_groups(lines, body_mask(lines))
+        before = Counter(g.name for g in groups)
         after = Counter(g.name for g in macro_groups(shown, body_mask(shown)))
     except MacroError as err:
         raise StudentQmdError(f"{err} (counting from the top, includes inlined)") from err
@@ -350,7 +355,9 @@ def prune_student_macros(lines: list[str], shown: list[str]) -> list[str]:
             "a macro definition inside an answer-key-only div, which prune-macros "
             f"refuses: \\{hidden[0]}; move it out of the div, or turn prune-macros off"
         )
-    return prune_macros(shown, body_mask(shown))
+    in_def = {i for g in groups for i in range(g.start, g.end)}
+    whole = "\n".join(line for i, line in enumerate(lines) if i not in in_def)
+    return prune_macros(shown, body_mask(shown), also_used_in=whole)
 
 
 def write_index(out_dir: Path, names: list[str], title: str, back_href: str) -> None:
