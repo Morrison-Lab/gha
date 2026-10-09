@@ -242,11 +242,15 @@ def _mark(change_type, content):
 # delimiter pair only within one run of text, so a mark that starts or ends
 # inside `\(...\)` leaves the whole expression as raw TeX in the preview.
 # Two kinds of region are kept whole:
-#   * a math element -- any element with class `math`, which is how Pandoc
-#     writes `span.math` (inline and display) and `div.math`; and
-#   * a delimited expression in other text: `\(...\)`, `\[...\]`, `$$...$$`.
-# Single `$...$` is not matched: Pandoc's HTML writer never emits it, and a
-# bare `$` in prose (a price, a shell prompt) would swallow the text after it.
+#   * a math element -- any element with class `math`; Pandoc writes inline
+#     and display math as `span.math`, and a `div.math` is treated alike; and
+#   * a delimited expression within one run of other text: `\(...\)`,
+#     `\[...\]`, `$$...$$`. TeX split by a tag (`\(x <em>+</em> y\)`) is not
+#     matched, and needs no protecting: MathJax does not render it anyway
+#     (measured with MathJax 3.2.2 in headless Chromium).
+# Single `$...$` is not matched: Pandoc's MathJax output writes `\(...\)`
+# instead, and a bare `$` in prose (a price, a shell prompt) would swallow
+# the text after it.
 TEX_SPAN_RE = re.compile(r"\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$", re.DOTALL)
 OPEN_TAG_RE = re.compile(r"<([A-Za-z][A-Za-z0-9-]*)\b[^>]*>")
 CLASS_ATTR_RE = re.compile(

@@ -637,7 +637,9 @@ def _paragraph(result):
 
 def test_issue_case_inline_math_stays_contiguous(highlighter, monkeypatch, repo_factory):
     # gha#1003's test case: a changed paragraph containing
-    # <span class="math inline">\(x\)</span>.
+    # <span class="math inline">\(x\)</span>. The math itself is unchanged,
+    # so this is a control (it passes before the fix too): a change next to
+    # math must leave the math unmarked. The cases below change the math.
     result = _run_single_page(
         highlighter,
         monkeypatch,
@@ -736,6 +738,8 @@ def test_delimited_tex_outside_a_math_element_stays_contiguous(
 
 
 def test_newly_added_paragraph_with_math_stays_contiguous(highlighter, monkeypatch, repo_factory):
+    # A control for the whole-element path, which wraps the new element's
+    # entire content and never reaches highlight_html_diff.
     result = _run_single_page(
         highlighter,
         monkeypatch,
