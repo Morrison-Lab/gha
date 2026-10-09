@@ -595,3 +595,38 @@ def test_cap_exit_still_reports_skipped_elements(highlighter, monkeypatch, repo_
 def test_env_float_falls_back_on_non_finite_or_invalid(highlighter, monkeypatch, value):
     monkeypatch.setenv("HIGHLIGHT_PAGE_BUDGET_SECONDS", value)
     assert highlighter._env_float("HIGHLIGHT_PAGE_BUDGET_SECONDS", 60.0) == 60.0
+
+
+# gha#1003: a mark inside the TeX splits its delimiters across text nodes, and
+# MathJax then leaves the expression as raw text in the preview.
+@pytest.mark.parametrize(
+    "cls, tex_old, tex_new",
+    [
+        ("math inline", r"\(x + y\)", r"\(x + z\)"),
+        ("math display", r"\[a = b + c\]", r"\[a = b + d\]"),
+    ],
+)
+def test_changed_math_is_marked_whole(highlighter, cls, tex_old, tex_new):
+    old = f'Sum <span class="{cls}">{tex_old}</span> holds.'
+    new = f'Sum <span class="{cls}">{tex_new}</span> holds now.'
+    out = highlighter.highlight_html_diff(old, new)
+    # The TeX stays one contiguous text node, inside a single mark.
+    assert f'">{tex_new}</mark></span>' in out
+    assert out.count("<mark") == 2  # the TeX, and the added "now."
+
+
+def test_unchanged_math_is_not_marked(highlighter):
+    old = 'Sum <span class="math inline">\\(x + y\\)</span> holds.'
+    new = 'Sum <span class="math inline">\\(x + y\\)</span> holds now.'
+    out = highlighter.highlight_html_diff(old, new)
+    assert '<span class="math inline">\\(x + y\\)</span>' in out
+    assert out.count("<mark") == 1
+
+
+def test_text_after_math_is_marked_word_by_word(highlighter):
+    # The math state ends at the span's closing tag, so later prose keeps
+    # word-level marks rather than being marked whole.
+    old = 'A <span class="math inline">\\(x\\)</span> b c d.'
+    new = 'A <span class="math inline">\\(x\\)</span> b e d.'
+    out = highlighter.highlight_html_diff(old, new)
+    assert ' b <mark' in out and '>e</mark> d.' in out

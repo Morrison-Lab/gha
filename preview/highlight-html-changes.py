@@ -98,6 +98,11 @@ ELEMENT_RE = re.compile(
 )
 
 TAG_RE = re.compile(r"<[^>]+>")
+# Pandoc's math output: `<span class="math inline">\(...\)</span>`, and
+# `math display` for `\[...\]`. Its content is one text node of TeX.
+MATH_OPEN_RE = re.compile(
+    r"<(span|div)\b[^>]*\bclass\s*=\s*[\"'][^\"']*\bmath\b", re.IGNORECASE
+)
 
 def _get_max_elements_for_pairwise():
     raw = os.environ.get("MAX_ELEMENTS_FOR_PAIRWISE", "500").strip()
@@ -295,14 +300,33 @@ def highlight_html_diff(old_html, new_html):
 
     result = []
     text_pos = 0
+    math_tag = None
 
     for token in new_tokens:
         if token.startswith("<"):
+            if math_tag is None:
+                opened = MATH_OPEN_RE.match(token)
+                if opened:
+                    math_tag = opened.group(1).lower()
+            elif re.match(rf"</{math_tag}\s*>", token, re.IGNORECASE):
+                math_tag = None
             result.append(token)
         else:
             token_len = len(token)
             token_end = text_pos + token_len
-            highlighted = apply_highlights_to_text(token, text_pos, changed_ranges)
+            if math_tag is not None:
+                # gha#1003: a mark inside the TeX would split its `\(`...`\)`
+                # delimiters across text nodes, and MathJax only finds an
+                # expression within one node, so the preview showed raw TeX.
+                # Mark the whole expression instead, as one changed range.
+                kinds = [
+                    kind for start, end, kind in changed_ranges
+                    if start < token_end and end > text_pos
+                ]
+                whole = [(text_pos, token_end, kinds[0])] if kinds else []
+                highlighted = apply_highlights_to_text(token, text_pos, whole)
+            else:
+                highlighted = apply_highlights_to_text(token, text_pos, changed_ranges)
             result.append(highlighted)
             text_pos = token_end
 
