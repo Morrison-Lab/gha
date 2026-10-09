@@ -849,7 +849,12 @@ runs:
           round's review, so look for a comment containing a `### Verdict`
           line) and reference it
           explicitly: state the prior verdict, link to that comment by its
-          GitHub URL, and explain that it still stands. This lets readers
+          GitHub URL, and explain that it still stands. Take the URL from the
+          `at https://...` in that comment's `=== Summary posted` header
+          under Prior review context, or from the `html_url` the comments
+          API returns; never write a placeholder or guessed comment ID. If
+          no URL is available, name the comment by its date and commit
+          instead of linking it. This lets readers
           know the confirming review ran and why it produced no new findings,
           rather than leaving the PR thread silent. Still close with the
           explicit `### Verdict` status line required above — restating that
