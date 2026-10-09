@@ -104,16 +104,17 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-informal-definitions.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml`
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+`update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
 the `gh-pages` branch instead - required if the same repo also uses the
 PR-preview family, since Pages can only have one Source.
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
-`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
-`update-snapshots.yml` also pin `@v2`: each picked up a real fix since the
+`check-non-standard-chars.yml`, `claude.yml`, and `claude-code-review.yml`
+also pin `@v2`: each picked up a real fix since the
 freeze (a dependency-pin bump, a new input, or a security fix) that a consumer
 still on `@v1` would miss (audited in
 [gha#182](https://github.com/Morrison-Lab/gha/issues/182)).

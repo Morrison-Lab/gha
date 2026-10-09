@@ -667,9 +667,10 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml`
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+`update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine
 
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
@@ -679,7 +680,7 @@ have one Source.
 `check-bibliography-dois.yml`, `check-phi.yml`,
 
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
-`claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
+and `claude-code-review.yml` also pin `@v2`: each
 picked up a real fix since the freeze (a dependency-pin bump, a new input, or
 a security fix) that a consumer still on `@v1` would miss (audited in
 [gha#182](https://github.com/Morrison-Lab/gha/issues/182)).
@@ -789,7 +790,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
+`lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `lint-changed-files.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
@@ -813,8 +814,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml` at `@v3` -- see the
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

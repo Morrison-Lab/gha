@@ -20,3 +20,9 @@
   touching more snapshots than that never reached the rest, and the
   verification pass then failed with nothing committed.
   The test step now sets `TESTTHAT_MAX_FAILS=Inf`.
+- **`update-snapshots` moves to `@v3`.**
+  `@v2` is frozen, so the `WORKFLOW_TOKEN` secret and the separate `push`
+  job exist only at `@v3`; a caller still on `@v2` that passes the secret
+  fails with an unknown-secret error.
+  The caller stub, the reference page and the versioning lists now pin
+  `@v3`.

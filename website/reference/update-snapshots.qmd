@@ -29,7 +29,7 @@ Julia project.
 
 | Secret | Required | Description |
 |---|---|---|
-| `WORKFLOW_TOKEN` | no | Token used for the final push: a fine-grained personal access token with **Contents: Read and write** on the branch's repository. Without it, or when pushing with it fails, the push uses `GITHUB_TOKEN`, which starts no workflow runs (see [below](#ci-on-the-snapshot-commit)). Pass it explicitly from the caller's `secrets:` block. |
+| `WORKFLOW_TOKEN` | no | Token used for the final push: a fine-grained personal access token with **Contents: Read and write** on the branch's repository. Without it, or when pushing with it fails, the push uses `GITHUB_TOKEN`, which starts no workflow runs (see [below](#ci-on-the-snapshot-commit)). Pass it explicitly from the caller's `secrets:` block. Available from `@v3`; `@v2` rejects it as an unknown secret. |
 
 ## Permissions
 
@@ -145,7 +145,7 @@ on:
 
 jobs:
   update-snapshots:
-    uses: Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v3
     permissions:
       contents: write
     with:

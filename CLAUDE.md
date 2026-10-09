@@ -204,7 +204,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-junk-files`, `check-links`,
 `check-non-standard-chars`, `claude`,
-`claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
+`claude-code-review`, `lint-yaml`, `lint-markdown`,
 `lint-qmd`, `lint-changed-lines`, `lint-changed-files`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
@@ -225,8 +225,8 @@ while `opposition-research`, `check-dependency-updates`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
 `check-informal-definitions`, `cleanup-pr-previews`, `student-qmd`,
-and `update-quarto-extensions`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`).
+`update-quarto-extensions`, and `update-snapshots`
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 
 ### Layout
 
