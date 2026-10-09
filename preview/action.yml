@@ -313,6 +313,15 @@ runs:
           R_LD_LIBRARY_PATH="$(R RHOME)/lib"
           export R_LD_LIBRARY_PATH
         fi
+        # RCall depends on Conda.jl, whose build creates an empty
+        # <depot>/conda/3/<arch> directory and records it in deps.jl.
+        # julia-actions/cache restores packages/ (deps.jl included) but not
+        # conda/, so Pkg skips the rebuild and every Julia session then fails
+        # to precompile Conda with "Path to conda environment is not valid",
+        # once at setup and once per page (gha#1023). Conda only checks that
+        # the directory exists, and nothing here uses it, so recreate it.
+        depot="${JULIA_DEPOT_PATH:-$HOME/.julia}"
+        mkdir -p "${depot%%:*}/conda/3/$(uname -m)"
         if command -v Rscript >/dev/null 2>&1 \
           && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
           Rscript -e 'JuliaCall::julia_setup(installJulia = FALSE)'
