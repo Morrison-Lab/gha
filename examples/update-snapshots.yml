@@ -29,3 +29,6 @@ jobs:
       # commit-message: 'Update testthat snapshots [auto]'
       # committer-name: github-actions[bot]
       # committer-email: 41898282+github-actions[bot]@users.noreply.github.com
+    # Optional: push with a token so the snapshot commit triggers CI.
+    # secrets:
+    #   WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
