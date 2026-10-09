@@ -65,7 +65,7 @@ run_compose() {
 # Every kind check-review-execution.sh can emit must survive unchanged; only a
 # value it cannot emit normalizes. A kind silently rewritten to `unknown` would
 # print generic advice under a specific headline, which is worse than either.
-for kind in high-denial stub background-agent short-circuit hard-error no-output deferred bad-credential; do
+for kind in high-denial stub background-agent short-circuit hard-error no-output deferred bad-credential auth-rejected; do
   out="$(run_compose "$kind" 0)"
   check "kind passthrough: $kind" "kind=$kind" "$(sed -n 1p <<<"$out")"
 done
@@ -258,11 +258,19 @@ check_not_contains "bad-credential reports no cost line" '**Cost:**' "$out"
 check_not_contains "bad-credential does not claim the review finished" \
   'The review finished without producing' "$out"
 
+# gha#1005: an API 401 must name the secret and the remedy, and must not send
+# the reader to quota, which is how one maintainer read the generic report.
+out="$(run_compose auth-rejected 0 '' 5 0.0000 1)"
+check_contains "auth-rejected names the secret" 'CLAUDE_CODE_OAUTH_TOKEN' "$out"
+check_contains "auth-rejected names the remedy" 'claude setup-token' "$out"
+check_contains "auth-rejected says it is not quota" 'it is not a quota limit' "$out"
+check_not_contains "auth-rejected does not say the cause lies elsewhere" 'the cause lies elsewhere' "$out"
+
 # --- every kind produces a non-empty, distinct headline ---------------------
 # A kind whose headline duplicated another's would misdescribe the failure
 # while looking fine in isolation.
 seen=""
-for kind in high-denial stub background-agent short-circuit hard-error no-output deferred bad-credential unknown; do
+for kind in high-denial stub background-agent short-circuit hard-error no-output deferred bad-credential auth-rejected unknown; do
   headline="$(run_compose "$kind" 0 | sed -n '2s/^headline=//p')"
   checks=$((checks + 1))
   if [[ -z "$headline" ]]; then
