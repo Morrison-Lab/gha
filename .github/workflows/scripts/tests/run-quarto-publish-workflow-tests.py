@@ -154,6 +154,25 @@ def check_quarto_publish(
             errors.append(
                 f"quarto-publish/action.yml julia-actions/cache step cache-name must include inputs.julia-version (got {cache_name!r})"
             )
+        delete_old = str(julia_cache_step.get("with", {}).get("delete-old-caches", ""))
+        if delete_old != "false":
+            errors.append(
+                f"quarto-publish/action.yml julia-actions/cache step must set delete-old-caches: 'false'; its cleanup cannot find handle_caches.jl from inside a composite (gha#1023, got {delete_old!r})"
+            )
+
+    # Recreate Conda.jl's root env dir, which julia-actions/cache does not
+    # restore, before JuliaCall loads RCall (gha#1023)
+    juliacall_step = next(
+        (st for st in comp_steps if st.get("name") == "Set up JuliaCall and its Julia dependencies"),
+        None,
+    )
+    jc_run = str((juliacall_step or {}).get("run", ""))
+    mkdir_at = jc_run.find('/conda/3/$(uname -m)"')
+    setup_at = jc_run.find("JuliaCall::julia_setup")
+    if mkdir_at < 0 or setup_at < 0 or mkdir_at > setup_at:
+        errors.append(
+            "quarto-publish/action.yml JuliaCall setup step must create <depot>/conda/3/<arch> before julia_setup (gha#1023)"
+        )
 
     return errors
 
@@ -198,6 +217,20 @@ def run_self_test() -> int:
             "drop julia-actions/cache in action.yml",
             DEFAULT_COMPOSITE,
             baseline_composite.replace("uses: julia-actions/cache", "uses: ignore/cache"),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop the conda root env mkdir in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace('/conda/3/$(uname -m)"', '/conda-gone"'),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "re-enable delete-old-caches on the julia cache in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("delete-old-caches: 'false'", "delete-old-caches: 'true'"),
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),
