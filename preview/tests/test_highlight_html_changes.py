@@ -14,6 +14,8 @@ Tests verify that:
 """
 
 import json
+from html.parser import HTMLParser
+
 import pytest
 from conftest import write
 
@@ -595,3 +597,176 @@ def test_cap_exit_still_reports_skipped_elements(highlighter, monkeypatch, repo_
 def test_env_float_falls_back_on_non_finite_or_invalid(highlighter, monkeypatch, value):
     monkeypatch.setenv("HIGHLIGHT_PAGE_BUDGET_SECONDS", value)
     assert highlighter._env_float("HIGHLIGHT_PAGE_BUDGET_SECONDS", 60.0) == 60.0
+
+
+# --- Math is never split by a mark (gha#1003) ---------------------------------
+#
+# MathJax matches a TeX delimiter pair only within one run of text, so a mark
+# that opens or closes inside `\(...\)` leaves the expression as raw TeX in the
+# preview. These cases parse the highlighted page and assert that each
+# expression is still one contiguous text node.
+
+
+class _TextNodes(HTMLParser):
+    """Collect the text nodes of an HTML fragment, in document order."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.nodes = []
+
+    def handle_data(self, data):
+        self.nodes.append(data)
+
+
+def _text_nodes(html_str):
+    parser = _TextNodes()
+    parser.feed(html_str)
+    parser.close()
+    return parser.nodes
+
+
+def _assert_tex_whole(result, tex):
+    """`tex` (a full delimited expression) sits inside a single text node."""
+    nodes = _text_nodes(result)
+    assert any(tex in node for node in nodes), (tex, nodes)
+
+
+def _paragraph(result):
+    return next(line for line in result.splitlines() if line.startswith(("<p>", "<li>")))
+
+
+def test_issue_case_inline_math_stays_contiguous(highlighter, monkeypatch, repo_factory):
+    # gha#1003's test case: a changed paragraph containing
+    # <span class="math inline">\(x\)</span>.
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        '<main>\n<p>Let <span class="math inline">\\(x\\)</span> be a small number.</p>\n</main>',
+        '<main>\n<p>Let <span class="math inline">\\(x\\)</span> be a large number.</p>\n</main>',
+    )
+    _assert_tex_whole(result, "\\(x\\)")
+    # The unchanged math is left unmarked; only the changed word is marked.
+    assert '<span class="math inline">\\(x\\)</span>' in result
+    assert ">large</mark>" in result
+
+
+def test_change_inside_inline_math_marks_the_whole_expression(highlighter, monkeypatch, repo_factory):
+    # A word-level diff sees `z\)` as the changed word, so before gha#1003 the
+    # mark opened after `\(x + ` and split the expression.
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        '<main>\n<p>The sum <span class="math inline">\\(x + y\\)</span> is finite.</p>\n</main>',
+        '<main>\n<p>The sum <span class="math inline">\\(x + z\\)</span> is finite.</p>\n</main>',
+    )
+    _assert_tex_whole(result, "\\(x + z\\)")
+    assert (
+        '<span class="math inline"><mark class="preview-text-changed"'
+        in result
+    )
+    assert "\\(x + z\\)</mark></span>" in result
+
+
+def test_change_inside_display_math_span_marks_the_whole_expression(
+    highlighter, monkeypatch, repo_factory
+):
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        '<main>\n<p>So <span class="math display">\\[a + b = c\\]</span> holds.</p>\n</main>',
+        '<main>\n<p>So <span class="math display">\\[a + b = d\\]</span> holds.</p>\n</main>',
+    )
+    _assert_tex_whole(result, "\\[a + b = d\\]")
+    assert "\\[a + b = d\\]</mark></span>" in result
+
+
+def test_change_inside_display_math_div_marks_the_whole_expression(
+    highlighter, monkeypatch, repo_factory
+):
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        '<main>\n<li>Item <div class="math display">$$a + b = c$$</div> here.</li>\n</main>',
+        '<main>\n<li>Item <div class="math display">$$a + b = d$$</div> here.</li>\n</main>',
+    )
+    _assert_tex_whole(result, "$$a + b = d$$")
+    assert '<div class="math display"><mark class="preview-text-changed"' in result
+    assert "$$a + b = d$$</mark></div>" in result
+
+
+def test_change_spanning_text_and_math_keeps_math_whole(highlighter, monkeypatch, repo_factory):
+    # Mixed text: changed words on both sides of, and inside, the math.
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        '<main>\n<p>The mean <span class="math inline">\\(\\mu\\)</span> is known here.</p>\n</main>',
+        '<main>\n<p>The median <span class="math inline">\\(\\mu + 1\\)</span> was known here.</p>\n</main>',
+    )
+    _assert_tex_whole(result, "\\(\\mu + 1\\)")
+    paragraph = _paragraph(result)
+    assert ">median</mark>" in paragraph
+    assert "was</mark> known" in paragraph
+    assert "\\(\\mu + 1\\)</mark></span>" in paragraph
+
+
+def test_delimited_tex_outside_a_math_element_stays_contiguous(
+    highlighter, monkeypatch, repo_factory
+):
+    # TeX that reaches the page without Pandoc's span.math wrapper (raw HTML,
+    # another renderer) is kept whole by its delimiters instead.
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>We have \\(\\alpha + \\beta\\) and \\[x = 1\\] in this text.</p>\n</main>",
+        "<main>\n<p>We have \\(\\alpha + \\gamma\\) and \\[x = 1\\] in this prose.</p>\n</main>",
+    )
+    _assert_tex_whole(result, "\\(\\alpha + \\gamma\\)")
+    _assert_tex_whole(result, "\\[x = 1\\]")
+    paragraph = _paragraph(result)
+    assert '<mark class="preview-text-changed"' in paragraph
+    assert "\\(\\alpha + \\gamma\\)</mark>" in paragraph
+    assert ">prose.</mark>" in paragraph
+    assert "\\[x = 1\\]</mark>" not in paragraph  # unchanged math is not
+
+
+def test_newly_added_paragraph_with_math_stays_contiguous(highlighter, monkeypatch, repo_factory):
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>First paragraph stays.</p>\n</main>",
+        '<main>\n<p>First paragraph stays.</p>\n'
+        '<p>Brand new <span class="math inline">\\(e^{i\\pi} + 1 = 0\\)</span> claim.</p>\n</main>',
+    )
+    assert "preview-element-added" in result
+    _assert_tex_whole(result, "\\(e^{i\\pi} + 1 = 0\\)")
+
+
+def test_expand_to_atoms_merges_and_prefers_replace(highlighter):
+    # Two changes inside one atom become one range covering the atom, and a
+    # merge of an insert with a replace is a replace.
+    merged = highlighter._expand_to_atoms(
+        [(3, 4, "insert"), (6, 7, "replace"), (20, 22, "insert")],
+        [(2, 9)],
+    )
+    assert merged == [(2, 9, "replace"), (20, 22, "insert")]
+
+
+def test_math_element_spans_counts_nested_tags(highlighter):
+    tokens = [
+        '<span class="math inline">',
+        "<span>",
+        "x",
+        "</span>",
+        "</span>",
+        "<span class='mathish'>",
+        "y",
+        "</span>",
+    ]
+    assert highlighter._math_element_spans(tokens) == [(0, 4)]

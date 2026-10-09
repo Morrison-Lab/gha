@@ -223,6 +223,108 @@ def extract_text_from_element(element_html):
     return html.unescape(text).strip()
 
 
+MARK_STYLES = {
+    "replace": ("preview-text-changed", "#fff3cd"),
+    "insert": ("preview-text-added", "#d1e7dd"),
+}
+
+
+def _mark(change_type, content):
+    """Wrap `content` in the inline mark for `change_type`."""
+    css_class, color = MARK_STYLES[change_type]
+    return (
+        f'<mark class="{css_class}" style="background-color: {color}; color: inherit; '
+        f'padding: 1px 2px; border-radius: 2px;">{content}</mark>'
+    )
+
+
+# Math must never be split by a mark (gha#1003). MathJax matches a TeX
+# delimiter pair only within one run of text, so a mark that starts or ends
+# inside `\(...\)` leaves the whole expression as raw TeX in the preview.
+# Two kinds of region are kept whole:
+#   * a math element -- any element with class `math`, which is how Pandoc
+#     writes `span.math` (inline and display) and `div.math`; and
+#   * a delimited expression in other text: `\(...\)`, `\[...\]`, `$$...$$`.
+# Single `$...$` is not matched: Pandoc's HTML writer never emits it, and a
+# bare `$` in prose (a price, a shell prompt) would swallow the text after it.
+TEX_SPAN_RE = re.compile(r"\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$", re.DOTALL)
+OPEN_TAG_RE = re.compile(r"<([A-Za-z][A-Za-z0-9-]*)\b[^>]*>")
+CLASS_ATTR_RE = re.compile(
+    r"""\sclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))""", re.IGNORECASE
+)
+
+
+def _math_open_tag_name(token):
+    """The lower-cased tag name when `token` opens a math element (an element
+    whose class list contains `math`), else None."""
+    match = OPEN_TAG_RE.match(token)
+    if not match or token.endswith("/>"):
+        return None
+    class_match = CLASS_ATTR_RE.search(token)
+    if not class_match:
+        return None
+    classes = next(g for g in class_match.groups() if g is not None).split()
+    return match.group(1).lower() if "math" in classes else None
+
+
+def _math_element_spans(tokens):
+    """(first, last) token indices of each outermost math element.
+
+    `first` is the opening tag and `last` its matching closing tag, found by
+    counting nested tags of the same name. A math element with no closing tag
+    is not returned, so its text falls back to the TeX-delimiter scan.
+    """
+    spans = []
+    i = 0
+    while i < len(tokens):
+        name = _math_open_tag_name(tokens[i]) if tokens[i].startswith("<") else None
+        if name is None:
+            i += 1
+            continue
+        open_re = re.compile(rf"<{name}\b[^>]*>", re.IGNORECASE)
+        close_re = re.compile(rf"</{name}\s*>", re.IGNORECASE)
+        depth = 0
+        for j in range(i, len(tokens)):
+            if close_re.fullmatch(tokens[j]):
+                depth -= 1
+            elif open_re.fullmatch(tokens[j]) and not tokens[j].endswith("/>"):
+                depth += 1
+            if depth == 0:
+                spans.append((i, j))
+                i = j
+                break
+        i += 1
+    return spans
+
+
+def _expand_to_atoms(changed_ranges, atoms):
+    """Grow each changed range to cover every atom (an unsplittable text
+    region) it overlaps, then merge ranges that now overlap, so no mark
+    starts or ends inside an atom.
+
+    Atoms are disjoint, so growing a range over one cannot make it reach
+    another, and one pass suffices. A merged range is a "replace" when any
+    of its parts was, since a range covering changed text is not wholly new.
+    """
+    expanded = []
+    for start, end, change_type in changed_ranges:
+        for atom_start, atom_end in atoms:
+            if atom_start < end and atom_end > start:
+                start = min(start, atom_start)
+                end = max(end, atom_end)
+        expanded.append((start, end, change_type))
+    expanded.sort()
+    merged = []
+    for start, end, change_type in expanded:
+        if merged and start < merged[-1][1]:
+            last_start, last_end, last_type = merged[-1]
+            merged_type = "replace" if "replace" in (last_type, change_type) else "insert"
+            merged[-1] = (last_start, max(last_end, end), merged_type)
+        else:
+            merged.append((start, end, change_type))
+    return merged
+
+
 def apply_highlights_to_text(text, text_start_pos, changed_ranges):
     """Apply highlight marks to a text segment based on changed ranges."""
     if not text:
@@ -248,17 +350,7 @@ def apply_highlights_to_text(text, text_start_pos, changed_ranges):
     for overlap_start, overlap_end, change_type in overlapping:
         if overlap_start > last_end:
             result.append(text[last_end:overlap_start])
-
-        highlighted_text = text[overlap_start:overlap_end]
-        if change_type == "replace":
-            result.append(
-                f'<mark class="preview-text-changed" style="background-color: #fff3cd; color: inherit; padding: 1px 2px; border-radius: 2px;">{highlighted_text}</mark>'
-            )
-        elif change_type == "insert":
-            result.append(
-                f'<mark class="preview-text-added" style="background-color: #d1e7dd; color: inherit; padding: 1px 2px; border-radius: 2px;">{highlighted_text}</mark>'
-            )
-
+        result.append(_mark(change_type, text[overlap_start:overlap_end]))
         last_end = overlap_end
 
     if last_end < len(text):
@@ -268,7 +360,13 @@ def apply_highlights_to_text(text, text_start_pos, changed_ranges):
 
 
 def highlight_html_diff(old_html, new_html):
-    """Highlight differences between old and new inner HTML content, preserving HTML tags."""
+    """Highlight differences between old and new inner HTML content, preserving HTML tags.
+
+    A math element that overlaps a change gets one mark wrapped around its
+    whole content, inside the element, and a delimited TeX expression in
+    other text is either wholly inside one mark or outside every mark
+    (gha#1003).
+    """
     old_tokens = re.findall(r"(<[^>]+>|[^<]+)", old_html)
     new_tokens = re.findall(r"(<[^>]+>|[^<]+)", new_html)
 
@@ -293,18 +391,50 @@ def highlight_html_diff(old_html, new_html):
     if not changed_ranges:
         return new_html
 
-    result = []
-    text_pos = 0
-
+    # token_pos[k] is the text offset at which token k starts; the extra
+    # final entry is the total text length, so token_pos[last + 1] is the
+    # end of the text up to and including token `last`.
+    token_pos = [0]
     for token in new_tokens:
+        token_pos.append(token_pos[-1] + (0 if token.startswith("<") else len(token)))
+
+    math_spans = _math_element_spans(new_tokens)
+    inside_math = set()
+    atoms = []
+    for first, last in math_spans:
+        inside_math.update(range(first, last + 1))
+        if token_pos[last + 1] > token_pos[first]:
+            atoms.append((token_pos[first], token_pos[last + 1]))
+    for k, token in enumerate(new_tokens):
+        if k in inside_math or token.startswith("<"):
+            continue
+        atoms.extend(
+            (token_pos[k] + m.start(), token_pos[k] + m.end())
+            for m in TEX_SPAN_RE.finditer(token)
+        )
+    changed_ranges = _expand_to_atoms(changed_ranges, atoms)
+
+    math_last = dict(math_spans)
+    result = []
+    k = 0
+    while k < len(new_tokens):
+        token = new_tokens[k]
+        if k in math_last:
+            last = math_last[k]
+            start, end = token_pos[k], token_pos[last + 1]
+            types = [t for s, e, t in changed_ranges if s < end and e > start]
+            inner = "".join(new_tokens[k + 1 : last])
+            if types:
+                change_type = "replace" if "replace" in types else "insert"
+                inner = _mark(change_type, inner)
+            result.append(token + inner + new_tokens[last])
+            k = last + 1
+            continue
         if token.startswith("<"):
             result.append(token)
         else:
-            token_len = len(token)
-            token_end = text_pos + token_len
-            highlighted = apply_highlights_to_text(token, text_pos, changed_ranges)
-            result.append(highlighted)
-            text_pos = token_end
+            result.append(apply_highlights_to_text(token, token_pos[k], changed_ranges))
+        k += 1
 
     return "".join(result)
 
