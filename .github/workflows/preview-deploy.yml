@@ -87,10 +87,44 @@ jobs:
         # `echo` yields empty output and exit 0, so the step would "pass" with
         # empty pr-number/action and the deploy would silently skip (the
         # regression d-morrison/rme#913 recovered from).
+        #
+        # The artifact is untrusted: a fork PR controls the build workflow it
+        # runs, so it can upload any `pr-preview-site` it likes. Accept a PR
+        # number only if it is digits and that PR's head is the repository and
+        # branch the triggering run actually built (taken from the
+        # `workflow_run` event, which the fork cannot forge). Otherwise one PR
+        # could overwrite or remove another PR's preview, or write outside
+        # `pr-preview/`.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
-          pr_number=$(cat _preview_download/meta/pr-number.txt) || { echo "::error::Missing pr-number.txt in preview artifact"; exit 1; }
-          action=$(cat _preview_download/meta/action.txt) || { echo "::error::Missing action.txt in preview artifact"; exit 1; }
+          pr_number=$(tr -d '[:space:]' < _preview_download/meta/pr-number.txt) || { echo "::error::Missing pr-number.txt in preview artifact"; exit 1; }
+          action=$(tr -d '[:space:]' < _preview_download/meta/action.txt) || { echo "::error::Missing action.txt in preview artifact"; exit 1; }
+          case "$pr_number" in
+            '' | *[!0-9]*)
+              echo "::error::Refusing to deploy: PR number '$pr_number' is not a positive integer"
+              exit 1
+              ;;
+          esac
+          case "$action" in
+            deploy | remove) ;;
+            *)
+              echo "::error::Refusing to deploy: unknown action '$action'"
+              exit 1
+              ;;
+          esac
+          if ! claimed=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}" \
+            --jq '[.head.repo.full_name // "", .head.ref] | join("#")'); then
+            echo "::error::Refusing to deploy: could not look up PR #${pr_number} in ${GITHUB_REPOSITORY}"
+            exit 1
+          fi
+          if [ "$claimed" != "${HEAD_REPO}#${HEAD_BRANCH}" ]; then
+            echo "::error::Refusing to deploy: this build came from ${HEAD_REPO}#${HEAD_BRANCH}, but it names PR #${pr_number}, whose head is ${claimed}"
+            exit 1
+          fi
           echo "pr-number=$pr_number" >> "$GITHUB_OUTPUT"
           echo "action=$action" >> "$GITHUB_OUTPUT"
 
