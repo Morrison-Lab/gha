@@ -2826,6 +2826,64 @@ Round one's own tests all passed, and it would have shipped the
 quoted-payload bypass unreviewed -- the argument for the adversarial round
 over a green suite alone.
 
+**A stray fence can hide the verdict and the payload together, and the
+recovery re-runs the whole classifier rather than reading the payload
+(gha#1021).**
+A review that quotes a diff in a three-backtick fence, where one diff context
+line is itself a fence (a space, then three backticks), has that fence closed
+early.
+The diff's own closing line then opens a fence that hides everything up to the
+next closer (Morrison-Lab/mds#194).
+Both scans blank fenced lines, as GitHub renders them, so the review classified
+`no-verdict`.
+The fence handling stays CommonMark-correct.
+Instead, when neither scan finds a verdict, `unclosed_fence_rerun` finds the
+last unquoted review-data marker.
+When that marker is fenced, it blanks the bare opener of the fence holding it
+and runs the script again over that text.
+When the marker is visible, there is nothing to recover and no re-run happens.
+A clean answer from the re-run counts only when the last payload names the
+40-hex `HEAD_SHA` exactly, which `record()` enforces in the child, a mode the
+parent selects with an argv flag rather than the environment.
+A non-clean answer stands as it is.
+
+**The first draft read the hidden payload directly, and that reintroduced
+the lesson recorded just above.**
+The adversarial review found three false-CLEAN paths, each turning a
+fail-closed `no-verdict` into `clean=true`: a retraction heading after the
+payload (gha#857's shape), a contradicting label tail (gha#863's), and a
+no-new-diff claim on unreviewed commits (gha#965's).
+Every guard against them lives in the main path, and a bespoke payload reader
+inherited none of them.
+The re-run inherits all of them by construction, and a test pins each one.
+The opener must be bare, since one with an info string is code the reviewer
+meant, and the commit match is exact, since a 7-hex prefix of a PR's own head
+can be ground out cheaply.
+The residual that is left is a bare-fenced example payload naming the head in
+full, on a review with no verdict of its own.
+
+**The re-run may only reveal lines, never hide one.**
+Blanking one opener re-pairs every fence after it, so a second fence error
+after the payload can make the child fence a line GitHub shows.
+The second review round built that case: a visible no-new-diff claim was
+fenced in the child, so gha#965 never saw it, and the review read clean.
+So the script walks the fences of both texts and refuses the re-run when the
+child fences any line the parent left visible.
+
+Three mutations survive, and each means another gate still holds.
+Dropping the marker's line anchor still leaves a blockquoted payload
+untrusted, because the child's own payload scan skips blockquoted lines.
+Admitting the re-run's `no-verdict` answer leaves `clean=false`, and changes
+the slug only on the `unrecognized` call site.
+Letting a fenced marker above a visible last one pick the target is caught by
+the reveal-only check: blanking a closed example's opener turns its closer
+into an opener, which hides the visible payload below it.
+A related latent quirk is recorded rather than fixed: `strip_code_spans` runs
+over the whole text before fence tracking, so three-backtick fence lines can
+pair as code spans and unfence a region.
+That is why a first repro with an even number of fence lines classified clean
+on `main`.
+
 **`permission_denials_count` can be absent from the real execution file even
 though `claude-code-action` prints it to the job log, because the log line is
 a display value the action computes, not a field it always writes to disk.**

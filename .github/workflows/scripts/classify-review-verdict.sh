@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Classifies a Claude Code Review assistant verdict text as clean vs not clean.
 #
-# Usage: classify-review-verdict.sh <review-text-file>
+# Usage: classify-review-verdict.sh <review-text-file> [unreviewed-commits] [head-sha]
+#
+# A fourth argument, --unfenced-rerun, is internal: the script passes it to
+# its own gha#1021 re-run and no caller should.
 #
 # Reads the extracted review assistant text (from check-review-execution.sh or
 # review.txt in the review payload artifact) and outputs:
@@ -28,7 +31,8 @@ GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 UNREVIEWED_COMMITS="${2:-${UNREVIEWED_COMMITS:-0}}"
 HEAD_SHA="${3:-${HEAD_SHA:-}}"
 
-python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" "$UNREVIEWED_COMMITS" "$HEAD_SHA" << 'EOF'
+CLASSIFY_SELF="${BASH_SOURCE[0]}" \
+  python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" "$UNREVIEWED_COMMITS" "$HEAD_SHA" "${4:-}" << 'EOF'
 import json
 import os
 import re
@@ -38,6 +42,11 @@ review_file = sys.argv[1]
 output_file = sys.argv[2]
 unreviewed_commits_str = sys.argv[3] if len(sys.argv) > 3 else (os.environ.get("UNREVIEWED_COMMITS") or "0")
 head_sha_param = sys.argv[4] if len(sys.argv) > 4 else (os.environ.get("HEAD_SHA") or "")
+# Set only on the gha#1021 re-run below; see unclosed_fence_rerun().
+# Set only by unclosed_fence_rerun() for its own child, through argv rather
+# than the environment, so a variable left in a caller's environment cannot
+# put an ordinary run into child mode.
+_UNFENCED_RERUN = len(sys.argv) > 5 and sys.argv[5] == "--unfenced-rerun"
 try:
     unreviewed_commits = int(unreviewed_commits_str)
 except Exception:
@@ -134,6 +143,14 @@ def record(clean, slug):
                 # Even if claimed commit matches head_clean (or head_sha/claimed_commit is missing),
                 # fail closed if the verdict section explicitly claims no new diff while unreviewed commits exist (gha#965).
                 clean, slug = "false", "unreviewed-commits-skipped"
+    # gha#1021: on the re-run over a review whose trailing fence was unclosed,
+    # a clean verdict needs the review's own payload to name the head commit
+    # in full, since that text is otherwise rendered as a code block.
+    if _UNFENCED_RERUN and clean == "true" and not _payload_names_head():
+        clean, slug = "false", "no-verdict"
+    _emit(clean, slug)
+
+def _emit(clean, slug):
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
             f.write(f"clean={clean}\nverdict={slug}\n")
@@ -985,6 +1002,26 @@ _payload_candidate_lines = [
 ]
 _payload_candidate_text = "\n".join(_payload_candidate_lines)
 
+
+def _payload_names_head():
+    """Whether the last review-data payload names HEAD_SHA in full (gha#1021).
+
+    Full 40-hex on both sides, not a prefix: a 7-hex prefix of a PR's own
+    head can be ground out cheaply, and the reviewer is handed the full SHA.
+    """
+    head = head_sha_param.strip().lower()
+    if not re.fullmatch(r'[0-9a-f]{40}', head):
+        return False
+    markers = list(re.finditer(r'<!--\s*review-data:\s*', _payload_candidate_text, re.IGNORECASE))
+    if not markers:
+        return False
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(_payload_candidate_text, markers[-1].end())
+    except (ValueError, TypeError):
+        return False
+    sha = obj.get("commit_sha") if isinstance(obj, dict) else None
+    return isinstance(sha, str) and sha.strip().lower() == head
+
 # Only the LAST such comment counts, matching the prose scan's own
 # last-match-wins rule elsewhere in this file. Any block that fails to parse
 # as JSON, lacks a schema_version key, or carries a verdict outside
@@ -1125,9 +1162,115 @@ if isinstance(payload, dict) and "schema_version" in payload:
             record("false", "needs-more-work")
         # Any other verdict value falls through to the prose scan.
 
+# gha#1021: an unclosed fence can hide BOTH the verdict and the payload.
+#
+# A review that quotes a diff in a ```diff fence, where one context line of the
+# diff is itself a fence (one leading space, then three backticks), has that
+# block closed early, because CommonMark allows up to three spaces before a
+# closing fence. The diff's own final fence line then opens a fence that never
+# closes, and every line after it -- verdict heading and payload included --
+# is fenced. The scans above blank fenced lines, so the review classified
+# no-verdict and require-clean-verdict failed on an approving review
+# (Morrison-Lab/mds#194, head 775e349). GitHub renders that comment the same
+# way, so the fence handling above is correct and stays as it is.
+#
+# So when neither scan found a verdict, and the text ends inside a fence that
+# never closes, blank only that fence's opening line and classify the result
+# again, by re-running this whole script over it. A re-run rather than a
+# second payload reader, so every existing guard applies to the revealed text
+# by construction: the payload fast path, the gha#857 heading and gha#863
+# label supersession checks, the prose scan, and record()'s gha#965
+# unreviewed-commits checks. An earlier draft read the hidden payload
+# directly and turned a hidden retraction into a false CLEAN (gha#1021
+# review).
+#
+# The revealed text is still what GitHub renders as a code block, so the
+# re-run reports a clean verdict only when the review's own last payload names
+# the head commit in full (record() enforces it in the child);
+# a non-clean verdict stands as it is, being the safe direction.
+#
+# Which fence: the one holding the LAST unquoted review-data marker, with no
+# re-run when that marker is visible, and only when its opener is bare (no
+# info string), since the stray line this failure produces
+# is the quoted diff's own closing fence. The fence need not run to the end of
+# the text: in the measured case a later ```json opener did not close it, but
+# the json block's closer did, so the hidden region ends there. The residual
+# is a deliberate bare-fenced example payload that names the head in full on
+# a review with no verdict of its own; the re-run would read it. The re-run
+# never re-runs itself.
+_RERUN_MARKER_RE = re.compile(r' {0,3}<!--\s*review-data:', re.IGNORECASE)
+
+
+def _fence_walk(src):
+    """Return (fenced line indices, opener of the fence holding the last
+    unquoted marker, or None when that marker is not fenced)."""
+    fenced = set()
+    fence_char, fence_len, opener, target = "", 0, None, None
+    for i, line in enumerate(src):
+        if fence_char:
+            fenced.add(i)
+            if _fence_closes(line, fence_char, fence_len):
+                fence_char, fence_len, opener = "", 0, None
+            elif _RERUN_MARKER_RE.match(line):
+                target = opener
+            continue
+        if _BLOCKQUOTE_RE.match(line):
+            continue
+        if _RERUN_MARKER_RE.match(line):
+            # The last marker is visible, so whatever a fence hides above it
+            # is not the review's own payload (round 2, N1).
+            target = None
+            continue
+        opened = _open_fence(line)
+        if opened:
+            fenced.add(i)
+            (fence_char, fence_len), opener = opened, i
+    return fenced, target
+
+
+def unclosed_fence_rerun():
+    if _UNFENCED_RERUN or not re.fullmatch(r'[0-9a-fA-F]{40}', head_sha_param.strip()):
+        return
+    src = text.splitlines()
+    parent_fenced, target = _fence_walk(src)
+    opener = target
+    if opener is not None and _FENCE_CLOSE_RE.match(src[opener]) is None:
+        # An opener with an info string (```json, ```html) is a block the
+        # reviewer meant as code; only a bare one is the stray closer this
+        # failure produces.
+        opener = None
+    self_path = os.environ.get("CLASSIFY_SELF", "")
+    if opener is None or not os.path.isfile(self_path):
+        return
+    src[opener] = ""
+    # Blanking one opener re-pairs every fence after it, so the child could
+    # fence a line GitHub shows, such as a no-new-diff claim gha#965 must see.
+    # The re-run may only reveal lines, never hide one (round 2, N2).
+    child_fenced, _ = _fence_walk(src)
+    if child_fenced - parent_fenced:
+        return
+    import subprocess
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as tf:
+        tf.write("\n".join(src) + "\n")
+    try:
+        env = dict(os.environ, GITHUB_OUTPUT="/dev/null")
+        out = subprocess.run(
+            ["bash", self_path, tf.name, str(unreviewed_commits), head_sha_param, "--unfenced-rerun"],
+            env=env, capture_output=True, text=True, timeout=60,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return
+    finally:
+        os.unlink(tf.name)
+    got = dict(l.split("=", 1) for l in out.splitlines() if "=" in l)
+    if got.get("clean") in ("true", "false") and got.get("verdict") not in (None, "", "no-verdict", "unrecognized"):
+        _emit(got["clean"], got["verdict"])
+
 lines = strip_machine_payloads(strip_code_spans(text.strip().splitlines()))
 last_verdict, prose_reason = classify_prose_lines(lines)
 if last_verdict is None and prose_reason == "no-verdict":
+    unclosed_fence_rerun()
     record("false", "no-verdict")
 
 if last_verdict is not None:
@@ -1162,6 +1305,7 @@ if isinstance(superseded_payload, dict) and "schema_version" in superseded_paylo
         elif _sp == "NOT_CLEAN":
             record("false", "needs-more-work")
 
+unclosed_fence_rerun()
 record("false", "unrecognized")
 EOF
 
