@@ -46,7 +46,7 @@ input tables and a copy-paste example.
 | [`test-coverage.yml`](reference/test-coverage.qmd)                         | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov                                                                                                                                            | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`, `examples-coverage`, `min-coverage`                                                         |
 | [`check-extra.yml`](reference/check-extra.qmd)                             | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale                                    | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness`                                                        |
 | [`r-cmd-check.yml`](reference/r-cmd-check.qmd)                             | Run `R CMD check` across an OS x R-version matrix, with an optional hard-dependencies-only job gated to `pull_request`                                                                                                           | `hard`, `error-on`, `force-suggests`, `setup-julia`, `julia-project`, `apt-packages`, `brew-packages`, `brew-casks`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes`                                                        |
-| [`update-snapshots.yml`](reference/update-snapshots.qmd)                   | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit                                                                                          | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`                                                                                                       |
+| [`update-snapshots.yml`](reference/update-snapshots.qmd)                   | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit                                                                                          | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`; secret `WORKFLOW_TOKEN`                                                                              |
 | [`summary.yml`](reference/summary.qmd)                                     | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`)                                                                                                       | `endpoint`, `model`                                                                                                                                                                 |
 | [`quarto-publish.yml`](reference/quarto-publish.qmd)                       | Render a Quarto site and deploy it to GitHub Pages                                                                                                                                                                                | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `deploy` |
 | [`report-failure.yml`](reference/report-failure.qmd)                       | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
@@ -104,16 +104,17 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-informal-definitions.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml`
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+`update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
 the `gh-pages` branch instead - required if the same repo also uses the
 PR-preview family, since Pages can only have one Source.
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
-`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
-`update-snapshots.yml` also pin `@v2`: each picked up a real fix since the
+`check-non-standard-chars.yml`, `claude.yml`, and `claude-code-review.yml`
+also pin `@v2`: each picked up a real fix since the
 freeze (a dependency-pin bump, a new input, or a security fix) that a consumer
 still on `@v1` would miss (audited in
 [gha#182](https://github.com/Morrison-Lab/gha/issues/182)).

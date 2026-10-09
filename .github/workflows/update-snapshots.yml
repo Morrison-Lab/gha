@@ -16,8 +16,9 @@ on:
         default: ''
       pr-mode:
         description: >
-          Use r-lib/actions/pr-fetch and pr-push instead of direct checkout
-          and push. Set true for PR-comment (issue_comment) triggers.
+          Fetch the PR's head branch with r-lib/actions/pr-fetch and push
+          back to it, instead of checking out and pushing ref directly. Set
+          true for PR-comment (issue_comment) triggers.
         type: boolean
         default: false
       julia:
@@ -67,13 +68,29 @@ on:
         description: Git committer email.
         type: string
         default: '41898282+github-actions[bot]@users.noreply.github.com'
+    secrets:
+      WORKFLOW_TOKEN:
+        description: >
+          Optional fine-grained personal access token with Contents: Read
+          and write on the branch's repository, used for the final push.
+          GitHub starts no workflow runs for a push made with GITHUB_TOKEN,
+          so without this secret (or if pushing with it fails) the pushed
+          snapshot commit becomes the branch head with no CI on it. A push
+          made with this token triggers the caller's push and pull_request
+          workflows as usual. It is only ever exposed to the push job, which
+          runs none of the branch's code.
+        required: false
 
 jobs:
   update-snapshots:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Read-only: this job runs the branch's own code, so the push happens in
+    # the separate `push` job below.
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      committed: ${{ steps.commit.outputs.committed }}
     env:
       GITHUB_PAT: ${{ github.token }}
     steps:
@@ -131,6 +148,12 @@ jobs:
             -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
 
       - name: Run tests and accept snapshots
+        # testthat's progress reporter quits after 10 failures by default, so
+        # the first pass would never reach (or write pending files for) the
+        # snapshots past that point, and the verification pass would then
+        # fail on them with nothing committed. Lift the limit for both passes.
+        env:
+          TESTTHAT_MAX_FAILS: Inf
         shell: Rscript {0}
         run: |
           devtools::load_all()
@@ -143,6 +166,7 @@ jobs:
           devtools::test(stop_on_failure = TRUE)
 
       - name: Commit snapshot changes
+        id: commit
         env:
           COMMIT_MSG: ${{ inputs.commit-message }}
           COMMITTER_NAME: ${{ inputs.committer-name }}
@@ -152,15 +176,139 @@ jobs:
           git config --local user.name "$COMMITTER_NAME"
           git config --local user.email "$COMMITTER_EMAIL"
           git add tests/testthat/_snaps
-          git diff --cached --quiet || git commit -m "$COMMIT_MSG"
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "$COMMIT_MSG"
+            git branch -f update-snapshots-commit HEAD
+            git bundle create "$RUNNER_TEMP/snapshots.bundle" \
+              update-snapshots-commit ^HEAD~1
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Push (direct)
-        if: ${{ !inputs.pr-mode }}
-        shell: bash
-        run: git push
+      - name: Upload snapshot commit
+        if: steps.commit.outputs.committed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: update-snapshots-commit
+          path: ${{ runner.temp }}/snapshots.bundle
+          retention-days: 1
 
-      - name: Push (PR mode)
+  # The push runs in its own job so that no code from the branch under test
+  # (which in pr-mode may be a fork PR) ever shares a runner with
+  # WORKFLOW_TOKEN: a test, a git hook, or a write to $GITHUB_ENV in the job
+  # above could otherwise read a long-lived token. This job runs no package
+  # code; it re-fetches the branch, checks that the uploaded commit sits
+  # directly on its head and touches only tests/testthat/_snaps, and pushes.
+  push:
+    needs: update-snapshots
+    if: needs.update-snapshots.outputs.committed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          token: ${{ github.token }}
+
+      - name: Fetch PR branch
         if: inputs.pr-mode
-        uses: r-lib/actions/pr-push@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
+        uses: r-lib/actions/pr-fetch@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           repo-token: ${{ github.token }}
+
+      - name: Download snapshot commit
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: update-snapshots-commit
+          path: ${{ runner.temp }}/update-snapshots
+
+      - name: Verify snapshot commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/update-snapshots/snapshots.bundle"
+          git bundle verify "$bundle"
+          git fetch "$bundle" update-snapshots-commit:refs/update-snapshots/commit
+          commit=$(git rev-parse refs/update-snapshots/commit)
+          if [ "$(git rev-parse "$commit^")" != "$(git rev-parse HEAD)" ] ||
+             [ "$(git rev-list --count HEAD.."$commit")" != 1 ]; then
+            echo "::error title=update-snapshots::The snapshot commit is not a single commit on the branch's current head (did the branch move while the tests ran?). Re-run the workflow."
+            exit 1
+          fi
+          outside=$(git diff --name-only HEAD "$commit" -- . ':!tests/testthat/_snaps')
+          if [ -n "$outside" ]; then
+            echo "::error title=update-snapshots::The snapshot commit changes files outside tests/testthat/_snaps; refusing to push it:"
+            printf '%s\n' "$outside"
+            exit 1
+          fi
+          git merge --ff-only "$commit"
+
+      # A plain git push for both modes, replacing r-lib/actions/pr-push: that
+      # action also calls the pulls API with its token, which a token scoped
+      # to Contents alone cannot do on a private repository.
+      - name: Push snapshot commit
+        id: push
+        env:
+          WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+          FALLBACK_TOKEN: ${{ github.token }}
+          PR_MODE: ${{ inputs.pr-mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$PR_MODE" = "true" ]; then
+            # pr-fetch added the PR's head repository as remote `pr` and
+            # checked out a local branch tracking pr/<head-branch>.
+            remote=pr
+            if ! upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}'); then
+              echo "::error title=update-snapshots::The fetched PR branch has no upstream, so there is no branch to push to."
+              exit 1
+            fi
+            branch="${upstream#pr/}"
+          else
+            remote=origin
+            branch=$(git rev-parse --abbrev-ref HEAD)
+            if [ "$branch" = "HEAD" ]; then
+              echo "::error title=update-snapshots::ref checked out a detached commit, so there is no branch to push to; pass a branch name as ref."
+              exit 1
+            fi
+          fi
+          url=$(git remote get-url "$remote" | sed -E 's#^https://[^@/]*@#https://#')
+
+          # actions/checkout persisted GITHUB_TOKEN as an extraheader, which
+          # git sends ahead of any URL credentials. An empty value resets that
+          # multi-valued key, so the header set here is the only one sent. The
+          # config travels in GIT_CONFIG_* variables to keep it off argv.
+          push_with() {
+            local credential
+            credential=$(printf 'x-access-token:%s' "$1" | base64 -w0)
+            echo "::add-mask::$credential"
+            GIT_CONFIG_COUNT=2 \
+              GIT_CONFIG_KEY_0="http.${GITHUB_SERVER_URL}/.extraheader" \
+              GIT_CONFIG_VALUE_0= \
+              GIT_CONFIG_KEY_1="http.${GITHUB_SERVER_URL}/.extraheader" \
+              GIT_CONFIG_VALUE_1="AUTHORIZATION: basic $credential" \
+              git push --no-verify "$url" "HEAD:refs/heads/$branch"
+          }
+
+          if [ -n "$WORKFLOW_TOKEN" ]; then
+            if push_with "$WORKFLOW_TOKEN"; then
+              echo "pushed-with=workflow-token" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::warning title=update-snapshots::Pushing with WORKFLOW_TOKEN failed (expired, or no Contents write on this repository?); retrying with GITHUB_TOKEN."
+          fi
+          push_with "$FALLBACK_TOKEN"
+          echo "pushed-with=github-token" >> "$GITHUB_OUTPUT"
+
+      - name: Warn that the pushed commit has no CI
+        if: steps.push.outputs.pushed-with == 'github-token'
+        shell: bash
+        run: |
+          sha=$(git rev-parse HEAD)
+          msg="Pushed snapshot commit $sha with GITHUB_TOKEN, so GitHub starts no workflow runs for it and the branch head has no CI. Pass a working WORKFLOW_TOKEN secret (Contents: Read and write) to update-snapshots so its push triggers CI, or re-trigger the checks by hand."
+          echo "::warning title=update-snapshots::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"

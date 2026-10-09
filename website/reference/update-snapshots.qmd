@@ -14,7 +14,7 @@ Julia project.
 | Input | Type | Default | Description |
 |---|---|---|---|
 | `ref` | string | `''` | Branch or SHA to check out. Defaults to the event ref when empty; pass a branch name for `workflow_dispatch` callers or `github.head_ref` for `pull_request` callers. |
-| `pr-mode` | boolean | `false` | Use `r-lib/actions/pr-fetch` and `pr-push` instead of direct checkout and push. Set `true` for PR-comment (`issue_comment`) triggers. |
+| `pr-mode` | boolean | `false` | Fetch the PR's head branch with `r-lib/actions/pr-fetch` and push back to it, instead of checking out and pushing `ref` directly. Set `true` for PR-comment (`issue_comment`) triggers. |
 | `julia` | boolean | `false` | Set up the Julia runtime before running tests. |
 | `julia-version` | string | `'1'` | Julia version to install. Only used when `julia` is true. |
 | `julia-project` | string | `'inst/julia'` | Path to the Julia project to instantiate. Only used when `julia` is true. |
@@ -25,10 +25,26 @@ Julia project.
 | `committer-name` | string | `'github-actions[bot]'` | Git committer name. |
 | `committer-email` | string | `'41898282+github-actions[bot]@users.noreply.github.com'` | Git committer email. |
 
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `WORKFLOW_TOKEN` | no | Token used for the final push: a fine-grained personal access token with **Contents: Read and write** on the branch's repository. Without it, or when pushing with it fails, the push uses `GITHUB_TOKEN`, which starts no workflow runs (see [below](#ci-on-the-snapshot-commit)). Pass it explicitly from the caller's `secrets:` block. Available from `@v3`; `@v2` rejects it as an unknown secret. |
+
 ## Permissions
 
 Grant `contents: write` so the job can push the snapshot commit back to the
 branch.
+
+The workflow runs in two jobs.
+`update-snapshots` runs the branch's tests with a read-only token and
+uploads the snapshot commit as a git bundle.
+`push` runs none of the branch's code: it re-fetches the branch, checks
+that the bundled commit sits directly on the branch's head and changes
+only files under `tests/testthat/_snaps/`, and pushes it.
+Keeping the push separate means code from the branch under test, which in
+`pr-mode` can be a fork PR, never shares a runner with `contents: write`
+or with `WORKFLOW_TOKEN`.
 
 ## When are the updated snapshots checked?
 
@@ -37,6 +53,8 @@ Its test-and-accept step:
 
 1. runs the test suite once, so that failing snapshot expectations write
    their pending new snapshot files
+   (with `TESTTHAT_MAX_FAILS=Inf`, since testthat otherwise stops after
+   10 failures and never reaches the snapshots past that point)
    (a `tryCatch` keeps a hard R error, e.g. a test file that errors
    outright, from killing the job before the accept step;
    plain expectation failures don't stop this run anyway, since
@@ -71,18 +89,45 @@ Two consequences worth planning around:
   The [example caller stub](#example) defaults to `main`, where the snapshot
   commit lands directly, with no reviewable diff in between.
   Prefer running against a PR branch when the snapshot changes deserve eyes.
-- **The snapshot commit does not re-trigger CI normally.**
-  The push uses the workflow's own `GITHUB_TOKEN`, and
-  [events triggered by `GITHUB_TOKEN` do not create new workflow runs](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow)
-  (the same behavior the `WORKFLOW_TOKEN` note on
-  [Permissions](../permissions.qmd) describes),
-  with one exception that applies here:
-  on a pull request, the resulting `synchronize` event creates the runs in
-  an **approval-required** state, and a user with write access starts them
-  from the "Approve workflows to run" prompt in the PR's merge box.
-  For a direct push to a plain branch there is no such prompt;
-  re-trigger checks yourself if you need them, e.g. by pushing an empty
-  commit.
+- **The snapshot commit needs `WORKFLOW_TOKEN` to get CI.**
+  See the next section.
+
+## CI on the snapshot commit
+
+[Events triggered by `GITHUB_TOKEN` do not create new workflow runs](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow),
+so a snapshot commit pushed with that token becomes the branch head with
+no R CMD check, coverage, or review runs on it.
+On a pull request GitHub may instead create the runs in an
+approval-required state, which a user with write access starts from the
+"Approve workflows to run" prompt in the merge box;
+either way nothing runs until someone acts, and the PR reads as if CI
+never ran
+(Morrison-Lab/bcs#1110, a private repository).
+
+Pass a `WORKFLOW_TOKEN` secret to avoid this.
+The workflow then pushes with that token, and the push triggers the
+caller's `push` and `pull_request` workflows like any other push.
+The token needs only **Contents: Read and write** on the repository the
+branch lives in.
+The push is a plain `git push`, so it needs no pull-request scope even in
+`pr-mode`.
+
+Without the secret, or when the push with it fails (an expired token, or
+one without write access to the branch's repository), the workflow pushes
+with `GITHUB_TOKEN` and posts a warning annotation and a job-summary line
+naming the commit that has no CI.
+Re-trigger the checks yourself in that case, e.g. by pushing an empty
+commit.
+
+A caller using `secrets: inherit` passes its repository's `WORKFLOW_TOKEN`
+automatically when one exists.
+
+If the caller itself runs on `push` or `pull_request` and passes the token,
+the snapshot commit starts the caller again.
+That second run normally finds nothing to commit and stops,
+but a snapshot whose output changes on every run (a timestamp, unseeded
+random output) would commit and retrigger indefinitely.
+Trigger such callers from a comment or `workflow_dispatch` instead.
 
 ## Example
 
@@ -100,7 +145,7 @@ on:
 
 jobs:
   update-snapshots:
-    uses: Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v3
     permissions:
       contents: write
     with:
@@ -114,6 +159,9 @@ jobs:
       # commit-message: 'Update testthat snapshots [auto]'
       # committer-name: github-actions[bot]
       # committer-email: 41898282+github-actions[bot]@users.noreply.github.com
+    # Optional: push with a token so the snapshot commit triggers CI.
+    # secrets:
+    #   WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
 ```
 
 See [`examples/update-snapshots.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/update-snapshots.yml)

@@ -10,7 +10,7 @@ so it has picked up no fixes since - not even non-breaking ones. Pin
 `preview.yml`, `preview-deploy.yml`,
 `quarto-publish.yml`, `check-bibliography-dois.yml`, `check-phi.yml`,
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
-`claude-code-review.yml`, `update-snapshots.yml`, and `check-news.yml`
+`claude-code-review.yml`, and `check-news.yml`
 to `@v2`;
 `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
@@ -40,10 +40,11 @@ only ever shipped at
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml`
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml`
 only ever shipped at
-`@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
+`@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+`update-snapshots.yml`).
 See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
 capabilities still pin `@v1` and why. Breaking changes bump the major tag (`v2`,
@@ -154,7 +155,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`,
+`lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`,
 `lint-changed-lines.yml`, `lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`,
 `check-junk-files.yml`, `request-dependabot-review.yml`, `sync-upstream.yml`,
@@ -180,8 +181,8 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml` at
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml` at
 `@v3` - see the
 versioning note above), so
 they are **not** SHA-pinned.

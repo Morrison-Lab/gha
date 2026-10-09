@@ -623,6 +623,100 @@ jobs:
         )
         check("exempt workflow by basename passes with code 0", code == 0, out)
 
+    # -------------------------------------------------------------
+    # New jobs are compared against the union of the base jobs' grants.
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp) / "repo"
+        repo.mkdir()
+        init_repo(repo)
+        wf_dir = repo / ".github" / "workflows"
+        wf_dir.mkdir(parents=True)
+        base = """name: Split
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: echo build
+"""
+        (wf_dir / "split.yml").write_text(base, encoding="utf-8")
+        commit_all(repo, "base")
+        run_git(["tag", "v1"], cwd=repo)
+
+        def new_job(build_perms: str, push_perms: str) -> str:
+            return f"""name: Split
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+{build_perms}
+    steps:
+      - run: echo build
+  push:
+    runs-on: ubuntu-latest
+    permissions:
+{push_perms}
+    steps:
+      - run: echo push
+"""
+
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read", "      contents: write"), encoding="utf-8"
+        )
+        code, out = run_audit("v1", None, cwd=repo)
+        check("new job within the base jobs' union passes", code == 0, out)
+
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read", "      contents: write\n      pull-requests: write"),
+            encoding="utf-8",
+        )
+        code, out = run_audit("v1", None, cwd=repo)
+        check("new job adding a key outside the union is rejected", code == 1, out)
+        check(
+            "violation names the added key on the new job",
+            "new job 'push' (against the union of base jobs) added permission 'pull-requests: write'" in out,
+            out,
+        )
+
+        (wf_dir / "split.yml").write_text(
+            base.replace("contents: write", "contents: read"), encoding="utf-8"
+        )
+        commit_all(repo, "read-only base")
+        run_git(["tag", "v2"], cwd=repo)
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read", "      contents: write"), encoding="utf-8"
+        )
+        code, out = run_audit("v2", None, cwd=repo)
+        check("new job widening beyond the union is rejected", code == 1, out)
+        check(
+            "violation names the widened key on the new job",
+            "widened permission 'contents': 'read' -> 'write'" in out,
+            out,
+        )
+
+        (wf_dir / "split.yml").write_text(
+            base.replace("    permissions:\n      contents: write\n", ""), encoding="utf-8"
+        )
+        commit_all(repo, "unconstrained base")
+        run_git(["tag", "v3"], cwd=repo)
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read", "      contents: read"), encoding="utf-8"
+        )
+        code, out = run_audit("v3", None, cwd=repo)
+        check("new job is still rejected when a base job inherits the caller grant", code == 1, out)
+        check(
+            "unknown-union violation uses the new-job message",
+            "new job 'push' added with permissions: contents: read" in out,
+            out,
+        )
+
     if failures == 0:
         print(f"\nAll {cases} test cases passed.")
         return 0

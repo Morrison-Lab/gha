@@ -1,8 +1,9 @@
 # Copy to .github/workflows/update-snapshots.yml in your repo.
 #
 # One-time setup: Settings -> Actions -> General -> Workflow permissions ->
-# "Read and write permissions" (or use a PAT) so the job can push the
-# snapshot commit back to the branch.
+# "Read and write permissions" so the job can push the snapshot commit back
+# to the branch. To have that commit trigger CI, also pass a WORKFLOW_TOKEN
+# secret (a fine-grained PAT with Contents: Read and write), as below.
 name: Update snapshots
 
 on:
@@ -15,7 +16,7 @@ on:
 
 jobs:
   update-snapshots:
-    uses: Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v3
     permissions:
       contents: write
     with:
@@ -29,3 +30,6 @@ jobs:
       # commit-message: 'Update testthat snapshots [auto]'
       # committer-name: github-actions[bot]
       # committer-email: 41898282+github-actions[bot]@users.noreply.github.com
+    # Optional: push with a token so the snapshot commit triggers CI.
+    # secrets:
+    #   WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}

@@ -82,7 +82,7 @@ not reference `@main` from consumers.
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`, `examples-coverage`, `min-coverage` |
 | `check-extra.yml` | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness` |
 | `r-cmd-check.yml` | Run `R CMD check` across an OS x R-version matrix, with an optional hard-dependencies-only job gated to `pull_request` | `hard`, `error-on`, `force-suggests`, `setup-julia`, `julia-project`, `apt-packages`, `brew-packages`, `brew-casks`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes` |
-| `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
+| `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`; secret `WORKFLOW_TOKEN` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent. | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `reference-repos`, `reference-repos-token`, `extra-secret-names`, `timeout-minutes` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `reference-repos`, `reference-repos-token`, `report-cost`, `model`, `extra-secret-names`, `timeout-minutes` |
 | `claude-manage-project.yml` | Triage a newly-opened issue: apply a priority label and add it to the project board (trusted authors only) | `prompt-addendum`, `trusted-bot-logins` |
@@ -667,9 +667,10 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`).
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml`
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+`update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine
 
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
@@ -679,7 +680,7 @@ have one Source.
 `check-bibliography-dois.yml`, `check-phi.yml`,
 
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
-`claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
+and `claude-code-review.yml` also pin `@v2`: each
 picked up a real fix since the freeze (a dependency-pin bump, a new input, or
 a security fix) that a consumer still on `@v1` would miss (audited in
 [gha#182](https://github.com/Morrison-Lab/gha/issues/182)).
@@ -789,7 +790,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
+`lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `lint-changed-files.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
@@ -813,8 +814,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, and
-`update-quarto-extensions.yml` at `@v3` -- see the
+`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`update-snapshots.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
