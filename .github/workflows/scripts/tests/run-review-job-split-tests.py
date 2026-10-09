@@ -629,6 +629,31 @@ def check_workflow(
             "claude-review" in rcv_needs and "post-review" in rcv_needs,
             "require-clean-verdict needs claude-review and post-review",
         )
+        # gha#1019: a quota or restore-failure skip leaves the head
+        # unreviewed, and a skipped required check counts as passing, so
+        # this gate must RUN and fail there rather than skip gray.
+        check(
+            "quota_exhausted" not in rcv_if and "self_mod" not in rcv_if,
+            "require-clean-verdict does not skip on quota_exhausted or self_mod (gha#1019)",
+        )
+        rcv_steps = jobs["require-clean-verdict"].get("steps") or []
+        rcv_text = " ".join(
+            str(s.get("run") or "") + " " + str(s.get("env") or "")
+            for s in rcv_steps
+            if isinstance(s, dict)
+        )
+        check(
+            "needs.claude-review.outputs.quota_exhausted" in rcv_text
+            and "needs.claude-review.outputs.self_mod" in rcv_text
+            and rcv_text.count("exit 1") >= 4,
+            "require-clean-verdict fails on quota_exhausted and self_mod (gha#1019)",
+        )
+    if "require-review" in jobs:
+        rr_if = " ".join(str(jobs["require-review"].get("if") or "").split())
+        check(
+            "quota_exhausted" in rr_if and "self_mod" in rr_if,
+            "require-review still skips gray on quota_exhausted and self_mod",
+        )
     reviewed_head = str((review.get("outputs") or {}).get("reviewed-head") or "")
     check(
         " ".join(reviewed_head.split()) == "${{ github.event.pull_request.head.sha }}",
@@ -1296,14 +1321,21 @@ jobs:
           echo "Reviewed commit: $HEAD_SHA"
   require-review:
     needs: [claude-review, post-review]
-    if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
+    if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false')) && !(fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') || fromJSON(needs.claude-review.outputs.self_mod || 'false'))
     steps:
       - run: echo ok
   require-clean-verdict:
     needs: [claude-review, post-review]
     if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
     steps:
-      - run: echo ok
+      - env:
+          QUOTA_EXHAUSTED: ${{{{ needs.claude-review.outputs.quota_exhausted }}}}
+          SELF_MOD: ${{{{ needs.claude-review.outputs.self_mod }}}}
+        run: |
+          if a; then exit 1; fi
+          if b; then exit 1; fi
+          if c; then exit 1; fi
+          if d; then exit 1; fi
 """
         )
         good_action = root / "action.yml"
@@ -2077,6 +2109,18 @@ runs:
             "  require-clean-verdict:\n    needs: [claude-review, post-review]",
             "  require-clean-verdict:\n    needs: [post-review]",
             "require-clean-verdict needs claude-review and post-review",
+        )
+        failures += mutate(
+            "require-clean-verdict skipping gray on a quota skip fails (gha#1019)",
+            "  require-clean-verdict:\n    needs: [claude-review, post-review]\n    if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))",
+            "  require-clean-verdict:\n    needs: [claude-review, post-review]\n    if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false')) && !fromJSON(needs.claude-review.outputs.quota_exhausted || 'false')",
+            "require-clean-verdict does not skip on quota_exhausted or self_mod (gha#1019)",
+        )
+        failures += mutate(
+            "require-clean-verdict not failing on self_mod fails (gha#1019)",
+            "          SELF_MOD: ${{ needs.claude-review.outputs.self_mod }}\n",
+            "",
+            "require-clean-verdict fails on quota_exhausted and self_mod (gha#1019)",
         )
         failures += mutate(
             "denied_tools interpolated into a run body fails",
