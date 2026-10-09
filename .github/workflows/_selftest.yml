@@ -779,6 +779,9 @@ jobs:
       - name: Run classify-push-failure tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh
+      - name: Run auto-commit-sweep tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-auto-commit-sweep-tests.sh
       - name: Run classify-review-verdict tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-review-verdict-tests.sh
