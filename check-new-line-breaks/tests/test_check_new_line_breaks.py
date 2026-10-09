@@ -130,6 +130,38 @@ def test_bold_numbering_marker_not_split(line):
     assert nlb.classify_line(line) is None
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        "**2. Used up.**",
+        "*2. Used up.*",
+        "__2. Used up.__",
+        "**1.2. Sub-case label.**",
+        "**b. Lettered label.**",
+        "- **2. Used up.**",
+    ],
+)
+def test_bold_numbered_label_not_split(line):
+    # gha#1001: the number opens a longer emphasized label, so the emphasis
+    # does not close right after it the way `**2.** text` does.
+    assert nlb.split_sentences(line) == [line]
+    assert nlb.classify_line(line) is None
+
+
+def test_bold_numbered_label_followed_by_sentence_splits():
+    # Only the number's dot is protected; the label's own closing still ends
+    # a sentence.
+    line = "**2. Used up.** The budget is gone."
+    assert nlb.split_sentences(line) == ["**2. Used up.**", "The budget is gone."]
+    assert nlb.classify_line(line) == "sentence"
+
+
+def test_bold_label_with_two_sentences_still_splits():
+    # A number protects only itself: two sentences inside one label are still two.
+    line = "**2. Used up. Nothing left.**"
+    assert nlb.split_sentences(line) == ["**2. Used up.", "Nothing left.**"]
+
+
 def test_bold_numbering_marker_with_multiple_sentences_splits():
     line = "**1.** First sentence. Second sentence."
     assert nlb.split_sentences(line) == [
