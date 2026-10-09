@@ -40,7 +40,11 @@ For each source, three steps, each able to fail the job:
      are removed too, with any div they leave empty;
    - with `prune-macros`, LaTeX macro definitions
      (`\def`, `\let`, `\newcommand`, `\renewcommand`, `\providecommand`)
-     that the document never uses, directly or through another macro, are removed.
+     that the source never uses, directly or through another macro, are removed.
+     A macro used only inside an answer counts as used,
+     so a student writing an answer has the answer key's notation;
+     its definition reaches the student file as written,
+     so never put an answer in a macro's body.
      Every definition of a used name is kept,
      since a later `\def` replaces an earlier one.
 

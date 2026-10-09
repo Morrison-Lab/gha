@@ -623,6 +623,18 @@ def test_prune_keeps_used_and_transitive_macros_only(macro_project):
     assert r"\def\incode{c}" in text  # code is left alone
 
 
+def test_prune_keeps_a_macro_only_an_answer_uses(macro_project):
+    # The student writes answers in the file, so the answer key's notation
+    # stays available; \unused is used nowhere and still goes.
+    hw = MACRO_HOMEWORK.replace("It is $\\vx$.", "It is $\\vxy$.")
+    write(macro_project / "hw" / "hw1.qmd", hw)
+    assert generate("--prune-macros", "true") == 0
+    text = student(macro_project).read_text()
+    assert r"\def\vxy{\vecf{xy}}" in text
+    assert r"\unused" not in text
+    assert "It is" not in text
+
+
 def test_prune_is_off_by_default(macro_project):
     assert generate() == 0
     assert r"\unused" in student(macro_project).read_text()
@@ -670,6 +682,17 @@ def test_prune_refuses_a_definition_inside_an_answer(macro_project, capsys):
 
 @needs_quarto
 def test_check_passes_with_macros_pruned(macro_project, capsys):
+    assert generate("--prune-macros", "true") == 0
+    assert check("--prune-macros", "true") == 0
+    assert "1 answer(s) removed" in capsys.readouterr().out
+
+
+@needs_quarto
+def test_check_passes_with_macros_pruned_and_a_table(macro_project, capsys):
+    # A table's short caption is a JSON null, which taking the definitions
+    # out once dropped, so Pandoc refused the document.
+    table = "\n| a | b |\n|---|---|\n| 1 | 2 |\n\n: A table.\n"
+    write(macro_project / "hw" / "hw1.qmd", MACRO_HOMEWORK + table)
     assert generate("--prune-macros", "true") == 0
     assert check("--prune-macros", "true") == 0
     assert "1 answer(s) removed" in capsys.readouterr().out

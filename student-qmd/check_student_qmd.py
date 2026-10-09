@@ -215,6 +215,12 @@ def raw_tex(node: object) -> bool:
     return is_type(node, "RawBlock") and node["c"][0] in ("tex", "latex")
 
 
+# What _without_macro_defs returns for a raw TeX block it left empty, so a
+# list can drop that block without also dropping a JSON null, such as a
+# table's empty short caption.
+_EMPTIED = object()
+
+
 def without_macro_defs(node: object, found: list[str]) -> object:
     """A copy of `node` with every macro definition taken out of its raw TeX
     blocks, each appended to `found`, and any block left empty dropped.
@@ -222,6 +228,11 @@ def without_macro_defs(node: object, found: list[str]) -> object:
     With prune-macros on, both sides go through this before they are
     compared, since the student file keeps only the definitions it uses.
     """
+    result = _without_macro_defs(node, found)
+    return None if result is _EMPTIED else result
+
+
+def _without_macro_defs(node: object, found: list[str]) -> object:
     if raw_tex(node):
         lines = node["c"][1].split("\n")
         kept = lines
@@ -236,12 +247,13 @@ def without_macro_defs(node: object, found: list[str]) -> object:
             found.append("\n".join(lines[g.start : g.end]))
             kept = kept[: g.start] + kept[g.end :]
         text = "\n".join(kept)
-        return {"t": "RawBlock", "c": [node["c"][0], text]} if text.strip() else None
+        return {"t": "RawBlock", "c": [node["c"][0], text]} if text.strip() else _EMPTIED
     if isinstance(node, dict):
-        return {k: without_macro_defs(v, found) for k, v in node.items()}
+        items = ((k, _without_macro_defs(v, found)) for k, v in node.items())
+        return {k: None if v is _EMPTIED else v for k, v in items}
     if isinstance(node, list):
-        items = (without_macro_defs(item, found) for item in node)
-        return [item for item in items if item is not None]
+        items = (_without_macro_defs(item, found) for item in node)
+        return [item for item in items if item is not _EMPTIED]
     return node
 
 

@@ -42,7 +42,10 @@ inputs:
     description: >-
       Keep only the LaTeX macro definitions
       (`\def`, `\let`, `\newcommand` and the like, each at the start of a line)
-      that the student file uses, directly or through another macro.
+      that the source uses, answers included, directly or through another macro,
+      so a student writing an answer has the answer key's notation.
+      A definition that only an answer uses therefore reaches the student file
+      as written, so never put an answer in a macro's body.
       A definition inside an answer-key-only div is refused,
       and so is one whose braces do not close before a blank line or a fence.
       The check leaves definitions out of its comparison;
