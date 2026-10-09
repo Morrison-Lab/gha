@@ -821,8 +821,10 @@ cookieconsent.run({
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#when-are-the-updated-snapshots-checked" id="toc-when-are-the-updated-snapshots-checked" class="nav-link" data-scroll-target="#when-are-the-updated-snapshots-checked">When are the updated snapshots checked?</a></li>
+  <li><a href="#ci-on-the-snapshot-commit" id="toc-ci-on-the-snapshot-commit" class="nav-link" data-scroll-target="#ci-on-the-snapshot-commit">CI on the snapshot commit</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/update-snapshots.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
@@ -879,7 +881,7 @@ cookieconsent.run({
 <td><code>pr-mode</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Use <code>r-lib/actions/pr-fetch</code> and <code>pr-push</code> instead of direct checkout and push. Set <code>true</code> for PR-comment (<code>issue_comment</code>) triggers.</td>
+<td>Fetch the PR’s head branch with <code>r-lib/actions/pr-fetch</code> and push back to it, instead of checking out and pushing <code>ref</code> directly. Set <code>true</code> for PR-comment (<code>issue_comment</code>) triggers.</td>
 </tr>
 <tr class="odd">
 <td><code>julia</code></td>
@@ -938,15 +940,35 @@ cookieconsent.run({
 </tbody>
 </table>
 </section>
+<section id="secrets" class="level2">
+<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Secret</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>WORKFLOW_TOKEN</code></td>
+<td>no</td>
+<td>Token used for the final push: a fine-grained personal access token with <strong>Contents: Read and write</strong> on the branch’s repository. Without it, or when pushing with it fails, the push uses <code>GITHUB_TOKEN</code>, which starts no workflow runs (see <a href="#ci-on-the-snapshot-commit">below</a>). Pass it explicitly from the caller’s <code>secrets:</code> block. Available from <code>@v3</code>; <code>@v2</code> rejects it as an unknown secret.</td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
 <p>Grant <code>contents: write</code> so the job can push the snapshot commit back to the branch.</p>
+<p>The workflow runs in two jobs. <code>update-snapshots</code> runs the branch’s tests with a read-only token and uploads the snapshot commit as a git bundle. <code>push</code> runs none of the branch’s code: it re-fetches the branch, checks that the bundled commit sits directly on the branch’s head and changes only files under <code>tests/testthat/_snaps/</code>, and pushes it. Keeping the push separate means code from the branch under test, which in <code>pr-mode</code> can be a fork PR, never shares a runner with <code>contents: write</code> or with <code>WORKFLOW_TOKEN</code>.</p>
 </section>
 <section id="when-are-the-updated-snapshots-checked" class="level2">
 <h2 class="anchored" data-anchor-id="when-are-the-updated-snapshots-checked">When are the updated snapshots checked?</h2>
 <p>The workflow itself checks only <strong>consistency</strong>, never <strong>correctness</strong>. Its test-and-accept step:</p>
 <ol type="1">
-<li>runs the test suite once, so that failing snapshot expectations write their pending new snapshot files (a <code>tryCatch</code> keeps a hard R error, e.g.&nbsp;a test file that errors outright, from killing the job before the accept step; plain expectation failures don’t stop this run anyway, since <a href="https://devtools.r-lib.org/reference/test.html"><code>devtools::test()</code></a> defaults to <code>stop_on_failure = FALSE</code>);</li>
+<li>runs the test suite once, so that failing snapshot expectations write their pending new snapshot files (with <code>TESTTHAT_MAX_FAILS=Inf</code>, since testthat otherwise stops after 10 failures and never reaches the snapshots past that point) (a <code>tryCatch</code> keeps a hard R error, e.g.&nbsp;a test file that errors outright, from killing the job before the accept step; plain expectation failures don’t stop this run anyway, since <a href="https://devtools.r-lib.org/reference/test.html"><code>devtools::test()</code></a> defaults to <code>stop_on_failure = FALSE</code>);</li>
 <li>calls <a href="https://testthat.r-lib.org/reference/snapshot_accept.html"><code>testthat::snapshot_accept()</code></a>, which accepts whatever the new output is, unconditionally;</li>
 <li>runs <code>devtools::test(stop_on_failure = TRUE)</code> a second time, failing the job, and skipping the commit-and-push steps, if the suite still fails.</li>
 </ol>
@@ -955,8 +977,16 @@ cookieconsent.run({
 <p>Two consequences worth planning around:</p>
 <ul>
 <li><strong>Dispatching against a plain branch skips review entirely.</strong> The <a href="#example">example caller stub</a> defaults to <code>main</code>, where the snapshot commit lands directly, with no reviewable diff in between. Prefer running against a PR branch when the snapshot changes deserve eyes.</li>
-<li><strong>The snapshot commit does not re-trigger CI normally.</strong> The push uses the workflow’s own <code>GITHUB_TOKEN</code>, and <a href="https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow">events triggered by <code>GITHUB_TOKEN</code> do not create new workflow runs</a> (the same behavior the <code>WORKFLOW_TOKEN</code> note on <a href="../permissions.html">Permissions</a> describes), with one exception that applies here: on a pull request, the resulting <code>synchronize</code> event creates the runs in an <strong>approval-required</strong> state, and a user with write access starts them from the “Approve workflows to run” prompt in the PR’s merge box. For a direct push to a plain branch there is no such prompt; re-trigger checks yourself if you need them, e.g.&nbsp;by pushing an empty commit.</li>
+<li><strong>The snapshot commit needs <code>WORKFLOW_TOKEN</code> to get CI.</strong> See the next section.</li>
 </ul>
+</section>
+<section id="ci-on-the-snapshot-commit" class="level2">
+<h2 class="anchored" data-anchor-id="ci-on-the-snapshot-commit">CI on the snapshot commit</h2>
+<p><a href="https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow">Events triggered by <code>GITHUB_TOKEN</code> do not create new workflow runs</a>, so a snapshot commit pushed with that token becomes the branch head with no R CMD check, coverage, or review runs on it. On a pull request GitHub may instead create the runs in an approval-required state, which a user with write access starts from the “Approve workflows to run” prompt in the merge box; either way nothing runs until someone acts, and the PR reads as if CI never ran (Morrison-Lab/bcs#1110, a private repository).</p>
+<p>Pass a <code>WORKFLOW_TOKEN</code> secret to avoid this. The workflow then pushes with that token, and the push triggers the caller’s <code>push</code> and <code>pull_request</code> workflows like any other push. The token needs only <strong>Contents: Read and write</strong> on the repository the branch lives in. The push is a plain <code>git push</code>, so it needs no pull-request scope even in <code>pr-mode</code>.</p>
+<p>Without the secret, or when the push with it fails (an expired token, or one without write access to the branch’s repository), the workflow pushes with <code>GITHUB_TOKEN</code> and posts a warning annotation and a job-summary line naming the commit that has no CI. Re-trigger the checks yourself in that case, e.g.&nbsp;by pushing an empty commit.</p>
+<p>A caller using <code>secrets: inherit</code> passes its repository’s <code>WORKFLOW_TOKEN</code> automatically when one exists.</p>
+<p>If the caller itself runs on <code>push</code> or <code>pull_request</code> and passes the token, the snapshot commit starts the caller again. That second run normally finds nothing to commit and stops, but a snapshot whose output changes on every run (a timestamp, unseeded random output) would commit and retrigger indefinitely. Trigger such callers from a comment or <code>workflow_dispatch</code> instead.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
@@ -973,7 +1003,7 @@ cookieconsent.run({
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">update-snapshots</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v2</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v3</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
@@ -986,7 +1016,10 @@ cookieconsent.run({
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">      # needs: check</span></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">      # commit-message: 'Update testthat snapshots [auto]'</span></span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">      # committer-name: github-actions[bot]</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">      # committer-email: 41898282+github-actions[bot]@users.noreply.github.com</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">      # committer-email: 41898282+github-actions[bot]@users.noreply.github.com</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    # Optional: push with a token so the snapshot commit triggers CI.</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/update-snapshots.yml"><code>examples/update-snapshots.yml</code></a> for the full caller stub.</p>
 
 
