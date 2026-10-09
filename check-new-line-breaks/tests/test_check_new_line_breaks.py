@@ -1179,6 +1179,25 @@ def test_escaped_dollar_is_not_a_math_delimiter():
     assert ";" in nlb.strip_inline_markup(text)
 
 
+def test_escaped_dollar_cannot_open_inline_math():
+    """An escaped `\\$` opens no math even when a later `$` could close it.
+
+    The case above is decided at its closing `\\$6` by the digit rule, so it
+    pins neither escape guard; here only the opening `(?<!\\\\)` decides.
+    """
+    text = "It costs \\$5; see the term x$ in the appendix for what it means."
+    assert ";" in nlb.strip_inline_markup(text)
+
+
+def test_escaped_dollar_cannot_close_inline_math():
+    """An escaped `\\$` closes no math either, so the `;` before it is prose.
+
+    Only the closing side's `(?<![\\s\\\\])` decides this one.
+    """
+    text = "The term $x; y is shown, and \\$ signs follow here in prose."
+    assert ";" in nlb.strip_inline_markup(text)
+
+
 def test_hyphenated_price_range_is_not_inline_math():
     """`$5-$10` is currency: Pandoc does not close math on a `$` before a digit."""
     text = "The price range is $5-$10; that is too expensive for a casual reader to justify."
