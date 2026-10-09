@@ -102,7 +102,7 @@ approval-required state, which a user with write access starts from the
 "Approve workflows to run" prompt in the merge box;
 either way nothing runs until someone acts, and the PR reads as if CI
 never ran
-([Morrison-Lab/bcs#1110](https://github.com/Morrison-Lab/bcs/issues/1110)).
+(Morrison-Lab/bcs#1110, a private repository).
 
 Pass a `WORKFLOW_TOKEN` secret to avoid this.
 The workflow then pushes with that token, and the push triggers the

@@ -18,6 +18,12 @@ each callee job and workflow level, and reports violations when:
    declaring keys that were previously unconstrained or inherited).
 4. A job loses its ``permissions:`` block when the base ref had one (reverting
    to caller/workflow inheritance, which widens permission scope).
+5. A job added since the base ref requests a key or level beyond the union of
+   what the base ref's jobs requested. Callers already grant that union (a
+   job skipped by its ``if:`` still counts), so splitting a job in two needs
+   no new caller grant. When some base job has no block at either level, it
+   inherits the caller's whole grant, the union is unknown, and any new job
+   requesting permissions is reported.
 
 Narrowings (``write`` -> ``read``, ``read`` -> ``none``) and removed keys
 are permitted, as they do not require callers to grant anything new.
@@ -164,6 +170,27 @@ def extract_callee_permissions(doc: dict, filename: str) -> dict[str, dict[str, 
         res[str(job_id)] = job_p
 
     return res
+
+
+def union_of_job_grants(
+    base_jobs: dict[str, dict[str, str] | None],
+    workflow_p: dict[str, str] | None,
+) -> dict[str, str] | None:
+    """Return the highest level each base job requests, per permission key.
+
+    A job with no ``permissions:`` block takes the workflow-level block. When
+    neither exists the job inherits the caller's whole grant, which this audit
+    cannot see, so the union is unknown and ``None`` is returned.
+    """
+    union: dict[str, str] = {}
+    for job_p in base_jobs.values():
+        effective = job_p if job_p is not None else workflow_p
+        if effective is None:
+            return None
+        for key, val in effective.items():
+            if key not in union or LEVELS[val] > LEVELS[union[key]]:
+                union[key] = val
+    return union
 
 
 def compare_target_permissions(
@@ -376,11 +403,25 @@ def audit_permissions(
         base_jobs = {k: v for k, v in base_perms.items() if k != "(workflow)"}
         head_jobs = {k: v for k, v in head_perms.items() if k != "(workflow)"}
 
+        base_union = union_of_job_grants(base_jobs, base_perms.get("(workflow)"))
+
         for job_id, head_p in sorted(head_jobs.items()):
             examined_jobs += 1
             if job_id not in base_jobs:
-                # Job added in an existing reusable workflow.
-                if head_p is not None:
+                # Job added in an existing reusable workflow. Every caller
+                # already grants what each base job requests (a skipped job
+                # still counts), so a new job within that union needs no new
+                # caller grant; compare against it when it is known.
+                if head_p is not None and base_union is not None:
+                    all_violations.extend(
+                        compare_target_permissions(
+                            base_union,
+                            head_p,
+                            f"new job '{job_id}' (against the union of base jobs)",
+                            wf_path,
+                        )
+                    )
+                elif head_p is not None:
                     added_keys = [k for k, val in head_p.items() if val != "none"]
                     if added_keys:
                         all_violations.append(
