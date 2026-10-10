@@ -104,6 +104,14 @@ on:
           Empty leaves the runner's time zone unchanged.
         type: string
         default: ''
+      timeout-minutes:
+        description: >-
+          Timeout, in minutes, for the render (build job). Default 45 is the hang
+          ceiling, not a budget; raise it for a site whose full render (every
+          page in every format) takes longer. A caller cannot set
+          timeout-minutes on a job that uses `uses:`.
+        type: number
+        default: 45
       detect-changed-chapters:
         description: >-
           Compare this run's render against the copy published on the deployed
@@ -193,7 +201,7 @@ jobs:
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
       (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name))
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     # Cancel an in-progress preview build when a newer commit on the same ref
     # supersedes it. Without cancel-in-progress the default is false, so a fresh
     # push QUEUES behind the stale run and the up-to-date preview is delayed
