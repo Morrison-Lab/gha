@@ -172,7 +172,13 @@ runs:
       if: inputs.setup-julia == 'true'
       uses: julia-actions/cache@e32267b41e0fa7df82a3d53e8c7273620d52c586 # v3.4.0
       with:
-        cache-name: julia-cache;julia=${{ inputs.julia-version }};workflow=${{ github.workflow }};job=${{ github.job }}
+        # Save only when the job succeeds. The action saves on failure and
+        # cancel by default, so a build cancelled mid-install stored a
+        # half-installed depot that every later build on the ref restored
+        # and failed on ("RCall not properly installed"). The -v2 name
+        # also stops those already-saved depots from being restored.
+        cache-name: julia-cache-v2;julia=${{ inputs.julia-version }};workflow=${{ github.workflow }};job=${{ github.job }}
+        save-always: false
 
     # R's etc/ldpaths puts the system library directory
     # (/usr/lib/x86_64-linux-gnu) on LD_LIBRARY_PATH for every R process and
