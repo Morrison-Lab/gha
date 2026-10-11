@@ -215,6 +215,12 @@ def check_preview(
             errors.append(
                 f"preview/action.yml julia-actions/cache step cache-name must include inputs.julia-version (got {cache_name!r})"
             )
+        save_always = str(julia_cache_step.get("with", {}).get("save-always", "")).lower()
+        if save_always != "false":
+            errors.append(
+                "preview/action.yml julia-actions/cache step must set save-always: false, "
+                f"or a cancelled build saves a half-installed depot (got {save_always!r})"
+            )
 
     return errors
 
@@ -308,6 +314,13 @@ def run_self_test() -> int:
             "drop julia-version from julia cache-name in action.yml",
             DEFAULT_COMPOSITE,
             baseline_composite.replace("julia=${{ inputs.julia-version }};", ""),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop save-always: false from the julia cache step in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("save-always: false", "save-always: true"),
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),
