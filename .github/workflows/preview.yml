@@ -82,6 +82,13 @@ on:
         description: Space-separated list of formats to render (e.g. 'html docx pdf revealjs'), or 'default' for bare render.
         type: string
         default: ''
+      skip-docx:
+        description: >-
+          Leave Word (docx) out of the PR preview render so it builds faster;
+          the publish build still renders it. A PR labelled `preview:docx`
+          opts back in. Set to false to render docx as before.
+        type: boolean
+        default: true
       extra-preview-labels:
         description: >-
           JSON array string of additional PR label names that trigger a preview
@@ -237,6 +244,7 @@ jobs:
           render-profile: ${{ inputs.render-profile }}
           output-dir: ${{ inputs.output-dir }}
           formats: ${{ inputs.formats }}
+          skip-docx: ${{ inputs.skip-docx }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
