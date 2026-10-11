@@ -7,6 +7,11 @@
   list drops `docx` the same way.
   A PR labelled `preview:docx` opts back in, and `skip-docx: false` restores
   the old behavior.
-  This changes an optional input's default for callers that render docx in
-  previews today, so those callers get no docx in their previews once the
-  `v3` tag slides.
+  The input is new, so no caller breaks at the call gate, but its default
+  changes what previews render:
+  callers that render docx in previews today lose it once the tag they pin
+  slides to include this change (`v3` for Morrison-Lab/lds,
+  `v2` for callers following `examples/preview.yml`),
+  and set `skip-docx: false` to keep it.
+  The default is deliberate, requested by the maintainer for every
+  Morrison-Lab repo, and preferred over a major bump.
