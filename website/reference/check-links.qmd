@@ -10,7 +10,7 @@ auto-filed issue when links break on `main`.
 | Input                  | Type    | Default                   | Description                                                                           |
 | ---------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------- |
 | `lychee-config`        | string  | `''`                      | Path in the caller repo to a lychee config; falls back to the bundled default.        |
-| `lychee-args`          | string  | `''`                      | Arguments and globs passed to lychee; a sensible default glob set is used when empty. |
+| `lychee-args`          | string  | `''`                      | Arguments and globs passed to lychee; a sensible default glob set is used when empty. Do not pass `--format` or `--output`. |
 | `fail-if-empty`        | boolean | `false`                   | Fail the run when no links are found.                                                 |
 | `create-issue-on-main` | boolean | `true`                    | File an issue when links break on the `main` branch.                                  |
 | `skip-label`           | string  | `'links checked by hand'` | PR label that skips the link check.                                                   |
@@ -21,7 +21,9 @@ A 5xx server error is usually a host that is briefly down rather than a dead lin
 so it fails a pull request only when the link is on a line the PR adds.
 Any other 5xx is reported as a warning annotation and in the job summary,
 and does not fail the run (gha#1052).
-On a push or a scheduled run no line is added, so every 5xx is a warning.
+On any other event, such as a push, a scheduled run, `workflow_dispatch`,
+`merge_group`, or `pull_request_target`,
+the workflow passes no diff base, so every 5xx is a warning.
 The `check-links` composite that this workflow calls
 defaults its `base-ref` input to `all`,
 so a direct caller of the composite still fails on every 5xx

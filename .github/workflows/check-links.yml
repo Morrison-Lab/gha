@@ -8,7 +8,7 @@ on:
         type: string
         default: ''
       lychee-args:
-        description: Arguments/globs passed to lychee; if empty, a sensible default glob set is used.
+        description: Arguments/globs passed to lychee; if empty, a sensible default glob set is used. Do not pass --format or --output, which the composite sets itself.
         type: string
         default: ''
       fail:

@@ -197,9 +197,24 @@ def _describe(entry: dict) -> str:
     return f"{prefix}{entry.get('url', '?')}: {status}"
 
 
-def _annotate(level: str, path: str, entry: dict, suffix: str = "") -> str:
+def _repo_root() -> Optional[str]:
+    try:
+        return _git("rev-parse", "--show-toplevel").strip() or None
+    except (subprocess.CalledProcessError, OSError):
+        return None
+
+
+def _annotation_file(path: str, root: Optional[str]) -> str:
+    # GitHub attaches `file=` relative to the repository root, while lychee
+    # keys its report relative to the directory it ran in.
+    rel = repo_path(path, root, os.getcwd()) if root else None
+    return rel if rel is not None else _normalize_path(path)
+
+
+def _annotate(level: str, path: str, entry: dict, suffix: str = "",
+              root: Optional[str] = None) -> str:
     line = (entry.get("span") or {}).get("line")
-    loc = f" file={_normalize_path(path)}"
+    loc = f" file={_annotation_file(path, root)}"
     if isinstance(line, int):
         loc += f",line={line}"
     return f"::{level}{loc}::{_escape(_describe(entry) + suffix)}"
@@ -266,11 +281,13 @@ def main() -> int:
         return 2
 
     blocking, demoted = classify(listed, _scope(base_ref))
+    root = _repo_root()
     for path, entry in demoted:
         print(_annotate("warning", path, entry,
-                        " (server error on a line this change does not add; not failing the check)"))
+                        " (server error on a line this change does not add; not failing the check)",
+                        root))
     for path, entry in blocking:
-        print(_annotate("error", path, entry))
+        print(_annotate("error", path, entry, root=root))
 
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:

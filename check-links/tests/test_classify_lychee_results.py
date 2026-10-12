@@ -230,7 +230,7 @@ def test_an_absolute_report_key_is_matched_against_the_diff(tmp_path, repo):
     assert proc.returncode == 1
     warnings = [l for l in proc.stdout.splitlines() if l.startswith("::warning")]
     errors = [l for l in proc.stdout.splitlines() if l.startswith("::error")]
-    assert len(warnings) == 1 and "old.md,line=2::[503]" in warnings[0]
+    assert len(warnings) == 1 and "file=old.md,line=2::[503]" in warnings[0]
     assert len(errors) == 1 and "new.md,line=2::[502]" in errors[0]
 
 
@@ -243,6 +243,8 @@ def test_a_key_relative_to_a_subdirectory_is_matched(tmp_path, repo):
     added = report({"page.md": [entry("https://down.example/page", 503, 1)]})
     proc, _ = run(tmp_path, added, base_ref="main", cwd=sub)
     assert proc.returncode == 1, proc.stdout  # docs/page.md line 1 is added
+    # The annotation names the file from the repository root, not from cwd.
+    assert "::error file=docs/page.md,line=1::[503]" in proc.stdout
     untouched = report({"../old.md": [entry("https://down.example/old", 503, 2)]})
     proc, _ = run(tmp_path, untouched, base_ref="main", cwd=sub)
     assert proc.returncode == 0, proc.stdout
