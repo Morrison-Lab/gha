@@ -1651,6 +1651,94 @@ The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 half of, so a fix to either is owed to the other (porting gha#425's fix there
 is tracked in Morrison-Lab/ai-config#1212).
 
+**gha#999 taught the check to skip math and citation locators, and each
+skip has a guard that keeps it from hiding prose.**
+A skip fails in the quiet direction, because a line the check does not read
+is a line it passes.
+So every widening below is paired with the guard that bounds it, and with the
+case that turns red when the guard is removed.
+
+A citation locator such as `[@h, p. 331]` no longer ends a sentence.
+The protection is `_PAGE_LOCATOR_RE`, a bare `p.` followed by whitespace and a
+digit, applied beside `_ABBREV_RE` rather than added to it.
+`p` stays out of the abbreviation list because `Plot variable p. Then fit it.`
+must still split.
+The accepted cost is that a sentence ending in a bare `p.` before one that
+opens with a digit stays on one line, and
+`test_page_locator_protection_needs_a_digit_follower` pins that cost
+deliberately, so changing it is a decision.
+
+Inline `$...$` math is stripped before the clause check, so a `;` between
+math arguments is not a clause break.
+`_MATH_RE` follows Pandoc's `tex_math_dollars` rule: the opening `$` takes no
+space after it, and the closing `$` takes no space before it.
+Two guards keep currency out of it.
+A closing `$` followed by a digit closes nothing (`(?!\d)`), so in
+`$5-$10;` the semicolon stays visible.
+An escaped `\$` neither opens nor closes math, by one lookbehind on each side.
+Multi-line `$$ ... $$` blocks are skipped as TeX: an odd count of `$$` on a
+line toggles the block, and a blank line ends it, as Pandoc allows no blank
+line inside one, so a stray `$$` cannot hide the rest of the file.
+A line that opens a block after text stays prose, and so does prose after a
+closer, unless that tail starts with `{` (an attribute block such as
+`{#eq-...}`).
+
+Raw TeX math environments (`equation`, `align`, `alignat`, `gather`,
+`multline`, `flalign` and `eqnarray`, each with an optional `*`) are skipped
+up to their matching `\end{...}`.
+The opener may follow a blockquote or list marker, or end a line of prose,
+and in that last case the opener's own line stays prose.
+Three guards bound the openers.
+**The line-end anchor** (`_TEX_MATH_ENV_TAIL_RE`, the opener followed only by
+whitespace) is what stops an environment named mid-sentence or inside a code
+span from opening one.
+**The `$$` guard** applies to that same line-end form: an opener ending a line
+that carries `$$` is left to the display-math handling, so
+`$$\begin{align}` does not open a second, unterminated block inside the
+first.
+A line-start opener is not covered by it.
+**The display-math guard** ignores any opener inside a `$$` block, for the
+same reason.
+
+Nine mutations were each confirmed to turn a named case red:
+
+1. dropping the `(?!\d)` digit rule
+   (`test_hyphenated_price_range_is_not_inline_math`);
+2. dropping the line-end anchor (both cases of
+   `test_tex_environment_named_in_prose_opens_nothing`);
+3. dropping the `$$` guard
+   (`test_display_math_wrapping_a_tex_environment_keeps_later_prose`);
+4. dropping the display-math guard
+   (`test_tex_opener_inside_display_math_opens_nothing`);
+5. disabling the page-locator protection (both `test_page_locator_*` cases);
+6. letting a blank line leave a `$$` block open
+   (`test_unclosed_display_math_ends_at_a_blank_line`);
+7. letting a blank line leave a raw environment open
+   (`test_unclosed_tex_math_environment_ends_at_a_blank_line`);
+8. dropping the escape lookbehind on the opening `$`
+   (`test_escaped_dollar_cannot_open_inline_math`);
+9. dropping the escape lookbehind on the closing `$`
+   (`test_escaped_dollar_cannot_close_inline_math`).
+
+The last two survived the suite #999 shipped with.
+Its only escape case, `\$5; ... \$6`, is decided at its closing `\$6` by the
+digit rule, so it pinned neither escape guard, and removing either one changed
+no verdict.
+Each of the two cases added for them is reachable by one guard alone.
+
+Four limits are accepted rather than fixed.
+A blank line ends a raw environment, as a guard: without it a missing
+`\end{...}` would hide the rest of the file.
+That one errs toward reading TeX as prose, since Pandoc's `raw_tex` carries
+an environment across a blank line, so lines after the blank are checked.
+The other three are lines the check passes without reading.
+Prose after `\end{...}` on the same line goes unchecked, since that whole
+line is skipped.
+A bare opener that happens to end a line of prose hides the lines after it,
+up to the next blank line, as an environment would.
+And a stray `$$` in the middle of prose does the same, since an odd count
+opens a block.
+
 `check-typed-output/tests/test_check_typed_output.py` is a pytest suite over
 the fence parser, both detectors, and both scopes (throwaway git repos in
 `tmp_path`, nothing committed).
@@ -2825,6 +2913,64 @@ Tests went 138 -> 160.
 Round one's own tests all passed, and it would have shipped the
 quoted-payload bypass unreviewed -- the argument for the adversarial round
 over a green suite alone.
+
+**A stray fence can hide the verdict and the payload together, and the
+recovery re-runs the whole classifier rather than reading the payload
+(gha#1021).**
+A review that quotes a diff in a three-backtick fence, where one diff context
+line is itself a fence (a space, then three backticks), has that fence closed
+early.
+The diff's own closing line then opens a fence that hides everything up to the
+next closer (Morrison-Lab/mds#194).
+Both scans blank fenced lines, as GitHub renders them, so the review classified
+`no-verdict`.
+The fence handling stays CommonMark-correct.
+Instead, when neither scan finds a verdict, `unclosed_fence_rerun` finds the
+last unquoted review-data marker.
+When that marker is fenced, it blanks the bare opener of the fence holding it
+and runs the script again over that text.
+When the marker is visible, there is nothing to recover and no re-run happens.
+A clean answer from the re-run counts only when the last payload names the
+40-hex `HEAD_SHA` exactly, which `record()` enforces in the child, a mode the
+parent selects with an argv flag rather than the environment.
+A non-clean answer stands as it is.
+
+**The first draft read the hidden payload directly, and that reintroduced
+the lesson recorded just above.**
+The adversarial review found three false-CLEAN paths, each turning a
+fail-closed `no-verdict` into `clean=true`: a retraction heading after the
+payload (gha#857's shape), a contradicting label tail (gha#863's), and a
+no-new-diff claim on unreviewed commits (gha#965's).
+Every guard against them lives in the main path, and a bespoke payload reader
+inherited none of them.
+The re-run inherits all of them by construction, and a test pins each one.
+The opener must be bare, since one with an info string is code the reviewer
+meant, and the commit match is exact, since a 7-hex prefix of a PR's own head
+can be ground out cheaply.
+The residual that is left is a bare-fenced example payload naming the head in
+full, on a review with no verdict of its own.
+
+**The re-run may only reveal lines, never hide one.**
+Blanking one opener re-pairs every fence after it, so a second fence error
+after the payload can make the child fence a line GitHub shows.
+The second review round built that case: a visible no-new-diff claim was
+fenced in the child, so gha#965 never saw it, and the review read clean.
+So the script walks the fences of both texts and refuses the re-run when the
+child fences any line the parent left visible.
+
+Three mutations survive, and each means another gate still holds.
+Dropping the marker's line anchor still leaves a blockquoted payload
+untrusted, because the child's own payload scan skips blockquoted lines.
+Admitting the re-run's `no-verdict` answer leaves `clean=false`, and changes
+the slug only on the `unrecognized` call site.
+Letting a fenced marker above a visible last one pick the target is caught by
+the reveal-only check: blanking a closed example's opener turns its closer
+into an opener, which hides the visible payload below it.
+A related latent quirk is recorded rather than fixed: `strip_code_spans` runs
+over the whole text before fence tracking, so three-backtick fence lines can
+pair as code spans and unfence a region.
+That is why a first repro with an even number of fence lines classified clean
+on `main`.
 
 **`permission_denials_count` can be absent from the real execution file even
 though `claude-code-action` prints it to the job log, because the log line is
@@ -4474,13 +4620,24 @@ the non-head SHA, matching this pattern.)
   it goes red on "Needs more work", "Changes requested", "Blocked",
   or review errors.
 
-Both gate jobs skip gray on the exact same graceful-skip paths:
+Both gate jobs skip gray when no review was due, or a newer run owns the verdict:
 
 - `claude-review` was skipped (draft PR, fork, bot author, or dispatch guard blocked);
 - `claude-review` was cancelled by a newer run (`cancel-in-progress`);
-- Account API quota was exhausted mid-run (`quota_exhausted=true`);
-- Default-branch workflow restore failed (`self_mod=true`);
 - `post-review` reported the review stale because PR head moved (`stale=true`).
+
+On two more paths `require-review` skips gray and `require-clean-verdict`
+fails red (gha#1019):
+
+- Account API quota was exhausted (`quota_exhausted=true`);
+- Default-branch workflow restore failed (`self_mod=true`).
+
+Both leave the current head unreviewed with no newer run coming.
+GitHub counts a skipped required check as passing, so a gray
+`require-clean-verdict` there let an unreviewed PR read as merge-clean
+(measured on Morrison-Lab/lds#454, run 37671849851).
+`require-review` keeps the gray skip because it attests delivery, and the
+skip notice was delivered.
 
 Consumers requiring server-side merge blocking can add
 `review / require-clean-verdict` to branch protection / repository ruleset
