@@ -25,6 +25,118 @@ jobs:
       lychee-args: >-
         --verbose --no-progress './**/*.qmd' './**/*.md' './**/*.html'
         --remap "https://github.com/Morrison-Lab/gha/blob/main/(.*) file://${GITHUB_WORKSPACE}/\$1"
+  # check-links demotes a 5xx to a warning unless it is on an added line
+  # (gha#1052). The `links` job above runs the released @v3 composite, so this
+  # one runs the local composite against a server on 127.0.0.1 that answers
+  # with the status code named in the path: no host outside the runner is
+  # contacted, and the 503 and 404 are real HTTP responses lychee receives.
+  links-5xx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run the unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-links/tests/ -q
+
+      # old.md is committed first and new.md second, so with base-ref HEAD~1
+      # only new.md's link is on an added line.
+      - name: Build the fixture and start the status server
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-links
+          cat > _ci-links/srv.py <<'EOF'
+          import http.server
+          class H(http.server.BaseHTTPRequestHandler):
+              def do_GET(self):
+                  self.send_response(int(self.path.rstrip('/').split('/')[-1]))
+                  self.end_headers()
+              do_HEAD = do_GET
+          http.server.HTTPServer(('127.0.0.1', 8765), H).serve_forever()
+          EOF
+          nohup python3 _ci-links/srv.py > "$RUNNER_TEMP/srv.log" 2>&1 &
+          printf 'max_retries = 0\naccept = [200]\ntimeout = 10\n' > _ci-links/lychee.toml
+          printf 'Old [link](http://127.0.0.1:8765/s/503).\n' > _ci-links/old.md
+          printf 'Dead [link](http://127.0.0.1:8765/s/404).\n' > _ci-links/dead.md
+          git config user.name selftest
+          git config user.email selftest@users.noreply.github.com  # phi-allow
+          git add _ci-links
+          git commit -qm 'fixture: old 503 link'
+          printf 'New [link](http://127.0.0.1:8765/s/503).\n' > _ci-links/new.md
+          git add _ci-links/new.md
+          git commit -qm 'fixture: new 503 link'
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -s -o /dev/null http://127.0.0.1:8765/s/200; then exit 0; fi
+            sleep 1
+          done
+          echo "::error::status server did not start"; cat "$RUNNER_TEMP/srv.log"; exit 1
+
+      - name: A 503 with no base-ref is a warning
+        uses: ./check-links
+        with:
+          lychee-config: _ci-links/lychee.toml
+          lychee-args: --no-progress _ci-links/old.md
+
+      - name: A 503 not on a line added since base-ref is a warning
+        uses: ./check-links
+        with:
+          lychee-config: _ci-links/lychee.toml
+          lychee-args: --no-progress _ci-links/old.md
+          base-ref: HEAD~1
+
+      - name: A 503 on an added line fails
+        id: added
+        continue-on-error: true
+        uses: ./check-links
+        with:
+          lychee-config: _ci-links/lychee.toml
+          lychee-args: --no-progress _ci-links/new.md
+          base-ref: HEAD~1
+
+      - name: base-ref all makes any 503 fail
+        id: all
+        continue-on-error: true
+        uses: ./check-links
+        with:
+          lychee-config: _ci-links/lychee.toml
+          lychee-args: --no-progress _ci-links/old.md
+          base-ref: all
+
+      - name: A 404 fails with no base-ref
+        id: dead
+        continue-on-error: true
+        uses: ./check-links
+        with:
+          lychee-config: _ci-links/lychee.toml
+          lychee-args: --no-progress _ci-links/dead.md
+
+      - name: Assert the three failing cases failed
+        shell: bash
+        env:
+          ADDED: ${{ steps.added.outcome }}
+          ALL: ${{ steps.all.outcome }}
+          DEAD: ${{ steps.dead.outcome }}
+        run: |
+          set -euo pipefail
+          status=0
+          for pair in "added:$ADDED" "all:$ALL" "dead:$DEAD"; do
+            if [ "${pair#*:}" != "failure" ]; then
+              echo "::error::case ${pair%%:*} should fail, got '${pair#*:}'"
+              status=1
+            fi
+          done
+          exit "$status"
   # check-non-standard-chars's extensions input is brand new, so (like
   # lint-yaml/lint-markdown below) it isn't at the released `@v2` tag its
   # reusable workflow's internal `uses: Morrison-Lab/gha/check-non-standard-chars@v3`

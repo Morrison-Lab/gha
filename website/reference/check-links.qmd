@@ -14,6 +14,14 @@ auto-filed issue when links break on `main`.
 | `fail-if-empty`        | boolean | `false`                   | Fail the run when no links are found.                                                 |
 | `create-issue-on-main` | boolean | `true`                    | File an issue when links break on the `main` branch.                                  |
 | `skip-label`           | string  | `'links checked by hand'` | PR label that skips the link check.                                                   |
+| `fail-on-any-5xx`      | boolean | `false`                   | Fail on every 5xx server error, not only on one on a line the PR adds.                |
+
+A 404, a network error, or a timeout fails the check wherever the link is.
+A 5xx server error is usually a host that is briefly down rather than a dead link,
+so it fails a pull request only when the link is on a line the PR adds.
+Any other 5xx is reported as a warning annotation and in the job summary,
+and does not fail the run (gha#1052).
+On a push or a scheduled run no line is added, so every 5xx is a warning.
 
 ## Permissions
 
@@ -51,6 +59,7 @@ jobs:
     #   fail-if-empty: true              # fail when no links are found (default: false)
     #   create-issue-on-main: true
     #   skip-label: 'links checked by hand'
+    #   fail-on-any-5xx: true            # fail on every 5xx, not only on PR-added lines (@v3)
 ```
 
 See

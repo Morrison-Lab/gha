@@ -27,6 +27,12 @@ on:
         description: PR label that skips the link check.
         type: string
         default: 'links checked by hand'
+      fail-on-any-5xx:
+        description: >-
+          Fail on every 5xx server error. By default a 5xx fails a PR only
+          when the link is on a line the PR adds, and is otherwise a warning.
+        type: boolean
+        default: false
 
 jobs:
   link-checker:
@@ -39,6 +45,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Depth 2 holds the merge ref's parents, so HEAD^1 resolves below.
+          fetch-depth: 2
 
       - name: Check for manual override label
         id: check-label
@@ -66,6 +75,11 @@ jobs:
           lychee-args: ${{ inputs.lychee-args }}
           fail: ${{ inputs.fail }}
           fail-if-empty: ${{ inputs.fail-if-empty }}
+          # A 5xx fails a PR only on a line the PR adds (gha#1052). On
+          # pull_request, HEAD is GitHub's merge ref and HEAD^1 the base tip it
+          # was built on (gha#1007). Elsewhere no line is added, so every 5xx
+          # is a warning.
+          base-ref: ${{ inputs.fail-on-any-5xx && 'all' || (github.event_name == 'pull_request' && 'HEAD^1' || '') }}
 
       - name: Create issue on main branch if links are broken
         if: failure() && github.ref == 'refs/heads/main' && inputs.create-issue-on-main
