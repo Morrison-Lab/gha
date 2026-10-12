@@ -69,7 +69,8 @@
 #     (gha#536: 8 stub attempts across 3 PRs, 2 recoveries; gha#551).
 #   - on every path that exits 1, first writes failure_kind=<kind> to
 #     $GITHUB_OUTPUT: `short-circuit`, `hard-error`, `no-output`, `stub`,
-#     `high-denial`, `background-agent`, or `deferred`. This script is the
+#     `high-denial`, `background-agent`, `deferred`, or `auth-rejected`
+#     (an API 401, gha#1005). This script is the
 #     thing that KNOWS which one happened, so it says so, rather than
 #     leaving claude-code-review.yml
 #     to re-derive it from the other outputs -- a second copy of one
@@ -893,6 +894,20 @@ if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
     } >> "$GITHUB_OUTPUT"
     echo "::warning::Claude review skipped -- the API returned 429 part-way through the review (quota or rate limit exhausted mid-run; gha#520). Re-trigger the review once the quota resets. API message: ${api_error_message:-<none>}"
     exit 0
+  fi
+  # gha#1005: a 401 is the API refusing the credential itself -- an expired
+  # or revoked CLAUDE_CODE_OAUTH_TOKEN, which the gha#686 shape check cannot
+  # see because the value is well-formed. Reported as a generic hard-error,
+  # the PR comment said "the cause lies elsewhere" and named no remedy, and a
+  # maintainer read it as a quota problem (Morrison-Lab/ai-config#4263). Keyed
+  # on the structured field, for the reason the 429 branch above gives.
+  # Unlike 429 this is NOT a graceful skip: re-running fails identically
+  # until someone rotates the secret, so the check stays red.
+  if [[ "$api_error_status" == "401" ]]; then
+    echo "failure_kind=auth-rejected" >> "$GITHUB_OUTPUT"
+    api_error_message="$(jq -r "$redact_jq"'(.result // "") | tostring | gsub("[\n\r]"; " ") | redact' <<< "$result")"
+    echo "::error::Claude review failed -- the API rejected the configured credential (HTTP 401; gha#1005). Regenerate it with \`claude setup-token\` and update the CLAUDE_CODE_OAUTH_TOKEN (or ANTHROPIC_API_KEY) repository or organization secret. API message: ${api_error_message:-<none>}"
+    exit 1
   fi
   echo "failure_kind=hard-error" >> "$GITHUB_OUTPUT"
   echo "::error::Claude review ended in an error state (is_error=$is_error, subtype=$subtype)."

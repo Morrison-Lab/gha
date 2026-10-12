@@ -1,0 +1,14 @@
+[
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": true,
+    "duration_ms": 1873,
+    "num_turns": 1,
+    "total_cost_usd": 0,
+    "api_error_status": 401,
+    "terminal_reason": "api_error",
+    "result": "Failed to authenticate. API Error: 401 OAuth access token is invalid.",
+    "permission_denials_count": 0
+  }
+]
