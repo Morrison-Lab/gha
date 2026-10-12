@@ -958,7 +958,7 @@ cookieconsent.run({
 <td><code>skip-docx</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to <code>formats: default</code> (the project’s declared formats minus docx, read with <code>quarto inspect</code>) and to an explicit <code>formats</code> list. A PR labelled <code>preview:docx</code> opts back in, and so does <code>docx-tracked-changes: true</code>, which needs the Word files. Set to <code>false</code> to render docx as before.</td>
+<td>Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to an explicit <code>formats</code> list only: <code>formats: default</code> is a bare render, and <code>quarto render --to</code> takes one format. A PR labelled <code>preview:docx</code> opts back in, and so does <code>docx-tracked-changes: true</code>, which needs the Word files. Set to <code>false</code> to render docx as before.</td>
 </tr>
 <tr class="even">
 <td><code>extra-preview-labels</code></td>
@@ -1048,7 +1048,7 @@ cookieconsent.run({
 <td><code>docx-tracked-changes</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Generate Word DOCX documents with tracked changes against the published version on the deployed branch. Renders docx in the preview as a <code>preview:docx</code> label would, overriding <code>skip-docx</code>; an explicit <code>formats</code> list must still name docx.</td>
+<td>Generate Word DOCX documents with tracked changes against the published version on the deployed branch.</td>
 </tr>
 <tr class="odd">
 <td><code>docx-tracked-changes-glob</code></td>
