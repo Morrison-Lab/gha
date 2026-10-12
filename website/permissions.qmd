@@ -111,6 +111,13 @@ already include the right `permissions:` blocks; copy them as-is.
   it is optional under the currently-tagged `@v2`
   (which no longer requests it, per gha#832)
   but required by the model job once you adopt `@v3`.
+  A Dependabot bump from `@v2` to `@v3` is where a missing grant shows up,
+  and it shows up as an absence:
+  the bumped run ends in `startup_failure`,
+  so the PR carries no review check at all rather than a red one.
+  Add `checks: read` to the caller job in that same PR before merging it
+  ([gha#1006](https://github.com/Morrison-Lab/gha/issues/1006);
+  measured on Morrison-Lab/mds#78).
 - `cursor-code-review` queues a Cursor Bugbot review.
   It is read-only, above, but does need the `CURSOR_API_KEY` secret
   (Enterprise, `admin:*` scope).
