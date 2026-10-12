@@ -39,7 +39,7 @@
 # Inputs come from the environment so a caller never has to quote a denied
 # command string onto an argv:
 #   FAILURE_KIND  `high-denial`, `stub`, `short-circuit`, `hard-error`,
-#                 `no-output`, or `deferred`, as written by
+#                 `no-output`, `deferred`, or `auth-rejected`, as written by
 #                 check-review-execution.sh. Two of them also come straight
 #                 from claude-code-review.yml's own "Resolve final review
 #                 outcome" step: `short-circuit`, which that step sets as
@@ -80,7 +80,7 @@ TOTAL_COST="${TOTAL_COST:-}"
 ATTEMPTS="${ATTEMPTS:-}"
 
 case "$FAILURE_KIND" in
-  high-denial|stub|background-agent|short-circuit|hard-error|no-output|deferred|bad-credential) kind="$FAILURE_KIND" ;;
+  high-denial|stub|background-agent|short-circuit|hard-error|no-output|deferred|bad-credential|auth-rejected) kind="$FAILURE_KIND" ;;
   *) kind=unknown ;;
 esac
 
@@ -135,6 +135,9 @@ case "$kind" in
     ;;
   bad-credential)
     headline="Claude review did not run: the configured API credential is unusable."
+    ;;
+  auth-rejected)
+    headline="Claude review did not finish: the API rejected the configured credential (HTTP 401)."
     ;;
   *)
     headline="Claude review did not finish: no usable verdict was produced."
@@ -221,6 +224,11 @@ case "$kind" in
     printf 'A repository admin fixes it under **Settings -> Secrets and variables -> Actions** by re-setting `CLAUDE_CODE_OAUTH_TOKEN` (or `ANTHROPIC_API_KEY`) to a single-line value with no spaces or line breaks. The usual cause is pasting a multi-line block -- a PEM key, a JSON credential file, a wrapped terminal copy -- where the token belongs. `claude setup-token` prints a fresh token to copy.\n\n'
     printf 'The `Pre-flight credential shape check` step in the linked run names which secret is affected and where the whitespace falls, without printing the value itself.\n\n'
     ;;
+  auth-rejected)
+    printf 'The Anthropic API answered with HTTP 401, so it refused the credential itself: the stored `CLAUDE_CODE_OAUTH_TOKEN` (or `ANTHROPIC_API_KEY`) is expired, revoked, or otherwise not accepted (gha#1005). The value is well-formed, which is why the pre-flight shape check passed it.\n\n'
+    printf 'This is a repository or organization configuration problem rather than anything about the diff, and it is not a quota limit. Re-running the workflow will fail identically until the secret is replaced.\n\n'
+    printf 'Regenerate the token with `claude setup-token`, then update the secret under **Settings -> Secrets and variables -> Actions**, at the repository or the organization level, wherever this repository reads it from. The log of the linked run quotes the API message.\n\n'
+    ;;
   *)
     printf 'The specific failure mode was not identified. The `Resolve final review outcome` step in the linked run carries the annotation naming it.\n\n'
     ;;
@@ -256,7 +264,10 @@ esac
 # call was ever attempted. "not recorded" would invite a triager to wonder
 # about permissions on a run that never reached them, which is the same
 # wrong-place-to-look problem the case split above exists to avoid.
-if [[ "$kind" == "bad-credential" ]]; then
+# Skipped for `auth-rejected` too, for the opposite reason: the cause is
+# known, so the zero-denial line's "the cause lies elsewhere" would point the
+# reader away from the credential the advice above names (gha#1005).
+if [[ "$kind" == "bad-credential" || "$kind" == "auth-rejected" ]]; then
   :
 elif [[ -n "$DENIED_TOOLS" ]]; then
   denied_fence="$(fence_for "$DENIED_TOOLS")"
