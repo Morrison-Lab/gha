@@ -142,6 +142,10 @@ Two further cases where the job ran and stopped early also skip gray:
   review was skipped rather than executing workflow YAML from the PR head
   ([#598](https://github.com/Morrison-Lab/gha/issues/598)).
 
+In those two cases `require-clean-verdict` fails instead of skipping,
+since no verdict exists for the head
+([#1019](https://github.com/Morrison-Lab/gha/issues/1019)).
+
 PRs that edit workflow files are reviewed when that restore succeeds.
 The job replaces `.github/workflows/` with the default-branch tree after
 checkout and passes `github_token` so `claude-code-action` skips its OIDC
@@ -174,8 +178,8 @@ to enforce that only PRs with an affirmatively clean AI review verdict
 | Result | What it attests |
 | ------ | --------------- |
 | Green | The review completed, was posted for the current PR head, and produced an affirmatively clean verdict ("Ready for merge"). |
-| Gray (skipped) | No review ran (draft, fork, bot author, quota exhausted, self-mod skip, cancellation, or stale head). Does not block merging. |
-| Red | The review failed or produced a non-clean verdict ("Needs more work", "Changes requested", "Blocked", or unaddressed findings). Blocks merging when configured as a required check. |
+| Gray (skipped) | No review was due on this run (draft, fork, bot author, cancellation, or stale head). Does not block merging. |
+| Red | The review failed, produced a non-clean verdict ("Needs more work", "Changes requested", "Blocked", or unaddressed findings), or never ran on this head because the API quota was exhausted or the default-branch workflow restore failed ([gha#1019](https://github.com/Morrison-Lab/gha/issues/1019)). Blocks merging when configured as a required check. |
 
 ## Concurrency
 

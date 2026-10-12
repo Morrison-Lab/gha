@@ -2202,13 +2202,19 @@ jobs:
   # ("Ready for merge" / "Clean" / "Approved"). Fails (red) if the verdict was
   # "Needs more work" / "Changes requested" or if the review failed.
   #
-  # Skipped (gray) on the exact same graceful-skip paths require-review uses:
+  # Skipped (gray) when a newer run owns the verdict, or no review was due:
   #   - claude-review was skipped (draft, fork, bot author, dispatch-guard blocked)
   #   - claude-review was cancelled
-  #   - quota_exhausted=true
-  #   - self_mod=true
   #   - cancelled=true
   #   - post-review reported stale
+  #
+  # Unlike require-review, it FAILS (red) on a quota skip (quota_exhausted)
+  # and a restore-failure skip (self_mod) (gha#1019). Both leave the current
+  # head unreviewed with no newer run coming, and a skipped required check
+  # counts as passing, so a gray result there let an unreviewed PR read as
+  # merge-clean. This gate attests that a clean verdict EXISTS, and on those
+  # paths none does. require-review keeps its gray skip: it attests delivery,
+  # and the skip notice was delivered.
   #
   # Consumers can use this job's name (e.g. `review / require-clean-verdict`) in
   # branch protection / ruleset required-checks to enforce server-side merge
@@ -2222,17 +2228,26 @@ jobs:
       !(needs.post-review.result == 'success' &&
       fromJSON(needs.post-review.outputs.stale || 'false')) &&
       !(needs.claude-review.result == 'success' &&
-      (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
-      fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
-      fromJSON(needs.claude-review.outputs.cancelled || 'false')))
+      fromJSON(needs.claude-review.outputs.cancelled || 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: {}
     steps:
       - name: Assert clean review verdict
+        env:
+          QUOTA_EXHAUSTED: ${{ needs.claude-review.outputs.quota_exhausted }}
+          SELF_MOD: ${{ needs.claude-review.outputs.self_mod }}
         run: |
           if [[ "${{ needs.claude-review.result }}" != "success" ]]; then
             echo "::error::Claude review job did not succeed (result: ${{ needs.claude-review.result }})."
+            exit 1
+          fi
+          if [[ "$QUOTA_EXHAUSTED" == "true" ]]; then
+            echo "::error::No review ran on this head: the Claude API quota was exhausted, so there is no verdict to attest. Re-run the review once quota is available (gha#1019)."
+            exit 1
+          fi
+          if [[ "$SELF_MOD" == "true" ]]; then
+            echo "::error::No review ran on this head: restoring the default-branch workflow files failed, so the review was skipped. Re-run the review (gha#1019)."
             exit 1
           fi
           if [[ "${{ needs.post-review.result }}" != "success" ]]; then

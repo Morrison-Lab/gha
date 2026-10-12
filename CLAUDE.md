@@ -4474,13 +4474,24 @@ the non-head SHA, matching this pattern.)
   it goes red on "Needs more work", "Changes requested", "Blocked",
   or review errors.
 
-Both gate jobs skip gray on the exact same graceful-skip paths:
+Both gate jobs skip gray when no review was due, or a newer run owns the verdict:
 
 - `claude-review` was skipped (draft PR, fork, bot author, or dispatch guard blocked);
 - `claude-review` was cancelled by a newer run (`cancel-in-progress`);
-- Account API quota was exhausted mid-run (`quota_exhausted=true`);
-- Default-branch workflow restore failed (`self_mod=true`);
 - `post-review` reported the review stale because PR head moved (`stale=true`).
+
+On two more paths `require-review` skips gray and `require-clean-verdict`
+fails red (gha#1019):
+
+- Account API quota was exhausted (`quota_exhausted=true`);
+- Default-branch workflow restore failed (`self_mod=true`).
+
+Both leave the current head unreviewed with no newer run coming.
+GitHub counts a skipped required check as passing, so a gray
+`require-clean-verdict` there let an unreviewed PR read as merge-clean
+(measured on Morrison-Lab/lds#454, run 37671849851).
+`require-review` keeps the gray skip because it attests delivery, and the
+skip notice was delivered.
 
 Consumers requiring server-side merge blocking can add
 `review / require-clean-verdict` to branch protection / repository ruleset
