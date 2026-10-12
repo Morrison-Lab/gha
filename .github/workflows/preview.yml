@@ -86,7 +86,8 @@ on:
         description: >-
           Leave Word (docx) out of the PR preview render so it builds faster;
           the publish build still renders it. A PR labelled `preview:docx`
-          opts back in. Set to false to render docx as before.
+          opts back in, and so does `docx-tracked-changes: true`, which needs
+          the Word files. Set to false to render docx as before.
         type: boolean
         default: true
       extra-preview-labels:
@@ -166,7 +167,11 @@ on:
         type: string
         default: 'index.html'
       docx-tracked-changes:
-        description: Generate Word DOCX documents with tracked changes against the published version on the deployed branch.
+        description: >-
+          Generate Word DOCX documents with tracked changes against the
+          published version on the deployed branch. Renders docx in the
+          preview as a `preview:docx` label would, overriding `skip-docx`;
+          an explicit `formats` list must still name docx.
         type: boolean
         default: false
       docx-tracked-changes-glob:
