@@ -273,7 +273,24 @@ def test_file_property_and_summary_survive_awkward_names(tmp_path):
     proc, summary = run(tmp_path, rep, base_ref="all")  # tmp_path is no git repo
     assert proc.returncode == 1, proc.stdout
     assert "::error file=a%2Cb%3Ac`d.md,line=1::[404]" in proc.stdout
-    assert "- `` a,b:c`d.md ``: [404]" in summary
+    assert "- ``a,b:c`d.md``: [404]" in summary
+
+
+def test_percent_in_a_file_name_is_escaped(tmp_path):
+    rep = report({"100%.md": [entry("https://example.org/gone", 404, 1)]})
+    proc, _ = run(tmp_path, rep, base_ref="all")
+    assert "::error file=100%25.md,line=1::[404]" in proc.stdout
+
+
+@pytest.mark.parametrize("name, span", [
+    (" a.md ", "`  a.md  `"),
+    ("`a.md", "`` `a.md ``"),
+    ("a.md", "`a.md`"),
+])
+def test_summary_code_span_keeps_the_name_intact(tmp_path, name, span):
+    rep = report({name: [entry("https://example.org/gone", 404, 1)]})
+    _, summary = run(tmp_path, rep, base_ref="all")
+    assert f"- {span}: [404]" in summary
 
 
 @pytest.mark.parametrize("key", ["untracked.md", "/elsewhere/a.md"])

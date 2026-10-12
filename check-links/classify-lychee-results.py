@@ -214,7 +214,9 @@ def _code_span(text: str) -> str:
     # CommonMark: the delimiter must be longer than any backtick run inside.
     longest = max((len(run) for run in re.findall("`+", text)), default=0)
     fence = "`" * (longest + 1)
-    pad = " " if longest else ""
+    # CommonMark strips one space from each end, so pad whenever either end
+    # is a space or a backtick; the padding is then what gets stripped.
+    pad = " " if text[:1] in (" ", "`") or text[-1:] in (" ", "`") else ""
     return f"{fence}{pad}{text}{pad}{fence}"
 
 
