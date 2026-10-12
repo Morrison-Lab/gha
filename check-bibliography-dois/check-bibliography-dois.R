@@ -138,6 +138,18 @@ validate_doi_url <- function(doi,
       } else if (code == 429 || (code >= 500 && code <= 599)) {
         # 429 (rate-limited) or 5xx (resolver/publisher server error): transient
         NULL
+      } else if (code == 404 && crossref_registered(doi_identifier, http_get)) {
+        # gha#1017: doi.org redirected, but the publisher's landing page
+        # answered 404 (Cambridge University Press did this intermittently
+        # for registered books). Crossref knowing the DOI is the evidence it
+        # is real, so this is the same not-verified warning as a 5xx. A DOI
+        # Crossref does not know still fails below.
+        return(list(
+          is_valid = TRUE,
+          warning = "DOI is registered with Crossref, but its landing page returned status 404 (publisher page unavailable, not verified)",
+          error = NULL,
+          status_code = code
+        ))
       } else {
         # 404 or other 4xx (client error): non-transient, fail immediately without retry
         return(list(
@@ -195,6 +207,19 @@ validate_doi_url <- function(doi,
     error = "Failed after multiple attempts",
     status_code = NULL
   ))
+}
+
+#' Whether Crossref has a record for a DOI
+#'
+#' @param doi_identifier Bare DOI, such as `10.1017/9781108539890`
+#' @inheritParams validate_doi_url
+#' @return TRUE only when the Crossref works endpoint answers 200
+crossref_registered <- function(doi_identifier, http_get = GET) {
+  api_url <- sprintf("https://api.crossref.org/works/%s", doi_identifier)
+  tryCatch(
+    status_code(http_get(api_url, timeout(30), user_agent(USER_AGENT))) == 200,
+    error = function(e) FALSE
+  )
 }
 
 #' Get DOI metadata from CrossRef API

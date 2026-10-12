@@ -77,6 +77,9 @@ declare -A expected=(
   # gha#561: turn-1 zero-cost execution failure with subtype:"success" is an
   # execution/runtime error, NOT quota exhaustion. Must fail as hard-error.
   [is-error-success-turn1-zerocost.json]=fail
+  # gha#1005: an API 401 is a rejected credential. It fails rather than
+  # skipping, because a re-run fails identically until the secret is rotated.
+  [is-error-success-auth-401.json]=fail
   # gha#861: a jq runtime error in the span extraction filter must fail fast as
   # hard-error rather than discarding stderr and exiting 0 with an empty review.
   [span-jq-runtime-error.json]=fail
@@ -465,6 +468,8 @@ declare -A must_log=(
   # the verdict. Anchored on the whole line: the counts are what a broken
   # subtraction would silently change.
   [stub-background-agents-executed.json]='executed_background_spawns=2 (tool_use with run_in_background != false: 2; denied: 0)'
+  # gha#1005: the annotation names the remedy and quotes the API message.
+  [is-error-success-auth-401.json]='rejected the configured credential (HTTP 401; gha#1005). Regenerate it with `claude setup-token`'
 )
 declare -A must_not_log=(
   # The redaction case is NOT here -- it is generated at runtime below, since a
@@ -545,6 +550,7 @@ declare -A expected_cost=(
   [is-error-success-with-verdict.json]=6.23
   [is-error-success-no-verdict.json]=0.97
   [is-error-success-turn1-zerocost.json]=0
+  [is-error-success-auth-401.json]=0
   [is-error-success-denied-comment-null-denials.json]=1.1
   [denied-comment-null-denials-not-trusted.json]=1.1
   [quota-exhausted.json]=0
@@ -608,6 +614,7 @@ declare -A expected_kind=(
   [is-error-result.json]=hard-error
   [is-error-success-no-verdict.json]=hard-error
   [is-error-success-turn1-zerocost.json]=hard-error
+  [is-error-success-auth-401.json]=auth-rejected
   [span-jq-runtime-error.json]=hard-error
   [empty-review-text.json]=no-output
   [short-circuit-no-result.json]=short-circuit
