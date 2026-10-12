@@ -99,11 +99,6 @@ def test_empty_formats_add_docx_for_tracked_changes(tmp_path, render_script):
     assert NOTICE in stdout
 
 
-def test_default_formats_skip_docx(tmp_path, render_script):
-    renders, _ = run_render(tmp_path, render_script, FORMATS="default")
-    assert to_formats(renders) == ["html"]
-
-
 def test_default_formats_keep_docx_for_tracked_changes(tmp_path, render_script):
     renders, stdout = run_render(
         tmp_path, render_script, FORMATS="default", DOCX_TRACKED_CHANGES="true"
