@@ -12,6 +12,8 @@ inputs:
     description: >-
       Arguments/globs passed to lychee (the --config flag is appended
       automatically). If empty, a sensible default glob set is used.
+      Do not pass --format or --output: the action sets both so it can
+      read lychee's JSON report.
     default: ''
   fail:
     description: Fail the action when broken links are found.
@@ -19,6 +21,22 @@ inputs:
   fail-if-empty:
     description: Fail the action when no links are found.
     default: 'false'
+  base-ref:
+    description: >-
+      Which 5xx server errors fail the check. The default, 'all', fails on
+      every 5xx. A 5xx is usually a host that is briefly down rather than a
+      dead link, so set a ref to fail on a 5xx only when the link is on a
+      line added since that ref's merge base with HEAD (the checkout must
+      hold that history), or '' to report every 5xx as a warning. Every
+      other failure, such as a 404, always fails the check.
+    default: 'all'
+outputs:
+  blocking:
+    description: Number of link failures that fail the check (set when the report was usable).
+    value: ${{ steps.verdict.outputs.blocking }}
+  demoted:
+    description: Number of 5xx server errors reported as warnings instead.
+    value: ${{ steps.verdict.outputs.demoted }}
 runs:
   using: composite
   steps:
@@ -44,10 +62,28 @@ runs:
         fi
 
     - name: Check links
+      id: lychee
       uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
       with:
         args: ${{ steps.cfg.outputs.args }} --config ${{ steps.cfg.outputs.config }}
-        fail: ${{ inputs.fail }}
-        failIfEmpty: ${{ inputs.fail-if-empty }}
+        # The next step reads this JSON report and decides the verdict, so a
+        # 5xx on a line the change does not add is a warning (gha#1052).
+        # lychee-action's own failIfEmpty only parses Markdown output.
+        fail: false
+        failIfEmpty: false
+        format: json
+        output: ${{ runner.temp }}/check-links/lychee.json
+        checkbox: false
       env:
         GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Decide the link-check verdict
+      id: verdict
+      shell: bash
+      env:
+        LYCHEE_JSON: ${{ runner.temp }}/check-links/lychee.json
+        LYCHEE_EXIT: ${{ steps.lychee.outputs.exit_code }}
+        LINKS_BASE_REF: ${{ inputs.base-ref }}
+        LINKS_FAIL: ${{ inputs.fail }}
+        LINKS_FAIL_IF_EMPTY: ${{ inputs.fail-if-empty }}
+      run: python3 "$GITHUB_ACTION_PATH/classify-lychee-results.py"
