@@ -79,9 +79,9 @@ inputs:
   skip-docx:
     description: >-
       Leave Word (docx) out of the render, which is slow, so a PR preview
-      builds faster; the publish build still renders it. Applies to
-      `formats: default` (the project's declared formats minus docx, read
-      with `quarto inspect`) and to an explicit `formats` list. A PR labelled
+      builds faster; the publish build still renders it. Applies to an
+      explicit `formats` list only: `formats: default` is a bare render,
+      and `quarto render --to` takes one format. A PR labelled
       `preview:docx` opts back in. Set to 'false' to render docx as before.
     default: 'true'
   fail-on-render-warning:
@@ -447,35 +447,14 @@ runs:
             fi
           done
         elif [ "$FORMATS" = "default" ]; then
-          # Bare render: let _quarto.yml decide, minus docx when skipped. One
-          # invocation with a comma-separated --to keeps every format's
-          # supporting files, which separate invocations would prune.
-          TO_ARG=()
+          # Bare render: let _quarto.yml decide. skip-docx cannot apply here:
+          # quarto render --to takes one format, so a comma-joined list such
+          # as "html,pdf" fails with "Unknown format", and one invocation per
+          # format would prune the other formats' supporting files.
           if [ "$SKIP_DOCX" = "true" ] && [ "$HAS_LABEL_DOCX" != "true" ]; then
-            INSPECT_FILE="$(mktemp)"
-            # inspect resolves a nested include against the including file,
-            # which a render does not, so it can fail on a project that
-            # renders fine. Losing the speed-up must not lose the preview:
-            # warn and render every declared format instead.
-            if quarto inspect "$PROJECT_PATH" "${PROFILE_ARG[@]}" > "$INSPECT_FILE"; then
-              ALL_FORMATS="$(jq -r '(.config.format // {}) | keys | join(",")' "$INSPECT_FILE")"
-              KEPT_FORMATS="$(jq -r '(.config.format // {}) | keys | map(select(. != "docx")) | join(",")' "$INSPECT_FILE")"
-            else
-              echo "::warning::quarto inspect failed, so skip-docx is not applied; rendering every declared format."
-              ALL_FORMATS=""
-              KEPT_FORMATS=""
-            fi
-            rm -f "$INSPECT_FILE"
-            if [ "$KEPT_FORMATS" != "$ALL_FORMATS" ]; then
-              if [ -z "$KEPT_FORMATS" ]; then
-                echo "::error::skip-docx left no format to render; the project declares only docx."
-                exit 1
-              fi
-              echo "Skipping docx in the preview render; rendering: $KEPT_FORMATS"
-              TO_ARG=(--to "$KEPT_FORMATS")
-            fi
+            echo "::notice::skip-docx does not apply to formats: default; rendering every declared format."
           fi
-          quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" "${TO_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
+          quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
         else
           # User-specified format list (first format clean, subsequent --no-clean)
           FORMAT_LIST=()
