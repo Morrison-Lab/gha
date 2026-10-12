@@ -389,15 +389,25 @@ jobs:
           # and quota comments (github-actions[bot]) and the @claude
           # task-handler responses (claude[bot], "Claude finished..." headers)
           # carry no verdict heading.
-          SUMMARY=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq '[.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]") and (.body | test("### (Code Review|Verdict)")))] | .[-3:] |
-                  map("=== Summary posted \(.created_at) ===\n\(.body)") | join("\n\n")' \
+          # Both reads paginate: without it the API returns the first 30
+          # comments, so on a busy PR the "last three" were the last three of
+          # the oldest page. --jq runs per page, so it only filters; the
+          # slice runs once over all pages in the second jq.
+          # Each summary header carries the comment's html_url, because the
+          # prompt asks a confirming review to link the prior verdict, and
+          # without a URL here the reviewer wrote a made-up
+          # `#issuecomment-placeholder` link (Morrison-Lab/bcs#1122).
+          SUMMARY=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments?per_page=100" \
+            --jq '.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]") and (.body | test("### (Code Review|Verdict)"))) | {created_at, html_url, body}' \
+            2>/dev/null | jq -rs '.[-3:] |
+                  map("=== Summary posted \(.created_at) at \(.html_url) ===\n\(.body)") | join("\n\n")' \
             2>/dev/null || true)
           # PR review comments hold the per-line inline findings — these are the
           # most important for deduplication since the prompt tells Claude not to
           # restate inline findings in the summary.
-          INLINE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-            --jq '[.[] | select(.user.login == "claude[bot]")] | .[-30:] |
+          INLINE=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments?per_page=100" \
+            --jq '.[] | select(.user.login == "claude[bot]") | {path, line, original_line, body}' \
+            2>/dev/null | jq -rs '.[-30:] |
                   map("=== Inline finding on \(.path):\(.line // .original_line) ===\n\(.body)") | join("\n\n")' \
             2>/dev/null || true)
           REVIEWS=$(printf '%s\n\n%s' "$INLINE" "$SUMMARY" | head -c 12000)
