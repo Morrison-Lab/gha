@@ -21,13 +21,20 @@ inputs:
     default: 'false'
   base-ref:
     description: >-
-      Which 5xx server errors fail the check. A 5xx is usually a host that is
-      briefly down rather than a dead link, so by default it is reported as a
-      warning. Set a ref to fail on a 5xx only when the link is on a line
-      added since that ref's merge base with HEAD (the checkout must hold
-      that history), or 'all' to fail on every 5xx. Every other failure,
-      such as a 404, always fails the check.
-    default: ''
+      Which 5xx server errors fail the check. The default, 'all', fails on
+      every 5xx. A 5xx is usually a host that is briefly down rather than a
+      dead link, so set a ref to fail on a 5xx only when the link is on a
+      line added since that ref's merge base with HEAD (the checkout must
+      hold that history), or '' to report every 5xx as a warning. Every
+      other failure, such as a 404, always fails the check.
+    default: 'all'
+outputs:
+  blocking:
+    description: Number of link failures that fail the check (set when the report was usable).
+    value: ${{ steps.verdict.outputs.blocking }}
+  demoted:
+    description: Number of 5xx server errors reported as warnings instead.
+    value: ${{ steps.verdict.outputs.demoted }}
 runs:
   using: composite
   steps:
@@ -69,6 +76,7 @@ runs:
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: Decide the link-check verdict
+      id: verdict
       shell: bash
       env:
         LYCHEE_JSON: ${{ runner.temp }}/check-links/lychee.json
