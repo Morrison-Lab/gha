@@ -958,7 +958,7 @@ cookieconsent.run({
 <td><code>skip-docx</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to <code>formats: default</code> (the project’s declared formats minus docx, read with <code>quarto inspect</code>) and to an explicit <code>formats</code> list. A PR labelled <code>preview:docx</code> opts back in. Set to <code>false</code> to render docx as before.</td>
+<td>Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to an explicit <code>formats</code> list only: <code>formats: default</code> is a bare render, and <code>quarto render --to</code> takes one format. A PR labelled <code>preview:docx</code> opts back in. Set to <code>false</code> to render docx as before.</td>
 </tr>
 <tr class="even">
 <td><code>extra-preview-labels</code></td>
