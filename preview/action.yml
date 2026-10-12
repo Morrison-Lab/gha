@@ -76,6 +76,14 @@ inputs:
       a single bare `quarto render` letting `_quarto.yml` decide formats (note:
       unlike `quarto-publish` where empty string defaults to bare render).
     default: ''
+  skip-docx:
+    description: >-
+      Leave Word (docx) out of the render, which is slow, so a PR preview
+      builds faster; the publish build still renders it. Applies to an
+      explicit `formats` list only: `formats: default` is a bare render,
+      and `quarto render --to` takes one format. A PR labelled
+      `preview:docx` opts back in. Set to 'false' to render docx as before.
+    default: 'true'
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
     default: 'false'
@@ -270,11 +278,27 @@ runs:
       with:
         version: ${{ inputs.julia-version }}
 
+    # delete-old-caches is off because it cannot work from inside a composite.
+    # julia-actions/cache's post step runs handle_caches.jl from
+    # $GITHUB_ACTION_PATH, and in a post step of an action nested in a
+    # composite the runner sets that to the COMPOSITE's directory, so the
+    # cleanup failed with "opening file .../preview/handle_caches.jl: No such
+    # file or directory" on a PR run while the job stayed green (gha#1023,
+    # lds run 37824437245), so no cleanup has ever succeeded here, and turning
+    # it off loses nothing. GitHub's own cache eviction still bounds the old
+    # entries.
     - name: Cache Julia packages
       if: github.event.action != 'closed' && inputs.setup-julia == 'true'
       uses: julia-actions/cache@e32267b41e0fa7df82a3d53e8c7273620d52c586 # v3.4.0
       with:
-        cache-name: julia-cache;julia=${{ inputs.julia-version }};workflow=${{ github.workflow }};job=${{ github.job }}
+        # Save only when the job succeeds. The action saves on failure and
+        # cancel by default, so a build cancelled mid-install stored a
+        # half-installed depot that every later build on the ref restored
+        # and failed on ("RCall not properly installed"). The -v2 name
+        # also stops those already-saved depots from being restored.
+        cache-name: julia-cache-v2;julia=${{ inputs.julia-version }};workflow=${{ github.workflow }};job=${{ github.job }}
+        save-always: false
+        delete-old-caches: 'false'
 
     # R's etc/ldpaths puts the system library directory
     # (/usr/lib/x86_64-linux-gnu) on LD_LIBRARY_PATH for every R process and
@@ -303,6 +327,15 @@ runs:
           R_LD_LIBRARY_PATH="$(R RHOME)/lib"
           export R_LD_LIBRARY_PATH
         fi
+        # RCall depends on Conda.jl, whose build creates an empty
+        # <depot>/conda/3/<arch> directory and records it in deps.jl.
+        # julia-actions/cache restores packages/ (deps.jl included) but not
+        # conda/, so Pkg skips the rebuild and every Julia session then fails
+        # to precompile Conda with "Path to conda environment is not valid",
+        # once at setup and once per page (gha#1023). Conda only checks that
+        # the directory exists, and nothing here uses it, so recreate it.
+        depot="${JULIA_DEPOT_PATH:-$HOME/.julia}"
+        mkdir -p "${depot%%:*}/conda/3/$(uname -m)"
         if command -v Rscript >/dev/null 2>&1 \
           && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
           Rscript -e 'JuliaCall::julia_setup(installJulia = FALSE)'
@@ -388,6 +421,7 @@ runs:
         RENDER_PROFILE: ${{ inputs.render-profile }}
         OUTPUT_DIR: ${{ inputs.output-dir }}
         FORMATS: ${{ inputs.formats }}
+        SKIP_DOCX: ${{ inputs.skip-docx }}
         TINYTEX: ${{ inputs.tinytex }}
         HAS_LABEL_PDF: ${{ contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
         HAS_LABEL_DOCX: ${{ contains(github.event.pull_request.labels.*.name, 'preview:docx') }}
@@ -432,12 +466,22 @@ runs:
             fi
           done
         elif [ "$FORMATS" = "default" ]; then
-          # Bare render: let _quarto.yml decide
+          # Bare render: let _quarto.yml decide. skip-docx cannot apply here:
+          # quarto render --to takes one format, so a comma-joined list such
+          # as "html,pdf" fails with "Unknown format", and one invocation per
+          # format would prune the other formats' supporting files.
+          if [ "$SKIP_DOCX" = "true" ] && [ "$HAS_LABEL_DOCX" != "true" ]; then
+            echo "::notice::skip-docx does not apply to formats: default; rendering every declared format."
+          fi
           quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
         else
           # User-specified format list (first format clean, subsequent --no-clean)
           FORMAT_LIST=()
           for word in $FORMATS; do
+            if [ "$word" = "docx" ] && [ "$SKIP_DOCX" = "true" ] && [ "$HAS_LABEL_DOCX" != "true" ]; then
+              echo "Skipping docx in the preview render (skip-docx)."
+              continue
+            fi
             FORMAT_LIST+=("$word")
           done
 
