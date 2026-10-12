@@ -94,7 +94,45 @@ res_404 <- validate_doi_url("10.1201/9781315182780", backoff_base_sec = 0, http_
 check("404 is_valid", res_404$is_valid, FALSE)
 check("404 warning is NULL", is.null(res_404$warning), TRUE)
 check("404 error message", res_404$error, "DOI URL returned status 404")
-check("404 call count (no retry)", call_count, 1)
+# One doi.org request (no retry) plus one Crossref lookup (gha#1017).
+check("404 call count (no retry)", call_count, 2)
+
+# Test 4b (gha#1017): the landing page 404s but Crossref knows the DOI ->
+# valid with a not-verified warning rather than an error.
+urls_seen <- character(0)
+mock_get_landing_404_crossref_200 <- function(url, ...) {
+  urls_seen <<- c(urls_seen, url)
+  if (grepl("^https://api\\.crossref\\.org/works/", url)) {
+    make_mock_response(200)
+  } else {
+    make_mock_response(404)
+  }
+}
+res_landing_404 <- validate_doi_url("10.1017/9781108539890", backoff_base_sec = 0, http_get = mock_get_landing_404_crossref_200)
+check("landing 404 + Crossref 200 is_valid", res_landing_404$is_valid, TRUE)
+check("landing 404 + Crossref 200 error is NULL", is.null(res_landing_404$error), TRUE)
+check("landing 404 + Crossref 200 warns", grepl("registered with Crossref", res_landing_404$warning), TRUE)
+check("landing 404 asks Crossref for the same DOI",
+      "https://api.crossref.org/works/10.1017/9781108539890" %in% urls_seen, TRUE)
+
+# Test 4c (gha#1017): a Crossref lookup that errors is not evidence either.
+mock_get_landing_404_crossref_error <- function(url, ...) {
+  if (grepl("crossref", url)) stop("network down")
+  make_mock_response(404)
+}
+res_landing_404_err <- validate_doi_url("10.1017/9781108539890", backoff_base_sec = 0, http_get = mock_get_landing_404_crossref_error)
+check("landing 404 + Crossref error is_valid", res_landing_404_err$is_valid, FALSE)
+check("landing 404 + Crossref error message", res_landing_404_err$error, "DOI URL returned status 404")
+
+# Test 4d (gha#1017): only a 404 consults Crossref; a 410 still fails at once.
+call_count <- 0
+mock_get_410 <- function(url, ...) {
+  call_count <<- call_count + 1
+  make_mock_response(if (grepl("crossref", url)) 200 else 410)
+}
+res_410 <- validate_doi_url("10.1017/9781108539890", backoff_base_sec = 0, http_get = mock_get_410)
+check("410 is_valid", res_410$is_valid, FALSE)
+check("410 call count (no Crossref lookup)", call_count, 1)
 
 # Test 5: 503 Service Unavailable on attempt 1, 200 on attempt 2 -> retries and succeeds
 call_count <- 0
