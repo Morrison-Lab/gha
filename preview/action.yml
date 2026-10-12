@@ -453,9 +453,18 @@ runs:
           TO_ARG=()
           if [ "$SKIP_DOCX" = "true" ] && [ "$HAS_LABEL_DOCX" != "true" ]; then
             INSPECT_FILE="$(mktemp)"
-            quarto inspect "$PROJECT_PATH" "${PROFILE_ARG[@]}" > "$INSPECT_FILE"
-            ALL_FORMATS="$(jq -r '(.config.format // {}) | keys | join(",")' "$INSPECT_FILE")"
-            KEPT_FORMATS="$(jq -r '(.config.format // {}) | keys | map(select(. != "docx")) | join(",")' "$INSPECT_FILE")"
+            # inspect resolves a nested include against the including file,
+            # which a render does not, so it can fail on a project that
+            # renders fine. Losing the speed-up must not lose the preview:
+            # warn and render every declared format instead.
+            if quarto inspect "$PROJECT_PATH" "${PROFILE_ARG[@]}" > "$INSPECT_FILE"; then
+              ALL_FORMATS="$(jq -r '(.config.format // {}) | keys | join(",")' "$INSPECT_FILE")"
+              KEPT_FORMATS="$(jq -r '(.config.format // {}) | keys | map(select(. != "docx")) | join(",")' "$INSPECT_FILE")"
+            else
+              echo "::warning::quarto inspect failed, so skip-docx is not applied; rendering every declared format."
+              ALL_FORMATS=""
+              KEPT_FORMATS=""
+            fi
             rm -f "$INSPECT_FILE"
             if [ "$KEPT_FORMATS" != "$ALL_FORMATS" ]; then
               if [ -z "$KEPT_FORMATS" ]; then
