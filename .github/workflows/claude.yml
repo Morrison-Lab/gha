@@ -924,6 +924,11 @@ jobs:
             For an explicit `@claude review` request, do NOT post your own
             review; a post-step dispatches the dedicated code-review workflow
             instead.
+
+            If you create temporary scratch files or test scripts, write them
+            outside the repository checkout (such as in `$RUNNER_TEMP` or `/tmp`)
+            so they do not pollute the repository.
+
             ${{ inputs.prompt-addendum }}
 
       # Extracted into its own step (rather than duplicated inline in each
@@ -940,6 +945,12 @@ jobs:
         uses: Morrison-Lab/gha/.github/actions/extract-total-cost@v2
         with:
           execution-file: ${{ steps.claude.outputs.execution_file || '/home/runner/work/_temp/claude-execution-output.json' }}
+
+      # Purge session scratch files and setup artifacts before the auto-commit
+      # sweep so they are never committed onto the branch (gha#981, gha#983).
+      - name: Purge session scratch files
+        if: always() && steps.gate.outputs.skip != 'true' && steps.pr_checkout.outputs.branch != ''
+        uses: Morrison-Lab/gha/.github/actions/purge-session-scratch@v2
 
       # Push the commits Claude made on the PR branch (the agent isn't granted
       # `git push`). A same-repo non-fast-forward failure would silently DROP
@@ -1374,6 +1385,15 @@ jobs:
       # marked the step failed AFTER a successful push, and the report then
       # announced commits as stranded that were already on the branch --
       # the mirror of the bug this PR fixes (gha#361 review).
+      # Purge session scratch files and setup artifacts before the auto-commit
+      # sweep so they are never committed onto the branch (gha#981, gha#983).
+      - name: Purge session scratch files
+        if: |
+          always() &&
+          steps.gate.outputs.skip != 'true' &&
+          steps.issue_branch.outputs.branch != ''
+        uses: Morrison-Lab/gha/.github/actions/purge-session-scratch@v2
+
       # Runs on always() so partial work is preserved even if Claude failed.
       - name: Push branch for issue trigger
         id: push_issue
