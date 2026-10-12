@@ -82,7 +82,8 @@ inputs:
       builds faster; the publish build still renders it. Applies to
       `formats: default` (the project's declared formats minus docx, read
       with `quarto inspect`) and to an explicit `formats` list. A PR labelled
-      `preview:docx` opts back in. Set to 'false' to render docx as before.
+      `preview:docx` opts back in, and so does `docx-tracked-changes: true`,
+      which needs the Word files. Set to 'false' to render docx as before.
     default: 'true'
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
@@ -403,6 +404,7 @@ runs:
         OUTPUT_DIR: ${{ inputs.output-dir }}
         FORMATS: ${{ inputs.formats }}
         SKIP_DOCX: ${{ inputs.skip-docx }}
+        DOCX_TRACKED_CHANGES: ${{ inputs.docx-tracked-changes }}
         TINYTEX: ${{ inputs.tinytex }}
         HAS_LABEL_PDF: ${{ contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
         HAS_LABEL_DOCX: ${{ contains(github.event.pull_request.labels.*.name, 'preview:docx') }}
@@ -418,6 +420,13 @@ runs:
         PROFILE_ARG=()
         if [ -n "${RENDER_PROFILE:-}" ]; then
           PROFILE_ARG=(--profile "$RENDER_PROFILE")
+        fi
+
+        # Tracked changes compare rendered Word files, so skipping docx would
+        # leave that step nothing to compare (gha#1059).
+        if [ "$SKIP_DOCX" = "true" ] && [ "$DOCX_TRACKED_CHANGES" = "true" ]; then
+          echo "::notice::docx-tracked-changes needs the Word render, so skip-docx is not applied."
+          SKIP_DOCX=false
         fi
 
         LOG_FILE="_quarto_preview_render.log"

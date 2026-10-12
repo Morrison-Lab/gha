@@ -86,7 +86,8 @@ on:
         description: >-
           Leave Word (docx) out of the PR preview render so it builds faster;
           the publish build still renders it. A PR labelled `preview:docx`
-          opts back in. Set to false to render docx as before.
+          opts back in, and so does `docx-tracked-changes: true`, which needs
+          the Word files. Set to false to render docx as before.
         type: boolean
         default: true
       extra-preview-labels:
