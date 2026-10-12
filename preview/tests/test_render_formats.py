@@ -103,9 +103,10 @@ def test_default_formats_keep_docx_for_tracked_changes(tmp_path, render_script):
     renders, stdout = run_render(
         tmp_path, render_script, FORMATS="default", DOCX_TRACKED_CHANGES="true"
     )
-    # A bare render, so every declared format, docx included, is rendered.
+    # A bare render, so every declared format, docx included, is rendered
+    # (gha#1061); tracked changes changes nothing here, so no notice.
     assert to_formats(renders) == [None]
-    assert NOTICE in stdout
+    assert NOTICE not in stdout
 
 
 def test_explicit_formats_skip_docx(tmp_path, render_script):

@@ -28,7 +28,7 @@ turn it off for a pure-markdown site.
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |
 | `output-dir` | string | `'_site'` | Directory the rendered site is written to, relative to `path`. |
 | `formats` | string | `''` | Space-separated list of formats to render (e.g. `'html docx pdf revealjs'`). When empty (default), renders HTML plus any formats requested via PR labels (`preview:docx`, `preview:pdf`, `preview:revealjs`). Set to `'default'` to run a single bare `quarto render` letting `_quarto.yml` decide formats (unlike `quarto-publish` where empty string defaults to bare render). |
-| `skip-docx` | boolean | `true` | Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to `formats: default` (the project's declared formats minus docx, read with `quarto inspect`) and to an explicit `formats` list. A PR labelled `preview:docx` opts back in, and so does `docx-tracked-changes: true`, which needs the Word files. Set to `false` to render docx as before. |
+| `skip-docx` | boolean | `true` | Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to an explicit `formats` list only: `formats: default` is a bare render, and `quarto render --to` takes one format. A PR labelled `preview:docx` opts back in, and so does `docx-tracked-changes: true`, which needs the Word files. Set to `false` to render docx as before. |
 | `extra-preview-labels` | string | `'[]'` | JSON array string of additional PR label names that trigger a preview re-render on add or remove (e.g. `'["preview:tracked-changes"]'`), beyond the built-in set (`clear freezer`, `preview:pdf`, `preview:docx`, `preview:revealjs`). |
 | `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
 | `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
@@ -43,7 +43,7 @@ turn it off for a pure-markdown site.
 | `changed-chapters-normalize-patterns` | string | `''` | Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes). |
 | `max-elements-for-pairwise` | string | `'500'` | Maximum candidate elements per page for pairwise SequenceMatcher diffing; exceeding this skips element-level diffing to prevent quadratic runtime. |
 | `banner-index` | string | `'index.html'` | Home page the banner is inserted into, relative to the rendered site root. |
-| `docx-tracked-changes` | boolean | `false` | Generate Word DOCX documents with tracked changes against the published version on the deployed branch. Renders docx in the preview as a `preview:docx` label would, overriding `skip-docx`; an explicit `formats` list must still name docx. |
+| `docx-tracked-changes` | boolean | `false` | Generate Word DOCX documents with tracked changes against the published version on the deployed branch. |
 | `docx-tracked-changes-glob` | string | `'chapters/*.docx'` | Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for. |
 
 ## Outputs

@@ -4,6 +4,7 @@
   and the "Create DOCX tracked changes" step failed on every content PR
   because it had nothing to compare (gha#1059, seen on Morrison-Lab/psc#13).
   `docx-tracked-changes: true` now renders docx as a `preview:docx` label would,
-  under `formats: default`, an explicit list naming docx, and the empty default,
+  under an explicit list naming docx and the empty default
+  (`formats: default` already renders every declared format since gha#1061),
   so such callers no longer need to set `skip-docx: false` themselves.
   An explicit `formats` list that leaves docx out is still rendered as written.
