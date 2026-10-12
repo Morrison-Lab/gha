@@ -62,7 +62,7 @@ not reference `@main` from consumers.
 | `check-r-package.yml` | Standard check suite for R package repositories: repository hygiene, AI tells, duplicate roxygen docs, one function per file, and Air formatting | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-duplicate-roxygen`, `check-one-function-per-file`, `check-formatting` |
 | `check-python-package.yml` | Standard check suite for Python package repositories: repository hygiene, Ruff linting and formatting, and pytest execution | `fail`, `python-version`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-ruff`, `check-formatting`, `check-tests` |
 | `student-qmd.yml` | Write a self-contained student `.qmd` per assessment source whose answers sit in `.sol` divs (includes inlined; answer-key-only divs and comments removed), check each against its source with Pandoc, and render each alone in an empty directory | `sources`, `working-directory`, `output-dir`, `hidden-classes`, `answer-profiles`, `student-profile`, `drop-render-chunks`, `prune-macros`, `require-answers`, `check`, `render`, `render-to`, `index-title`, `index-back-href`, `checkout-submodules`, `artifact-name` |
-| `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
+| `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label`, `fail-on-any-5xx` |
 | `check-quarto-links.yml` | Fail on relative links from `.qmd`/`.md`/`.Rmd` sources to pages that do not exist, which Quarto only warns about (`Unable to resolve link target`) and lychee does not read out of a `.qmd`; source level, include-aware, no render | `globs`, `target-extensions`, `paths-ignore`, `fail` |
 | `check-orphaned-images.yml` | Report tracked images that no tracked source file references by file name; warn-only by default, optionally limited to the images a PR adds | `paths`, `extensions`, `source-extensions`, `paths-ignore`, `added-only`, `fail` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
@@ -220,6 +220,13 @@ that need to write must have the **caller** grant it on the calling job:
   it is optional under the currently-tagged `@v2`
   (which no longer requests it, per gha#832)
   but required by the model job once you adopt `@v3`.
+  A Dependabot bump from `@v2` to `@v3` is where a missing grant shows up,
+  and it shows up as an absence:
+  the bumped run ends in `startup_failure`,
+  so the PR carries no review check at all rather than a red one.
+  Add `checks: read` to the caller job in that same PR before merging it
+  ([gha#1006](https://github.com/Morrison-Lab/gha/issues/1006);
+  measured on Morrison-Lab/mds#78).
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public

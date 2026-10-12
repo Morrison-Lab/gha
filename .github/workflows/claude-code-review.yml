@@ -389,15 +389,25 @@ jobs:
           # and quota comments (github-actions[bot]) and the @claude
           # task-handler responses (claude[bot], "Claude finished..." headers)
           # carry no verdict heading.
-          SUMMARY=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq '[.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]") and (.body | test("### (Code Review|Verdict)")))] | .[-3:] |
-                  map("=== Summary posted \(.created_at) ===\n\(.body)") | join("\n\n")' \
+          # Both reads paginate: without it the API returns the first 30
+          # comments, so on a busy PR the "last three" were the last three of
+          # the oldest page. --jq runs per page, so it only filters; the
+          # slice runs once over all pages in the second jq.
+          # Each summary header carries the comment's html_url, because the
+          # prompt asks a confirming review to link the prior verdict, and
+          # without a URL here the reviewer wrote a made-up
+          # `#issuecomment-placeholder` link (Morrison-Lab/bcs#1122).
+          SUMMARY=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments?per_page=100" \
+            --jq '.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]") and (.body | test("### (Code Review|Verdict)"))) | {created_at, html_url, body}' \
+            2>/dev/null | jq -rs '.[-3:] |
+                  map("=== Summary posted \(.created_at) at \(.html_url) ===\n\(.body)") | join("\n\n")' \
             2>/dev/null || true)
           # PR review comments hold the per-line inline findings — these are the
           # most important for deduplication since the prompt tells Claude not to
           # restate inline findings in the summary.
-          INLINE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-            --jq '[.[] | select(.user.login == "claude[bot]")] | .[-30:] |
+          INLINE=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments?per_page=100" \
+            --jq '.[] | select(.user.login == "claude[bot]") | {path, line, original_line, body}' \
+            2>/dev/null | jq -rs '.[-30:] |
                   map("=== Inline finding on \(.path):\(.line // .original_line) ===\n\(.body)") | join("\n\n")' \
             2>/dev/null || true)
           REVIEWS=$(printf '%s\n\n%s' "$INLINE" "$SUMMARY" | head -c 12000)
@@ -2202,13 +2212,19 @@ jobs:
   # ("Ready for merge" / "Clean" / "Approved"). Fails (red) if the verdict was
   # "Needs more work" / "Changes requested" or if the review failed.
   #
-  # Skipped (gray) on the exact same graceful-skip paths require-review uses:
+  # Skipped (gray) when a newer run owns the verdict, or no review was due:
   #   - claude-review was skipped (draft, fork, bot author, dispatch-guard blocked)
   #   - claude-review was cancelled
-  #   - quota_exhausted=true
-  #   - self_mod=true
   #   - cancelled=true
   #   - post-review reported stale
+  #
+  # Unlike require-review, it FAILS (red) on a quota skip (quota_exhausted)
+  # and a restore-failure skip (self_mod) (gha#1019). Both leave the current
+  # head unreviewed with no newer run coming, and a skipped required check
+  # counts as passing, so a gray result there let an unreviewed PR read as
+  # merge-clean. This gate attests that a clean verdict EXISTS, and on those
+  # paths none does. require-review keeps its gray skip: it attests delivery,
+  # and the skip notice was delivered.
   #
   # Consumers can use this job's name (e.g. `review / require-clean-verdict`) in
   # branch protection / ruleset required-checks to enforce server-side merge
@@ -2222,17 +2238,26 @@ jobs:
       !(needs.post-review.result == 'success' &&
       fromJSON(needs.post-review.outputs.stale || 'false')) &&
       !(needs.claude-review.result == 'success' &&
-      (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
-      fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
-      fromJSON(needs.claude-review.outputs.cancelled || 'false')))
+      fromJSON(needs.claude-review.outputs.cancelled || 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: {}
     steps:
       - name: Assert clean review verdict
+        env:
+          QUOTA_EXHAUSTED: ${{ needs.claude-review.outputs.quota_exhausted }}
+          SELF_MOD: ${{ needs.claude-review.outputs.self_mod }}
         run: |
           if [[ "${{ needs.claude-review.result }}" != "success" ]]; then
             echo "::error::Claude review job did not succeed (result: ${{ needs.claude-review.result }})."
+            exit 1
+          fi
+          if [[ "$QUOTA_EXHAUSTED" == "true" ]]; then
+            echo "::error::No review ran on this head: the Claude API quota was exhausted, so there is no verdict to attest. Re-run the review once quota is available (gha#1019)."
+            exit 1
+          fi
+          if [[ "$SELF_MOD" == "true" ]]; then
+            echo "::error::No review ran on this head: restoring the default-branch workflow files failed, so the review was skipped. Re-run the review (gha#1019)."
             exit 1
           fi
           if [[ "${{ needs.post-review.result }}" != "success" ]]; then
