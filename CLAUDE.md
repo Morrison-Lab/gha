@@ -1651,6 +1651,94 @@ The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 half of, so a fix to either is owed to the other (porting gha#425's fix there
 is tracked in Morrison-Lab/ai-config#1212).
 
+**gha#999 taught the check to skip math and citation locators, and each
+skip has a guard that keeps it from hiding prose.**
+A skip fails in the quiet direction, because a line the check does not read
+is a line it passes.
+So every widening below is paired with the guard that bounds it, and with the
+case that turns red when the guard is removed.
+
+A citation locator such as `[@h, p. 331]` no longer ends a sentence.
+The protection is `_PAGE_LOCATOR_RE`, a bare `p.` followed by whitespace and a
+digit, applied beside `_ABBREV_RE` rather than added to it.
+`p` stays out of the abbreviation list because `Plot variable p. Then fit it.`
+must still split.
+The accepted cost is that a sentence ending in a bare `p.` before one that
+opens with a digit stays on one line, and
+`test_page_locator_protection_needs_a_digit_follower` pins that cost
+deliberately, so changing it is a decision.
+
+Inline `$...$` math is stripped before the clause check, so a `;` between
+math arguments is not a clause break.
+`_MATH_RE` follows Pandoc's `tex_math_dollars` rule: the opening `$` takes no
+space after it, and the closing `$` takes no space before it.
+Two guards keep currency out of it.
+A closing `$` followed by a digit closes nothing (`(?!\d)`), so in
+`$5-$10;` the semicolon stays visible.
+An escaped `\$` neither opens nor closes math, by one lookbehind on each side.
+Multi-line `$$ ... $$` blocks are skipped as TeX: an odd count of `$$` on a
+line toggles the block, and a blank line ends it, as Pandoc allows no blank
+line inside one, so a stray `$$` cannot hide the rest of the file.
+A line that opens a block after text stays prose, and so does prose after a
+closer, unless that tail starts with `{` (an attribute block such as
+`{#eq-...}`).
+
+Raw TeX math environments (`equation`, `align`, `alignat`, `gather`,
+`multline`, `flalign` and `eqnarray`, each with an optional `*`) are skipped
+up to their matching `\end{...}`.
+The opener may follow a blockquote or list marker, or end a line of prose,
+and in that last case the opener's own line stays prose.
+Three guards bound the openers.
+**The line-end anchor** (`_TEX_MATH_ENV_TAIL_RE`, the opener followed only by
+whitespace) is what stops an environment named mid-sentence or inside a code
+span from opening one.
+**The `$$` guard** applies to that same line-end form: an opener ending a line
+that carries `$$` is left to the display-math handling, so
+`$$\begin{align}` does not open a second, unterminated block inside the
+first.
+A line-start opener is not covered by it.
+**The display-math guard** ignores any opener inside a `$$` block, for the
+same reason.
+
+Nine mutations were each confirmed to turn a named case red:
+
+1. dropping the `(?!\d)` digit rule
+   (`test_hyphenated_price_range_is_not_inline_math`);
+2. dropping the line-end anchor (both cases of
+   `test_tex_environment_named_in_prose_opens_nothing`);
+3. dropping the `$$` guard
+   (`test_display_math_wrapping_a_tex_environment_keeps_later_prose`);
+4. dropping the display-math guard
+   (`test_tex_opener_inside_display_math_opens_nothing`);
+5. disabling the page-locator protection (both `test_page_locator_*` cases);
+6. letting a blank line leave a `$$` block open
+   (`test_unclosed_display_math_ends_at_a_blank_line`);
+7. letting a blank line leave a raw environment open
+   (`test_unclosed_tex_math_environment_ends_at_a_blank_line`);
+8. dropping the escape lookbehind on the opening `$`
+   (`test_escaped_dollar_cannot_open_inline_math`);
+9. dropping the escape lookbehind on the closing `$`
+   (`test_escaped_dollar_cannot_close_inline_math`).
+
+The last two survived the suite #999 shipped with.
+Its only escape case, `\$5; ... \$6`, is decided at its closing `\$6` by the
+digit rule, so it pinned neither escape guard, and removing either one changed
+no verdict.
+Each of the two cases added for them is reachable by one guard alone.
+
+Four limits are accepted rather than fixed.
+A blank line ends a raw environment, as a guard: without it a missing
+`\end{...}` would hide the rest of the file.
+That one errs toward reading TeX as prose, since Pandoc's `raw_tex` carries
+an environment across a blank line, so lines after the blank are checked.
+The other three are lines the check passes without reading.
+Prose after `\end{...}` on the same line goes unchecked, since that whole
+line is skipped.
+A bare opener that happens to end a line of prose hides the lines after it,
+up to the next blank line, as an environment would.
+And a stray `$$` in the middle of prose does the same, since an odd count
+opens a block.
+
 `check-typed-output/tests/test_check_typed_output.py` is a pytest suite over
 the fence parser, both detectors, and both scopes (throwaway git repos in
 `tmp_path`, nothing committed).
