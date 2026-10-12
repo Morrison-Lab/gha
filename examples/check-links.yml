@@ -27,3 +27,4 @@ jobs:
     #   fail-if-empty: true              # fail when no links are found (default: false)
     #   create-issue-on-main: true
     #   skip-label: 'links checked by hand'
+    #   fail-on-any-5xx: true            # fail on every 5xx, not only on PR-added lines (@v3)

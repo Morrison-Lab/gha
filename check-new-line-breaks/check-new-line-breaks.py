@@ -203,6 +203,14 @@ _NUM_MARKER_INNER = (
 _NUM_MARKER_RE = re.compile(
     r"(^|\s)([*_]{1,2}" + _NUM_MARKER_INNER + r"\.)([*_]{1,2})(?=\s)"
 )
+# The same marker opening a longer emphasized label, `**2. Used up.**`
+# (gha#1001): the emphasis closes after the label rather than after the
+# number, so _NUM_MARKER_RE above cannot see it. Only the number's own dot is
+# protected; the label's closing `.**` still ends a sentence, so
+# `**2. Used up.** Then more.` splits after the label, as it should.
+_NUM_LABEL_RE = re.compile(
+    r"(^|\s)([*_]{1,2}" + _NUM_MARKER_INNER + r")\.(?= \S)"
+)
 
 _PLACEHOLDER = "\x00"
 
@@ -221,6 +229,9 @@ def split_sentences(text: str) -> List[str]:
     protected = _PAGE_LOCATOR_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, protected)
     protected = _NUM_MARKER_RE.sub(
         lambda m: m.group(1) + m.group(2)[:-1] + _PLACEHOLDER + m.group(3), protected
+    )
+    protected = _NUM_LABEL_RE.sub(
+        lambda m: m.group(1) + m.group(2) + _PLACEHOLDER, protected
     )
     protected = re.sub(r"`[^`]+`", _protect_inline_code, protected)
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
