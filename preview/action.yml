@@ -82,7 +82,8 @@ inputs:
       builds faster; the publish build still renders it. Applies to an
       explicit `formats` list only: `formats: default` is a bare render,
       and `quarto render --to` takes one format. A PR labelled
-      `preview:docx` opts back in. Set to 'false' to render docx as before.
+      `preview:docx` opts back in, and so does `docx-tracked-changes: true`,
+      which needs the Word files. Set to 'false' to render docx as before.
     default: 'true'
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
@@ -147,7 +148,9 @@ inputs:
   docx-tracked-changes:
     description: >-
       Generate Word DOCX documents with tracked changes against the published
-      version on the deployed branch. Opt-in.
+      version on the deployed branch. Opt-in. Renders docx in the preview as
+      a `preview:docx` label would, overriding `skip-docx`; an explicit
+      `formats` list must still name docx.
     default: 'false'
   docx-tracked-changes-glob:
     description: >-
@@ -422,6 +425,7 @@ runs:
         OUTPUT_DIR: ${{ inputs.output-dir }}
         FORMATS: ${{ inputs.formats }}
         SKIP_DOCX: ${{ inputs.skip-docx }}
+        DOCX_TRACKED_CHANGES: ${{ inputs.docx-tracked-changes }}
         TINYTEX: ${{ inputs.tinytex }}
         HAS_LABEL_PDF: ${{ contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
         HAS_LABEL_DOCX: ${{ contains(github.event.pull_request.labels.*.name, 'preview:docx') }}
@@ -437,6 +441,23 @@ runs:
         PROFILE_ARG=()
         if [ -n "${RENDER_PROFILE:-}" ]; then
           PROFILE_ARG=(--profile "$RENDER_PROFILE")
+        fi
+
+        # Tracked changes compare rendered Word files, so without docx in the
+        # render that step has nothing to compare (gha#1059). Treat it as a
+        # `preview:docx` label, which every branch below already honours. An
+        # explicit `formats` list without docx is left as the caller wrote it.
+        if [ "$DOCX_TRACKED_CHANGES" = "true" ] && [ "$HAS_LABEL_DOCX" != "true" ]; then
+          HAS_LABEL_DOCX=true
+          # Say so only where it changes the render.
+          case " ${FORMATS:-} " in
+            "  ") restored=true ;;
+            *" docx "*) restored="$SKIP_DOCX" ;;
+            *) restored=false ;;
+          esac
+          if [ "$restored" = "true" ]; then
+            echo "::notice::docx-tracked-changes is on, so the preview renders docx as if labelled preview:docx."
+          fi
         fi
 
         LOG_FILE="_quarto_preview_render.log"
