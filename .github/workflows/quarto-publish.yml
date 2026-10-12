@@ -97,6 +97,14 @@ on:
           Empty leaves the runner's time zone unchanged.
         type: string
         default: ''
+      timeout-minutes:
+        description: >-
+          Timeout, in minutes, for the render (build job). Default 45 is the hang
+          ceiling, not a budget; raise it for a site whose full render (every
+          page in every format) takes longer. A caller cannot set
+          timeout-minutes on a job that uses `uses:`.
+        type: number
+        default: 45
       checkout-submodules:
         description: Initialize the caller's git submodules before rendering.
         type: boolean
@@ -132,7 +140,7 @@ jobs:
   # job actually uses the write token.
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
     steps:
