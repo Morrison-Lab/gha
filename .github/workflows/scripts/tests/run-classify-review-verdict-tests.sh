@@ -2631,6 +2631,134 @@ Found no substantive changes in this round.
 Reviewed commit: aaaa123456789012345678901234567890123456" \
 "false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
 
+# gha#1021: a quoted diff whose context line is an indented fence closes the
+# diff block early, and the diff's own closing fence then opens a fence that
+# hides the verdict and the payload (Morrison-Lab/mds#194). The classifier
+# re-runs itself with that one bare opener blanked, and a clean answer from
+# the re-run needs the payload to name the head in full. Single-quoted so the
+# backticks stay literal.
+fence_1021_head="775e349aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# Arguments: prose before the diff, payload verdict, payload commit_sha,
+# lines after the payload (one string), the verdict section, and a quote
+# prefix for the payload. The payload is on ONE line when quoted, so that only
+# the marker's own anchoring, not a JSON parse failure, rejects it.
+fence_1021_review() {
+  local prose="$1" verdict="$2" sha="$3" tail="${4:-}"
+  local section="${5:-**Ready for merge**}" quote="${6:-}"
+  local json="{\"schema_version\": \"1.1\", \"commit_sha\": \"$sha\", \"verdict\": \"$verdict\", \"findings\": []}"
+  local payload
+  if [[ -n "$quote" ]]; then
+    payload="${quote}<!-- review-data: $json -->"
+  else
+    payload="$(printf '%s\n' '<!-- review-data:' "$json" '-->')"
+  fi
+  printf '%s\n' '## Review: fix' '' "$prose" '' \
+    '```diff' '@@ -1,3 +1,3 @@' ' x <- 1' ' ```' '+added' '```' '' \
+    '### Verdict' '' "$section" '' '<details>' '' \
+    "$payload" '' '```json' '{"verdict": "CLEAN"}' '```' '' '</details>' '' "$tail"
+}
+fence_1021_plain='The change edits a fenced block.'
+
+run_test "gha#1021: a verdict hidden by a stray fence is read when the payload names the head" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "$fence_1021_head")" \
+"true" "ready-for-merge" "0" "$fence_1021_head"
+
+run_test "gha#1021: a short head SHA does not unlock the re-run" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "$fence_1021_head")" \
+"false" "no-verdict" "0" "775e349"
+
+run_test "gha#1021: a hidden payload naming only a prefix of the head is not trusted" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "775e349")" \
+"false" "no-verdict" "0" "$fence_1021_head"
+
+run_test "gha#1021: no head SHA trusts nothing hidden" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "$fence_1021_head")" \
+"false" "no-verdict"
+
+run_test "gha#1021: a hidden payload naming another commit is not trusted" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "bbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")" \
+"false" "no-verdict" "0" "$fence_1021_head"
+
+run_test "gha#1021: a hidden payload with an unknown commit is not trusted" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "unknown")" \
+"false" "no-verdict" "0" "$fence_1021_head"
+
+run_test "gha#1021: a hidden NOT_CLEAN payload is a rejection" \
+"$(fence_1021_review "$fence_1021_plain" NOT_CLEAN "$fence_1021_head")" \
+"false" "needs-more-work" "0" "$fence_1021_head"
+
+run_test "gha#1021: a hidden SKIPPED payload is a skip" \
+"$(fence_1021_review "$fence_1021_plain" SKIPPED "$fence_1021_head")" \
+"false" "skipped" "0" "$fence_1021_head"
+
+run_test "gha#1021: a blockquoted hidden payload is still not read" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "$fence_1021_head" '' '**Ready for merge**' '> ')" \
+"false" "no-verdict" "0" "$fence_1021_head"
+
+# The re-run applies every guard the visible path does. Each of the next three
+# turned a fail-closed no-verdict into a false CLEAN under an earlier draft
+# that read the hidden payload directly (gha#1021 review, B1 to B3).
+run_test "gha#1021: a hidden retraction heading after the payload still retracts" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "$fence_1021_head" "$(printf '%s\n' '### Verdict' '' '**Needs more work.** I missed a bug.')")" \
+"false" "needs-more-work" "0" "$fence_1021_head"
+
+run_test "gha#1021: a hidden contradicting label tail still retracts" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "$fence_1021_head" '**Verdict:** Needs more work, see correction.')" \
+"false" "needs-more-work" "0" "$fence_1021_head"
+
+run_test "gha#1021: a hidden no-new-diff claim still fails closed on unreviewed commits" \
+"$(fence_1021_review "$fence_1021_plain" CLEAN "$fence_1021_head" '' 'No new diff since the prior round; **Ready for merge**.')" \
+"false" "unreviewed-commits-skipped" "3" "$fence_1021_head"
+
+# The re-run runs only where no verdict was found, so a visible rejection
+# ahead of the stray fence still decides.
+run_test "gha#1021: a visible verdict wins over a hidden payload" \
+"$(fence_1021_review '**Verdict:** Needs more work.' CLEAN "$fence_1021_head")" \
+"false" "needs-more-work" "0" "$fence_1021_head"
+
+# The second call site: a visible verdict heading with no recognised polarity
+# reaches `unrecognized`, which also tries the re-run.
+run_test "gha#1021: an unrecognized visible verdict falls through to the re-run" \
+"$(fence_1021_review "$(printf '%s\n' '### Verdict' '' 'See the section below.')" CLEAN "$fence_1021_head")" \
+"true" "ready-for-merge" "0" "$fence_1021_head"
+
+# Only a BARE opener is blanked: a fence with an info string is code the
+# reviewer meant, so a payload example inside one is never read.
+run_test "gha#1021: a payload inside a fence with an info string is not unfenced" \
+"$(printf '%s\n' '## Review' '' 'I could not finish the review.' '' '```html' \
+  "<!-- review-data: {\"schema_version\": \"1.1\", \"commit_sha\": \"$fence_1021_head\", \"verdict\": \"CLEAN\", \"findings\": []} -->" '```')" \
+"false" "no-verdict" "0" "$fence_1021_head"
+
+# The re-run targets the fence holding the LAST unquoted marker. When that
+# marker is visible, a closed example fence above it is the reviewer's code,
+# and its payload is not the review's own (gha#1021 round 2, N1). Here the
+# visible payload is CLEAN with findings, which the fast path refuses.
+run_test "gha#1021: a visible last payload stops the re-run from reading an example above it" \
+"$(printf '%s\n' '## Review' '' 'Expected format:' '' '```' '### Verdict' '' '**Ready for merge**' '' \
+  "<!-- review-data: {\"schema_version\": \"1.1\", \"commit_sha\": \"$fence_1021_head\", \"verdict\": \"CLEAN\", \"findings\": []} -->" \
+  '```' '' 'I found an issue in foo.' '' \
+  "<!-- review-data: {\"schema_version\": \"1.1\", \"commit_sha\": \"$fence_1021_head\", \"verdict\": \"CLEAN\", \"findings\": [{\"severity\": \"high\"}]} -->")" \
+"false" "no-verdict" "0" "$fence_1021_head"
+
+# Blanking the stray opener re-pairs every fence after it. A second bare
+# fence after the payload closes the hidden fence on GitHub, so the no-new-diff
+# claim below it is visible there; the child would fence it and gha#965 would
+# never see it. The re-run may only reveal lines, never hide one (round 2, N2).
+run_test "gha#1021: the re-run is refused when it would hide a line GitHub shows" \
+"$(printf '%s\n' '## Review' '' 'Edits a fence.' '' \
+  '```diff' '@@ -1,3 +1,3 @@' ' x <- 1' ' ```' '+added' '```' '' \
+  '### Verdict' '' '**Ready for merge**' '' \
+  "<!-- review-data: {\"schema_version\": \"1.1\", \"commit_sha\": \"$fence_1021_head\", \"verdict\": \"CLEAN\", \"findings\": []} -->" \
+  '```' '' '### Verdict' '' 'No new diff since the prior round.')" \
+"false" "unrecognized" "3" "$fence_1021_head"
+
+# Child mode is an argv flag, so a variable left in the caller's environment
+# cannot apply the full-head gate to an ordinary visible review (round 2, N4).
+CLASSIFY_UNFENCED_RERUN=1 run_test "gha#1021: a stray rerun variable in the environment changes nothing" \
+"$(printf '%s\n' '### Verdict' '' '**Ready for merge**' '' \
+  '<!-- review-data: {"schema_version": "1.1", "commit_sha": "775e349aaaaa", "verdict": "CLEAN", "findings": []} -->')" \
+"true" "ready-for-merge" "0" "$fence_1021_head"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

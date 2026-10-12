@@ -647,6 +647,16 @@ runs:
           author requested reviewers hold off" or stop without reviewing just
           because a claim comment is present.
 
+          When you quote a diff or code that itself contains a fenced code
+          block, open and close your outer fence with four backticks
+          (````diff ... ````), never three.
+          A three-backtick inner fence line,
+          even one indented by a space as a diff context line is,
+          closes a three-backtick outer fence early, and the outer fence's
+          own closing line then opens a fence that runs to the end of your
+          comment, hiding your verdict and review data inside a code block
+          (gha#1021).
+
           External CI status (such as checking `gh pr checks`, GitHub Actions
           workflow run results, or whether required checks have passed) is
           OUT OF SCOPE for your review: CI is verified independently by
