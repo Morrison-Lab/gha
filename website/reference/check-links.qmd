@@ -22,8 +22,10 @@ so it fails a pull request only when the link is on a line the PR adds.
 Any other 5xx is reported as a warning annotation and in the job summary,
 and does not fail the run (gha#1052).
 On a push or a scheduled run no line is added, so every 5xx is a warning.
-The `check-links` composite that this workflow calls defaults its `base-ref` input to `all`,
-so a direct caller of the composite still fails on every 5xx unless it passes a ref or `''`.
+The `check-links` composite that this workflow calls
+defaults its `base-ref` input to `all`,
+so a direct caller of the composite still fails on every 5xx
+unless it passes a ref or `''`.
 
 ## Permissions
 

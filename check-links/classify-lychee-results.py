@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Decide the check-links verdict from lychee's JSON report (gha#1052).
 
 lychee fails on every rejected link, including a 5xx from a host that is
