@@ -84,6 +84,21 @@ def to_formats(renders):
     return formats
 
 
+NOTICE = "docx-tracked-changes is on"
+
+
+def test_empty_formats_render_html_only(tmp_path, render_script):
+    renders, stdout = run_render(tmp_path, render_script)
+    assert to_formats(renders) == ["html"]
+    assert NOTICE not in stdout
+
+
+def test_empty_formats_add_docx_for_tracked_changes(tmp_path, render_script):
+    renders, stdout = run_render(tmp_path, render_script, DOCX_TRACKED_CHANGES="true")
+    assert to_formats(renders) == ["docx", "html"]
+    assert NOTICE in stdout
+
+
 def test_default_formats_skip_docx(tmp_path, render_script):
     renders, _ = run_render(tmp_path, render_script, FORMATS="default")
     assert to_formats(renders) == ["html"]
@@ -95,7 +110,7 @@ def test_default_formats_keep_docx_for_tracked_changes(tmp_path, render_script):
     )
     # A bare render, so every declared format, docx included, is rendered.
     assert to_formats(renders) == [None]
-    assert "skip-docx is not applied" in stdout
+    assert NOTICE in stdout
 
 
 def test_explicit_formats_skip_docx(tmp_path, render_script):
@@ -104,15 +119,28 @@ def test_explicit_formats_skip_docx(tmp_path, render_script):
 
 
 def test_explicit_formats_keep_docx_for_tracked_changes(tmp_path, render_script):
-    renders, _ = run_render(
+    renders, stdout = run_render(
         tmp_path, render_script, FORMATS="html docx", DOCX_TRACKED_CHANGES="true"
     )
     assert to_formats(renders) == ["html", "docx"]
+    assert NOTICE in stdout
 
 
-def test_skip_docx_false_keeps_docx(tmp_path, render_script):
+def test_explicit_formats_without_docx_stay_as_written(tmp_path, render_script):
     renders, stdout = run_render(
-        tmp_path, render_script, FORMATS="html docx", SKIP_DOCX="false"
+        tmp_path, render_script, FORMATS="html pdf", DOCX_TRACKED_CHANGES="true"
+    )
+    assert to_formats(renders) == ["html", "pdf"]
+    assert NOTICE not in stdout
+
+
+def test_no_notice_when_skip_docx_already_off(tmp_path, render_script):
+    renders, stdout = run_render(
+        tmp_path,
+        render_script,
+        FORMATS="html docx",
+        SKIP_DOCX="false",
+        DOCX_TRACKED_CHANGES="true",
     )
     assert to_formats(renders) == ["html", "docx"]
-    assert "skip-docx is not applied" not in stdout
+    assert NOTICE not in stdout

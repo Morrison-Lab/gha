@@ -167,7 +167,11 @@ on:
         type: string
         default: 'index.html'
       docx-tracked-changes:
-        description: Generate Word DOCX documents with tracked changes against the published version on the deployed branch.
+        description: >-
+          Generate Word DOCX documents with tracked changes against the
+          published version on the deployed branch. Renders docx in the
+          preview as a `preview:docx` label would, overriding `skip-docx`;
+          an explicit `formats` list must still name docx.
         type: boolean
         default: false
       docx-tracked-changes-glob:

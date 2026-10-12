@@ -43,7 +43,7 @@ turn it off for a pure-markdown site.
 | `changed-chapters-normalize-patterns` | string | `''` | Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes). |
 | `max-elements-for-pairwise` | string | `'500'` | Maximum candidate elements per page for pairwise SequenceMatcher diffing; exceeding this skips element-level diffing to prevent quadratic runtime. |
 | `banner-index` | string | `'index.html'` | Home page the banner is inserted into, relative to the rendered site root. |
-| `docx-tracked-changes` | boolean | `false` | Generate Word DOCX documents with tracked changes against the published version on the deployed branch. |
+| `docx-tracked-changes` | boolean | `false` | Generate Word DOCX documents with tracked changes against the published version on the deployed branch. Renders docx in the preview as a `preview:docx` label would, overriding `skip-docx`; an explicit `formats` list must still name docx. |
 | `docx-tracked-changes-glob` | string | `'chapters/*.docx'` | Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for. |
 
 ## Outputs
