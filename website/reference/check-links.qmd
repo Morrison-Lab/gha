@@ -10,7 +10,7 @@ auto-filed issue when links break on `main`.
 | Input                  | Type    | Default                   | Description                                                                           |
 | ---------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------- |
 | `lychee-config`        | string  | `''`                      | Path in the caller repo to a lychee config; falls back to the bundled default.        |
-| `lychee-args`          | string  | `''`                      | Arguments and globs passed to lychee; a sensible default glob set is used when empty. Do not pass `--output`, or a `--format` other than `json`. |
+| `lychee-args`          | string  | `''`                      | Arguments and globs passed to lychee; a sensible default glob set is used when empty. Do not pass `--format` or `--output`. |
 | `fail-if-empty`        | boolean | `false`                   | Fail the run when no links are found.                                                 |
 | `create-issue-on-main` | boolean | `true`                    | File an issue when links break on the `main` branch.                                  |
 | `skip-label`           | string  | `'links checked by hand'` | PR label that skips the link check.                                                   |

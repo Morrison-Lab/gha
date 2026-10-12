@@ -204,7 +204,21 @@ def _repo_root() -> Optional[str]:
         return None
 
 
-def _annotation_file(path: str, root: Optional[str]) -> str:
+def _escape_property(text: str) -> str:
+    # Workflow-command property escaping, so a comma or colon in a file
+    # name cannot end the `file=` value early.
+    return (_escape(text).replace(":", "%3A").replace(",", "%2C"))
+
+
+def _code_span(text: str) -> str:
+    # CommonMark: the delimiter must be longer than any backtick run inside.
+    longest = max((len(run) for run in re.findall("`+", text)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if longest else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
+def _display_path(path: str, root: Optional[str]) -> str:
     # GitHub attaches `file=` relative to the repository root, while lychee
     # keys its report relative to the directory it ran in.
     # A remote input or stdin is not a file, so it keeps the key as given.
@@ -217,7 +231,7 @@ def _annotation_file(path: str, root: Optional[str]) -> str:
 def _annotate(level: str, path: str, entry: dict, suffix: str = "",
               root: Optional[str] = None) -> str:
     line = (entry.get("span") or {}).get("line")
-    loc = f" file={_annotation_file(path, root)}"
+    loc = f" file={_escape_property(_display_path(path, root))}"
     if isinstance(line, int):
         loc += f",line={line}"
     return f"::{level}{loc}::{_escape(_describe(entry) + suffix)}"
@@ -229,7 +243,7 @@ def _summary(blocking, demoted, root: Optional[str] = None) -> str:
     for title, rows in (("Blocking", blocking), ("Demoted 5xx (not on an added line)", demoted)):
         if rows:
             out += ["", f"### {title}", ""]
-            out += [f"- `{_annotation_file(p, root)}`: {_describe(e)}" for p, e in rows]
+            out += [f"- {_code_span(_display_path(p, root))}: {_describe(e)}" for p, e in rows]
     return "\n".join(out) + "\n"
 
 

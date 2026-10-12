@@ -253,14 +253,27 @@ def test_a_key_relative_to_a_subdirectory_is_matched(tmp_path, repo):
     assert "- `old.md`: [503]" in summary
 
 
-@pytest.mark.parametrize("key", ["https://example.org/page.md", "stdin"])
-def test_a_report_key_that_is_not_a_file_is_kept_as_given(tmp_path, repo, key):
+@pytest.mark.parametrize("key, shown", [
+    ("https://example.org/page.md", "https%3A//example.org/page.md"),
+    ("stdin", "stdin"),
+    ("/elsewhere/a.md", "/elsewhere/a.md"),  # outside the repository
+])
+def test_a_report_key_that_is_not_a_repo_file_is_kept_as_given(tmp_path, repo, key, shown):
     sub = repo / "docs"
     sub.mkdir()
     rep = report({key: [entry("https://example.org/gone", 404, 3)]})
-    proc, _ = run(tmp_path, rep, base_ref="all", cwd=sub)
+    proc, summary = run(tmp_path, rep, base_ref="all", cwd=sub)
     assert proc.returncode == 1, proc.stdout
-    assert f"::error file={key},line=3::[404]" in proc.stdout
+    assert f"::error file={shown},line=3::[404]" in proc.stdout
+    assert f"- `{key}`: [404]" in summary
+
+
+def test_file_property_and_summary_survive_awkward_names(tmp_path):
+    rep = report({"a,b:c`d.md": [entry("https://example.org/gone", 404, 1)]})
+    proc, summary = run(tmp_path, rep, base_ref="all")  # tmp_path is no git repo
+    assert proc.returncode == 1, proc.stdout
+    assert "::error file=a%2Cb%3Ac`d.md,line=1::[404]" in proc.stdout
+    assert "- `` a,b:c`d.md ``: [404]" in summary
 
 
 @pytest.mark.parametrize("key", ["untracked.md", "/elsewhere/a.md"])

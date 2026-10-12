@@ -94,7 +94,7 @@ Opt out of any specific check by passing its boolean flag as `false`.
 | `qmd-paths-ignore` | string | `''` | Patterns to skip for QMD linting. |
 | `check-links` | boolean | `true` | Enable lychee link checker. |
 | `lychee-config` | string | `''` | Path to a custom lychee config file. |
-| `lychee-args` | string | `'--exclude-mail'` | Command-line arguments for lychee. Do not pass `--output`, or a `--format` other than `json`. |
+| `lychee-args` | string | `'--exclude-mail'` | Command-line arguments for lychee. Do not pass `--format` or `--output`. |
 | `check-quarto-links` | boolean | `true` | Enable the check for links to missing Quarto pages; blocking or not follows `fail`. |
 | `quarto-links-paths-ignore` | string | `''` | Globs of source files to skip for the Quarto links check. |
 | `check-orphaned-images` | boolean | `true` | Enable the orphaned-images report. |

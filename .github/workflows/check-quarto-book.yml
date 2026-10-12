@@ -140,7 +140,7 @@ on:
         type: string
         default: ''
       lychee-args:
-        description: Additional command-line arguments to pass to lychee. Do not pass --output, or a --format other than json, since check-links reads its JSON report.
+        description: Additional command-line arguments to pass to lychee. Do not pass --format or --output, since check-links sets both to read its JSON report.
         type: string
         default: '--exclude-mail'
       check-quarto-links:

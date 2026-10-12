@@ -110,7 +110,7 @@ inputs:
     description: Path to a lychee config file; falls back to bundled default.
     default: ''
   lychee-args:
-    description: Additional command-line arguments to pass to lychee. Do not pass --output, or a --format other than json, since check-links reads its JSON report.
+    description: Additional command-line arguments to pass to lychee. Do not pass --format or --output, since check-links sets both to read its JSON report.
     default: '--exclude-mail'
   check-quarto-links:
     description: Fail on relative links from .qmd/.md/.Rmd sources to pages that do not exist (no render needed).
