@@ -207,7 +207,10 @@ def _repo_root() -> Optional[str]:
 def _annotation_file(path: str, root: Optional[str]) -> str:
     # GitHub attaches `file=` relative to the repository root, while lychee
     # keys its report relative to the directory it ran in.
-    rel = repo_path(path, root, os.getcwd()) if root else None
+    # A remote input or stdin is not a file, so it keeps the key as given.
+    if not root or "://" in path or path == "stdin":
+        return _normalize_path(path)
+    rel = repo_path(path, root, os.getcwd())
     return rel if rel is not None else _normalize_path(path)
 
 
@@ -220,13 +223,13 @@ def _annotate(level: str, path: str, entry: dict, suffix: str = "",
     return f"::{level}{loc}::{_escape(_describe(entry) + suffix)}"
 
 
-def _summary(blocking, demoted) -> str:
+def _summary(blocking, demoted, root: Optional[str] = None) -> str:
     out = ["## Link check", ""]
     out.append(f"{len(blocking)} blocking failure(s), {len(demoted)} demoted 5xx warning(s).")
     for title, rows in (("Blocking", blocking), ("Demoted 5xx (not on an added line)", demoted)):
         if rows:
             out += ["", f"### {title}", ""]
-            out += [f"- `{_normalize_path(p)}`: {_describe(e)}" for p, e in rows]
+            out += [f"- `{_annotation_file(p, root)}`: {_describe(e)}" for p, e in rows]
     return "\n".join(out) + "\n"
 
 
@@ -292,7 +295,7 @@ def main() -> int:
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:
         with open(summary_path, "a", encoding="utf-8") as fh:
-            fh.write(_summary(blocking, demoted))
+            fh.write(_summary(blocking, demoted, root))
     output_path = os.environ.get("GITHUB_OUTPUT")
     if output_path:
         with open(output_path, "a", encoding="utf-8") as fh:

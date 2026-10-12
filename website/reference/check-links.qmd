@@ -10,7 +10,7 @@ auto-filed issue when links break on `main`.
 | Input                  | Type    | Default                   | Description                                                                           |
 | ---------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------- |
 | `lychee-config`        | string  | `''`                      | Path in the caller repo to a lychee config; falls back to the bundled default.        |
-| `lychee-args`          | string  | `''`                      | Arguments and globs passed to lychee; a sensible default glob set is used when empty. Do not pass `--format` or `--output`. |
+| `lychee-args`          | string  | `''`                      | Arguments and globs passed to lychee; a sensible default glob set is used when empty. Do not pass `--output`, or a `--format` other than `json`. |
 | `fail-if-empty`        | boolean | `false`                   | Fail the run when no links are found.                                                 |
 | `create-issue-on-main` | boolean | `true`                    | File an issue when links break on the `main` branch.                                  |
 | `skip-label`           | string  | `'links checked by hand'` | PR label that skips the link check.                                                   |
@@ -23,7 +23,8 @@ Any other 5xx is reported as a warning annotation and in the job summary,
 and does not fail the run (gha#1052).
 On any other event, such as a push, a scheduled run, `workflow_dispatch`,
 `merge_group`, or `pull_request_target`,
-the workflow passes no diff base, so every 5xx is a warning.
+the workflow passes no diff base, so every 5xx is a warning
+unless `fail-on-any-5xx` is set.
 The `check-links` composite that this workflow calls
 defaults its `base-ref` input to `all`,
 so a direct caller of the composite still fails on every 5xx

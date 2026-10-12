@@ -241,13 +241,26 @@ def test_a_key_relative_to_a_subdirectory_is_matched(tmp_path, repo):
     git(repo, "add", ".")
     git(repo, "commit", "-qm", "page")
     added = report({"page.md": [entry("https://down.example/page", 503, 1)]})
-    proc, _ = run(tmp_path, added, base_ref="main", cwd=sub)
+    proc, summary = run(tmp_path, added, base_ref="main", cwd=sub)
     assert proc.returncode == 1, proc.stdout  # docs/page.md line 1 is added
-    # The annotation names the file from the repository root, not from cwd.
+    # The annotation and the summary name the file from the repository root.
     assert "::error file=docs/page.md,line=1::[503]" in proc.stdout
+    assert "- `docs/page.md`: [503]" in summary
     untouched = report({"../old.md": [entry("https://down.example/old", 503, 2)]})
-    proc, _ = run(tmp_path, untouched, base_ref="main", cwd=sub)
+    proc, summary = run(tmp_path, untouched, base_ref="main", cwd=sub)
     assert proc.returncode == 0, proc.stdout
+    assert "::warning file=old.md,line=2::[503]" in proc.stdout
+    assert "- `old.md`: [503]" in summary
+
+
+@pytest.mark.parametrize("key", ["https://example.org/page.md", "stdin"])
+def test_a_report_key_that_is_not_a_file_is_kept_as_given(tmp_path, repo, key):
+    sub = repo / "docs"
+    sub.mkdir()
+    rep = report({key: [entry("https://example.org/gone", 404, 3)]})
+    proc, _ = run(tmp_path, rep, base_ref="all", cwd=sub)
+    assert proc.returncode == 1, proc.stdout
+    assert f"::error file={key},line=3::[404]" in proc.stdout
 
 
 @pytest.mark.parametrize("key", ["untracked.md", "/elsewhere/a.md"])

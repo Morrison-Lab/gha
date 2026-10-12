@@ -12,8 +12,9 @@ inputs:
     description: >-
       Arguments/globs passed to lychee (the --config flag is appended
       automatically). If empty, a sensible default glob set is used.
-      Do not pass --format or --output: the action sets both so it can
-      read lychee's JSON report, and the run fails if either is given.
+      Do not pass --output, or a --format other than json: the action
+      sets both so it can read lychee's JSON report, and either one
+      fails the run.
     default: ''
   fail:
     description: Fail the action when broken links are found.

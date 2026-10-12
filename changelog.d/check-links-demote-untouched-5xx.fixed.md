@@ -16,7 +16,7 @@
   and a report whose `errors`, `timeouts`, or `total` counts are missing or disagree with what it lists
   fails rather than passing.
   Because the composite now sets lychee's `--format` and `--output` itself,
-  a caller whose `lychee-args` passes either one fails with a message saying to remove it.
+  a caller whose `lychee-args` passes `--output`, or a `--format` other than `json`, now fails the run.
   The job summary now lists the failing links and their verdicts
   in place of lychee-action's own statistics table.
   Annotations name each file relative to the repository root.
