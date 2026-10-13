@@ -55,7 +55,7 @@ so the fallback loop finishes its candidate progression cleanly.
 | `ANTHROPIC_API_KEY` | no | Direct Anthropic API key. |
 | `GEMINI_API_KEY` | no | Gemini API key. Makes `gemini` and `antigravity` eligible candidates. |
 | `CURSOR_API_KEY` | no | Cursor Enterprise Bugbot API key (`admin:*`). Makes `cursor` an eligible candidate. |
-| `OPENCODE_API_KEY` | no | [OpenCode Zen](https://opencode.ai/docs/zen/) API key. Makes `opencode` an eligible candidate. |
+| `OPENCODE_API_KEY` | no | [OpenCode Zen](https://opencode.ai/zen) API key. Makes `opencode` an eligible candidate. |
 
 ## Permissions
 

@@ -19,7 +19,7 @@ There is no `opencode.yml` mention bot yet, so unlike
 comment-triggered re-dispatch path to keep names in sync with.
 
 Requires an `OPENCODE_API_KEY` secret
-([OpenCode Zen](https://opencode.ai/docs/zen/); free-tier models are
+([OpenCode Zen](https://opencode.ai/zen); free-tier models are
 available). Without it, each run posts a skip notice on the PR instead of a
 review.
 
@@ -38,7 +38,7 @@ review.
 
 | Secret | Required | Description |
 |---|---|---|
-| `OPENCODE_API_KEY` | no | [OpenCode Zen](https://opencode.ai/docs/zen/) API key. Without it the workflow skips gracefully with a warning comment on the PR. |
+| `OPENCODE_API_KEY` | no | [OpenCode Zen](https://opencode.ai/zen) API key. Without it the workflow skips gracefully with a warning comment on the PR. |
 | `SUBMODULES_TOKEN` | no | Token used to check out private submodules. |
 
 ## Permissions

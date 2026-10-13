@@ -240,7 +240,7 @@ that need to write must have the **caller** grant it on the calling job:
 
 - `opencode-code-review` (read-only OpenCode PR review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, and set an `OPENCODE_API_KEY`
-  secret (an [OpenCode Zen](https://opencode.ai/docs/zen/) API key; free-tier
+  secret (an [OpenCode Zen](https://opencode.ai/zen) API key; free-tier
   models are available).
   Without the secret, reviews skip gracefully with a warning comment on each
   PR.
