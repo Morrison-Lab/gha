@@ -196,7 +196,8 @@ check("persistent 500 warning text",
       "DOI URL returned status 500 after 3 attempts (resolver unavailable, not verified)")
 check("persistent 500 call count", call_count, 3)
 
-# Test 9: Network timeout across all 3 attempts -> error
+# Test 9: Network timeout across all 3 attempts, Crossref also unreachable
+# -> error (fail closed: nothing confirms the DOI)
 call_count <- 0
 mock_get_timeout <- function(...) {
   call_count <<- call_count + 1
@@ -206,7 +207,37 @@ res_timeout <- validate_doi_url("10.1201/9781315182780", backoff_base_sec = 0, h
 check("timeout is_valid", res_timeout$is_valid, FALSE)
 check("timeout warning is NULL", is.null(res_timeout$warning), TRUE)
 check("timeout has error", grepl("Connection timed out", res_timeout$error), TRUE)
-check("timeout call count", call_count, 3)
+check("timeout call count (3 doi.org + 1 Crossref)", call_count, 4)
+
+# Test 9b: Persistent timeout on doi.org, Crossref knows the DOI -> warning
+call_count <- 0
+mock_get_timeout_crossref_200 <- function(url, ...) {
+  call_count <<- call_count + 1
+  if (grepl("api.crossref.org", url, fixed = TRUE)) {
+    make_mock_response(200)
+  } else {
+    stop("Connection timed out after 30 seconds")
+  }
+}
+res_timeout_cr <- validate_doi_url("10.1214/aoms/1177732360", backoff_base_sec = 0, http_get = mock_get_timeout_crossref_200)
+check("timeout+Crossref-200 is_valid", res_timeout_cr$is_valid, TRUE)
+check("timeout+Crossref-200 error is NULL", is.null(res_timeout_cr$error), TRUE)
+check("timeout+Crossref-200 warning text",
+      grepl("registered with Crossref, but doi.org was unreachable after 3 attempts", res_timeout_cr$warning),
+      TRUE)
+check("timeout+Crossref-200 call count", call_count, 4)
+
+# Test 9c: Persistent timeout on doi.org, Crossref answers 404 -> error
+mock_get_timeout_crossref_404 <- function(url, ...) {
+  if (grepl("api.crossref.org", url, fixed = TRUE)) {
+    make_mock_response(404)
+  } else {
+    stop("Connection timed out after 30 seconds")
+  }
+}
+res_timeout_cr404 <- validate_doi_url("10.1214/aoms/1177732360", backoff_base_sec = 0, http_get = mock_get_timeout_crossref_404)
+check("timeout+Crossref-404 is_valid", res_timeout_cr404$is_valid, FALSE)
+check("timeout+Crossref-404 has error", grepl("Connection timed out", res_timeout_cr404$error), TRUE)
 
 # Test 10: Network error on attempt 1, 200 on attempt 2 -> retries and succeeds
 call_count <- 0

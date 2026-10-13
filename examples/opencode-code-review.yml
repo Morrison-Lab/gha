@@ -6,7 +6,7 @@
 # cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 #
 # NOTE: requires OPENCODE_API_KEY (an OpenCode Zen API key,
-# https://opencode.ai/docs/zen/) stored as a GitHub secret. Pass secrets
+# https://opencode.ai/zen) stored as a GitHub secret. Pass secrets
 # explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
 # secrets into a reusable workflow owned by the same org/user, so a
 # cross-owner caller inherits an empty token and the run fails. Without the

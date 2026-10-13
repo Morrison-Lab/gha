@@ -57,7 +57,7 @@ EOF
   cat <<'EOF'
 Common causes: the model returned an empty response, or a prompt-addendum
 instructed it to stay silent. Check the job log for the model's stderr,
-re-run, and check https://opencode.ai/docs/zen/ for service status before
+re-run, and check https://opencode.ai/zen for service status before
 treating this as a workflow bug.
 EOF
   exit 0

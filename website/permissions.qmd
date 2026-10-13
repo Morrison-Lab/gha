@@ -123,7 +123,7 @@ already include the right `permissions:` blocks; copy them as-is.
   (Enterprise, `admin:*` scope).
 - `opencode-code-review` is a read-only review that posts its own comment, so
   grant `contents: read`, `pull-requests: write`, `issues: write`, and set the
-  `OPENCODE_API_KEY` secret ([OpenCode Zen](https://opencode.ai/docs/zen/)).
+  `OPENCODE_API_KEY` secret ([OpenCode Zen](https://opencode.ai/zen)).
 - `ai-code-review` selects the first available AI reviewer and dispatches its
   review workflow, so grant `contents: read`, `pull-requests: read`,
   `issues: read`, `actions: write`, and pass the secrets of whichever agent

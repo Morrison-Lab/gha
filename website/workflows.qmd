@@ -441,7 +441,7 @@ and its review is posted by the workflow itself.
 There is no `opencode.yml` mention bot yet (tracked in gha#586's deferred
 follow-ups), so reviews arrive via `pull_request`, `ai-code-review.yml`
 dispatch, or manual `workflow_dispatch`.
-Add the `OPENCODE_API_KEY` secret ([OpenCode Zen](https://opencode.ai/docs/zen/))
+Add the `OPENCODE_API_KEY` secret ([OpenCode Zen](https://opencode.ai/zen))
 and add `opencode` to `ai-code-review.yml`'s `agents` input.
 
 All agent workflows align with upstream action standards (such as
