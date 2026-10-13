@@ -6,7 +6,7 @@
   The multi-word names that `ignore-tells` recognizes are now derived from
   the catalog, so a new pattern name is never split into single words.
   The reference page now names
-  [*Principles of Scientific Writing*](https://morrison-lab.github.io/psw/chapters/avoid-ai-tells.html)
+  [*Principles of Scientific Writing*](https://morrison-lab.github.io/psw/chapters/avoid-cliches.html)
   as the canonical list this catalog draws from,
   and the test suite checks the lexical tells against a psw checkout
   when `PSW_AI_TELLS_FILE` is set.
