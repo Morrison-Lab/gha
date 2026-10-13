@@ -95,7 +95,7 @@ if (nzchar(psw_file)) {
   not_in_psw <- LEXICAL_TELLS[!vapply(
     LEXICAL_TELLS, function(w) grepl(w, psw_text, fixed = TRUE), logical(1)
   )]
-  check("Every lexical tell is in psw avoid-ai-tells", length(not_in_psw) == 0L,
+  check("Every lexical tell is in psw avoid-cliches", length(not_in_psw) == 0L,
         not_in_psw, character(0))
 } else {
   cat("Skipping psw sync check: PSW_AI_TELLS_FILE is not set\n")
