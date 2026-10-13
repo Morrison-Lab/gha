@@ -193,6 +193,19 @@ validate_doi_url <- function(doi,
   }
 
   if (!is.null(last_error_message)) {
+    # A persistent transport error (timeout, DNS, TLS) says the resolver or
+    # publisher host is unreachable, not that the DOI is wrong. Crossref
+    # knowing the DOI is the evidence it is real, so this is the same
+    # not-verified warning as a persistent 5xx. A DOI Crossref cannot confirm
+    # still fails, so an unreachable network never passes a bad DOI.
+    if (crossref_registered(doi_identifier, http_get)) {
+      return(list(
+        is_valid = TRUE,
+        warning = sprintf("DOI is registered with Crossref, but doi.org was unreachable after %d attempts (%s; not verified)", max_attempts, last_error_message),
+        error = NULL,
+        status_code = NULL
+      ))
+    }
     return(list(
       is_valid = FALSE,
       warning = NULL,
