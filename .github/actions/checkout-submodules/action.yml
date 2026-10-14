@@ -11,6 +11,13 @@ inputs:
       Token with read access to private submodules (e.g. the SUBMODULES_TOKEN
       secret). Leave empty for public submodules, which clone anonymously.
     default: ''
+  paths:
+    description: >-
+      Whitespace-separated submodule paths to initialize, for example
+      `latex-macros`. Leave empty to initialize every submodule. Use it when a
+      repository has a private submodule beside a public one the reviewer needs
+      and no token that can read the private one.
+    default: ''
 runs:
   using: composite
   steps:
@@ -18,20 +25,5 @@ runs:
       shell: bash
       env:
         SUBMODULES_TOKEN: ${{ inputs.submodules-token }}
-      run: |
-        set -euo pipefail
-        # With a token, rewrite submodule URLs to authenticate the clone.
-        # Without one, note and proceed: public submodules clone anonymously,
-        # and a truly private submodule will fail naturally at checkout.
-        if [ -z "$SUBMODULES_TOKEN" ]; then
-          echo "::notice::SUBMODULES_TOKEN is empty; cloning submodules anonymously (works for public submodules; a private one will fail at checkout)."
-        else
-          # --global (not --local) is intentional: the rewrite must also apply
-          # to the nested clones from `--recursive`, which run in each
-          # submodule's own repo context and would not see a superproject-local
-          # insteadOf. It only rewrites HTTPS github.com clones and lives only
-          # on this job's ephemeral runner (~/.gitconfig), so it does not leak
-          # beyond the job.
-          git config --global url."https://x-access-token:${SUBMODULES_TOKEN}@github.com/".insteadOf "https://github.com/"
-        fi
-        git submodule update --init --recursive --depth 1
+        SUBMODULE_PATHS: ${{ inputs.paths }}
+      run: bash "${GITHUB_ACTION_PATH}/checkout-submodules.sh"

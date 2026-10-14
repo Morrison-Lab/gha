@@ -60,6 +60,14 @@ on:
           SUBMODULES_TOKEN secret; public submodules clone anonymously without it.
         type: boolean
         default: false
+      submodule-paths:
+        description: >-
+          Whitespace-separated submodule paths to check out when
+          checkout-submodules is true (for example `latex-macros`). Empty checks
+          out every submodule. Set it when the repo has a private submodule the
+          review job cannot clone and the reviewer only needs a public one.
+        type: string
+        default: ''
       allowed-bots:
         description: >-
           Comma-separated bot actors the reviewer accepts (passed to
@@ -792,6 +800,7 @@ jobs:
         uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
+          paths: ${{ inputs.submodule-paths }}
 
       # Check out reference repositories so the reviewer can inspect their
       # workflows, guidelines, and schemas directly instead of theorizing

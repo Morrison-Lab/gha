@@ -2315,6 +2315,9 @@ jobs:
       - name: Run review-job-split assertions against this checkout
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-review-job-split-tests.py
+      - name: Run checkout-submodules path-selection tests
+        shell: bash
+        run: bash .github/actions/checkout-submodules/tests/run-checkout-submodules-tests.sh
       # Real `uses:` call, proving pack-review-payload's github.action_path
       # resolution of pack-review-payload.sh works end-to-end. The offline
       # table above calls the script directly, so it cannot see whether
