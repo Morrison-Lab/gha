@@ -887,102 +887,108 @@ cookieconsent.run({
 <td>Check out submodules so the reviewer can read their contents. Private submodules require the <code>SUBMODULES_TOKEN</code> secret.</td>
 </tr>
 <tr class="even">
+<td><code>submodule-paths</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Whitespace-separated submodule paths to check out when <code>checkout-submodules</code> is true (for example <code>latex-macros</code>). Empty checks out every submodule. Use it when the repo has a private submodule the review job cannot clone and the reviewer only needs a public one.</td>
+</tr>
+<tr class="odd">
 <td><code>allowed-bots</code></td>
 <td>string</td>
 <td><code>'github-actions[bot]'</code></td>
 <td>Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>track-progress</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Ignored (gha#580). Tag mode posts a live tracking comment through the <code>github_comment</code> MCP server (<code>mcp__github_comment__update_claude_comment</code>) and hardcodes git write tools; it does not start <code>github_inline_comment</code> unless <code>mcp__github_inline_comment__*</code> or <code>mcp__github__*</code> is allowlisted. All of that needs a writable forge token in the model job. This workflow splits those: the model job’s <code>GITHUB_TOKEN</code> has no write scopes, and the posting job submits the summary after the model finishes. The input is kept so existing callers do not fail at the call gate.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>show-full-output</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Show the full JSON output from Claude Code. Turn it on to diagnose a review that fails inside the model call.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>apt-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Space-separated system packages to <code>apt-get install</code> before the review runs (e.g.&nbsp;<code>maxima</code> for a computer algebra system). Empty to skip.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>pip-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Space-separated pip packages to install with <code>pip3 --break-system-packages</code> before the review runs (e.g.&nbsp;<code>sympy</code>). Empty to skip.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>lab-manual</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Hold the PR to the SERG lab manual (coding style/practices, repository conventions) during review, in addition to correctness. Default <code>true</code>; set <code>false</code> for repos where the R/tidyverse/Quarto-focused manual doesn’t apply (e.g.&nbsp;a GitHub Actions, shell, or docs repo), so the reviewer isn’t handed guidance irrelevant to the diff.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>check-latex-macros</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Check PR diffs for LaTeX math simplifiable via an existing macro from the <code>d-morrison/macros</code> submodule, and for nontrivial expressions repeated 3+ times that are candidates for a new one. Off by default. The macro checks read definitions only from a locally checked-out submodule (the repo’s pinned version is authoritative), so this only finds real macro definitions when the repo vendors the <code>d-morrison/macros</code> submodule <strong>and</strong> <code>checkout-submodules: true</code> is also set.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>report-cost</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Post a follow-up PR comment with the review’s dollar cost (<code>total_cost_usd</code>, summed across the initial attempt and any stub-review retry). See <a href="https://github.com/Morrison-Lab/gha#readme">README.md</a>’s feature-parity table for the upstream source citation. Set false to suppress it.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>model</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Model for the reviewer to run on, passed through as the Claude Code CLI’s <code>--model</code> flag (e.g.&nbsp;<code>claude-opus-4-8</code>). Empty (default) falls through to <code>claude-code-action</code>’s own default. Unlike <code>claude.yml</code>, this workflow has no generic <code>claude-args</code> passthrough, so this is the only way to influence the model.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>use-ai-config</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Install the <a href="https://github.com/Morrison-Lab/ai-config"><code>Morrison-Lab/ai-config</code></a> plugin (<code>ai-config@Morrison-Lab</code>) alongside the built-in <code>code-review@claude-code-plugins</code>, so the reviewer applies the lab’s shared review conventions rather than only the calling repo’s own <code>CLAUDE.md</code>. Set false to opt out.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>use-posit-skills</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Install the <a href="https://github.com/posit-dev/skills"><code>posit-dev/skills</code></a> plugin (<code>posit-dev@posit-dev-skills</code>) alongside the built-in <code>code-review@claude-code-plugins</code> and <code>ai-config@Morrison-Lab</code>, so the reviewer applies Posit’s critical code review guidelines (including <code>critical-code-reviewer</code>). Set false to opt out.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>reference-repos</code></td>
 <td>string</td>
 <td><code>'Morrison-Lab/gha'</code></td>
 <td>Space-, comma-, or newline-separated list of GitHub repositories (<code>owner/repo</code> or <code>owner/repo@ref</code>) checked out into <code>.reference-repos/</code> so the reviewer can inspect their files and schemas directly. Set to <code>'none'</code> or <code>''</code> to disable.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>reference-repos-token</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Optional GitHub token with read access to private reference repositories (e.g.&nbsp;<code>SUBMODULES_TOKEN</code> or a PAT). Public reference repositories clone anonymously.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>plugin-marketplaces</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Extra newline-separated plugin marketplace Git URLs, added on top of the marketplaces this workflow already uses (<code>anthropics/claude-code.git</code> for the <code>code-review</code> plugin, <code>Morrison-Lab/ai-config.git</code> unless <code>use-ai-config</code> is false, and <code>posit-dev/skills.git</code> unless <code>use-posit-skills</code> is false). Pair with <code>plugins</code> below; empty adds none.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>plugins</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Extra newline-separated plugin refs to install (<code>&lt;plugin&gt;@&lt;marketplace-name&gt;</code>), added on top of the built-in <code>code-review@claude-code-plugins</code>, <code>ai-config@Morrison-Lab</code>, and <code>posit-dev@posit-dev-skills</code>. Each marketplace name must match the name that marketplace declares in its own <code>.claude-plugin/marketplace.json</code>, not the URL given in <code>plugin-marketplaces</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>extra-secret-names</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Space-, comma-, or newline-separated caller secret names to export into the reviewer environment (e.g.&nbsp;<code>'EPI202_TOKEN EPI204_TOKEN'</code>). Requires <code>secrets: inherit</code> on the caller <code>uses:</code>. Secret names must match <code>[A-Z_][A-Z0-9_]*</code> and cannot shadow protected workflow environment variables. Empty to skip.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>timeout-minutes</code></td>
 <td>number</td>
 <td><code>60</code></td>
@@ -1181,23 +1187,24 @@ cookieconsent.run({
 <span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">      # a review on Claude's commits; empty (and ignored) on pull_request runs.</span></span>
 <span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
 <span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules</span></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # ignored (gha#580); tag mode needs a writable token in the model job</span></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   reference-repos: 'Morrison-Lab/gha'  # check out reference repos into .reference-repos/ for the reviewer</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   report-cost: false          # suppress the dollar-cost comment (default true)</span></span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: claude-opus-4-8      # override the reviewer's model (default: claude-code-action's own default)</span></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-posit-skills: false     # skip the posit-dev/skills plugin (installed by default)</span></span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources</span></span>
-<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;</span></span>
-<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)</span></span>
-<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
-<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   submodule-paths: 'latex-macros'   # only these submodules (default: all); needs checkout-submodules: true</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # ignored (gha#580); tag mode needs a writable token in the model job</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   reference-repos: 'Morrison-Lab/gha'  # check out reference repos into .reference-repos/ for the reviewer</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #   report-cost: false          # suppress the dollar-cost comment (default true)</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: claude-opus-4-8      # override the reviewer's model (default: claude-code-action's own default)</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-posit-skills: false     # skip the posit-dev/skills plugin (installed by default)</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;</span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)</span></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/claude-code-review.yml"><code>examples/claude-code-review.yml</code></a> for the full caller stub.</p>
 
 
