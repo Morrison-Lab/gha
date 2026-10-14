@@ -12,7 +12,7 @@ fails=0
 export GIT_CONFIG_GLOBAL="$tmp/gitconfig"
 git config --global protocol.file.allow always
 git config --global user.name tester
-git config --global user.email tester@example.invalid
+git config --global user.email tester@example.invalid  # phi-allow
 git config --global init.defaultBranch main
 
 for name in pub priv; do
