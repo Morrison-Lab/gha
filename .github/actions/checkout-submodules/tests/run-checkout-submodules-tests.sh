@@ -53,6 +53,7 @@ run_case "empty paths initialize every submodule" "" yes yes
 run_case "one path initializes only that submodule" "pub" yes no
 run_case "other path initializes only the other" "priv" no yes
 run_case "two paths, extra whitespace" "  pub   priv " yes yes
+run_case "two paths on separate lines" $'pub\npriv\n' yes yes
 
 # A named path that is not a submodule must fail, not silently check out nothing.
 fresh_clone

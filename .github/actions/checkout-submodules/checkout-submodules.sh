@@ -21,7 +21,8 @@ fi
 
 # Split the whitespace-separated path list into an array; an empty list
 # leaves the array empty, which selects every submodule.
-read -r -a paths <<< "${SUBMODULE_PATHS:-}"
+# Newlines count as separators too, so a multi-line YAML block works.
+read -r -a paths <<< "$(printf '%s' "${SUBMODULE_PATHS:-}" | tr -s '[:space:]' ' ')"
 if [ "${#paths[@]}" -gt 0 ]; then
   echo "Initializing submodules: ${paths[*]}"
   git submodule update --init --recursive --depth 1 -- "${paths[@]}"
