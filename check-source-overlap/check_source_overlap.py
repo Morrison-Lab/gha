@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Flag prose that overlaps a reference text, as a guard against unintentional plagiarism.
 
 Reference texts (textbooks, papers, other courses' notes) are plain-text files
@@ -11,12 +12,14 @@ A chapter's prose is cut into paragraphs and compared with the corpus by word n-
 * when at least `--density` of its n-grams occur in a source (a near copy with scattered edits).
 
 Text that quotes its source properly is skipped: blockquotes, text inside double quotation marks,
-and paragraphs carrying an `{#id}`-less `[!NOTE]`-style opt-out comment
-`<!-- overlap-ok: reason -->` for a passage checked by hand.
+and paragraphs containing an `<!-- overlap-ok: reason -->` comment for a passage checked by hand.
 Code fences, display math, inline math, URLs, citation keys and Quarto attributes are removed first.
 
 Advisory by default (exit 0); `--fail` exits 1 when anything is flagged.
-Exit 2 means nothing could be checked (no corpus or no input), so an empty pass is never silent.
+Exit 2 means nothing could be checked (no corpus, or named files and no input), so an empty pass
+is never silent.
+The summary line always reports how many paragraphs were examined: a page that is wholly quoted,
+or a `--git-diff` change that adds no prose, is a real pass with `examined 0`, and says so.
 
 Usage:
     check_source_overlap.py --corpus DIR_OF_TXT chapters/foo.qmd [more.qmd ...]
@@ -31,11 +34,14 @@ from collections import defaultdict
 from pathlib import Path
 
 N = 6  # shingle length in words
+LIGATURES = {"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl"}
 
 
 def normalize_words(text: str) -> list[str]:
     text = text.lower().replace("’", "'").replace("‘", "'")
-    text = text.replace("­", "").replace("-\n", "")
+    text = text.replace("\r\n", "\n").replace("­", "").replace("-\n", "")
+    for ligature, letters in LIGATURES.items():  # pdftotext keeps ligatures as single characters
+        text = text.replace(ligature, letters)
     return re.findall(r"[a-z0-9]+(?:'[a-z]+)?", text)
 
 
@@ -84,7 +90,7 @@ def paragraphs(path: Path, only_lines: set[int] | None):
             continue
         text = strip_markup(text)
         text = re.sub(r"“[^”]*”", " ", text)  # curly-quoted
-        text = re.sub(r'"[^"\n]{20,}"', " ", text)  # straight-quoted
+        text = re.sub(r'"[^"]{20,600}"', " ", text)  # straight-quoted, possibly wrapped over lines
         yield start, text
 
 
@@ -94,7 +100,11 @@ def wordy(gram) -> bool:
 
 
 def build_index(corpus: Path):
-    """Map each hashed n-gram to the first source that holds it."""
+    """Map each hashed n-gram to the first source that holds it.
+
+    `hash` of a tuple of strings is salted per process, so build and use the index in one run
+    and never write it to disk.
+    """
     index: dict[int, int] = {}
     names: list[str] = []
     files = sorted(p for p in corpus.rglob("*.txt") if p.is_file())
@@ -122,17 +132,23 @@ def check(words, index):
     return best + N - 1, density, hits
 
 
-def changed_lines(base: str):
-    out = subprocess.run(["git", "diff", "-U0", f"{base}...HEAD", "--", "*.qmd", "*.md"],
-                         capture_output=True, text=True, check=True).stdout
+def changed_lines(base: str, excludes=()):
+    """Map each existing .qmd/.md file to the line numbers the change adds, relative to the cwd.
+
+    `excludes` are git pathspecs such as ':!_extensions'.
+    """
+    cmd = ["git", "diff", "-U0", "--relative", f"{base}...HEAD", "--", "*.qmd", "*.md", *excludes]
+    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
     added, cur = defaultdict(set), None
     for line in out.splitlines():
-        if line.startswith("+++ b/"):
-            cur = Path(line[6:])
+        if line.startswith("+++ "):
+            # `+++ /dev/null` is a deleted file; its hunks add nothing and must not reach the last file
+            cur = Path(line[6:]) if line.startswith("+++ b/") else None
         elif line.startswith("@@") and cur:
             m = re.search(r"\+(\d+)(?:,(\d+))?", line)
             s, c = int(m.group(1)), int(m.group(2) or 1)
-            added[cur].update(range(s, s + c))
+            if c and cur.is_file():  # a pure deletion adds no lines
+                added[cur].update(range(s, s + c))
     return added
 
 
@@ -143,6 +159,8 @@ def main() -> int:
     ap.add_argument("--min-run", type=int, default=12, help="verbatim words that flag a paragraph")
     ap.add_argument("--density", type=float, default=0.25)
     ap.add_argument("--fail", action="store_true")
+    ap.add_argument("--exclude", action="append", default=[], metavar="PATHSPEC",
+                    help="git pathspec to leave out of --git-diff, e.g. ':!_extensions' (repeatable)")
     ap.add_argument("files", nargs="*", type=Path)
     a = ap.parse_args()
 
@@ -155,8 +173,9 @@ def main() -> int:
         return 2
     targets = {p: None for p in a.files}
     if a.git_diff:
-        targets.update(changed_lines(a.git_diff))
-    if not targets:
+        targets.update(changed_lines(a.git_diff, a.exclude))
+    diff_only = bool(a.git_diff) and not a.files
+    if not targets and not diff_only:
         print("error: no input files", file=sys.stderr)
         return 2
 

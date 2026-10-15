@@ -1,0 +1,85 @@
+---
+title: "check-source-overlap.yml"
+---
+
+Flag paragraphs of Markdown and Quarto prose that copy a reference text, as a
+guard against unintentional plagiarism by authors and AI agents alike.
+
+## Why this check
+
+A language model that has read a textbook can reproduce its sentences without
+anyone noticing, and a bulk-generated chapter can carry passages no author
+reviewed for provenance.
+Crediting the source does not cure a copied passage, so this check looks for
+the copying itself.
+
+## What it does
+
+It reads the PDFs (or `.txt` files) named by `corpus-files` from a private
+corpus repository, extracts their text with `pdftotext` into the runner's
+temporary directory, and compares each paragraph the pull request adds with
+that text by word 6-grams.
+A paragraph is flagged when at least `min-run` consecutive words occur verbatim
+in a source, or when a quarter or more of its 6-grams do.
+The extracted text is never uploaded or committed.
+
+Not compared, by design: fenced code, math, table rows, citations, URLs,
+Quarto attributes, blockquotes, and text in quotation marks.
+A paragraph containing `<!-- overlap-ok: reason -->` is skipped, for a passage
+checked by hand.
+
+**It finds copying that the corpus holds.**
+A source nobody put in the corpus is invisible, and a paraphrase that keeps no
+run of six consecutive words is missed.
+It is a net, not a proof of originality.
+
+**A run that could not check anything exits 2, not 0.**
+An empty or missing corpus, or no input files, is an error.
+A change that adds no prose passes, and the summary line reports
+`examined 0 paragraphs`.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `corpus-repo` | string | `'Morrison-Lab/mlr'` | Repository holding the reference PDFs, as `owner/name`. |
+| `corpus-files` | string | required | Comma- or newline-separated git pathspecs of the PDFs or `.txt` files in `corpus-repo`. |
+| `base-ref` | string | `''` | Git base ref; only lines added since it are checked. Use `HEAD^1` on a pull request. Empty checks every Markdown and Quarto file in `paths`. |
+| `paths` | string | `''` | Space-separated files to check when `base-ref` is empty. |
+| `paths-ignore` | string | `':!_extensions :!lectures'` | Space-separated git pathspecs to exclude, in both modes. |
+| `min-run` | string | `'12'` | Consecutive verbatim words that flag a paragraph. |
+| `fail` | boolean | `false` | Fail the job when a paragraph is flagged (else warn only). |
+
+## Secrets
+
+| Secret | Required | Description |
+| --- | --- | --- |
+| `corpus-token` | yes | A token that can read `corpus-repo`; the workflow token reaches only the caller's repository. |
+
+## Permissions
+
+Only `contents: read`.
+
+## Example
+
+```yaml
+name: Check source overlap
+on:
+  pull_request:
+    paths: ['**.qmd', '**.md']
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-source-overlap.yml@v3
+    with:
+      corpus-files: 'books/Hastie-*.pdf'
+      base-ref: HEAD^1
+    #   fail: true
+    secrets:
+      corpus-token: ${{ secrets.CORPUS_TOKEN }}
+```
+
+See `check-source-overlap.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.
+An agent can run the same script before pushing:
+`python3 check-source-overlap/check_source_overlap.py --corpus <dir of .txt> --git-diff origin/main`.

@@ -7,6 +7,7 @@
   a long verbatim run or a high share of shared 6-grams flags it.
   Code, math, tables, citations, quotations and blockquotes are skipped,
   `<!-- overlap-ok: reason -->` exempts a passage checked by hand,
-  and a run with no corpus or no input exits 2 instead of passing.
+  and `paths-ignore` applies in pull-request diff mode as well as whole-tree mode.
+  A run with no corpus or no input exits 2 instead of passing.
   The extracted text stays in the runner's temporary directory.
   The same `check_source_overlap.py` runs locally for agents before they push.

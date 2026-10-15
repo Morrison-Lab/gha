@@ -1,14 +1,16 @@
 name: Check source overlap
 description: >-
   Flag prose that overlaps a reference text, as a guard against unintentional
-  plagiarism. Extracts text from the PDFs named by `corpus-files` in a private
+  plagiarism.
+  Extracts text from the PDFs named by `corpus-files` in a private
   corpus repository (for example a lab's shelf of textbooks), then compares each
   paragraph of the Markdown and Quarto files the change adds against it by word
   6-grams: a paragraph is flagged for a long verbatim run or a high share of
-  shared 6-grams. Code, math, tables, citations, quotations and blockquotes are
+  shared 6-grams.
+  Code, math, tables, citations, quotations and blockquotes are
   skipped, and `<!-- overlap-ok: reason -->` exempts a passage checked by hand.
-  The extracted text lives only in the runner's temporary directory. A run that
-  examined nothing (no corpus, no input) exits 2 rather than passing.
+  The extracted text lives only in the runner's temporary directory.
+  A run with no corpus or no input exits 2 rather than passing.
 inputs:
   corpus-repo:
     description: Repository holding the reference PDFs, as `owner/name`.
@@ -25,8 +27,8 @@ inputs:
     required: true
   base-ref:
     description: >-
-      Git base ref; only lines added since it are checked. Empty checks every
-      Markdown and Quarto file in `paths`.
+      Git base ref; only lines added since it are checked.
+      Empty checks every Markdown and Quarto file in `paths`.
     default: ''
   paths:
     description: Space-separated Markdown or Quarto files to check when `base-ref` is empty.
@@ -90,6 +92,7 @@ runs:
         [ "$FAIL" = "true" ] && args+=(--fail)
         if [ -n "$BASE_REF" ]; then
           args+=(--git-diff "$BASE_REF")
+          for spec in $PATHS_IGNORE; do args+=(--exclude "$spec"); done
           files=()
         else
           # shellcheck disable=SC2086

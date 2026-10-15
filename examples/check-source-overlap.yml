@@ -1,0 +1,28 @@
+# Copy to .github/workflows/check-source-overlap.yml in your repo.
+# Flags prose a pull request adds that copies a reference text (a textbook or
+# paper held as a PDF in a private corpus repository), as a guard against
+# unintentional plagiarism by authors and AI agents alike.
+# Needs a secret CORPUS_TOKEN that can read the corpus repository; the
+# workflow token reaches only this repository. Only contents:read is needed.
+# Warn-only until you set `fail: true`.
+name: Check source overlap
+
+on:
+  pull_request:
+    paths:
+      - '**.qmd'
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-source-overlap.yml@v3
+    with:
+      corpus-files: 'books/Hastie-*.pdf, books/James-*.pdf'  # pathspecs inside the corpus repository
+      base-ref: HEAD^1    # the merge commit's first parent: lines this pull request adds
+    #   corpus-repo: Morrison-Lab/mlr          # where the reference PDFs live
+    #   paths-ignore: ':!_extensions :!lectures'
+    #   min-run: '12'                          # consecutive verbatim words that flag a paragraph
+    #   fail: true                             # block instead of warn
+    secrets:
+      corpus-token: ${{ secrets.CORPUS_TOKEN }}
