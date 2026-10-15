@@ -4,4 +4,4 @@
   kept its marker when the line was measured,
   so each sub-part of a lettered exercise read as a packed line.
   The marker is now stripped, as a numbered one already was.
-  A single uppercase letter and one space, as in an initial ("J. Smith"), stays prose.
+  A personal initial has one space after the letter, so it stays prose.
