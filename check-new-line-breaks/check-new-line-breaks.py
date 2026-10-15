@@ -405,7 +405,8 @@ def classify_line(
 # leave untouched: frontmatter, fenced code, tables, headings, horizontal
 # rules, HTML comments, and blockquote structure lines) ────────────────────
 
-_BULLET_RE = re.compile(r"^(\s*)([-*+]|\d+\.)\s+(.*)", re.DOTALL)
+# Lettered markers ("a. ") open list items under Pandoc's fancy_lists, as numbers do.
+_BULLET_RE = re.compile(r"^(\s*)([-*+]|\d+\.|[a-zA-Z]\.)\s+(.*)", re.DOTALL)
 _HEADING_RE = re.compile(r"^\s*#{1,6}[\s#]")
 _TABLE_RE = re.compile(r"^\s*\|")
 _HR_RE = re.compile(r"^\s*[-*_]{3,}\s*$")

@@ -522,6 +522,11 @@ def test_bullet_marker_is_stripped():
     assert nlb.line_content("- some text here") == "some text here"
 
 
+def test_lettered_list_marker_is_stripped():
+    assert nlb.line_content("a. Compute the loss.") == "Compute the loss."
+    assert nlb.line_content("   B. Explain why.") == "Explain why."
+
+
 def test_blockquote_prefix_is_stripped():
     assert nlb.line_content("> some text here") == "some text here"
 
