@@ -69,8 +69,11 @@ runs:
         sudo apt-get install -y --no-install-recommends poppler-utils >/dev/null
         out="$RUNNER_TEMP/overlap-corpus"
         mkdir -p "$out"
+        repo_dir="$RUNNER_TEMP/overlap-corpus-repo"
         while IFS= read -r -d '' f; do
-          name="$(basename "$f")"
+          # Keep the directory in the name, so two books named alike do not overwrite each other.
+          rel="${f#"$repo_dir"/}"
+          name="${rel//\//__}"
           case "$f" in
             *.pdf) pdftotext "$f" "$out/${name%.pdf}.txt" 2>/dev/null || echo "::warning::could not extract $name" ;;
             *.txt) cp "$f" "$out/$name" ;;
