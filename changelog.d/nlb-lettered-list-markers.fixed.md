@@ -4,4 +4,4 @@
   kept its marker when the line was measured,
   so each sub-part of a lettered exercise read as a packed line.
   The marker is now stripped, as a numbered one already was.
-  A personal initial has one space after the letter, so it stays prose.
+  A personal initial is followed by one space, so it stays prose.
