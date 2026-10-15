@@ -30,9 +30,10 @@ The check flags:
   immediately preceding display math (`$$...$$`)
   outside a def div.
 - **More than one term in one def div.**
-  A `::: {#def-...}` div whose title joins two terms with "and",
-  or whose body bolds more than one term
+  A `::: {#def-...}` div whose body bolds more than one distinct term
   that is not introduced as an alias ("also called **x**", "or **x**").
+  A repeated term, a bare abbreviation, a symbol, a gloss in parentheses
+  or quotes, and bold inside a nested div are not counted.
   One definition per div, so each term gets its own cross-reference ID.
 
 Sections titled "Notation", "Typographic Conventions", or "Symbols" are

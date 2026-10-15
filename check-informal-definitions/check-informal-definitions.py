@@ -363,7 +363,34 @@ ALIAS_CUE_RE = re.compile(
 )
 DEF_ID_RE = re.compile(r"#def-")
 TITLE_RE = re.compile(r"^#{1,6}\s+(?P<title>.+)$")
-TITLE_TWO_TERMS_RE = re.compile(r"\s(?:and|&)\s", re.IGNORECASE)
+
+
+ABBREV_TERM_RE = re.compile(r"^[A-Z][A-Z0-9]{0,5}s?$")
+
+
+def _is_countable_term(term: str, before: str, after: str) -> bool:
+    """Whether a bold span in a def div names a defined term.
+
+    Skips labels, spans with fewer than two letters (symbols such as **x**),
+    bare abbreviations (**PPV**), and spans written inside parentheses or
+    quotation marks, which gloss the term instead of defining a second one.
+    """
+    if term.endswith(":") or is_label_or_meta(term):
+        return False
+    if len(re.findall(r"[A-Za-z]", term)) < 2 or "$" in term:
+        return False
+    if ABBREV_TERM_RE.match(term):
+        return False
+    if before.count("(") > before.count(")") or before.rstrip().endswith(
+        ('"', "'", "“", "‘")
+    ):
+        return False
+    return True
+
+
+def _is_alias(before: str, terms: List[str]) -> bool:
+    """Whether a bold span follows an alias cue ("also called", "or")."""
+    return bool(terms) and bool(ALIAS_CUE_RE.search(before.rstrip().rstrip(",")))
 
 
 def scan_def_div_terms(
@@ -371,8 +398,11 @@ def scan_def_div_terms(
 ) -> List[Finding]:
     """Flag a `::: {#def-...}` div that defines more than one term.
 
-    Two signs: a title joining two terms with "and", and more than one bold term
-    that is not introduced as an alias ("also called **x**").
+    A def div defines one term; aliases of it are bold too but follow a cue such
+    as "also called". Counts distinct bold terms in the div's own prose: a term
+    repeated, an abbreviation, a gloss in parentheses or quotes, a symbol, and
+    bold inside a nested div (a callout) are not counted.
+    In diff-scoped mode the div is examined when any line of it was added.
     """
     findings: List[Finding] = []
     if FILE_OPT_OUT_RE.search("\n".join(lines)):
@@ -380,85 +410,92 @@ def scan_def_div_terms(
 
     open_fence = ""
     open_line = 0
+    end_line = 0
     nested: List[str] = []
-    title = ""
     terms: List[str] = []
-    in_code = False
+    seen: Set[str] = set()
+    code_fence = ""
+    in_comment = False
+    in_yaml = False
     opted_out = False
 
     def flush() -> None:
-        if opted_out or (added_lines is not None and open_line not in added_lines):
+        touched = added_lines is None or any(
+            open_line <= n <= end_line for n in added_lines
+        )
+        if opted_out or not touched or len(terms) < 2:
             return
-        if title and TITLE_TWO_TERMS_RE.search(title):
-            findings.append(
-                Finding(
-                    file=path,
-                    line=open_line,
-                    rule="two-terms-in-definition-title",
-                    term=title,
-                    message=(
-                        f"Definition title '{title}' joins two terms with 'and'; "
-                        "give each term its own ::: {#def-...} div."
-                    ),
-                    snippet=title,
-                )
+        listed = ", ".join(terms)
+        findings.append(
+            Finding(
+                file=path,
+                line=open_line,
+                rule="multiple-terms-in-definition",
+                term=listed,
+                message=(
+                    f"Definition div defines more than one term ({listed}); "
+                    "one term per def div, with aliases introduced by 'also called'."
+                ),
+                snippet=listed,
             )
-        if len(terms) > 1:
-            listed = ", ".join(terms)
-            findings.append(
-                Finding(
-                    file=path,
-                    line=open_line,
-                    rule="multiple-terms-in-definition",
-                    term=listed,
-                    message=(
-                        f"Definition div defines more than one term ({listed}); "
-                        "one term per def div, with aliases introduced by 'also called'."
-                    ),
-                    snippet=listed,
-                )
-            )
+        )
 
     for idx, line in enumerate(lines, start=1):
         stripped = line.strip()
-        if FENCE_RE.match(line):
-            in_code = not in_code
+        if idx == 1 and stripped == "---":
+            in_yaml = True
             continue
-        if in_code:
+        if in_yaml:
+            in_yaml = stripped not in ("---", "...")
+            continue
+        m_code = FENCE_RE.match(line)
+        if code_fence:
+            if m_code and m_code.group(2)[0] == code_fence[0] and len(m_code.group(2)) >= len(code_fence) and not line.strip()[len(m_code.group(2)):].strip():
+                code_fence = ""
+            continue
+        if m_code:
+            code_fence = m_code.group(2)
+            continue
+        if in_comment:
+            in_comment = "-->" not in line
+            continue
+        if "<!--" in line and "-->" not in line:
+            in_comment = True
             continue
         m_open = DIV_FENCE_START.match(stripped)
         if m_open and m_open.group("attrs"):
             if open_fence:
                 nested.append(m_open.group("fence"))
             elif DEF_ID_RE.search(m_open.group("attrs")):
-                open_fence, open_line, title, terms, opted_out = (
-                    m_open.group("fence"), idx, "", [], False,
-                )
-                nested = []
+                open_fence, open_line, end_line = m_open.group("fence"), idx, idx
+                terms, seen, nested, opted_out = [], set(), [], False
             continue
         if open_fence and DIV_FENCE_END.match(stripped):
             if nested:
                 nested.pop()
             else:
+                end_line = idx
                 flush()
                 open_fence = ""
             continue
-        if not open_fence:
+        if not open_fence or nested:
             continue
         if LINE_OPT_OUT_RE.search(line):
             opted_out = True
-        m_title = TITLE_RE.match(stripped)
-        if m_title and not title and not terms:
-            title = m_title.group("title").strip()
+        if TITLE_RE.match(stripped) and not terms:
             continue
         prose = INLINE_CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
+        prose = re.sub(r"<!--.*?-->", lambda m: " " * len(m.group(0)), prose)
         for m in BOLD_SPAN_RE.finditer(prose):
             term = m.group("term").strip()
-            if term.endswith(":") or is_label_or_meta(term):
+            before = prose[: m.start()]
+            if not _is_countable_term(term, before, prose[m.end():]):
                 continue
-            before = prose[: m.start()].rstrip().rstrip(",")
-            if terms and ALIAS_CUE_RE.search(before):
+            key = re.sub(r"\s+", " ", term.lower())
+            if key in seen or _is_alias(before, terms):
+                seen.add(key)
                 continue
+            seen.add(key)
             terms.append(term)
     return findings
 
@@ -721,7 +758,7 @@ def main() -> int:
 
     # Report results
     if all_findings:
-        print(f"check-informal-definitions: Found {len(all_findings)} informal definition(s) in prose:\n")
+        print(f"check-informal-definitions: Found {len(all_findings)} definition problem(s) (informal definitions in prose or bundled def divs):\n")
         for f in all_findings:
             try:
                 rel = f.file.relative_to(repo_root)
@@ -733,7 +770,7 @@ def main() -> int:
             # GitHub annotation
             severity = "error" if should_fail else "warning"
             print(
-                f"::{severity} file={rel_str},line={f.line},title=Informal definition in prose::[{f.rule}] {f.message}"
+                f"::{severity} file={rel_str},line={f.line},title=Definition problem::[{f.rule}] {f.message}"
             )
 
     else:
@@ -743,7 +780,7 @@ def main() -> int:
         out_md = Path(args.output_markdown)
         out_md.parent.mkdir(parents=True, exist_ok=True)
         with open(out_md, "w", encoding="utf-8") as mdf:
-            mdf.write("### Informal Definitions in Prose\n\n")
+            mdf.write("### Definition Problems\n\n")
             if all_findings:
                 mdf.write(
                     "The following technical concepts appear to be defined in running prose "
