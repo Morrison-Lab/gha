@@ -4207,49 +4207,84 @@
     "href": "reference/check-source-overlap.html",
     "title": "check-source-overlap.yml",
     "section": "",
-    "text": "Flag paragraphs of Markdown and Quarto prose that copy a reference text, as a guard against unintentional plagiarism by authors and AI agents alike."
+    "text": "Flag paragraphs of Markdown and Quarto prose that copy a reference text, as a guard against unintentional plagiarism by authors and AI agents alike.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-source-overlap.yml"
+    ]
   },
   {
     "objectID": "reference/check-source-overlap.html#why-this-check",
     "href": "reference/check-source-overlap.html#why-this-check",
     "title": "check-source-overlap.yml",
     "section": "Why this check",
-    "text": "Why this check\nA language model that has read a textbook can reproduce its sentences without anyone noticing, and a bulk-generated chapter can carry passages no author reviewed for provenance. Crediting the source does not cure a copied passage, so this check looks for the copying itself."
+    "text": "Why this check\nA language model that has read a textbook can reproduce its sentences without anyone noticing, and a bulk-generated chapter can carry passages no author reviewed for provenance. Crediting the source does not cure a copied passage, so this check looks for the copying itself.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-source-overlap.yml"
+    ]
   },
   {
     "objectID": "reference/check-source-overlap.html#what-it-does",
     "href": "reference/check-source-overlap.html#what-it-does",
     "title": "check-source-overlap.yml",
     "section": "What it does",
-    "text": "What it does\nIt reads the PDFs (or .txt files) named by corpus-files from a private corpus repository, extracts their text with pdftotext into the runner’s temporary directory, and compares each paragraph the pull request adds with that text by word 6-grams. A paragraph is flagged when at least min-run consecutive words occur verbatim in a source, or when a quarter or more of its 6-grams do. The extracted text is never uploaded or committed.\nNot compared, by design: fenced code, math, table rows, citations, URLs, Quarto attributes, blockquotes, and text in quotation marks. A paragraph containing &lt;!-- overlap-ok: reason --&gt; is skipped, for a passage checked by hand.\nIt finds copying that the corpus holds. A source nobody put in the corpus is invisible, and a paraphrase that keeps no run of six consecutive words is missed. It is a net, not a proof of originality.\nA run that could not check anything exits 2, not 0. An empty or missing corpus, or no input files, is an error. A change that adds no prose passes, and the summary line reports examined 0 paragraphs."
+    "text": "What it does\nIt reads the PDFs (or .txt files) named by corpus-files from a private corpus repository, extracts their text with pdftotext into the runner’s temporary directory, and compares each paragraph the pull request adds with that text by word 6-grams. A paragraph is flagged when at least min-run consecutive words occur verbatim in a source, or when a quarter or more of its 6-grams do. The extracted text is never uploaded or committed.\nNot compared, by design: fenced code, math, table rows, citations, URLs, Quarto attributes, blockquotes, and text in quotation marks. A paragraph containing &lt;!-- overlap-ok: reason --&gt; is skipped, for a passage checked by hand.\nIt finds copying that the corpus holds. A source nobody put in the corpus is invisible, and a paraphrase that keeps no run of six consecutive words is missed. It is a net, not a proof of originality.\nA run that could not check anything exits 2, not 0. An empty or missing corpus, or no input files, is an error. A change that adds no prose passes, and the summary line reports examined 0 paragraphs.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-source-overlap.yml"
+    ]
   },
   {
     "objectID": "reference/check-source-overlap.html#inputs",
     "href": "reference/check-source-overlap.html#inputs",
     "title": "check-source-overlap.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ncorpus-repo\nstring\n'Morrison-Lab/mlr'\nRepository holding the reference PDFs, as owner/name.\n\n\ncorpus-files\nstring\nrequired\nComma- or newline-separated git pathspecs of the PDFs or .txt files in corpus-repo.\n\n\nbase-ref\nstring\n''\nGit base ref; only lines added since it are checked. Use HEAD^1 on a pull request. Empty checks every Markdown and Quarto file in paths.\n\n\npaths\nstring\n''\nSpace-separated files to check when base-ref is empty.\n\n\npaths-ignore\nstring\n':!_extensions :!lectures'\nSpace-separated git pathspecs to exclude, in both modes.\n\n\nmin-run\nstring\n'12'\nConsecutive verbatim words that flag a paragraph.\n\n\nfail\nboolean\nfalse\nFail the job when a paragraph is flagged (else warn only)."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ncorpus-repo\nstring\n'Morrison-Lab/mlr'\nRepository holding the reference PDFs, as owner/name.\n\n\ncorpus-files\nstring\nrequired\nComma- or newline-separated git pathspecs of the PDFs or .txt files in corpus-repo.\n\n\nbase-ref\nstring\n''\nGit base ref; only lines added since it are checked. Use HEAD^1 on a pull request. Empty checks every Markdown and Quarto file in paths.\n\n\npaths\nstring\n''\nSpace-separated files to check when base-ref is empty.\n\n\npaths-ignore\nstring\n':!_extensions :!lectures'\nSpace-separated git pathspecs to exclude, in both modes.\n\n\nmin-run\nstring\n'12'\nConsecutive verbatim words that flag a paragraph.\n\n\nfail\nboolean\nfalse\nFail the job when a paragraph is flagged (else warn only).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-source-overlap.yml"
+    ]
   },
   {
     "objectID": "reference/check-source-overlap.html#secrets",
     "href": "reference/check-source-overlap.html#secrets",
     "title": "check-source-overlap.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\ncorpus-token\nyes\nA token that can read corpus-repo; the workflow token reaches only the caller’s repository."
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\ncorpus-token\nyes\nA token that can read corpus-repo; the workflow token reaches only the caller’s repository.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-source-overlap.yml"
+    ]
   },
   {
     "objectID": "reference/check-source-overlap.html#permissions",
     "href": "reference/check-source-overlap.html#permissions",
     "title": "check-source-overlap.yml",
     "section": "Permissions",
-    "text": "Permissions\nOnly contents: read."
+    "text": "Permissions\nOnly contents: read.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-source-overlap.yml"
+    ]
   },
   {
     "objectID": "reference/check-source-overlap.html#example",
     "href": "reference/check-source-overlap.html#example",
     "title": "check-source-overlap.yml",
     "section": "Example",
-    "text": "Example\nname: Check source overlap\non:\n  pull_request:\n    paths: ['**.qmd', '**.md']\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-source-overlap.yml@v3\n    with:\n      corpus-files: 'books/Hastie-*.pdf'\n      base-ref: HEAD^1\n    #   fail: true\n    secrets:\n      corpus-token: ${{ secrets.CORPUS_TOKEN }}\nSee check-source-overlap.yml in examples/ for the full caller stub. An agent can run the same script before pushing: python3 check-source-overlap/check_source_overlap.py --corpus &lt;dir of .txt&gt; --git-diff origin/main."
+    "text": "Example\nname: Check source overlap\non:\n  pull_request:\n    paths: ['**.qmd', '**.md']\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-source-overlap.yml@v3\n    with:\n      corpus-files: 'books/Hastie-*.pdf'\n      base-ref: HEAD^1\n    #   fail: true\n    secrets:\n      corpus-token: ${{ secrets.CORPUS_TOKEN }}\nSee check-source-overlap.yml in examples/ for the full caller stub. An agent can run the same script before pushing: python3 check-source-overlap/check_source_overlap.py --corpus &lt;dir of .txt&gt; --git-diff origin/main.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-source-overlap.yml"
+    ]
   },
   {
     "objectID": "reference/check-math-definitions.html",
