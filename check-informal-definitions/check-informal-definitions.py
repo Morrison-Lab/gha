@@ -20,6 +20,9 @@ This check flags:
    that are not wrapped in formal def divs.
 4. Naming sentences ending in "is:" or "are:" immediately preceding display math
    (`$$...$$`) outside a def div.
+5. A `::: {#def-...}` div that defines more than one term: a title joining two
+   terms with "and", or more than one bold term not introduced as an alias
+   ("also called", "or", "known as"). One definition per div.
 
 Opt-out directives:
 - Line/block level: `<!-- check-informal-definitions: allow -->` or
@@ -350,6 +353,116 @@ def scan_file_lines(
     return findings
 
 
+# A def div defines one term (ai-config shared/writing/lecture-conventions.md,
+# informal-definitions.md Shape 4). An alias of that term is bold too, but is
+# introduced by a cue such as "also called", which the check recognizes.
+BOLD_SPAN_RE = re.compile(r"\*\*(?P<term>[^*\n]+?)\*\*")
+ALIAS_CUE_RE = re.compile(
+    r"(?i)(?:also\s+(?:called|known\s+as|written|termed)|sometimes\s+(?:called|known\s+as)"
+    r"|known\s+as|called|or|aka|a\.k\.a\.|termed)\s*(?:(?:the|a|an)\s*)?$"
+)
+DEF_ID_RE = re.compile(r"#def-")
+TITLE_RE = re.compile(r"^#{1,6}\s+(?P<title>.+)$")
+TITLE_TWO_TERMS_RE = re.compile(r"\s(?:and|&)\s", re.IGNORECASE)
+
+
+def scan_def_div_terms(
+    path: Path, lines: Sequence[str], added_lines: Optional[Set[int]] = None
+) -> List[Finding]:
+    """Flag a `::: {#def-...}` div that defines more than one term.
+
+    Two signs: a title joining two terms with "and", and more than one bold term
+    that is not introduced as an alias ("also called **x**").
+    """
+    findings: List[Finding] = []
+    if FILE_OPT_OUT_RE.search("\n".join(lines)):
+        return findings
+
+    open_fence = ""
+    open_line = 0
+    nested: List[str] = []
+    title = ""
+    terms: List[str] = []
+    in_code = False
+    opted_out = False
+
+    def flush() -> None:
+        if opted_out or (added_lines is not None and open_line not in added_lines):
+            return
+        if title and TITLE_TWO_TERMS_RE.search(title):
+            findings.append(
+                Finding(
+                    file=path,
+                    line=open_line,
+                    rule="two-terms-in-definition-title",
+                    term=title,
+                    message=(
+                        f"Definition title '{title}' joins two terms with 'and'; "
+                        "give each term its own ::: {#def-...} div."
+                    ),
+                    snippet=title,
+                )
+            )
+        if len(terms) > 1:
+            listed = ", ".join(terms)
+            findings.append(
+                Finding(
+                    file=path,
+                    line=open_line,
+                    rule="multiple-terms-in-definition",
+                    term=listed,
+                    message=(
+                        f"Definition div defines more than one term ({listed}); "
+                        "one term per def div, with aliases introduced by 'also called'."
+                    ),
+                    snippet=listed,
+                )
+            )
+
+    for idx, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if FENCE_RE.match(line):
+            in_code = not in_code
+            continue
+        if in_code:
+            continue
+        m_open = DIV_FENCE_START.match(stripped)
+        if m_open and m_open.group("attrs"):
+            if open_fence:
+                nested.append(m_open.group("fence"))
+            elif DEF_ID_RE.search(m_open.group("attrs")):
+                open_fence, open_line, title, terms, opted_out = (
+                    m_open.group("fence"), idx, "", [], False,
+                )
+                nested = []
+            continue
+        if open_fence and DIV_FENCE_END.match(stripped):
+            if nested:
+                nested.pop()
+            else:
+                flush()
+                open_fence = ""
+            continue
+        if not open_fence:
+            continue
+        if LINE_OPT_OUT_RE.search(line):
+            opted_out = True
+        m_title = TITLE_RE.match(stripped)
+        if m_title and not title and not terms:
+            title = m_title.group("title").strip()
+            continue
+        prose = INLINE_CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
+        for m in BOLD_SPAN_RE.finditer(prose):
+            term = m.group("term").strip()
+            if term.endswith(":") or is_label_or_meta(term):
+                continue
+            before = prose[: m.start()].rstrip().rstrip(",")
+            if terms and ALIAS_CUE_RE.search(before):
+                continue
+            terms.append(term)
+    return findings
+
+
 def get_diff_added_lines(
     base_ref: str, repo_root: Path, pathspecs: Sequence[str]
 ) -> Optional[Dict[Path, Set[int]]]:
@@ -603,6 +716,7 @@ def main() -> int:
             continue
         lines = content.splitlines()
         findings = scan_file_lines(f, lines, added_lines)
+        findings.extend(scan_def_div_terms(f, lines, added_lines))
         all_findings.extend(findings)
 
     # Report results

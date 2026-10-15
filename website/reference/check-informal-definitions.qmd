@@ -29,6 +29,11 @@ The check flags:
   Sentences ending in "is:" or "are:"
   immediately preceding display math (`$$...$$`)
   outside a def div.
+- **More than one term in one def div.**
+  A `::: {#def-...}` div whose title joins two terms with "and",
+  or whose body bolds more than one term
+  that is not introduced as an alias ("also called **x**", "or **x**").
+  One definition per div, so each term gets its own cross-reference ID.
 
 Sections titled "Notation", "Typographic Conventions", or "Symbols" are
 recognized as notation guides and exempt from definition requirements.
