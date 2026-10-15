@@ -20,9 +20,9 @@ This check flags:
    that are not wrapped in formal def divs.
 4. Naming sentences ending in "is:" or "are:" immediately preceding display math
    (`$$...$$`) outside a def div.
-5. A `::: {#def-...}` div that defines more than one term: a title joining two
-   terms with "and", or more than one bold term not introduced as an alias
-   ("also called", "or", "known as"). One definition per div.
+5. A `::: {#def-...}` div that defines more than one term: more than one bold
+   term in its own prose that is not introduced as an alias ("also called",
+   "or", "known as"). One definition per div.
 
 Opt-out directives:
 - Line/block level: `<!-- check-informal-definitions: allow -->` or
@@ -358,17 +358,51 @@ def scan_file_lines(
 # introduced by a cue such as "also called", which the check recognizes.
 BOLD_SPAN_RE = re.compile(r"\*\*(?P<term>[^*\n]+?)\*\*")
 ALIAS_CUE_RE = re.compile(
-    r"(?i)(?:also\s+(?:called|known\s+as|written|termed)|sometimes\s+(?:called|known\s+as)"
+    r"(?i)\b(?:also\s+(?:called|known\s+as|written|termed)"
+    r"|sometimes\s+(?:called|known\s+as)"
     r"|known\s+as|called|or|aka|a\.k\.a\.|termed)\s*(?:(?:the|a|an)\s*)?$"
 )
 DEF_ID_RE = re.compile(r"#def-")
 TITLE_RE = re.compile(r"^#{1,6}\s+(?P<title>.+)$")
-
-
+INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?!\s|\$)[^$\n]*?(?<![\s\\])\$(?!\d)")
 ABBREV_TERM_RE = re.compile(r"^[A-Z][A-Z0-9]{0,5}s?$")
+DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>[^:\s].*)$")
+DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 
 
-def _is_countable_term(term: str, before: str, after: str) -> bool:
+def _blank(match: "re.Match[str]") -> str:
+    return " " * len(match.group(0))
+
+
+def _strip_comments(line: str, in_comment: bool) -> Tuple[str, bool]:
+    """Blank the HTML-comment parts of a line; return it and the carried state."""
+    out: List[str] = []
+    pos = 0
+    while pos < len(line):
+        if in_comment:
+            end = line.find("-->", pos)
+            if end == -1:
+                out.append(" " * (len(line) - pos))
+                return "".join(out), True
+            out.append(" " * (end + 3 - pos))
+            pos, in_comment = end + 3, False
+        else:
+            start = line.find("<!--", pos)
+            if start == -1:
+                out.append(line[pos:])
+                break
+            out.append(line[pos:start])
+            pos, in_comment = start, True
+    return "".join(out), in_comment
+
+
+def _term_key(term: str) -> str:
+    """Normalize a term so that case, spacing and a plural 's' do not matter."""
+    key = re.sub(r"\s+", " ", term.lower()).strip()
+    return key[:-1] if len(key) > 3 and key.endswith("s") else key
+
+
+def _is_countable_term(term: str, before: str) -> bool:
     """Whether a bold span in a def div names a defined term.
 
     Skips labels, spans with fewer than two letters (symbols such as **x**),
@@ -388,9 +422,9 @@ def _is_countable_term(term: str, before: str, after: str) -> bool:
     return True
 
 
-def _is_alias(before: str, terms: List[str]) -> bool:
+def _is_alias(context: str, terms: List[str]) -> bool:
     """Whether a bold span follows an alias cue ("also called", "or")."""
-    return bool(terms) and bool(ALIAS_CUE_RE.search(before.rstrip().rstrip(",")))
+    return bool(terms) and bool(ALIAS_CUE_RE.search(context.rstrip().rstrip(",")))
 
 
 def scan_def_div_terms(
@@ -400,20 +434,22 @@ def scan_def_div_terms(
 
     A def div defines one term; aliases of it are bold too but follow a cue such
     as "also called". Counts distinct bold terms in the div's own prose: a term
-    repeated, an abbreviation, a gloss in parentheses or quotes, a symbol, and
-    bold inside a nested div (a callout) are not counted.
+    repeated (or in the plural), an abbreviation, a gloss in parentheses or
+    quotes, a symbol, bold inside math, and bold inside a nested div (a callout)
+    are not counted. A cue may wrap onto the previous line.
     In diff-scoped mode the div is examined when any line of it was added.
     """
     findings: List[Finding] = []
     if FILE_OPT_OUT_RE.search("\n".join(lines)):
         return findings
 
-    open_fence = ""
+    stack: List[int] = []  # fence lengths of the open divs, outermost first
+    def_depth = 0  # len(stack) once the outermost def div is open; 0 when none
     open_line = 0
     end_line = 0
-    nested: List[str] = []
     terms: List[str] = []
     seen: Set[str] = set()
+    prev_prose = ""
     code_fence = ""
     in_comment = False
     in_yaml = False
@@ -440,63 +476,70 @@ def scan_def_div_terms(
             )
         )
 
-    for idx, line in enumerate(lines, start=1):
-        stripped = line.strip()
-        if idx == 1 and stripped == "---":
+    for idx, raw in enumerate(lines, start=1):
+        if idx == 1 and raw.strip() == "---":
             in_yaml = True
             continue
         if in_yaml:
-            in_yaml = stripped not in ("---", "...")
+            in_yaml = raw.strip() not in ("---", "...")
             continue
-        m_code = FENCE_RE.match(line)
+        m_code = FENCE_RE.match(raw)
         if code_fence:
-            if m_code and m_code.group(2)[0] == code_fence[0] and len(m_code.group(2)) >= len(code_fence) and not line.strip()[len(m_code.group(2)):].strip():
+            if (
+                m_code
+                and m_code.group(2)[0] == code_fence[0]
+                and len(m_code.group(2)) >= len(code_fence)
+                and not raw.strip()[len(m_code.group(2)) :].strip()
+            ):
                 code_fence = ""
             continue
-        if m_code:
+        if m_code and not in_comment:
             code_fence = m_code.group(2)
             continue
-        if in_comment:
-            in_comment = "-->" not in line
+        line, in_comment = _strip_comments(raw, in_comment)
+        stripped = line.strip()
+        m_open = DIV_OPEN_RE.match(stripped)
+        m_close = DIV_CLOSE_RE.match(stripped)
+        if m_open:
+            stack.append(len(m_open.group("fence")))
+            if not def_depth and DEF_ID_RE.search(m_open.group("attrs")):
+                def_depth = len(stack)
+                open_line, end_line = idx, idx
+                terms, seen, prev_prose, opted_out = [], set(), "", False
             continue
-        if "<!--" in line and "-->" not in line:
-            in_comment = True
+        if m_close and stack:
+            if len(m_close.group("fence")) >= stack[-1]:
+                stack.pop()
+                if def_depth and len(stack) < def_depth:
+                    end_line = idx
+                    flush()
+                    def_depth = 0
             continue
-        m_open = DIV_FENCE_START.match(stripped)
-        if m_open and m_open.group("attrs"):
-            if open_fence:
-                nested.append(m_open.group("fence"))
-            elif DEF_ID_RE.search(m_open.group("attrs")):
-                open_fence, open_line, end_line = m_open.group("fence"), idx, idx
-                terms, seen, nested, opted_out = [], set(), [], False
+        if not def_depth or len(stack) > def_depth:
             continue
-        if open_fence and DIV_FENCE_END.match(stripped):
-            if nested:
-                nested.pop()
-            else:
-                end_line = idx
-                flush()
-                open_fence = ""
-            continue
-        if not open_fence or nested:
-            continue
-        if LINE_OPT_OUT_RE.search(line):
+        end_line = idx
+        if LINE_OPT_OUT_RE.search(raw):
             opted_out = True
         if TITLE_RE.match(stripped) and not terms:
             continue
-        prose = INLINE_CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
-        prose = re.sub(r"<!--.*?-->", lambda m: " " * len(m.group(0)), prose)
+        prose = INLINE_CODE_SPAN_RE.sub(_blank, line)
+        prose = INLINE_MATH_RE.sub(_blank, prose)
         for m in BOLD_SPAN_RE.finditer(prose):
             term = m.group("term").strip()
             before = prose[: m.start()]
-            if not _is_countable_term(term, before, prose[m.end():]):
-                continue
-            key = re.sub(r"\s+", " ", term.lower())
-            if key in seen or _is_alias(before, terms):
+            if re.fullmatch(r"\s*(?:(?:the|a|an)\s*)?", before, re.I):
+                context = prev_prose.rstrip() + " " + before
+            else:
+                context = before
+            key = _term_key(term)
+            countable = _is_countable_term(term, before)
+            if key in seen or not countable or _is_alias(context, terms):
                 seen.add(key)
                 continue
             seen.add(key)
             terms.append(term)
+        if prose.strip():
+            prev_prose = prose
     return findings
 
 
@@ -783,10 +826,11 @@ def main() -> int:
             mdf.write("### Definition Problems\n\n")
             if all_findings:
                 mdf.write(
-                    "The following technical concepts appear to be defined in running prose "
-                    "rather than inside formal Quarto definition divs (`::: {#def-...}`). "
+                    "Some technical concepts appear to be defined in running prose "
+                    "rather than inside formal Quarto definition divs (`::: {#def-...}`), "
+                    "or a definition div defines more than one term. "
                     "Every technical concept defined in content repositories must have its own formal "
-                    "`::: {#def-...}` div with a worked example.\n\n"
+                    "`::: {#def-...}` div with a worked example, and each div defines one term.\n\n"
                 )
                 for f in all_findings:
                     try:

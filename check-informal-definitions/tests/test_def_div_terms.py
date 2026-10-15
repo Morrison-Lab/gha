@@ -224,3 +224,110 @@ def test_yaml_front_matter_is_skipped():
 def test_quoted_alias_after_cue_is_not_a_second_term():
     lines = div('The **odds**, also called the "**chance ratio**", are p / (1 - p).')
     assert rules(lines) == []
+
+
+# Findings from the second cross-harness review of gha#1072.
+
+
+def terms_of(lines):
+    return [f.term for f in scan(Path("t.qmd"), lines)]
+
+
+def test_word_ending_in_or_is_not_an_alias_cue():
+    assert terms_of(div("The **odds** of the event, for the **log-odds**, are...")) == [
+        "odds, log-odds"
+    ]
+    assert terms_of(div("The **odds** of a vector **log-odds** are...")) == ["odds, log-odds"]
+    assert terms_of(div("The **odds** and, prior **log-odds**, are...")) == ["odds, log-odds"]
+
+
+def test_real_or_cue_still_makes_an_alias():
+    assert terms_of(div("The **odds**, or **chance ratio**, are p / (1 - p).")) == []
+
+
+def test_inline_math_does_not_unbalance_parentheses():
+    lines = div("The **odds** lie in $(0, 1]$ and the **log-odds** are real.")
+    assert terms_of(lines) == ["odds, log-odds"]
+
+
+def test_double_star_in_math_is_not_bold():
+    lines = div("The **odds** involve $x^{**}$ and then the **log-odds**.")
+    assert terms_of(lines) == ["odds, log-odds"]
+
+
+def test_plural_of_a_term_counts_once():
+    assert rules(div("The **residual** and the **residuals** are...")) == []
+
+
+def test_parenthesized_alias_is_remembered():
+    lines = div("The **odds** (also **chance**) are p / (1 - p).", "Later the **chance** is 4.")
+    assert rules(lines) == []
+
+
+def test_alias_cue_wrapped_onto_the_next_line():
+    lines = div("The **log-odds**, also called", "the **logit**, are log(odds).")
+    assert rules(lines) == []
+    lines = div("The **log-odds**, also called the", "**logit**, are log(odds).")
+    assert rules(lines) == []
+
+
+def test_text_after_a_closing_html_comment_is_prose():
+    lines = div("The **odds** are p.", "<!--", "hidden **x** y", "--> Then the **log-odds** are real.")
+    assert terms_of(lines) == ["odds, log-odds"]
+
+
+def test_text_before_an_opening_html_comment_is_prose():
+    lines = div("The **odds** are p, <!--", "hidden -->", "and the **log-odds** are real.")
+    assert terms_of(lines) == ["odds, log-odds"]
+
+
+def test_bare_class_nested_div_is_nested():
+    lines = div(
+        "The **odds** are p.",
+        "::: callout-note",
+        "A **caveat** and a **warning**.",
+        ":::",
+    )
+    assert rules(lines) == []
+
+
+def test_shorter_fence_does_not_close_a_longer_nested_div():
+    lines = div(
+        "The **odds** are p.",
+        ":::: {.callout-note}",
+        "Inner **warning**.",
+        ":::",
+        "More **caveat** inside.",
+        "::::",
+    )
+    assert rules(lines) == []
+
+
+def test_content_after_a_nested_div_is_back_in_the_definition():
+    lines = div(
+        "The **odds** are p.",
+        "::: callout-note",
+        "Inner **warning**.",
+        ":::",
+        "Then the **log-odds** are real.",
+    )
+    assert terms_of(lines) == ["odds, log-odds"]
+
+
+def test_module_docstring_describes_the_current_rule():
+    doc = check_defs.__doc__
+    assert "title joining" not in doc
+    assert "more than one" in doc
+
+
+def test_markdown_report_covers_bundled_defs(tmp_path, monkeypatch):
+    page = tmp_path / "page.qmd"
+    page.write_text("\n".join(div("The **odds** and the **log-odds** are...")) + "\n")
+    out = tmp_path / "report.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        ["check-informal-definitions.py", "--path", str(page), "--output-markdown", str(out)],
+    )
+    check_defs.main()
+    text = out.read_text()
+    assert "more than one term" in text
