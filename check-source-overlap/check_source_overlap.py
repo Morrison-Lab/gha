@@ -3,7 +3,7 @@
 """Flag prose that overlaps a reference text, as a guard against unintentional plagiarism.
 
 Reference texts (textbooks, papers, other courses' notes) are plain-text files
-the caller extracts first (`pdftotext -layout book.pdf book.txt`) from copies held in
+the caller extracts first (`pdftotext book.pdf book.txt`, without `-layout`, which interleaves a two-column page) from copies held in
 `Morrison-Lab/mlr`; their text is never committed anywhere.
 A chapter's prose is cut into paragraphs and compared with the corpus by word n-grams:
 
@@ -72,6 +72,9 @@ def paragraphs(path: Path, only_lines: set[int] | None):
     # the newlines stay so reported line numbers still match the file.
     raw = re.sub(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1\s*$",
                  lambda m: "\n" * m.group(0).count("\n"), raw, flags=re.S | re.M)
+    # An HTML comment may hold blank lines, which would split it across paragraphs.
+    # Blank it too, but leave a short overlap-ok marker so the paragraph still opts out.
+    raw = re.sub(r"<!--.*?-->", blank_comment, raw, flags=re.S)
     lines = raw.split("\n")
     block, start = [], 1
     out = []
@@ -98,6 +101,15 @@ def paragraphs(path: Path, only_lines: set[int] | None):
         text = re.sub(r"“[^”]*”", " ", text)  # curly-quoted
         text = re.sub(r'"([^"]{0,600})"', unquote_long, text)  # straight-quoted, possibly wrapped
         yield start, text
+
+
+def blank_comment(m: re.Match) -> str:
+    """Replace a comment with newlines, keeping an `overlap-ok` comment as a one-line marker."""
+    text = m.group(0)
+    newlines = "\n" * text.count("\n")
+    if OVERLAP_OK.match(text):
+        return "<!-- overlap-ok -->" + newlines
+    return newlines if "\n" in text else " "
 
 
 def unquote_long(m: re.Match) -> str:
@@ -168,7 +180,7 @@ def check(words, index, n_sources, min_run, min_density):
 def changed_lines(base: str, excludes=()):
     """Map each existing .qmd/.md file to the line numbers the change adds, relative to the cwd.
 
-    `excludes` are git pathspecs such as ':!_extensions'.
+    `excludes` are git pathspecs such as ':(exclude)_extensions'.
     """
     cmd = ["git", "diff", "-U0", "--relative", f"{base}...HEAD", "--", "*.qmd", "*.md", *excludes]
     out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
@@ -193,7 +205,7 @@ def main() -> int:
     ap.add_argument("--density", type=float, default=0.25)
     ap.add_argument("--fail", action="store_true")
     ap.add_argument("--exclude", action="append", default=[], metavar="PATHSPEC",
-                    help="git pathspec to leave out of --git-diff, e.g. ':!_extensions' (repeatable)")
+                    help="git pathspec to leave out of --git-diff, e.g. ':(exclude)_extensions' (repeatable)")
     ap.add_argument("files", nargs="*", type=Path)
     a = ap.parse_args()
 
@@ -204,11 +216,11 @@ def main() -> int:
     if not names:
         print(f"error: no .txt files under {a.corpus}", file=sys.stderr)
         return 2
-    targets = {p: None for p in a.files}
-    if a.git_diff:
-        targets.update(changed_lines(a.git_diff, a.exclude))
-    diff_only = bool(a.git_diff) and not a.files
-    if not targets and not diff_only:
+    if a.git_diff and a.files:
+        print("error: name files or use --git-diff, not both", file=sys.stderr)
+        return 2
+    targets = changed_lines(a.git_diff, a.exclude) if a.git_diff else {p: None for p in a.files}
+    if not targets and not a.git_diff:
         print("error: no input files", file=sys.stderr)
         return 2
 

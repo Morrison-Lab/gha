@@ -35,7 +35,7 @@ inputs:
     default: ''
   paths-ignore:
     description: Space-separated git pathspecs to exclude.
-    default: ':!_extensions :!lectures'
+    default: ':(exclude)_extensions :(exclude)lectures'
   min-run:
     description: Consecutive verbatim words that flag a paragraph.
     default: '12'
@@ -56,7 +56,11 @@ runs:
         dir="$RUNNER_TEMP/overlap-corpus-repo"
         git clone --quiet --depth 1 --filter=blob:none --no-checkout \
           "https://x-access-token:${CORPUS_TOKEN}@github.com/${CORPUS_REPO}.git" "$dir"
-        mapfile -t specs < <(printf '%s\n' "$CORPUS_FILES" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep -v '^$')
+        mapfile -t specs < <(printf '%s\n' "$CORPUS_FILES" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep -v '^$' || true)
+        if [ "${#specs[@]}" -eq 0 ]; then
+          echo "::error::corpus-files names no pathspec"
+          exit 1
+        fi
         git -C "$dir" sparse-checkout init --no-cone
         git -C "$dir" sparse-checkout set -- "${specs[@]}"
         git -C "$dir" checkout --quiet
@@ -93,12 +97,14 @@ runs:
         set -euo pipefail
         args=(--corpus "$RUNNER_TEMP/overlap-corpus" --min-run "$MIN_RUN")
         [ "$FAIL" = "true" ] && args+=(--fail)
+        # read -a splits on spaces without expanding globs against the working tree
+        read -r -a ignore_specs <<< "$PATHS_IGNORE"
+        read -r -a path_specs <<< "${PATHS:-*.md *.qmd}"
         if [ -n "$BASE_REF" ]; then
           args+=(--git-diff "$BASE_REF")
-          for spec in $PATHS_IGNORE; do args+=(--exclude "$spec"); done
+          for spec in "${ignore_specs[@]}"; do args+=(--exclude "$spec"); done
           files=()
         else
-          # shellcheck disable=SC2086
-          mapfile -t files < <(git ls-files -- ${PATHS:-'*.md' '*.qmd'} $PATHS_IGNORE)
+          mapfile -t files < <(git ls-files -- "${path_specs[@]}" "${ignore_specs[@]}")
         fi
         python3 "$GITHUB_ACTION_PATH/check_source_overlap.py" "${args[@]}" "${files[@]}"

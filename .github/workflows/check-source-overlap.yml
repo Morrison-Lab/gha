@@ -24,7 +24,7 @@ on:
       paths-ignore:
         description: Space-separated git pathspecs to exclude.
         type: string
-        default: ':!_extensions :!lectures'
+        default: ':(exclude)_extensions :(exclude)lectures'
       min-run:
         description: Consecutive verbatim words that flag a paragraph.
         type: string

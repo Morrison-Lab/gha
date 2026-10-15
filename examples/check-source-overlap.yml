@@ -21,7 +21,7 @@ jobs:
       corpus-files: 'books/Hastie-*.pdf, books/James-*.pdf'  # pathspecs inside the corpus repository
       base-ref: HEAD^1    # the merge commit's first parent: lines this pull request adds
     #   corpus-repo: Morrison-Lab/mlr          # where the reference PDFs live
-    #   paths-ignore: ':!_extensions :!lectures'
+    #   paths-ignore: ':(exclude)_extensions :(exclude)lectures'
     #   min-run: '12'                          # consecutive verbatim words that flag a paragraph
     #   fail: true                             # block instead of warn
     secrets:

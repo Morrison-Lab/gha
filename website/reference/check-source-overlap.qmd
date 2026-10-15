@@ -46,7 +46,7 @@ A change that adds no prose passes, and the summary line reports
 | `corpus-files` | string | required | Comma- or newline-separated git pathspecs of the PDFs or `.txt` files in `corpus-repo`. |
 | `base-ref` | string | `''` | Git base ref; only lines added since it are checked. Use `HEAD^1` on a pull request. Empty checks every Markdown and Quarto file in `paths`. |
 | `paths` | string | `''` | Space-separated files to check when `base-ref` is empty. |
-| `paths-ignore` | string | `':!_extensions :!lectures'` | Space-separated git pathspecs to exclude, in both modes. |
+| `paths-ignore` | string | `':(exclude)_extensions :(exclude)lectures'` | Space-separated git pathspecs to exclude, in both modes. |
 | `min-run` | string | `'12'` | Consecutive verbatim words that flag a paragraph. |
 | `fail` | boolean | `false` | Fail the job when a paragraph is flagged (else warn only). |
 
