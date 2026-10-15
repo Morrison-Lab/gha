@@ -5523,3 +5523,17 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest
           python3 -m pytest student-qmd/tests/ -q
+
+  # check-source-overlap is brand new, so the composite and reusable workflow
+  # cannot be exercised through @v3 yet; the offline suite covers the checker
+  # (flags a copy, spares a quote, refuses an empty corpus).
+  source-overlap-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run the check-source-overlap tests
+        run: python3 check-source-overlap/tests/test_check_source_overlap.py

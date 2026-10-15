@@ -1,0 +1,63 @@
+name: Check Source Overlap (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      corpus-repo:
+        description: Repository holding the reference PDFs, as `owner/name`.
+        type: string
+        default: Morrison-Lab/mlr
+      corpus-files:
+        description: >-
+          Comma- or newline-separated git pathspecs of the PDFs or `.txt` files
+          in `corpus-repo` to compare against.
+        type: string
+        required: true
+      base-ref:
+        description: Git base ref; only lines added since it are checked.
+        type: string
+        default: ''
+      paths:
+        description: Space-separated files to check when `base-ref` is empty.
+        type: string
+        default: ''
+      paths-ignore:
+        description: Space-separated git pathspecs to exclude.
+        type: string
+        default: ':!_extensions :!lectures'
+      min-run:
+        description: Consecutive verbatim words that flag a paragraph.
+        type: string
+        default: '12'
+      fail:
+        description: Fail the job when a paragraph is flagged (else warn only).
+        type: boolean
+        default: false
+    secrets:
+      corpus-token:
+        description: Token that can read `corpus-repo`.
+        required: true
+
+jobs:
+  check-source-overlap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check source overlap
+        uses: Morrison-Lab/gha/check-source-overlap@v3
+        with:
+          corpus-repo: ${{ inputs.corpus-repo }}
+          corpus-token: ${{ secrets.corpus-token }}
+          corpus-files: ${{ inputs.corpus-files }}
+          base-ref: ${{ inputs.base-ref }}
+          paths: ${{ inputs.paths }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          min-run: ${{ inputs.min-run }}
+          fail: ${{ inputs.fail }}
