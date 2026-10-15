@@ -524,7 +524,23 @@ def test_bullet_marker_is_stripped():
 
 def test_lettered_list_marker_is_stripped():
     assert nlb.line_content("a. Compute the loss.") == "Compute the loss."
-    assert nlb.line_content("   B. Explain why.") == "Explain why."
+    assert nlb.line_content("   B.  Explain why.") == "Explain why."
+
+
+def test_initial_is_not_a_list_marker():
+    # Pandoc needs two spaces after an uppercase marker, so "J. Smith" is prose.
+    assert nlb.line_content("J. Smith wrote X.") == "J. Smith wrote X."
+    assert nlb.line_content("- J. Smith wrote X.") == "J. Smith wrote X."
+
+
+def test_blockquote_initial_is_checked():
+    text = "> J. Smith argued X. He also argued Y.\n"
+    assert nlb.prose_line_numbers(text) == {1}
+
+
+def test_blockquote_uppercase_list_marker_excluded():
+    text = "> B.  Explain why.\n"
+    assert nlb.prose_line_numbers(text) == set()
 
 
 def test_blockquote_prefix_is_stripped():
