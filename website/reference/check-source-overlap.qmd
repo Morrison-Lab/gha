@@ -82,4 +82,5 @@ See `check-source-overlap.yml` in
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 for the full caller stub.
 An agent can run the same script before pushing:
-`python3 check-source-overlap/check_source_overlap.py --corpus <dir of .txt> --git-diff origin/main`.
+`python3 check-source-overlap/check_source_overlap.py --corpus <dir of .txt>
+--git-diff origin/main`.

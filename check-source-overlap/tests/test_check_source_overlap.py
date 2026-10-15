@@ -65,7 +65,7 @@ def main() -> int:
 
 
 def git(repo: Path, *args):
-    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.org",
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.org",  # phi-allow
                     *args], check=True, capture_output=True)
 
 
