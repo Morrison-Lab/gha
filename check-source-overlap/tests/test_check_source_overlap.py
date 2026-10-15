@@ -55,6 +55,37 @@ def main() -> int:
         r = run(root / "corpus", doc, "--min-run", "99", "--fail")
         assert r.returncode == 1, ("density rule did not fire", r.stdout)
 
+        # a short quote must not pair with the next one and hide the prose between them
+        doc.write_text(f'He said "hello" and then {SOURCE.lower()} and later said "goodbye" to us.\n')
+        r = run(root / "corpus", doc, "--fail")
+        assert r.returncode == 1, ("short quotes hid a copy", r.stdout)
+
+        # only the `>` lines of a paragraph are quoted; a copied line beside them is still checked
+        doc.write_text(f"> a quoted line\n{SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "copy beside a blockquote passed"
+
+        # naming the opt-out in prose is not the opt-out
+        doc.write_text(f"Add an overlap-ok comment to exempt text. {SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "prose mention exempted a copy"
+
+        # soft hyphens and a hyphenation split by a pdftotext page break are joined in the corpus
+        messy = root / "messy"
+        messy.mkdir()
+        (messy / "book.txt").write_text(SOURCE.replace("expected", "expect­ed")
+                                        .replace("prediction", "predic-\n\x0ction") + "\n")
+        doc.write_text("Note that " + SOURCE.lower() + " That is the point.\n")
+        assert run(messy, doc, "--fail").returncode == 1, "soft hyphen or page break split the corpus words"
+
+        # two books that each hold part of a paragraph do not add up to a copy of either
+        words = SOURCE.split()
+        parts = root / "parts"
+        parts.mkdir()
+        for name, (lo, hi) in {"a": (0, 12), "b": (6, 18), "c": (12, 24)}.items():
+            (parts / f"{name}.txt").write_text(" ".join(words[lo:hi]) + "\n")
+        doc.write_text(" ".join(words[:24]).lower() + "\n")
+        r = run(parts, doc, "--min-run", "13", "--density", "0.9", "--fail")
+        assert r.returncode == 0, ("n-grams from different books were added together", r.stdout)
+
         empty = root / "empty"
         empty.mkdir()
         assert run(empty, doc).returncode == 2, "empty corpus passed silently"

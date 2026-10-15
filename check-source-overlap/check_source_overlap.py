@@ -34,12 +34,15 @@ from collections import defaultdict
 from pathlib import Path
 
 N = 6  # shingle length in words
+OVERLAP_OK = re.compile(r"<!--\s*overlap-ok\b")
 LIGATURES = {"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl"}
 
 
 def normalize_words(text: str) -> list[str]:
     text = text.lower().replace("’", "'").replace("‘", "'")
-    text = text.replace("\r\n", "\n").replace("­", "").replace("-\n", "")
+    # ­ is a soft hyphen and \x0c the form feed pdftotext writes between pages
+    text = text.replace("\r\n", "\n").replace("­", "").replace("-\n\x0c", "").replace("-\n", "")
+    text = text.replace("\x0c", "\n")
     for ligature, letters in LIGATURES.items():  # pdftotext keeps ligatures as single characters
         text = text.replace(ligature, letters)
     return re.findall(r"[a-z0-9]+(?:'[a-z]+)?", text)
@@ -85,13 +88,25 @@ def paragraphs(path: Path, only_lines: set[int] | None):
     for start, block in out:
         if only_lines is not None and not any(i in only_lines for i, _ in block):
             continue
-        text = "\n".join(line for _, line in block)
-        if "overlap-ok" in text or all(line.lstrip().startswith(">") for _, line in block):
+        if OVERLAP_OK.search("\n".join(line for _, line in block)):
+            continue
+        # a line that opens with `>` is quoted, so only the other lines of the paragraph are checked
+        text = "\n".join(line for _, line in block if not line.lstrip().startswith(">"))
+        if not text.strip():
             continue
         text = strip_markup(text)
         text = re.sub(r"“[^”]*”", " ", text)  # curly-quoted
-        text = re.sub(r'"[^"]{20,600}"', " ", text)  # straight-quoted, possibly wrapped over lines
+        text = re.sub(r'"([^"]{0,600})"', unquote_long, text)  # straight-quoted, possibly wrapped
         yield start, text
+
+
+def unquote_long(m: re.Match) -> str:
+    """Blank a straight-quoted passage of 20 or more characters and keep a short quoted phrase.
+
+    Quote marks are paired left to right, so a short quote never pairs with the next one
+    and hides the prose between them.
+    """
+    return " " if len(m.group(1)) >= 20 else m.group(0)
 
 
 def wordy(gram) -> bool:
@@ -100,7 +115,7 @@ def wordy(gram) -> bool:
 
 
 def build_index(corpus: Path):
-    """Map each hashed n-gram to the first source that holds it.
+    """Map each hashed n-gram to a bit mask of the sources that hold it (bit i is source i).
 
     `hash` of a tuple of strings is salted per process, so build and use the index in one run
     and never write it to disk.
@@ -115,21 +130,39 @@ def build_index(corpus: Path):
         for k in range(len(words) - N + 1):
             gram = tuple(words[k:k + N])
             if wordy(gram):
-                index.setdefault(hash(gram), sid)
+                h = hash(gram)
+                index[h] = index.get(h, 0) | (1 << sid)
     return index, names
 
 
-def check(words, index):
-    hits = [k for k in range(len(words) - N + 1) if hash(tuple(words[k:k + N])) in index]
-    if not hits:
-        return 0, 0.0, []
-    # longest run of overlapping matching n-grams, in words
+def longest_run(hits):
+    """Words in the longest stretch of overlapping matching n-grams."""
     best = run = 1
     for a, b in zip(hits, hits[1:]):
         run = run + 1 if b == a + 1 else 1
         best = max(best, run)
-    density = len(hits) / max(1, len(words) - N + 1)
-    return best + N - 1, density, hits
+    return best + N - 1
+
+
+def check(words, index, n_sources, min_run, min_density):
+    """Return (flagged, run, density, source id) for the source that matches the paragraph best.
+
+    Each source is scored alone, so n-grams from two books never add up to a run or a density
+    that neither book has.
+    A source that trips a threshold is preferred to one that only matches more words.
+    """
+    marks = [(k, index.get(hash(tuple(words[k:k + N])), 0)) for k in range(len(words) - N + 1)]
+    best = (False, 0, 0.0, 0)
+    for sid in range(n_sources):
+        hits = [k for k, mask in marks if mask >> sid & 1]
+        if not hits:
+            continue
+        run = longest_run(hits)
+        density = len(hits) / max(1, len(words) - N + 1)
+        flagged = run >= min_run or (density >= min_density and len(hits) >= 6)
+        if (flagged, run, density) > best[:3]:
+            best = (flagged, run, density, sid)
+    return best
 
 
 def changed_lines(base: str, excludes=()):
@@ -186,11 +219,11 @@ def main() -> int:
             if len(words) < N + 2:
                 continue
             examined += 1
-            run, dens, hits = check(words, index)
-            if run >= a.min_run or (dens >= a.density and len(hits) >= 6):
+            hit, run, dens, sid = check(words, index, len(names), a.min_run, a.density)
+            if hit:
                 flagged += 1
                 print(f"{path}:{start}: {run} verbatim words, {dens:.0%} of {N}-grams shared "
-                      f"[{names[index[hash(tuple(words[hits[0]:hits[0] + N]))]]}]")
+                      f"[{names[sid]}]")
     print(f"examined {examined} paragraphs against {len(names)} sources ({len(index)} n-grams); "
           f"flagged {flagged}")
     return 1 if (flagged and a.fail) else 0
