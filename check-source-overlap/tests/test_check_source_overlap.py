@@ -102,6 +102,20 @@ def main() -> int:
         doc.write_text(" ".join(words[:12]).lower() + "\n<!-- note -->\n" + " ".join(words[12:24]).lower() + "\n")
         assert run(root / "corpus", doc, "--min-run", "20", "--fail").returncode == 1, "comment split the paragraph"
 
+        # a line-wrapped code span and a double-backtick span naming the opt-out do not opt out
+        doc.write_text(f"Write `<!-- overlap-ok:\nreason -->` to exempt text. {SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "wrapped code span exempted a copy"
+        doc.write_text(f"Write `` `<!-- overlap-ok: reason -->` `` to exempt. {SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "double-backtick span exempted a copy"
+
+        # a backtick inside an earlier comment pairs with nothing outside it
+        doc.write_text(f"<!-- a `\nnote --> Write `<!-- overlap-ok: reason -->` here. {SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "comment backtick exposed the opt-out"
+
+        # a blank line inside a comment still splits paragraphs, so one opt-out does not reach the next
+        doc.write_text(f"Fine. <!-- overlap-ok: x -->\n<!-- break\n\n-->\n{SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "opt-out leaked across a comment"
+
         # a missing file and a corpus with no text are refused, not read as a pass
         assert run(root / "corpus", root / "nope.qmd").returncode == 2, "missing file passed"
         assert run(root / "corpus", doc, "--exclude", "x").returncode == 2, "--exclude without --git-diff accepted"

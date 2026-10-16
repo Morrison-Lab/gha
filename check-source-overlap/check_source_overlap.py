@@ -74,15 +74,10 @@ def strip_markup(text: str) -> str:
 def paragraphs(path: Path, only_lines: set[int] | None):
     """Yield (first_line, text) for each paragraph that survives the quoting exemptions."""
     raw = path.read_text(encoding="utf-8", errors="replace")
-    # Blank out fenced code before splitting on blank lines, which also occur inside a fence;
-    # the newlines stay so reported line numbers still match the file.
-    raw = re.sub(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1\s*$",
-                 lambda m: "\n" * m.group(0).count("\n"), raw, flags=re.S | re.M)
-    # A code span that names the opt-out must not be the opt-out.
-    raw = re.sub(r"`[^`\n]+`", "`_`", raw)
-    # An HTML comment may hold blank lines, which would split it across paragraphs.
-    # Blank it too, but leave a short overlap-ok marker so the paragraph still opts out.
-    raw = re.sub(r"<!--.*?-->", blank_comment, raw, flags=re.S)
+    # Fenced code, HTML comments and code spans are replaced in one pass, so whichever
+    # construct starts first wins: a backtick inside a comment opens no code span,
+    # and a comment marker inside a fence or a code span is not a comment.
+    raw = CONSTRUCT.sub(shield_construct, raw)
     lines = raw.split("\n")
     block, start = [], 1
     out = []
@@ -97,7 +92,12 @@ def paragraphs(path: Path, only_lines: set[int] | None):
     if block:
         out.append((start, block))
     for start, block in out:
-        if only_lines is not None and not any(i in only_lines for i, _ in block):
+        # lines that only hold a blanked comment are not prose: skip them for the start and the diff test
+        prose = [(i, line) for i, line in block if line.replace(KEEP, "").strip()]
+        if not prose:
+            continue
+        start = prose[0][0]
+        if only_lines is not None and not any(i in only_lines for i, _ in prose):
             continue
         if OVERLAP_OK.search("\n".join(line for _, line in block)):
             continue
@@ -111,15 +111,30 @@ def paragraphs(path: Path, only_lines: set[int] | None):
         yield start, text
 
 
-def blank_comment(m: re.Match) -> str:
-    """Replace a comment with the same number of lines, none of them blank.
+CONSTRUCT = re.compile(
+    r"^[ \t]*(?P<fence>```+|~~~+).*?^[ \t]*(?P=fence)\s*$"  # fenced code
+    r"|<!--.*?-->"  # HTML comment
+    r"|(?P<tick>`+)(?!`)(?:(?!\n[ \t]*\n).)+?(?<!`)(?P=tick)(?!`)",  # code span, possibly wrapped
+    re.S | re.M,
+)
 
-    A comment inside a paragraph must not split it, so each line becomes a non-space mark.
+
+def shield_construct(m: re.Match) -> str:
+    """Replace a fence, comment or code span with text that keeps the line count.
+
+    A fence becomes blank lines.
+    A code span becomes a placeholder, so a span that names the opt-out is not the opt-out.
+    A comment keeps its blank lines, which split paragraphs as they did before,
+    and each other line becomes a non-space mark so the comment never splits a paragraph.
     An `overlap-ok` comment keeps a marker on its first and last line,
     so the paragraph before it and the paragraph after it both opt out.
     """
     text = m.group(0)
-    lines = [KEEP] * (text.count("\n") + 1)
+    if m.group("fence"):
+        return "\n" * text.count("\n")
+    if m.group("tick"):
+        return "`_`" + "\n" * text.count("\n")
+    lines = [KEEP if line.strip() else "" for line in text.split("\n")]
     if OVERLAP_OK.match(text):
         lines[0] = lines[-1] = "<!-- overlap-ok -->"
     return " " + "\n".join(lines) + " "
