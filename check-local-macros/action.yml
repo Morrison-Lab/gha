@@ -1,0 +1,82 @@
+name: Check macros defined outside the macros library
+description: >-
+  Diff-scoped check that flags LaTeX macros defined outside Morrison-Lab/macros:
+  `\newcommand`, `\renewcommand`, `\providecommand`, `\DeclareMathOperator`,
+  `\DeclarePairedDelimiter`, `\DeclareRobustCommand`, `\NewDocumentCommand` and
+  its relatives, and `\def`, `\gdef`, `\edef` and `\xdef`, in `.qmd`, `.Rmd`,
+  `.md`, `.tex`, `.sty`, `.cls` and `.html` files.
+  New macros belong in the library.
+  An override file (default `macros-override.*`) may redefine only a macro the
+  library already has; pass `library` to check that.
+  Skips code fences and spans (except raw TeX fences), HTML comments, front
+  matter and `%` comments.
+  Scoped to lines a diff adds (an added line whose exact text was also deleted
+  in the same diff counts as moved). Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every macro the repository already defines.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md *.tex *.sty *.cls *.html'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  override-files:
+    description: >-
+      Comma/newline-separated glob patterns naming override files, where a
+      definition is allowed only when the library already defines the same
+      name.
+    default: '**/macros-override.*,macros-override.*'
+  library:
+    description: >-
+      Space-separated paths of library files (for example the latex-macros
+      submodule's `macros.qmd`) whose definitions are the names an override
+      may redefine. With none given, override files are not checked and the
+      run says so.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a macro defined outside the library is found (else
+      non-blocking). Defaults to 'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check macros defined outside the library
+      shell: bash
+      env:
+        LMD_BASE_REF: ${{ inputs.base-ref }}
+        LMD_WHOLE_TREE: ${{ inputs.whole-tree }}
+        LMD_GLOBS: ${{ inputs.globs }}
+        LMD_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        LMD_OVERRIDE_FILES: ${{ inputs.override-files }}
+        LMD_LIBRARY: ${{ inputs.library }}
+        LMD_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-local-macros.py"

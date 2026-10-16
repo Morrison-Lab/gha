@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-local-macros.yml in your repo.
+# Diff-scoped check: flags LaTeX macros defined on lines a PR adds
+# (`\newcommand`, `\def`, `\DeclareMathOperator`, ...), because new macros belong
+# in Morrison-Lab/macros. Warn-only by default. A `macros-override.*` file may
+# redefine only a macro the library already has; pass `library` to check that.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check macros defined outside the library
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-local-macros.yml@v3
+    # with:
+    #   globs: '*.qmd *.tex *.sty'             # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   submodules: true                       # check out the latex-macros submodule ...
+    #   library: 'latex-macros/macros.qmd'     # ... and check overrides against it
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every line, not just a PR's additions
