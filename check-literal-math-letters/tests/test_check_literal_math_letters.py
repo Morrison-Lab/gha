@@ -232,7 +232,7 @@ def _git(repo: Path, *args: str) -> str:
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "test@example.invalid")
+    _git(tmp_path, "config", "user.email", "test@example.invalid")  # phi-allow
     _git(tmp_path, "config", "user.name", "Test")
     monkeypatch.chdir(tmp_path)
     return tmp_path

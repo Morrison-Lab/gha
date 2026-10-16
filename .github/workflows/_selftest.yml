@@ -1505,7 +1505,8 @@ jobs:
         with:
           fail: 'true'
           whole-tree: 'true'
-          paths-ignore: '_ci-literal-math'
+          # check-ai-tells' positive control quotes a literal x in math on purpose.
+          paths-ignore: '_ci-literal-math,check-ai-tells/tests/**'
       - name: Check again with globs excluding the page
         uses: ./check-literal-math-letters
         with:

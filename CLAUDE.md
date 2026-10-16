@@ -1817,7 +1817,7 @@ skipped, the `.notation` skip, HTML comment masking, front-matter skipping,
 macro-definition skipping, the `allow` and `ignore-file` directives, diff
 scoping (all findings kept), the moved-line exemption, an empty `base-ref`
 falling back to the whole tree, an unresolvable `base-ref` not skipping,
-hunk counts ignored (so an added `++ ` line reads as a file header),
+hunk counts ignored (so an added line starting `++` plus a space reads as a file header),
 `fail` defaulting to true, `paths-ignore` ignored, a blank line leaving a
 display block open, and the currency lookahead on the closing dollar sign.
 Three survived the first draft of the suite, and each was a test aimed at the
