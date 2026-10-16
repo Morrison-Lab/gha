@@ -15,6 +15,10 @@ Text that quotes its source properly is skipped: blockquotes, text inside double
 and paragraphs containing an `<!-- overlap-ok: reason -->` comment for a passage checked by hand.
 Code fences, display math, inline math, URLs, citation keys and Quarto attributes are removed first.
 
+A run is matched by 6-grams, not by position, so two 6-grams from different places in one book
+that overlap by five words can stitch a run the book never prints; that needs a chance overlap
+and is rare.
+
 Advisory by default (exit 0); `--fail` exits 1 when anything is flagged.
 Exit 2 means nothing could be checked (no corpus, or named files and no input), so an empty pass
 is never silent.
@@ -35,13 +39,15 @@ from pathlib import Path
 
 N = 6  # shingle length in words
 OVERLAP_OK = re.compile(r"<!--\s*overlap-ok\b")
+BREAK = "qqbreakqq"  # replaces a removed quotation; no corpus holds it
+KEEP = "\u2060"  # a non-space mark that keeps a blanked comment line inside its paragraph
 LIGATURES = {"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl"}
 
 
 def normalize_words(text: str) -> list[str]:
     text = text.lower().replace("’", "'").replace("‘", "'")
-    # ­ is a soft hyphen and \x0c the form feed pdftotext writes between pages
-    text = text.replace("\r\n", "\n").replace("­", "").replace("-\n\x0c", "").replace("-\n", "")
+    # a soft hyphen (U+00AD) and \x0c the form feed pdftotext writes between pages
+    text = text.replace("\r\n", "\n").replace("\u00ad", "").replace("-\n\x0c", "").replace("-\n", "")
     text = text.replace("\x0c", "\n")
     for ligature, letters in LIGATURES.items():  # pdftotext keeps ligatures as single characters
         text = text.replace(ligature, letters)
@@ -72,6 +78,8 @@ def paragraphs(path: Path, only_lines: set[int] | None):
     # the newlines stay so reported line numbers still match the file.
     raw = re.sub(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1\s*$",
                  lambda m: "\n" * m.group(0).count("\n"), raw, flags=re.S | re.M)
+    # A code span that names the opt-out must not be the opt-out.
+    raw = re.sub(r"`[^`\n]+`", "`_`", raw)
     # An HTML comment may hold blank lines, which would split it across paragraphs.
     # Blank it too, but leave a short overlap-ok marker so the paragraph still opts out.
     raw = re.sub(r"<!--.*?-->", blank_comment, raw, flags=re.S)
@@ -98,27 +106,34 @@ def paragraphs(path: Path, only_lines: set[int] | None):
         if not text.strip():
             continue
         text = strip_markup(text)
-        text = re.sub(r"“[^”]*”", " ", text)  # curly-quoted
-        text = re.sub(r'"([^"]{0,600})"', unquote_long, text)  # straight-quoted, possibly wrapped
+        text = re.sub(r"“([^”]*)”", unquote_long, text)  # curly-quoted
+        text = re.sub(r'"([^"]*)"', unquote_long, text)  # straight-quoted, possibly wrapped
         yield start, text
 
 
 def blank_comment(m: re.Match) -> str:
-    """Replace a comment with newlines, keeping an `overlap-ok` comment as a one-line marker."""
+    """Replace a comment with the same number of lines, none of them blank.
+
+    A comment inside a paragraph must not split it, so each line becomes a non-space mark.
+    An `overlap-ok` comment keeps a marker on its first and last line,
+    so the paragraph before it and the paragraph after it both opt out.
+    """
     text = m.group(0)
-    newlines = "\n" * text.count("\n")
+    lines = [KEEP] * (text.count("\n") + 1)
     if OVERLAP_OK.match(text):
-        return "<!-- overlap-ok -->" + newlines
-    return newlines if "\n" in text else " "
+        lines[0] = lines[-1] = "<!-- overlap-ok -->"
+    return " " + "\n".join(lines) + " "
 
 
 def unquote_long(m: re.Match) -> str:
-    """Blank a straight-quoted passage of 20 or more characters and keep a short quoted phrase.
+    """Replace a quoted passage of 20 or more characters with a break and keep a short quoted phrase.
 
-    Quote marks are paired left to right, so a short quote never pairs with the next one
-    and hides the prose between them.
+    Quote marks are paired left to right with no length cap, so a long quote never lets
+    the pairing slip and hide the prose between two quotes.
+    The break word is in no corpus, so words on either side of a removed quote
+    never join into one run.
     """
-    return " " if len(m.group(1)) >= 20 else m.group(0)
+    return f" {BREAK} " if len(m.group(1)) >= 20 else m.group(0)
 
 
 def wordy(gram) -> bool:
@@ -134,17 +149,22 @@ def build_index(corpus: Path):
     """
     index: dict[int, int] = {}
     names: list[str] = []
+    empty: list[str] = []
     files = sorted(p for p in corpus.rglob("*.txt") if p.is_file())
     for p in files:
         names.append(str(p.relative_to(corpus)))
         sid = len(names) - 1
         words = normalize_words(p.read_text(encoding="utf-8", errors="replace"))
+        grams = 0
         for k in range(len(words) - N + 1):
             gram = tuple(words[k:k + N])
             if wordy(gram):
                 h = hash(gram)
                 index[h] = index.get(h, 0) | (1 << sid)
-    return index, names
+                grams += 1
+        if not grams:
+            empty.append(names[-1])
+    return index, names, empty
 
 
 def longest_run(hits):
@@ -200,29 +220,43 @@ def changed_lines(base: str, excludes=()):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--corpus", required=True, type=Path)
-    ap.add_argument("--git-diff", metavar="BASE")
+    ap.add_argument("--git-diff", metavar="BASE", default=None)
     ap.add_argument("--min-run", type=int, default=12, help="verbatim words that flag a paragraph")
     ap.add_argument("--density", type=float, default=0.25)
     ap.add_argument("--fail", action="store_true")
     ap.add_argument("--exclude", action="append", default=[], metavar="PATHSPEC",
-                    help="git pathspec to leave out of --git-diff, e.g. ':(exclude)_extensions' (repeatable)")
+                    help="path to leave out of --git-diff, e.g. _extensions or ':(exclude)_extensions' (repeatable)")
     ap.add_argument("files", nargs="*", type=Path)
     a = ap.parse_args()
 
     if not a.corpus.is_dir():
         print(f"error: corpus {a.corpus} is not a directory", file=sys.stderr)
         return 2
-    index, names = build_index(a.corpus)
+    index, names, empty = build_index(a.corpus)
     if not names:
         print(f"error: no .txt files under {a.corpus}", file=sys.stderr)
         return 2
-    if a.git_diff and a.files:
+    for name in empty:
+        print(f"warning: {name} holds no text to compare (is the PDF scanned?)", file=sys.stderr)
+    if not index:
+        print("error: no source holds any text to compare", file=sys.stderr)
+        return 2
+    if a.git_diff is not None and a.files:
         print("error: name files or use --git-diff, not both", file=sys.stderr)
         return 2
-    targets = changed_lines(a.git_diff, a.exclude) if a.git_diff else {p: None for p in a.files}
-    if not targets and not a.git_diff:
-        print("error: no input files", file=sys.stderr)
+    if a.exclude and a.git_diff is None:
+        print("error: --exclude applies only to --git-diff", file=sys.stderr)
         return 2
+    if a.git_diff is not None:
+        excludes = [e if e.startswith(":") else f":(exclude){e}" for e in a.exclude]
+        targets = changed_lines(a.git_diff, excludes)
+    else:
+        missing = [p for p in a.files if not p.is_file()]
+        if missing or not a.files:
+            print("error: no input files" if not a.files else
+                  f"error: not a file: {', '.join(map(str, missing))}", file=sys.stderr)
+            return 2
+        targets = {p: None for p in a.files}
 
     examined = flagged = 0
     for path, lines in sorted(targets.items()):

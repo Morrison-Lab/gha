@@ -78,10 +78,42 @@ def main() -> int:
         r = run(root / "corpus", doc, "--git-diff", "HEAD")
         assert r.returncode == 2, ("files with --git-diff accepted", r.stdout)
 
+        # a quote over 600 characters must not shift the pairing and hide the prose after it
+        long_quote = "x" * 700
+        doc.write_text(f'"{long_quote}" {SOURCE.lower()} "end"\n')
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "long quote hid a copy"
+
+        # words either side of a removed quote do not join into a run
+        half = " ".join(words[:7]).lower()
+        rest = " ".join(words[7:14]).lower()
+        doc.write_text(f'{half} "an unrelated quotation of some length" {rest}\n')
+        assert run(root / "corpus", doc, "--min-run", "13", "--density", "0.99", "--fail").returncode == 0, \
+            "quote joined the words around it"
+
+        # a code span that names the opt-out is not the opt-out
+        doc.write_text(f"Write `<!-- overlap-ok: reason -->` to exempt text. {SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "code span exempted a copy"
+
+        # an overlap-ok comment on its own lines above the paragraph exempts it
+        doc.write_text(f"<!-- overlap-ok:\nchecked by hand -->\n{SOURCE.lower()}\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 0, "comment above did not exempt"
+
+        # an HTML comment inside a paragraph does not split it
+        doc.write_text(" ".join(words[:12]).lower() + "\n<!-- note -->\n" + " ".join(words[12:24]).lower() + "\n")
+        assert run(root / "corpus", doc, "--min-run", "20", "--fail").returncode == 1, "comment split the paragraph"
+
+        # a missing file and a corpus with no text are refused, not read as a pass
+        assert run(root / "corpus", root / "nope.qmd").returncode == 2, "missing file passed"
+        assert run(root / "corpus", doc, "--exclude", "x").returncode == 2, "--exclude without --git-diff accepted"
+        blank = root / "blank"
+        blank.mkdir()
+        (blank / "scan.txt").write_text("\n")
+        assert run(blank, doc).returncode == 2, "textless corpus passed"
+
         # soft hyphens and a hyphenation split by a pdftotext page break are joined in the corpus
         messy = root / "messy"
         messy.mkdir()
-        (messy / "book.txt").write_text(SOURCE.replace("expected", "expect­ed")
+        (messy / "book.txt").write_text(SOURCE.replace("expected", "expect\u00aded")
                                         .replace("prediction", "predic-\n\x0ction") + "\n")
         doc.write_text("Note that " + SOURCE.lower() + " That is the point.\n")
         assert run(messy, doc, "--fail").returncode == 1, "soft hyphen or page break split the corpus words"
@@ -135,7 +167,7 @@ def git_diff_cases(root: Path, corpus: Path):
 
     r = diff_run(repo, corpus, "--fail")
     assert r.returncode == 1 and "keep.qmd:" in r.stdout and "_vendor" in r.stdout, ("diff copy", r.stdout, r.stderr)
-    r = diff_run(repo, corpus, "--fail", "--exclude", ":(exclude)_vendor")
+    r = diff_run(repo, corpus, "--fail", "--exclude", "_vendor")
     assert r.returncode == 1 and "_vendor" not in r.stdout, ("exclude ignored", r.stdout)
     assert "old.qmd" not in r.stdout and r.stderr == "", ("deleted file mishandled", r.stderr)
 
