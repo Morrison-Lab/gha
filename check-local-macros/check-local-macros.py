@@ -84,7 +84,6 @@ DEFINITION_RE = re.compile(
 FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})\s*(\S*)")
 ALLOW_RE = re.compile(r"<!--\s*check-local-macros:\s*allow\s*-->")
 CODE_SPAN_RE = re.compile(r"(`+).+?\1")
-HTML_COMMENT_RE = re.compile(r"<!--.*?-->")
 
 
 class Finding(NamedTuple):
@@ -111,6 +110,26 @@ def library_names(paths: List[str]) -> Set[str]:
     return names
 
 
+def _blank_closed_comments(line: str) -> str:
+    """Blank each ``<!-- ... -->`` that opens and closes on this line.
+
+    A scan with ``find`` rather than a regex: the comment-open state is
+    carried across lines by the caller, so a one-line pattern is the wrong
+    tool for an HTML comment, and CodeQL flags it as such.
+    """
+    out = line
+    pos = 0
+    while True:
+        start = out.find("<!--", pos)
+        if start < 0:
+            return out
+        end = out.find("-->", start + 4)
+        if end < 0:
+            return out
+        out = out[:start] + " " * (end + 3 - start) + out[end + 3:]
+        pos = end + 3
+
+
 def _mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
     """Blank code spans and HTML comments; track a comment open across lines."""
     out = line
@@ -119,7 +138,7 @@ def _mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
         if end < 0:
             return "", True
         out, in_comment = " " * (end + 3) + out[end + 3:], False
-    out = HTML_COMMENT_RE.sub(lambda m: " " * len(m.group(0)), out)
+    out = _blank_closed_comments(out)
     start = out.find("<!--")
     if start >= 0:
         out, in_comment = out[:start], True
