@@ -6,7 +6,8 @@ Diff-scoped, warn-only check that flags LaTeX macros defined outside
 [`Morrison-Lab/macros`](https://github.com/Morrison-Lab/macros).
 The lab's rule is that new macros go only in that repository,
 never in an applied repository,
-unless the repository explicitly overrides one specific macro the library already has.
+unless the repository explicitly overrides
+one specific macro the library already has.
 This is check 2 of
 [gha#1077](https://github.com/Morrison-Lab/gha/issues/1077);
 check 1 is [`check-literal-math-letters`](check-literal-math-letters.qmd).
@@ -37,7 +38,8 @@ may redefine only a macro the library already defines.
 The library's names are read from the files in `library`,
 for example the `latex-macros` submodule's `macros.qmd`
 (set `submodules: true` so the reusable workflow checks it out).
-A definition in an override file is allowed when the library defines the same name,
+A definition in an override file is allowed
+when the library defines the same name,
 and flagged when it does not.
 With no `library`, the names cannot be checked,
 and the run warns how many override definitions it left unchecked
