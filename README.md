@@ -55,6 +55,7 @@ not reference `@main` from consumers.
 | `check-one-function-per-file.yml` | Enforce the one-function-definition-per-file rule across repository code files (`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`), with header opt-out comment support | `path`, `paths-ignore`, `extensions`, `opt-out-comment`, `fail`, `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI -- SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
+| `check-source-overlap.yml` | Flag Markdown and Quarto paragraphs that copy a reference text (word 6-gram overlap against PDFs in a private corpus repository), as a guard against unintentional plagiarism | `corpus-repo`, `corpus-files`, `base-ref`, `paths`, `paths-ignore`, `min-run`, `fail`; secret `corpus-token` |
 | `check-repo-hygiene.yml` | Standard repository hygiene check suite (junk files, secrets, non-standard characters, new line breaks, typos, YAML lint, workflow lint, Markdown lint) | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `lint-yaml`, `lint-workflows`, `lint-markdown` |
 | `check-quarto-website.yml` | Standard check suite for Quarto website repositories: repository hygiene, AI tells, QMD prose linting, lychee link checking, links to missing Quarto pages, orphaned images, typed code output, informal definitions in prose, and bibliography DOIs | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-quarto-links`, `check-orphaned-images`, `check-typed-output`, `check-informal-definitions`, `check-bibliography-dois` |
 | `check-quarto-book.yml` | Standard check suite for Quarto book repositories: repository hygiene, AI tells, QMD prose linting, link checking across chapters, links to missing Quarto pages, orphaned images, typed code output, informal definitions in prose, bibliography DOIs, and equation renders | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-quarto-links`, `check-orphaned-images`, `check-typed-output`, `check-informal-definitions`, `check-bibliography-dois`, `check-equation-renders` |
@@ -131,7 +132,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
   `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-prose`, `check-quarto-website`,
-  `check-r-package`, `check-repo-hygiene`, `check-secrets`,
+  `check-r-package`, `check-repo-hygiene`, `check-secrets`, `check-source-overlap`,
   `check-typed-output`, `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `student-qmd`,
@@ -669,6 +670,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-links.yml`,
+`check-source-overlap.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-prose.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
@@ -816,6 +818,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-links.yml`,
+`check-source-overlap.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-prose.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,

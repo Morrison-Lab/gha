@@ -1,0 +1,110 @@
+name: Check source overlap
+description: >-
+  Flag prose that overlaps a reference text, as a guard against unintentional
+  plagiarism.
+  Extracts text from the PDFs named by `corpus-files` in a private
+  corpus repository (for example a lab's shelf of textbooks), then compares each
+  paragraph of the Markdown and Quarto files the change adds against it by word
+  6-grams: a paragraph is flagged for a long verbatim run or a high share of
+  shared 6-grams.
+  Code, math, tables, citations, quotations and blockquotes are
+  skipped, and `<!-- overlap-ok: reason -->` exempts a passage checked by hand.
+  The extracted text lives only in the runner's temporary directory.
+  A run with no corpus or no input exits 2 rather than passing.
+inputs:
+  corpus-repo:
+    description: Repository holding the reference PDFs, as `owner/name`.
+    default: Morrison-Lab/mlr
+  corpus-token:
+    description: >-
+      Token that can read `corpus-repo` (the default repository is private, and
+      the workflow token reaches only the caller's own repository).
+    required: true
+  corpus-files:
+    description: >-
+      Comma- or newline-separated git pathspecs of the PDFs (or `.txt` files) in
+      `corpus-repo` to compare against, such as `books/Hastie-*, books/ISLR2-*`.
+    required: true
+  base-ref:
+    description: >-
+      Git base ref; only lines added since it are checked.
+      Empty checks every Markdown and Quarto file in `paths`.
+    default: ''
+  paths:
+    description: Space-separated Markdown or Quarto files to check when `base-ref` is empty.
+    default: ''
+  paths-ignore:
+    description: Space-separated git pathspecs to exclude.
+    default: ':(exclude)_extensions :(exclude)lectures'
+  min-run:
+    description: Consecutive verbatim words that flag a paragraph.
+    default: '12'
+  fail:
+    description: Fail the job when a paragraph is flagged (else warn only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Fetch the corpus
+      shell: bash
+      env:
+        CORPUS_REPO: ${{ inputs.corpus-repo }}
+        CORPUS_TOKEN: ${{ inputs.corpus-token }}
+        CORPUS_FILES: ${{ inputs.corpus-files }}
+      run: |
+        set -euo pipefail
+        dir="$RUNNER_TEMP/overlap-corpus-repo"
+        git clone --quiet --depth 1 --filter=blob:none --no-checkout \
+          "https://x-access-token:${CORPUS_TOKEN}@github.com/${CORPUS_REPO}.git" "$dir"
+        mapfile -t specs < <(printf '%s\n' "$CORPUS_FILES" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep -v '^$' || true)
+        if [ "${#specs[@]}" -eq 0 ]; then
+          echo "::error::corpus-files names no pathspec"
+          exit 1
+        fi
+        git -C "$dir" sparse-checkout init --no-cone
+        git -C "$dir" sparse-checkout set -- "${specs[@]}"
+        git -C "$dir" checkout --quiet
+        git -C "$dir" remote set-url origin "https://github.com/${CORPUS_REPO}.git"
+
+    - name: Extract text
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get install -y --no-install-recommends poppler-utils >/dev/null
+        out="$RUNNER_TEMP/overlap-corpus"
+        mkdir -p "$out"
+        repo_dir="$RUNNER_TEMP/overlap-corpus-repo"
+        while IFS= read -r -d '' f; do
+          # Keep the directory in the name, so two books named alike do not overwrite each other.
+          rel="${f#"$repo_dir"/}"
+          name="${rel//\//__}"
+          case "$f" in
+            *.pdf) pdftotext "$f" "$out/${name%.pdf}.txt" 2>/dev/null || echo "::warning::could not extract $name" ;;
+            *.txt) cp "$f" "$out/$name" ;;
+          esac
+        done < <(find "$RUNNER_TEMP/overlap-corpus-repo" -path '*/.git' -prune -o -type f \( -name '*.pdf' -o -name '*.txt' \) -print0)
+        echo "extracted $(find "$out" -name '*.txt' -size +0 | wc -l) non-empty texts"
+
+    - name: Compare prose with the corpus
+      shell: bash
+      env:
+        BASE_REF: ${{ inputs.base-ref }}
+        PATHS: ${{ inputs.paths }}
+        PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        MIN_RUN: ${{ inputs.min-run }}
+        FAIL: ${{ inputs.fail }}
+      run: |
+        set -euo pipefail
+        args=(--corpus "$RUNNER_TEMP/overlap-corpus" --min-run "$MIN_RUN")
+        [ "$FAIL" = "true" ] && args+=(--fail)
+        # read -a splits on spaces without expanding globs against the working tree
+        read -r -a ignore_specs <<< "$PATHS_IGNORE"
+        read -r -a path_specs <<< "${PATHS:-*.md *.qmd}"
+        if [ -n "$BASE_REF" ]; then
+          args+=(--git-diff "$BASE_REF")
+          for spec in "${ignore_specs[@]}"; do args+=(--exclude "$spec"); done
+          files=()
+        else
+          mapfile -t files < <(git ls-files -- "${path_specs[@]}" "${ignore_specs[@]}")
+        fi
+        python3 "$GITHUB_ACTION_PATH/check_source_overlap.py" "${args[@]}" "${files[@]}"

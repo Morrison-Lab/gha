@@ -50,6 +50,7 @@ website:
           - reference/check-one-function-per-file.qmd
           - reference/check-phi.qmd
           - reference/check-secrets.qmd
+          - reference/check-source-overlap.qmd
           - reference/check-repo-hygiene.qmd
           - reference/check-quarto-website.qmd
           - reference/check-quarto-book.qmd
