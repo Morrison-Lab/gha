@@ -178,6 +178,15 @@ on:
         description: Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for.
         type: string
         default: 'chapters/*.docx'
+    secrets:
+      R_GITHUB_PAT:
+        description: >-
+          Token with read access to private GitHub packages that `r-packages`
+          or the caller's DESCRIPTION `Remotes:` name (the default
+          `github.token` sees only the caller repo). Used only by the R
+          dependency step. Not available to fork PRs; the step then falls back
+          to `github.token`.
+        required: false
     outputs:
       changed-chapters:
         description: JSON array of chapter ids that differ from the published render.
@@ -248,6 +257,7 @@ jobs:
           apt-packages: ${{ inputs.apt-packages }}
           use-renv: ${{ inputs.use-renv }}
           r-packages: ${{ inputs.r-packages }}
+          r-github-pat: ${{ secrets.R_GITHUB_PAT }}
           install-package: ${{ inputs.install-package }}
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}

@@ -46,6 +46,12 @@ turn it off for a pure-markdown site.
 | `docx-tracked-changes` | boolean | `false` | Generate Word DOCX documents with tracked changes against the published version on the deployed branch. |
 | `docx-tracked-changes-glob` | string | `'chapters/*.docx'` | Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for. |
 
+## Secrets
+
+| Secret | Required | Description |
+| --- | --- | --- |
+| `R_GITHUB_PAT` | no | Token with read access to private GitHub packages named in `r-packages` or `Remotes:`. Used only by the R dependency step; unset (and always on fork PRs) uses `github.token`. |
+
 ## Outputs
 
 Set only when `detect-changed-chapters`,

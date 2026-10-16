@@ -40,6 +40,7 @@ skip the deploy.
 | Secret             | Required | Description                                                                                    |
 | ------------------ | -------- | ---------------------------------------------------------------------------------------------- |
 | `SUBMODULES_TOKEN` | no       | Token with read access to private submodules (only needed when `checkout-submodules` is true). |
+| `R_GITHUB_PAT`     | no       | Token with read access to private GitHub packages named in `r-packages` or `Remotes:`. Used only by the R dependency step; unset uses `github.token`. |
 
 ## Permissions
 

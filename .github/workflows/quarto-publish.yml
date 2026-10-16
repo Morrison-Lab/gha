@@ -131,6 +131,13 @@ on:
       SUBMODULES_TOKEN:
         description: Token with read access to private submodules (only needed when checkout-submodules is true).
         required: false
+      R_GITHUB_PAT:
+        description: >-
+          Token with read access to private GitHub packages that `r-packages`
+          or the caller's DESCRIPTION `Remotes:` name (the default
+          `github.token` sees only the caller repo). Used only by the R
+          dependency step.
+        required: false
 
 jobs:
   # Render the site and stage it as an artifact. Held to contents:read so the
@@ -174,6 +181,7 @@ jobs:
           path: ${{ inputs.path }}
           setup-r: ${{ inputs.setup-r }}
           r-packages: ${{ inputs.r-packages }}
+          r-github-pat: ${{ secrets.R_GITHUB_PAT }}
           use-renv: ${{ inputs.use-renv }}
           install-package: ${{ inputs.install-package }}
           setup-chrome: ${{ inputs.setup-chrome }}

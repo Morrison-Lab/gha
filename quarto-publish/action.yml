@@ -24,6 +24,11 @@ inputs:
     default: |
       any::knitr
       any::rmarkdown
+  r-github-pat:
+    description: >-
+      Token for the R dependency step when `r-packages` names a private GitHub
+      package. Empty uses `github.token`.
+    default: ''
   use-renv:
     description: >-
       Restore R dependencies with renv instead of r-packages (requires setup-r).
@@ -151,7 +156,7 @@ runs:
       if: inputs.setup-r == 'true' && inputs.use-renv != 'true'
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
-        GITHUB_PAT: ${{ github.token }}
+        GITHUB_PAT: ${{ inputs.r-github-pat != '' && inputs.r-github-pat || github.token }}
       with:
         packages: ${{ inputs.r-packages }}
 
