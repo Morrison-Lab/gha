@@ -6,3 +6,6 @@
   workflow token cannot read it) failed the check with `Can't find GitHub
   repo` before any DOI was examined.
   It now installs `Depends`, `Imports` and `LinkingTo` only.
+  It also skips `setup-r-dependencies`' pandoc probe, which resolved the
+  caller's whole `DESCRIPTION` (including `Suggests` and `Remotes`) a second
+  time and failed in the same way.

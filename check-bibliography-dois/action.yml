@@ -33,6 +33,10 @@ runs:
         # their Remotes) made the check fail whenever a Suggests package lived
         # in a private repository the workflow token cannot read.
         dependencies: 'c("Depends", "Imports", "LinkingTo")'
+        # setup-r-dependencies otherwise resolves the caller's DESCRIPTION
+        # (Suggests included) once more to decide whether pandoc is needed.
+        # The check never renders anything, so skip that probe.
+        install-pandoc: 'false'
         packages: |
           any::bib2df
           any::httr
