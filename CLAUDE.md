@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `cleanup-pr-previews`, `student-qmd`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 
@@ -263,6 +263,32 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   (`::: {#def-...}`).
   Like `check-typed-output/`, it supports both whole-tree
   and diff-scoped modes, defaulting to whole-tree and warn-only (`fail: false`).
+  `check-literal-math-letters/` (Python, stdlib only, gha#1077 check 1) flags
+  a standalone Latin letter or a Greek letter in `.qmd`/`.md`/`.Rmd` math,
+  where a semantic macro from `Morrison-Lab/macros` belongs.
+  It takes `check-new-line-breaks`'s diff model rather than
+  `check-informal-definitions`'s default of a whole-tree scan:
+  only lines a PR adds are reported, an added line whose exact text was also
+  deleted in the diff counts as moved, and a missing or unresolvable `base-ref`
+  skips with a warning instead of widening to the whole tree, which would
+  reflag every letter the corpus already carries.
+  `whole-tree: true` asks for that scan on purpose, to measure a corpus.
+  It differs from `check-new-line-breaks` in two ways.
+  It is warn-only by default (`fail: false`), and it diffs the merge base
+  against the working tree in one `git diff`, so a staged edit is examined
+  without the three-way `NLB_SCOPE` machinery.
+  The whole file is parsed and only findings on added lines are kept, because
+  a display block opens on one line and its letters sit on a later one.
+  The skip rules are the check's whole judgment, so each has a guard:
+  code fences and spans, HTML comments, front matter, text-like command
+  arguments (`\text`, `\operatorname`, `\mathrm`; `\mathbb` too, since
+  `check-raw-math` covers it), `.notation` divs, and macro-definition spans.
+  The suggested macros (`\outvar`, `\predvar`, `\param`, ...) are a short table
+  verified against `Morrison-Lab/macros`' `macros.qmd` and
+  `interpretations.tsv`, and are worded conditionally ("if this is the outcome
+  variable"), since a letter alone does not say what it names.
+  Check 2 of the issue, macros defined outside the macros repository, is not
+  part of this capability.
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
   every known misspelling the corpus already carries, and unknown jargon
@@ -366,6 +392,7 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
   `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
   `check-informal-definitions/` bundles the composite action, parser script, and pytest suite for detecting informal technical definitions in Quarto prose;
+  `check-literal-math-letters/` bundles the composite action, stdlib-only parser script, and pytest suite for flagging literal Latin and Greek letters in math;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
   per assessment source and checks it against the source.
   The writer (`make_student_qmd.py`) and the checker
@@ -1764,6 +1791,43 @@ suite over Quarto div stack parsing, bold defining terms, `\eqdef` / `\triangleq
 operators outside def divs, display-math naming sentences, nested section heading
 scopes, inline code span exclusions, directive comments, and diff scoping.
 CI runs it in the `informal-definitions` job in `_selftest.yml`.
+
+`check-literal-math-letters/tests/test_check_literal_math_letters.py` is a
+pytest suite over the math tokenizer, the file parser and the diff scoping
+(throwaway git repos in `tmp_path`, nothing committed).
+CI runs it in the `literal-math-letters` job in `_selftest.yml`, followed by
+real `uses: ./check-literal-math-letters` calls: a call over the PR's own added
+lines, then, over a staged page with a literal letter, a warn-only call that
+must pass, a blocking call that must fail, a diff-scoped call against `HEAD`
+that must also fail (proving `base-ref` arrives), a call with no base that must
+skip (proving the skip is not a whole-tree fallback), and two that must pass,
+one per input a wiring typo would silently drop (`paths-ignore`, `globs`).
+The cases to keep if the suite is trimmed are the negative ones, each of which
+turns red under a named mutation: a letter in a code fence (and in a tilde
+fence, and in a longer fence holding a shorter one), in a code span, in
+`\text{}`, in a `.notation` div (including one nested inside, and one that ends
+before the next paragraph), in an HTML comment, in front matter, and in a
+macro definition all pass; `$5k-$10k` is currency, not math; a line that is
+only moved is not new; an unchanged line next to a changed one is not
+reported; and an empty or unresolvable `base-ref` skips.
+Eighteen mutations were confirmed to turn a named case red rather than assumed
+to, each applied to a copy of the package and confirmed to have changed it:
+code fences never opening, code spans left unmasked, text-like arguments not
+skipped, the `.notation` skip, HTML comment masking, front-matter skipping,
+macro-definition skipping, the `allow` and `ignore-file` directives, diff
+scoping (all findings kept), the moved-line exemption, an empty `base-ref`
+falling back to the whole tree, an unresolvable `base-ref` not skipping,
+hunk counts ignored (so an added line starting `++` plus a space reads as a file header),
+`fail` defaulting to true, `paths-ignore` ignored, a blank line leaving a
+display block open, and the currency lookahead on the closing dollar sign.
+Three survived the first draft of the suite, and each was a test aimed at the
+wrong line: the moved-line case moved a line that git diffed as a different
+change, the blank-line case used a prose line whose only single letter was the
+expected one, and the currency case had no letter inside the span the mutation
+would have wrongly opened.
+The defaults for `globs` and `fail` are declared in the script, `action.yml`
+and the reusable workflow, so a parametrized test reads all three and asserts
+they agree (the gha#303 precedent).
 
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and

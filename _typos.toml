@@ -5,3 +5,6 @@
 # "thm-" is the Quarto cross-reference prefix for a theorem, named in the
 # check-quarto-prose rule and docs. typos reads it as a misspelling of "them".
 thm = "thm"
+# "multline" is the amsmath display environment, listed by
+# check-literal-math-letters. typos reads it as a misspelling of "multiline".
+multline = "multline"

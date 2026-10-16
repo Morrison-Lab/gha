@@ -67,6 +67,7 @@ website:
           - reference/check-new-line-breaks.qmd
           - reference/check-typed-output.qmd
           - reference/check-informal-definitions.qmd
+          - reference/check-literal-math-letters.qmd
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd
           - reference/lint-changed-files.qmd

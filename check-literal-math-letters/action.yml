@@ -1,0 +1,64 @@
+name: Check literal letters in math
+description: >-
+  Diff-scoped check that flags literal Latin and Greek letters in math in
+  Markdown and Quarto files, where a semantic macro from Morrison-Lab/macros
+  belongs (`\outvar` for `y`, `\predvar` for `x`, `\param` for `\theta`).
+  Flags a standalone single Latin letter and any Greek command inside inline
+  and display math. Skips code fences, code spans, HTML comments, text-like
+  commands such as `\text{}` and `\operatorname{}`, and any `.notation` div.
+  Scoped to lines a diff adds (an added line whose exact text was also deleted
+  in the same diff counts as moved), so it never reflags a corpus's existing
+  letters. Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every literal letter the corpus already carries.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.md *.Rmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a literal letter is found (else non-blocking).
+      Defaults to 'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check literal letters in math
+      shell: bash
+      env:
+        LML_BASE_REF: ${{ inputs.base-ref }}
+        LML_WHOLE_TREE: ${{ inputs.whole-tree }}
+        LML_GLOBS: ${{ inputs.globs }}
+        LML_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        LML_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-literal-math-letters.py"
