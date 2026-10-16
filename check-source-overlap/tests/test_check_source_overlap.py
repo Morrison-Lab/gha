@@ -116,6 +116,20 @@ def main() -> int:
         doc.write_text(f"Fine. <!-- overlap-ok: x -->\n<!-- break\n\n-->\n{SOURCE.lower()}\n")
         assert run(root / "corpus", doc, "--fail").returncode == 1, "opt-out leaked across a comment"
 
+        # mixed or stray quote marks must not pair across prose and hide it
+        body = SOURCE.lower()
+        for text in (
+            f'He said “hello" and then {body} and later said “goodbye" to us.',
+            f'On a 15" screen, {body}, which is "ok" here.',
+            f'See [ref](https://example.com "eq. (1)") where {body}, called "ok" here.',
+        ):
+            doc.write_text(text + "\n")
+            assert run(root / "corpus", doc, "--fail").returncode == 1, f"quotes hid a copy: {text[:30]}"
+
+        # inline math wrapped across a line does not hide prose between two spans
+        doc.write_text(f"Take $a +\nb$ and {body} then $c +\nd$ here.\n")
+        assert run(root / "corpus", doc, "--fail").returncode == 1, "wrapped math hid a copy"
+
         # a missing file and a corpus with no text are refused, not read as a pass
         assert run(root / "corpus", root / "nope.qmd").returncode == 2, "missing file passed"
         assert run(root / "corpus", doc, "--exclude", "x").returncode == 2, "--exclude without --git-diff accepted"

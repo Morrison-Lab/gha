@@ -59,14 +59,14 @@ def strip_markup(text: str) -> str:
     text = re.sub(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1\s*$", " ", text, flags=re.S | re.M)
     text = re.sub(r"^\s*\|.*$", " ", text, flags=re.M)  # table rows
     text = re.sub(r"\$\$.*?\$\$", " ", text, flags=re.S)
-    text = re.sub(r"\$[^$\n]+\$", " ", text)
+    text = re.sub(r"\$(?=\S)[^$]+?(?<=\S)\$(?!\d)", " ", text)  # inline math, possibly wrapped
     text = re.sub(r"`[^`\n]*`", " ", text)
     text = re.sub(r"\{\{<.*?>\}\}", " ", text)
     text = re.sub(r"\[@[^\]]*\]", " ", text)
     text = re.sub(r"@[A-Za-z][\w:.-]*", " ", text)
-    text = re.sub(r"\]\([^)]*\)", "] ", text)
+    text = re.sub(r"\]\((?:[^()]|\([^)]*\))*\)", "] ", text)  # link target, one level of parentheses
     text = re.sub(r"https?://\S+", " ", text)
-    text = re.sub(r"\{[#.=][^}]*\}", " ", text)
+    text = re.sub(r"\{[#.=](?:[^{}]|\{[^}]*\})*\}", " ", text)  # attribute block, one level of braces
     text = re.sub(r"^:{3,}.*$", " ", text, flags=re.M)
     return text
 
@@ -106,8 +106,11 @@ def paragraphs(path: Path, only_lines: set[int] | None):
         if not text.strip():
             continue
         text = strip_markup(text)
-        text = re.sub(r"“([^”]*)”", unquote_long, text)  # curly-quoted
-        text = re.sub(r'"([^"]*)"', unquote_long, text)  # straight-quoted, possibly wrapped
+        # Quotes are removed only when the marks pair up cleanly; a stray mark would
+        # otherwise pair across prose and hide it, so such a paragraph is checked whole.
+        if text.count("“") == text.count("”") and text.count('"') % 2 == 0:
+            text = re.sub(r"“([^”]*)”", unquote_long, text)  # curly-quoted
+            text = re.sub(r'"([^"]*)"', unquote_long, text)  # straight-quoted, possibly wrapped
         yield start, text
 
 
