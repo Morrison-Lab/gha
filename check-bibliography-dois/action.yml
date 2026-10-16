@@ -28,6 +28,11 @@ runs:
         GITHUB_PAT: ${{ github.token }}
       with:
         install-quarto: ${{ inputs.install-quarto }}
+        # The check reads only the caller's .bib files, so it needs the caller
+        # package's hard dependencies at most. Installing its Suggests (and
+        # their Remotes) made the check fail whenever a Suggests package lived
+        # in a private repository the workflow token cannot read.
+        dependencies: 'c("Depends", "Imports", "LinkingTo")'
         packages: |
           any::bib2df
           any::httr
