@@ -147,7 +147,10 @@ UNICODE_GREEK = {
     "\u03c3": "sigma", "\u03c4": "tau", "\u03c5": "upsilon", "\u03c6": "phi", "\u03c7": "chi",
     "\u03c8": "psi", "\u03c9": "omega", "\u0393": "Gamma", "\u0394": "Delta", "\u0398": "Theta",
     "\u039b": "Lambda", "\u039e": "Xi", "\u03a0": "Pi", "\u03a3": "Sigma", "\u03a6": "Phi",
-    "\u03a8": "Psi", "\u03a9": "Omega",
+    "\u03a8": "Psi", "\u03a9": "Omega", "\u03a5": "Upsilon",
+    "\u03d5": "varphi", "\u03f5": "epsilon", "\u03d1": "vartheta",
+    "\u03c2": "varsigma", "\u03f0": "varkappa", "\u03f1": "varrho",
+    "\u03d6": "varpi",
 }
 
 GENERIC_ADVICE = (
@@ -158,14 +161,22 @@ GENERIC_ADVICE = (
 
 # -- Parsing -----------------------------------------------------------------
 
-FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+# A fence may sit in a blockquote or a list item, at any indent.
+FENCE_RE = re.compile(
+    r"^[ \t>]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(`{3,}|~{3,})(.*)$"
+)
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ENV_BEGIN_RE = re.compile(
     r"^\s*\\begin\{(" + "|".join(DISPLAY_ENVIRONMENTS) + r")\*?\}"
 )
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?![\s$])(.+?)(?<![\s\\$])\$(?!\d)")
 NOTATION_CLASS_RE = re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
-DIRECTIVE_RE = re.compile(r"<!--\s*check-literal-math-letters:\s*([a-z-]+)\s*-->")
+# Anchored to the whole line, so a directive quoted in prose or a code span
+# is not obeyed.
+DIRECTIVE_RE = re.compile(
+    r"^\s*<!--\s*check-literal-math-letters:\s*([a-z-]+)\s*-->\s*$"
+)
+QUOTED_RE = re.compile(r"\"[^\"]*\"|'[^']*'")
 
 
 class Finding(NamedTuple):
@@ -308,14 +319,38 @@ def _inline_spans(prose: str) -> List[str]:
     return [m.group(1) for m in INLINE_MATH_RE.finditer(prose)]
 
 
+def _has_ignore_file(lines: List[str]) -> bool:
+    """True if an `ignore-file` directive stands outside any code fence."""
+    fence: Optional[Tuple[str, int]] = None
+    for raw in lines:
+        m = FENCE_RE.match(raw)
+        if fence is not None:
+            if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+                    and not m.group(2).strip()):
+                fence = None
+            continue
+        if m:
+            fence = (m.group(1)[0], len(m.group(1)))
+            continue
+        d = DIRECTIVE_RE.match(raw)
+        if d and d.group(1) == "ignore-file":
+            return True
+    return False
+
+
+def _find_env_end(line: str, env: str) -> int:
+    """Index of the exact `\\end{env}` (or starred form), else -1."""
+    m = re.search(r"\\end\{" + re.escape(env) + r"\*?\}", line)
+    return m.start() if m else -1
+
+
 def _div_is_notation(attrs: str) -> bool:
-    return bool(NOTATION_CLASS_RE.search(attrs))
+    return bool(NOTATION_CLASS_RE.search(QUOTED_RE.sub("", attrs)))
 
 
 def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     """Findings (one per line) and the number of math spans scanned."""
-    if any(DIRECTIVE_RE.search(ln) and DIRECTIVE_RE.search(ln).group(1)
-           == "ignore-file" for ln in lines):
+    if _has_ignore_file(lines):
         return [], 0
 
     findings: List[Finding] = []
@@ -337,10 +372,6 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     for idx in range(start, len(lines)):
         lineno = idx + 1
         raw = lines[idx]
-        directive = DIRECTIVE_RE.search(raw)
-        if directive and directive.group(1) == "allow":
-            allow_through = lineno + 1
-
         if fence is not None:
             m = FENCE_RE.match(raw)
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
@@ -352,9 +383,14 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             fence = (m.group(1)[0], len(m.group(1)))
             continue
 
+        directive = None if in_comment else DIRECTIVE_RE.match(raw)
+        if directive and directive.group(1) == "allow":
+            allow_through = lineno + 1
+
         line, in_comment = _mask_html_comments(raw, in_comment)
         if not line.strip():
             in_display = False
+            env = None  # a blank line ends an unclosed environment, as for $$
             continue
 
         if not in_display and env is None:
@@ -371,7 +407,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
         math: List[str] = []
 
         if env is not None:
-            end = line.find("\\end{" + env)
+            end = _find_env_end(line, env)
             if end < 0:
                 math.append(line)
             else:
@@ -379,7 +415,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                 env = None
         elif not in_display and ENV_BEGIN_RE.match(line):
             name = ENV_BEGIN_RE.match(line).group(1)
-            end = line.find("\\end{" + name)
+            end = _find_env_end(line, name)
             if end < 0:
                 math.append(line)
                 env = name

@@ -415,3 +415,38 @@ def test_globs_default_agrees_with_the_script(path):
 @pytest.mark.parametrize("path", [_ACTION, _WORKFLOW])
 def test_fail_default_agrees_with_the_script(path):
     assert _yaml_default(path, "fail") == str(lml._DEFAULT_FAIL).lower()
+
+
+def test_quoted_ignore_file_directive_exempts_nothing():
+    doc = "Quote: `<!-- check-literal-math-letters: ignore-file -->`\n$y$\n"
+    assert flagged(doc) != {}
+
+
+def test_directive_inside_fence_is_not_obeyed():
+    doc = "```\n<!-- check-literal-math-letters: ignore-file -->\n```\n$y$\n"
+    assert flagged(doc) != {}
+
+
+def test_notation_word_in_quoted_attribute_is_not_a_notation_div():
+    doc = '::: {.remark title="the notation of regression"}\n$y$\n:::\n'
+    assert flagged(doc) != {}
+
+
+def test_fence_indented_in_list_and_blockquote_is_skipped():
+    assert flagged("- item\n\n    ```r\n    a$b + c$d\n    ```\n") == {}
+    assert flagged("> ```r\n> a$b + c$d\n> ```\n") == {}
+
+
+def test_blank_line_ends_unclosed_environment():
+    doc = "\\begin{align}\na\n\nProse with a b c.\n"
+    assert 4 not in flagged(doc)
+
+
+def test_environment_end_is_an_exact_match():
+    doc = "\\begin{align} \\begin{aligned} 1 \\end{aligned} b \\end{align}\n"
+    assert 1 in flagged(doc)
+
+
+def test_variant_greek_characters_are_flagged():
+    for ch in "\u03d5\u03f5\u03d1\u03c2":
+        assert flagged("$" + ch + "$\n") != {}
