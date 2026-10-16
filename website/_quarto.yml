@@ -68,6 +68,7 @@ website:
           - reference/check-typed-output.qmd
           - reference/check-informal-definitions.qmd
           - reference/check-literal-math-letters.qmd
+          - reference/check-local-macros.qmd
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd
           - reference/lint-changed-files.qmd

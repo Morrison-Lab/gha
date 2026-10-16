@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-local-macros`, `cleanup-pr-previews`, `student-qmd`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 
@@ -287,8 +287,21 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   verified against `Morrison-Lab/macros`' `macros.qmd` and
   `interpretations.tsv`, and are worded conditionally ("if this is the outcome
   variable"), since a letter alone does not say what it names.
-  Check 2 of the issue, macros defined outside the macros repository, is not
-  part of this capability.
+  Check 2 of the issue, macros defined outside the macros repository, is
+  `check-local-macros/`, described next.
+  `check-local-macros/` (Python, stdlib only, gha#1077 check 2) flags a macro
+  definition command (`\newcommand`, `\def`, `\DeclareMathOperator` and the
+  rest) on a line a PR adds, in `.qmd`/`.Rmd`/`.md`/`.tex`/`.sty`/`.cls`/`.html`,
+  because new macros belong in `Morrison-Lab/macros`.
+  It reuses `check-literal-math-letters`'s diff model (added lines only, moved
+  lines exempt, skip-not-fall-back, warn-only by default).
+  It differs in what it skips: a code fence is skipped unless its language is
+  `tex`, `latex` or a raw `{=tex}`/`{=latex}`/`{=html}` block, because that is
+  where a Quarto page keeps definitions.
+  An override file (`macros-override.*` by default) may redefine only a macro
+  the library defines; the library's names come from the files in `library`,
+  and with none given the override files are reported as unchecked rather than
+  treated as clean.
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
   every known misspelling the corpus already carries, and unknown jargon
@@ -393,6 +406,7 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
   `check-informal-definitions/` bundles the composite action, parser script, and pytest suite for detecting informal technical definitions in Quarto prose;
   `check-literal-math-letters/` bundles the composite action, stdlib-only parser script, and pytest suite for flagging literal Latin and Greek letters in math;
+  `check-local-macros/` bundles the same three pieces for flagging macros defined outside `Morrison-Lab/macros`;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
   per assessment source and checks it against the source.
   The writer (`make_student_qmd.py`) and the checker
@@ -1828,6 +1842,20 @@ would have wrongly opened.
 The defaults for `globs` and `fail` are declared in the script, `action.yml`
 and the reusable workflow, so a parametrized test reads all three and asserts
 they agree (the gha#303 precedent).
+
+`check-local-macros/tests/test_check_local_macros.py` is a pytest suite over
+what counts as a definition, what is skipped (code fences and spans, HTML
+comments, front matter, `%` comments, the `allow` comment), the override rule
+(a library macro is allowed, an unknown name is flagged, no library means
+unchecked) and the diff scoping (throwaway git repos in `tmp_path`).
+CI runs it in the `local-macros` job in `_selftest.yml`, followed by real
+`uses: ./check-local-macros` calls over a staged page that defines a macro:
+a warn-only call that must pass, a blocking call that must fail, a diff-scoped
+call against `HEAD` that must also fail (proving `base-ref` arrives), a call
+with no base that must skip, and two that must pass, one per input a wiring
+typo would silently drop (`paths-ignore`, `globs`).
+The defaults for `globs`, `override-files` and `fail` are declared in the
+script, `action.yml` and the reusable workflow, and a test asserts they agree.
 
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and

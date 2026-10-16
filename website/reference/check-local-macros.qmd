@@ -1,0 +1,124 @@
+---
+title: "check-local-macros.yml"
+---
+
+Diff-scoped, warn-only check that flags LaTeX macros defined outside
+[`Morrison-Lab/macros`](https://github.com/Morrison-Lab/macros).
+The lab's rule is that new macros go only in that repository,
+never in an applied repository,
+unless the repository explicitly overrides
+one specific macro the library already has.
+This is check 2 of
+[gha#1077](https://github.com/Morrison-Lab/gha/issues/1077);
+check 1 is [`check-literal-math-letters`](check-literal-math-letters.qmd).
+
+The check flags a definition command on a line a pull request adds:
+`\newcommand`, `\renewcommand`, `\providecommand`, `\DeclareMathOperator`,
+`\DeclarePairedDelimiter`, `\DeclareRobustCommand`,
+`\NewDocumentCommand` and its relatives, and the TeX primitives
+`\def`, `\gdef`, `\edef` and `\xdef`.
+It reads `.qmd`, `.Rmd`, `.md`, `.tex`, `.sty`, `.cls` and `.html` files,
+the last because a MathJax header file can define macros.
+Each finding names the macro being defined.
+
+The check does not flag:
+
+- a code fence or code span in a Markdown-family file,
+  except a fence whose language is `tex`, `latex`, or a raw
+  `{=tex}`, `{=latex}` or `{=html}` block,
+  which is where a Quarto page keeps definitions;
+- an HTML comment or YAML front matter;
+- a `%` comment in a `.tex`, `.sty` or `.cls` file;
+- a line carrying, or following, `<!-- check-local-macros: allow -->`.
+
+## Override files
+
+A file matching `override-files` (default `macros-override.*`)
+may redefine only a macro the library already defines.
+The library's names are read from the files in `library`,
+for example the `latex-macros` submodule's `macros.qmd`
+(set `submodules: true` so the reusable workflow checks it out).
+A definition in an override file is allowed
+when the library defines the same name,
+and flagged when it does not.
+With no `library`, the names cannot be checked,
+and the run warns how many override definitions it left unchecked
+instead of reporting them clean.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so a repository's existing local macros are not reflagged
+on every unrelated edit.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose,
+for example to list the local macros a repository still carries.
+
+Every run prints how many lines, files and definitions it examined.
+
+## Limitations
+
+- A definition split over several lines is found by its command,
+  so the name is read only when it follows the command on the same line.
+  A definition whose name is on the next line is reported without a name.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+- The check cannot tell a macro that duplicates a library macro from a new one
+  outside an override file; the rule is that all of them belong in the library.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.Rmd *.md *.tex *.sty *.cls *.html'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `override-files` | string  | `'**/macros-override.*,macros-override.*'` | Glob patterns naming override files. |
+| `library`        | string  | `''`    | Space-separated paths of library files whose definitions are the names an override may redefine. |
+| `submodules`     | string  | `'false'` | Passed to `actions/checkout`, so a library submodule is available. |
+| `fail`           | boolean | `false` | Fail the workflow when a macro defined outside the library is found. Warn-only by default. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-local-macros.yml in your repo.
+# Diff-scoped check: flags LaTeX macros defined on lines a PR adds
+# (`\newcommand`, `\def`, `\DeclareMathOperator`, ...), because new macros belong
+# in Morrison-Lab/macros. Warn-only by default. A `macros-override.*` file may
+# redefine only a macro the library already has; pass `library` to check that.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check macros defined outside the library
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-local-macros.yml@v3
+    # with:
+    #   globs: '*.qmd *.tex *.sty'             # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   submodules: true                       # check out the latex-macros submodule ...
+    #   library: 'latex-macros/macros.qmd'     # ... and check overrides against it
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-local-macros.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-local-macros.yml)
+for the full caller stub.

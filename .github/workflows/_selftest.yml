@@ -1519,6 +1519,153 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-literal-math || true
           rm -rf _ci-literal-math
+  # check-local-macros is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-local-macros@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the scanner, the override rule and both scopes; the composite
+  # calls below prove action.yml wires each input through to the script.
+  local-macros:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-local-macros unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-local-macros/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-local-macros
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # A clean tree has nothing to flag, so stage a page that defines a macro
+      # and assert that the blocking call really fails.
+      - name: Stage a page that defines a macro
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-local-macros
+          printf '%s\n' 'Use $\newcommand{\foo}{x}$ here.' > _ci-local-macros/page.qmd
+          git add -f _ci-local-macros/page.qmd
+      # Warn-only is the default: the same page must not fail the job.
+      - name: Check the staged page, warn-only by default
+        uses: ./check-local-macros
+        with:
+          whole-tree: 'true'
+      - name: Check the staged page, expecting a failure
+        id: local-macros-expected-failure
+        continue-on-error: true
+        uses: ./check-local-macros
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.local-macros-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-local-macros to fail on a staged page defining a macro, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-local-macros failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the working-tree-aware scope examines it and the call must fail. Were
+      # base-ref dropped, the call would skip and pass, so this failure proves
+      # base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: local-macros-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-local-macros
+        with:
+          fail: 'true'
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.local-macros-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (warning, exit 0). Were
+      # the skip a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-local-macros
+        with:
+          fail: 'true'
+          base-ref: ''
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-local-macros
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          paths-ignore: '_ci-local-macros'
+      - name: Check again with globs excluding the page
+        uses: ./check-local-macros
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      # The page is an override file naming a macro the library lacks: that is
+      # still a failure, which proves override-files and library arrive. Were
+      # either dropped, the page would be a plain local definition (also a
+      # failure) or unchecked (a pass), so this pair brackets both.
+      - name: Stage a library file and treat the page as an override
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' '\providecommand{\bar}{y}' > _ci-local-macros/library.tex
+          git add -f _ci-local-macros/library.tex
+      - name: Check the page as an override of an unknown macro, expecting a failure
+        id: local-macros-override-expected-failure
+        continue-on-error: true
+        uses: ./check-local-macros
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-local-macros/page.qmd'
+          override-files: '_ci-local-macros/page.qmd'
+          library: '_ci-local-macros/library.tex'
+      - name: Assert the override call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.local-macros-override-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected an override of a macro the library lacks to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check the page as an override with no library, expecting a pass
+        uses: ./check-local-macros
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-local-macros/page.qmd'
+          override-files: '_ci-local-macros/page.qmd'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-local-macros || true
+          rm -rf _ci-local-macros
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.
