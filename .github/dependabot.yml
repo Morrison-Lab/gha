@@ -26,6 +26,7 @@ updates:
       - "/check-extra"
       - "/check-formatting"
       - "/check-informal-definitions"
+      - "/check-literal-math-letters"
       - "/check-links"
       - "/check-math-definitions"
       - "/check-merge-drops"

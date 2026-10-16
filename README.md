@@ -72,6 +72,7 @@ not reference `@main` from consumers.
 | `check-typed-output.yml` | Flag typed ("faked") code output in `.qmd` files -- a `# ->` / `#>` / `# Output:` comment standing in for a printed value inside a code fence, or a hand-written output block right after one -- whole-tree or diff-scoped, warn-only by default | `python-version`, `patterns`, `globs`, `paths-ignore`, `fail`, `diff-scoped` |
 | `check-quarto-prose.yml` | Diff-scoped, blocking prose check over `.qmd` and `.md` files: a notes div that holds an example, remark or definition, and a phrase from a list of idioms, cliches and slang (bundled or your own); code, math, comments and most front matter are not scanned | `globs`, `paths-ignore`, `base-ref`, `idioms-file`, `allow-file`, `fail` |
 | `check-informal-definitions.yml` | Flag technical concepts defined in running prose rather than inside formal Quarto definition divs (`::: {#def-...}`) -- whole-tree or diff-scoped | `globs`, `paths-ignore`, `fail`, `diff-scoped`, `base-ref` |
+| `check-literal-math-letters.yml` | Diff-scoped, warn-only check that flags literal Latin and Greek letters in math (a bare `y`, `\theta`) where a semantic macro from Morrison-Lab/macros belongs | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-changed-files.yml` | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope` | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
@@ -127,7 +128,7 @@ that need to write must have the **caller** grant it on the calling job:
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-math-definitions`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
@@ -665,7 +666,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -813,7 +814,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,

@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-literal-math-letters.yml in your repo.
+# Diff-scoped check: flags literal Latin and Greek letters in math (a bare `y`,
+# `\theta`) on lines a PR adds, where a semantic macro from Morrison-Lab/macros
+# (`\outvar`, `\predvar`, `\param`) belongs. Warn-only by default; skips code,
+# comments, `\text{}`-like commands and any `::: {.notation}` div.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check literal letters in math
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-literal-math-letters.yml@v3
+    # with:
+    #   globs: '*.qmd *.md *.Rmd'              # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every line, not just a PR's additions

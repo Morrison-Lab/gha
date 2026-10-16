@@ -1,0 +1,156 @@
+---
+title: "check-literal-math-letters.yml"
+---
+
+Diff-scoped, warn-only check that flags literal Latin and Greek letters in math
+where a semantic macro from
+[`Morrison-Lab/macros`](https://github.com/Morrison-Lab/macros) belongs.
+The lab's rule is that every math symbol is a semantic macro
+(`\outvar`, `\predvar`, `\param`, ...),
+so no literal letter appears in math
+outside a passage about the notation itself,
+except a one-off with no semantic category.
+This is check 1 of
+[gha#1077](https://github.com/Morrison-Lab/gha/issues/1077).
+
+The check flags, inside inline (`$...$`) and display (`$$...$$`,
+`\begin{equation}`, `\begin{align}`, and the like) math:
+
+- **A standalone single Latin letter.**
+  A run of exactly one ASCII letter that is not part of a `\command` name,
+  such as the `y` in `$y_i$`.
+- **Any Greek command or character.**
+  `\alpha` through `\omega`, `\varepsilon`, `\varphi`, the capitals,
+  and a literal Greek character such as the Greek small theta.
+
+Each finding names the letters on the line.
+Where the macro library has a macro for the letter,
+the message suggests it:
+`y` for `\outvar`, `Y` for `\Outvar`, `x` for `\predvar`, `X` for `\Predvar`,
+`n` for `\nobs`, `L` for `\loss`,
+`\theta` for `\param`, `\beta` for `\regcoef`,
+`\varepsilon` for `\eps` and `\mu` for `\mean`.
+These suggestions are conditional ("if this is the outcome variable"),
+since a letter alone does not say what it names.
+
+The check does not flag:
+
+- the argument of a text-like command:
+  `\text{}`, `\textrm{}`, `\mathrm{}`, `\operatorname{}`, `\mbox{}`,
+  and reference-like commands such as `\label{}`, `\tag{}`, `\eqref{}`,
+  `\begin{}` and `\end{}`;
+- `\mathbb{...}`, whose letters name standard sets and operators
+  (`ai-config`'s `check-raw-math.py` covers those);
+- a run of two or more letters, such as `df`;
+- code fences, inline code spans, HTML comments and YAML front matter;
+- any `::: {.notation}` div (also written `::: notation`),
+  a passage that discusses the notation itself,
+  including a div nested inside it;
+- a math span that defines a macro
+  (`\newcommand`, `\renewcommand`, `\providecommand`, `\def`,
+  `\DeclareMathOperator`), which is check 2 of the issue;
+- a line carrying, or following, `<!-- check-literal-math-letters: allow -->`,
+  or a file carrying `<!-- check-literal-math-letters: ignore-file -->`.
+
+The check is strict:
+there is no allow-list for indices or dummy variables.
+The rule says to find the category first,
+so the check starts strict and the false-positive rate is measured
+(see below) before anyone decides to relax it.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so a corpus that already carries literal letters is not reflagged
+on every unrelated edit.
+The whole file is parsed, because a display block opens on one line
+and its letters sit on a later one,
+and only findings on added lines are kept.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan,
+which would reflag every existing letter.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+
+Every run prints how many lines, files and math spans it examined,
+so a run that examined nothing reads differently
+from one that examined everything and found nothing.
+
+## Limitations
+
+- Inline math that spans a line break is not recognized.
+  A `$...$` pair must open and close on one source line,
+  which semantic line breaks normally preserve.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+- A run of two or more letters (`xy`) is not a single letter and is not flagged.
+- A passage about the notation must be in a `.notation` div to be exempt.
+  A heading titled "Notation" is not enough.
+
+## False-positive rate
+
+Measured on 2026-10-16 in whole-tree mode over `chapters/*.qmd`:
+
+| Repository | Files | Math spans | Lines flagged |
+| ---------- | ----: | ---------: | ------------: |
+| `psw`      |    37 |        376 | 242 of 5,624 lines (4.3%) |
+| `lds`      | 1,658 |     15,856 | 7,312 of 78,669 lines (9.3%) |
+
+A random sample of 65 flagged lines across the two repositories
+held no hit outside math,
+so the parser's own error rate is low.
+Whether a literal index letter is a false positive
+is a policy question for the maintainers:
+lines whose only letters are the common index letters `i j k l m n t`
+are 5% of the `psw` hits and 11% of the `lds` hits,
+so an allow-list for indices would remove little of the volume.
+
+## Inputs
+
+| Input          | Type    | Default               | Description |
+| -------------- | ------- | --------------------- | ----------- |
+| `globs`        | string  | `'*.qmd *.md *.Rmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`                  | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`               | Fail the workflow when a literal letter is found. Warn-only by default. |
+| `whole-tree`   | boolean | `false`               | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`              | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-literal-math-letters.yml in your repo.
+# Diff-scoped check: flags literal Latin and Greek letters in math (a bare `y`,
+# `\theta`) on lines a PR adds, where a semantic macro from Morrison-Lab/macros
+# (`\outvar`, `\predvar`, `\param`) belongs. Warn-only by default; skips code,
+# comments, `\text{}`-like commands and any `::: {.notation}` div.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check literal letters in math
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-literal-math-letters.yml@v3
+    # with:
+    #   globs: '*.qmd *.md *.Rmd'              # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-literal-math-letters.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-literal-math-letters.yml)
+for the full caller stub.
