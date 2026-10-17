@@ -23,6 +23,9 @@ This check flags:
 5. A `::: {#def-...}` div that defines more than one term: more than one bold
    term in its own prose that is not introduced as an alias ("also called",
    "or", "known as"). One definition per div.
+6. A `::: {#def-...}` div with prose and no hyperlink or cross-reference
+   (`no-link-in-definition`): every technical term is linked on first use in
+   each div (ai-config#4600). Warn-only like the rest; `allow` opts out.
 
 Opt-out directives:
 - Line/block level: `<!-- check-informal-definitions: allow -->` or
