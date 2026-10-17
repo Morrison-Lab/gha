@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-local-macros`, `check-fform-paren`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `cleanup-pr-previews`, `student-qmd`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 
@@ -406,6 +406,12 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
   `check-informal-definitions/` bundles the composite action, parser script, and pytest suite for detecting informal technical definitions in Quarto prose;
   `check-literal-math-letters/` bundles the composite action, stdlib-only parser script, and pytest suite for flagging literal Latin and Greek letters in math;
+  `check-term-links/` (Python, stdlib only, gha#1078) bundles the composite action, script, and pytest suite
+  for flagging a defined term whose first use in a div, or in a paragraph outside a div, is not linked to its definition,
+  and a bold term no definition div covers.
+  It learns its terms from the scanned files (`#def-` div titles and bold terms, and the text of links to `#def-` anchors),
+  reports only added lines,
+  and skips when there is no base to diff against, like `check-literal-math-letters/`;
   `check-local-macros/` bundles the same three pieces for flagging macros defined outside `Morrison-Lab/macros`;
   `check-fform-paren/` (Python, stdlib only, gha#1082) flags `\name\paren{...}` (or `\sb{`, `\cb{`) on a line a PR adds when the macros file defines `\namef`,
   and suggests `\namef{...}`.

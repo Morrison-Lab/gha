@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-term-links.yml in your repo.
+# Diff-scoped check: flags the first use of a defined technical term that is not
+# linked to its definition, in each div and in each paragraph outside a div, on
+# lines a PR adds. Terms come from the repo's own `::: {#def-...}` divs and from
+# links to `#def-...` anchors (including on other sites). Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check term links at first use
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-term-links.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   terms-file: .github/terms.txt          # extra terms, one per line
+    #   allow-file: .github/terms-allow.txt    # ordinary-English terms to leave alone
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # report every finding, not just a PR's additions

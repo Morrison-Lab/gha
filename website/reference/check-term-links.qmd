@@ -1,0 +1,89 @@
+---
+title: "check-term-links.yml"
+---
+
+Diff-scoped, warn-only check that every technical term is linked to its
+definition the first time it appears in each div, or in each paragraph outside
+a div.
+This is the lab's linking rule
+([ai-config#4553](https://github.com/Morrison-Lab/ai-config/pull/4553),
+[psw#223](https://github.com/Morrison-Lab/psw/pull/223),
+[psw#227](https://github.com/Morrison-Lab/psw/pull/227));
+the check is
+[gha#1078](https://github.com/Morrison-Lab/gha/issues/1078).
+
+## Which words are terms
+
+The check learns them from the files it scans, so it needs no list:
+
+- **Definition divs.**
+  Each `::: {#def-...}` div contributes its title (any heading inside it)
+  and its bold terms.
+  A parenthetical gloss, and an alias after a comma, `or`, `also called`
+  or `known as`, is split into its own term.
+- **Links to definitions.**
+  Each link whose target ends in `#def-...` contributes its link text.
+  This is how a term defined on another site becomes known:
+  `[risk](https://example.com/ch.html#def-risk)` anywhere in the corpus makes
+  "risk" a term.
+- **A terms file.**
+  `terms-file` adds terms by hand, one per line.
+
+A term is one to five words of letters, at least three characters, and not
+a label such as "note" or "example".
+`allow-file` removes terms that are ordinary English in the corpus.
+
+## What it flags
+
+- **`unlinked-first-use`.**
+  The first occurrence of a known term in a passage is plain text.
+  A passage is one div (between its fences), or one paragraph outside divs.
+  An occurrence inside a link, or followed by `(@def-...)`, is linked.
+  A term's own definition div is skipped.
+  The plural of a term counts as the term, and the longest term wins, so
+  "test set" is not also a use of "set".
+- **`no-definition`.**
+  A bold term in a passage that is not a definition div, and that matches no
+  known term: it is introduced as technical and defined nowhere.
+  Give it a `#def-` div and link to it.
+  Bold function words ("not", "once") are ignored.
+
+It skips code fences and spans, math, HTML comments, YAML front matter,
+include shortcodes, headings, images, and the target of a link.
+`<!-- check-term-links: allow -->` exempts a line, and
+`<!-- check-term-links: ignore-file -->` a file.
+
+## Scope
+
+Terms are always learned from every tracked file the globs match.
+Findings are reported only on lines the pull request adds, so adopting the
+check does not reflag what the corpus already carries.
+With no `base-ref`, the check skips with a warning instead of widening to the
+whole tree; `whole-tree: true` asks for that scan on purpose, to measure a
+corpus.
+
+## Usage
+
+```yaml
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-term-links.yml@v3
+    # with:
+    #   terms-file: .github/terms.txt
+    #   allow-file: .github/terms-allow.txt
+    #   fail: true
+```
+
+## Inputs
+
+| Input | Default | Meaning |
+|---|---|---|
+| `globs` | `*.qmd` | Space-separated git pathspecs of files to learn from and check |
+| `paths-ignore` | `''` | Comma/newline-separated globs to skip (`*`, `?`, `**`) |
+| `terms-file` | `''` | File of extra terms, one per line |
+| `allow-file` | `''` | File of terms to leave alone, one per line |
+| `whole-tree` | `false` | Report every finding, not only those on added lines |
+| `fail` | `false` | Fail the job on a finding (else warning annotations) |
+| `python-version` | `3.x` | Python version to set up |
+
+The reusable workflow needs only `contents: read`.

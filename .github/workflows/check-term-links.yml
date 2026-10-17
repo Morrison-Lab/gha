@@ -1,0 +1,71 @@
+name: Check term links at first use (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      whole-tree:
+        description: >-
+          Report every finding in every tracked file the globs match, instead
+          of only those on lines a pull request adds. Use it to measure a corpus.
+        type: boolean
+        default: false
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to check (recursive
+          by default).
+        type: string
+        default: '*.qmd'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      terms-file:
+        description: >-
+          Path to a file of extra technical terms, one per line.
+        type: string
+        default: ''
+      allow-file:
+        description: >-
+          Path to a file of terms to leave alone, one per line.
+        type: string
+        default: ''
+      fail:
+        description: >-
+          Fail the workflow when a finding is reported (else non-blocking).
+          Defaults to false (warning annotations only).
+        type: boolean
+        default: false
+
+jobs:
+  check-term-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check term links at first use
+        uses: Morrison-Lab/gha/check-term-links@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          whole-tree: ${{ inputs.whole-tree }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          terms-file: ${{ inputs.terms-file }}
+          allow-file: ${{ inputs.allow-file }}
+          fail: ${{ inputs.fail }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on. The payload's pull_request.base.sha can lag that tip,
+          # counting the base's newer commits as added by the PR (gha#1007).
+          # On a push there is no base, so the check skips.
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

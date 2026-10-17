@@ -1519,6 +1519,118 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-literal-math || true
           rm -rf _ci-literal-math
+  # check-term-links is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-term-links@v3` does not resolve until the tag
+  # slides past the merge. Exercise the local composite directly. The unit
+  # tests cover term harvesting, first-use scoping and both scopes; the
+  # composite calls below prove action.yml wires each input through.
+  term-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-term-links unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-term-links/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-term-links
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Stage a definition and a page that uses its term unlinked.
+      - name: Stage a page with an unlinked first use
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-term-links
+          printf '%s\n' '::: {#def-zebra}' '' '#### Zebra' '' 'A **zebra** is striped.' '' ':::' > _ci-term-links/def.qmd
+          printf '%s\n' '::: {#exm-a}' '' 'The zebra ran.' '' ':::' > _ci-term-links/page.qmd
+          git add -f _ci-term-links
+      - name: Check the staged page, warn-only by default
+        uses: ./check-term-links
+        with:
+          whole-tree: 'true'
+          globs: '_ci-term-links/*.qmd'
+      - name: Check the staged page, expecting a failure
+        id: term-links-expected-failure
+        continue-on-error: true
+        uses: ./check-term-links
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-term-links/*.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.term-links-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-term-links to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the call must fail; were base-ref dropped it would skip and pass.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: term-links-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-term-links
+        with:
+          fail: 'true'
+          base-ref: HEAD
+          globs: '_ci-term-links/*.qmd'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.term-links-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-term-links
+        with:
+          fail: 'true'
+          base-ref: ''
+          globs: '_ci-term-links/*.qmd'
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-term-links
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-term-links/*.qmd'
+          paths-ignore: '_ci-term-links/page.qmd'
+      - name: Check again with the term allowed
+        shell: bash
+        run: printf '%s\n' 'zebra' > "$RUNNER_TEMP/allow.txt"
+      - name: Check again with allow-file naming the term
+        uses: ./check-term-links
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-term-links/*.qmd'
+          allow-file: ${{ runner.temp }}/allow.txt
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-term-links || true
+          rm -rf _ci-term-links
   # check-local-macros is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-local-macros@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit
