@@ -15,7 +15,11 @@ scan = check_defs.scan_def_div_terms
 
 
 def rules(lines, added=None):
-    return [f.rule for f in scan(Path("t.qmd"), lines, added)]
+    return [
+        f.rule
+        for f in scan(Path("t.qmd"), lines, added)
+        if f.rule != "no-link-in-definition"
+    ]
 
 
 def test_one_term_passes():
@@ -230,7 +234,11 @@ def test_quoted_alias_after_cue_is_not_a_second_term():
 
 
 def terms_of(lines):
-    return [f.term for f in scan(Path("t.qmd"), lines)]
+    return [
+        f.term
+        for f in scan(Path("t.qmd"), lines)
+        if f.rule != "no-link-in-definition"
+    ]
 
 
 def test_word_ending_in_or_is_not_an_alias_cue():

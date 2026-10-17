@@ -366,6 +366,10 @@ DEF_ID_RE = re.compile(r"#def-")
 TITLE_RE = re.compile(r"^#{1,6}\s+(?P<title>.+)$")
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?!\s|\$)[^$\n]*?(?<![\s\\])\$(?!\d)")
 ABBREV_TERM_RE = re.compile(r"^[A-Z][A-Z0-9]{0,5}s?$")
+# A hyperlink or a Quarto cross-reference (@def-x) in a def div.
+LINK_RE = re.compile(
+    r"\]\([^)\s]+\)|(?<![\w@])@(?:def|thm|lem|cor|prp|cnj|exm|rem|sec|eq)-[\w-]+"
+)
 DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>[^:\s].*)$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 
@@ -454,12 +458,31 @@ def scan_def_div_terms(
     in_comment = False
     in_yaml = False
     opted_out = False
+    has_link = False
+    has_prose = False
 
     def flush() -> None:
         touched = added_lines is None or any(
             open_line <= n <= end_line for n in added_lines
         )
-        if opted_out or not touched or len(terms) < 2:
+        if opted_out or not touched:
+            return
+        if has_prose and not has_link:
+            findings.append(
+                Finding(
+                    file=path,
+                    line=open_line,
+                    rule="no-link-in-definition",
+                    term="",
+                    message=(
+                        "Definition div links no other term: hyperlink each "
+                        "technical term on first use in the div, and give any "
+                        "term with no definition its own def div."
+                    ),
+                    snippet="",
+                )
+            )
+        if len(terms) < 2:
             return
         listed = ", ".join(terms)
         findings.append(
@@ -506,6 +529,7 @@ def scan_def_div_terms(
                 def_depth = len(stack)
                 open_line, end_line = idx, idx
                 terms, seen, prev_prose, opted_out = [], set(), "", False
+                has_link, has_prose = False, False
             continue
         if m_close and stack:
             if len(m_close.group("fence")) >= stack[-1]:
@@ -523,7 +547,11 @@ def scan_def_div_terms(
         if TITLE_RE.match(stripped) and not terms:
             continue
         prose = INLINE_CODE_SPAN_RE.sub(_blank, line)
+        if LINK_RE.search(prose):
+            has_link = True
         prose = INLINE_MATH_RE.sub(_blank, prose)
+        if prose.strip() and not TITLE_RE.match(stripped):
+            has_prose = True
         for m in BOLD_SPAN_RE.finditer(prose):
             term = m.group("term").strip()
             before = prose[: m.start()]
