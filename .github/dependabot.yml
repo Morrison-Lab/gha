@@ -24,6 +24,7 @@ updates:
       - "/check-code-similarity"
       - "/check-duplicate-roxygen"
       - "/check-extra"
+      - "/check-fform-paren"
       - "/check-formatting"
       - "/check-informal-definitions"
       - "/check-literal-math-letters"

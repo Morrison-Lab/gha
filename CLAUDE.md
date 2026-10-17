@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-local-macros`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-local-macros`, `check-fform-paren`, `cleanup-pr-previews`, `student-qmd`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 
@@ -407,6 +407,10 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   `check-informal-definitions/` bundles the composite action, parser script, and pytest suite for detecting informal technical definitions in Quarto prose;
   `check-literal-math-letters/` bundles the composite action, stdlib-only parser script, and pytest suite for flagging literal Latin and Greek letters in math;
   `check-local-macros/` bundles the same three pieces for flagging macros defined outside `Morrison-Lab/macros`;
+  `check-fform-paren/` (Python, stdlib only, gha#1082) flags `\name\paren{...}` (or `\sb{`, `\cb{`) on a line a PR adds when the macros file defines `\namef`,
+  and suggests `\namef{...}`.
+  It copies `check-local-macros`'s diff model and Markdown masking rather than importing them (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default).
+  The known f forms are read from `macros-file` (`latex-macros/macros.qmd` by default), and a missing file skips with a warning, because without it no f form is known;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
   per assessment source and checks it against the source.
   The writer (`make_student_qmd.py`) and the checker
@@ -1856,6 +1860,18 @@ with no base that must skip, and two that must pass, one per input a wiring
 typo would silently drop (`paths-ignore`, `globs`).
 The defaults for `globs`, `override-files` and `fail` are declared in the
 script, `action.yml` and the reusable workflow, and a test asserts they agree.
+
+`check-fform-paren/tests/test_check_fform_paren.py` is a pytest suite over
+the f-form reading, what is flagged and what is not (a bare `\paren{`, a macro
+with no f form, the f form itself), the skips (code fences and spans, HTML
+comments, front matter, the `allow` comment), the diff scoping (throwaway git
+repos in `tmp_path`), the missing-macros-file skip through `main()`, and the
+defaults the script, `action.yml` and the reusable workflow must agree on.
+CI runs it in the `fform-paren` job in `_selftest.yml`, followed by real
+`uses: ./check-fform-paren` calls over a staged macros file and page.
+Five mutations were confirmed to turn a named case red: matching nothing,
+dropping the f-form condition, dropping the moved-line exemption, never
+opening a code fence, and treating a missing macros file as readable.
 
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and

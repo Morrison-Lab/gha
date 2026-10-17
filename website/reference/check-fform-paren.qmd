@@ -1,0 +1,115 @@
+---
+title: "check-fform-paren.yml"
+---
+
+Diff-scoped, warn-only check that flags `\name\paren{...}`
+where an f form `\namef{...}` exists.
+When a macro has an f form that takes its argument in braces,
+write the f form rather than the macro followed by `\paren{`.
+This is the companion check to
+[ai-config#4597](https://github.com/Morrison-Lab/ai-config/issues/4597);
+it is [gha#1082](https://github.com/Morrison-Lab/gha/issues/1082).
+Its rule alone failed at composition time in
+[sds#261](https://github.com/Morrison-Lab/sds/pull/261),
+where `\fitproc\paren{...}` was typed by hand
+although `\fitprocf` existed.
+
+The check flags a macro name immediately followed by
+`\paren{`, `\sb{` or `\cb{`
+on a line a pull request adds,
+in `.qmd`, `.Rmd` and `.md` files,
+when `\namef` is defined.
+Each finding reports the file, the line,
+and the suggestion `\name\paren{...} -> \namef{...}`,
+with `\sb` or `\cb` in place of `\paren` as written.
+The delimiter macros are the `DELIMITERS` constant in the script.
+
+## Known f forms
+
+The f forms are read from a macros file (`macros-file`,
+default `latex-macros/macros.qmd`, the `latex-macros` submodule's file):
+every `\providecommand{\XXXf}` and `\newcommand{\XXXf}` defines one.
+When the file is missing, the check skips with a warning,
+because without it no f form is known.
+The reusable workflow checks out submodules by default
+so the file is there.
+
+The check does not flag:
+
+- `\paren{`, `\sb{` or `\cb{` with no macro directly before it;
+- a macro with no f form (`\foo\paren{x}` when `\foof` is not defined);
+- the f form itself (`\fitprocf{x}`);
+- a macro and the delimiter macro separated by a space;
+- a code fence or code span, an HTML comment, or YAML front matter;
+- a line carrying, or following, `<!-- check-fform-paren: allow -->`.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing uses are not reflagged on every unrelated edit.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose,
+for example to count the uses a repository still carries.
+
+Every run prints how many lines, files and f forms it examined.
+
+## Limitations
+
+- A use split across lines (the macro at the end of one line,
+  `\paren{` at the start of the next) is not found.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `macros-file`    | string  | `'latex-macros/macros.qmd'` | Path of the macros file whose `\providecommand{\XXXf}` and `\newcommand{\XXXf}` definitions name the known f forms. A missing file skips the check with a warning. |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `submodules`     | string  | `'true'` | Passed to `actions/checkout`, so the `latex-macros` submodule is available. |
+| `fail`           | boolean | `false` | Fail the workflow when a `\name\paren{...}` with an f form is found. Warn-only by default. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-fform-paren.yml in your repo.
+# Diff-scoped check: flags `\name\paren{...}` (or `\sb{`, `\cb{`) on lines a PR adds when a
+# `\namef{...}` macro exists in the latex-macros submodule's macros.qmd.
+# Warn-only by default. Skips with a warning when the macros file is missing.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check f forms written as name-paren
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-fform-paren.yml@v3
+    # with:
+    #   macros-file: 'latex-macros/macros.qmd'  # where the f forms are defined
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # block instead of warn (defaults to false)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-fform-paren.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-fform-paren.yml)
+for the full caller stub.
