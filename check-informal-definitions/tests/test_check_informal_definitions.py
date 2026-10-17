@@ -229,7 +229,7 @@ def test_diff_scoping_selects_only_added_lines():
 def test_cli_clean_file_exits_zero(tmp_path, monkeypatch):
     clean_file = tmp_path / "clean.qmd"
     clean_file.write_text(
-        "::: {#def-variance}\nThe **variance** is a measure of dispersion.\n:::\n",
+        "::: {#def-variance}\nThe **variance** is a [measure](m.qmd#def-measure) of dispersion.\n:::\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(
@@ -273,7 +273,7 @@ def test_cli_failing_file_exits_one_and_writes_reports(tmp_path, monkeypatch):
 def test_cli_clean_file_writes_reports(tmp_path, monkeypatch):
     clean_file = tmp_path / "clean.qmd"
     clean_file.write_text(
-        "::: {#def-random}\n## Random\nDefinition content\n:::\n",
+        "::: {#def-random}\n## Random\nDefinition [content](c.qmd#def-content)\n:::\n",
         encoding="utf-8",
     )
     md_out = tmp_path / "report.md"
