@@ -24,7 +24,7 @@ The check learns them from the files it scans, so it needs no list:
 - **Links to definitions.**
   Each link whose target ends in `#def-...` contributes its link text.
   This is how a term defined on another site becomes known:
-  `[risk](https://site/ch.html#def-risk)` anywhere in the corpus makes
+  `[risk](https://example.com/ch.html#def-risk)` anywhere in the corpus makes
   "risk" a term.
 - **A terms file.**
   `terms-file` adds terms by hand, one per line.

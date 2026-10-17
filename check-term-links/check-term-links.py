@@ -11,7 +11,7 @@ Which words are terms: the check learns them from the corpus itself.
 1. Each `::: {#def-...}` div contributes its title (any heading inside it) and its
    bold terms, with parenthetical aliases ("also called" glosses) split out.
 2. Each link whose target ends in `#def-...` contributes its link text, so a term
-   defined on another site (`[risk](https://site/ch.html#def-risk)`) is known once
+   defined on another site (`[risk](https://example.com/ch.html#def-risk)`) is known once
    anyone links it.
 3. `--terms-file` adds terms by hand, one per line.
 
