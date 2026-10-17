@@ -106,7 +106,8 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-quarto-manuscript.yml`, `check-quarto-prose.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`,
+`check-local-macros.yml`, `check-fform-paren.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
 `student-qmd.yml`, `update-quarto-extensions.yml`, and
