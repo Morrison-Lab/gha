@@ -28,6 +28,7 @@ updates:
       - "/check-formatting"
       - "/check-informal-definitions"
       - "/check-literal-math-letters"
+      - "/check-term-links"
       - "/check-local-macros"
       - "/check-links"
       - "/check-math-definitions"
