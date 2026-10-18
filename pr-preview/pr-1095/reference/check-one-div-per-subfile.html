@@ -900,8 +900,8 @@ cookieconsent.run({
 <li>a top-level div whose id starts with <code>rem-source-</code>, a source remark that belongs right after the item it credits;</li>
 <li>anything inside a code fence (a backtick opener whose info string holds a backtick is not a fence; any indentation is accepted, for fences inside list items);</li>
 <li>anything inside an HTML comment;</li>
-<li>a div inside a blockquote, since every line starting with <code>&gt;</code> is ignored;</li>
-<li>an <code>include</code> shortcode, which may pull in more divs at render time.</li>
+<li>a div inside a blockquote, since a line starting with <code>&gt;</code> neither opens a fence nor a div;</li>
+<li>the divs an <code>include</code> shortcode may pull in at render time, since the shortcode is not expanded.</li>
 </ul>
 <p>It accepts any <code>_*.qmd</code> file under a <code>_subfiles</code> directory and does not check the name form (the older <code>_def-name.qmd</code> or the newer <code>_name_def.qmd</code>).</p>
 <p>A touched subfile with a div, code fence or HTML comment that is never closed is reported too, as an error when <code>fail</code> is true, because the divs after it would go uncounted without notice. A stray closing <code>:::</code> hides nothing and is ignored. A file that matches <code>globs</code> but is not a subfile is not examined. The run prints a notice with how many such files it skipped, which includes any non-underscore <code>.qmd</code> file under <code>_subfiles</code> because the default glob matches those.</p>
