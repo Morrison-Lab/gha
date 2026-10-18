@@ -20,17 +20,30 @@ The check does not count:
 - a div nested inside another div;
 - a top-level div whose id starts with `rem-source-`,
   a source remark that belongs right after the item it credits;
-- anything inside a code fence.
+- anything inside a code fence
+  (an opener indented four or more spaces, or a backtick opener
+  whose info string holds a backtick, is not a fence);
+- a div inside a blockquote, since every line starting with `>` is ignored;
+- an `include` shortcode, which may pull in more divs at render time.
 
-It accepts both subfile name forms,
-the older `_def-name.qmd` and the newer `_name_def.qmd`.
+It accepts any `_*.qmd` file under a `_subfiles` directory
+and does not check the name form
+(the older `_def-name.qmd` or the newer `_name_def.qmd`).
+
+A subfile whose divs do not balance
+(an opening `:::` never closed, or a closing `:::` with no opener)
+gets a warning,
+because the divs after the imbalance would go uncounted without notice.
+A file that matches `globs` but is not a subfile is not examined,
+and the run reports how many such files it skipped.
 
 ## Scope
 
 Only a subfile with a line a pull request adds is reported.
 A touched subfile counts as revised,
 so the whole file is parsed (a div opens far above the changed line)
-and a one-line fix to a file that still holds an exercise and its solution is reported.
+and a one-line fix to a file that still holds an exercise and its solution
+is reported.
 An untouched subfile keeps its layout.
 An added line whose exact text was also deleted in the same diff
 counts as moved rather than new, and a blank added line is not content.

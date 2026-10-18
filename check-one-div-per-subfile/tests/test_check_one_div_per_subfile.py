@@ -232,3 +232,98 @@ def test_main_exit_codes(repo, monkeypatch):
     assert ods.main() == 0
     monkeypatch.setenv("ODS_FAIL", "true")
     assert ods.main() == 1
+
+
+# -- adversarial inputs ------------------------------------------------------
+
+def test_crlf_line_endings_count_the_same():
+    doc = "::: {#exr-a}\r\nAsk.\r\n:::\r\n\r\n::: {#sol-a}\r\nAns.\r\n:::\r\n"
+    assert extra_lines(doc) == [5]
+
+
+def test_tilde_fence_hides_divs():
+    assert extra_lines("~~~\n::: {#a}\n:::\n::: {#b}\n:::\n~~~\n") == []
+
+
+def test_tilde_fence_does_not_close_backtick_fence():
+    doc = "```\n~~~\n::: {#a}\n```\n::: {#b}\nx\n:::\n"
+    assert extra_lines(doc) == []
+    assert ods.top_level_divs(doc.split("\n"))[0].line == 5
+
+
+def test_indented_four_spaces_is_not_a_fence():
+    doc = "    ```\n::: {#a}\nx\n:::\n::: {#b}\ny\n:::\n"
+    assert extra_lines(doc) == [5]
+
+
+def test_backtick_opener_with_backtick_info_string_is_not_a_fence():
+    doc = "```r``` text\n::: {#a}\nx\n:::\n::: {#b}\ny\n:::\n"
+    assert extra_lines(doc) == [5]
+
+
+def test_tilde_opener_may_hold_backticks_in_info_string():
+    doc = "~~~ a`b\n::: {#a}\n:::\n::: {#b}\n:::\n~~~\n"
+    assert extra_lines(doc) == []
+
+
+def test_blockquoted_divs_and_fences_are_ignored():
+    doc = "> ::: {#a}\n> x\n> :::\n> ::: {#b}\n> y\n> :::\n"
+    assert extra_lines(doc) == []
+    doc = "> ```\n::: {#a}\nx\n:::\n::: {#b}\ny\n:::\n"
+    assert extra_lines(doc) == [5]
+
+
+def test_include_shortcode_is_not_a_div():
+    doc = "{{< include _x_sol.qmd >}}\n::: {#a}\nx\n:::\n"
+    assert ods.top_level_divs(doc.split("\n"))[0].line == 2
+    assert extra_lines(doc) == []
+
+
+def test_unclosed_div_is_unbalanced_and_swallows_later_divs():
+    lines = "::: {#a}\nx\n\n::: {#b}\ny\n:::\n".split("\n")
+    assert not ods.is_balanced(lines)
+    assert ods.is_balanced("::: {#a}\nx\n:::\n".split("\n"))
+
+
+def test_stray_closer_is_unbalanced():
+    assert not ods.is_balanced(":::\n::: {#a}\nx\n:::\n".split("\n"))
+
+
+def test_fenced_divs_do_not_unbalance():
+    assert ods.is_balanced("```\n::: {#a}\n```\n".split("\n"))
+
+
+def test_unbalanced_subfile_is_reported_by_the_run(repo, capsys, monkeypatch):
+    _commit(repo, "README.md", "base\n")
+    _write(repo, "_subfiles/_bad_exr.qmd", "::: {#exr-a}\nAsk.\n")
+    report = _run("HEAD")
+    assert report.unbalanced == ("_subfiles/_bad_exr.qmd",)
+    monkeypatch.setenv("ODS_BASE_REF", "HEAD")
+    assert ods.main() == 0
+    assert "do not balance" in capsys.readouterr().out
+
+
+def test_balanced_subfile_is_not_reported_unbalanced(repo):
+    _commit(repo, "README.md", "base\n")
+    _write(repo, "_subfiles/_ok_exr.qmd", "::: {#exr-a}\nAsk.\n:::\n")
+    assert _run("HEAD").unbalanced == ()
+
+
+def test_glob_matches_that_are_not_subfiles_are_counted(repo, capsys,
+                                                         monkeypatch):
+    _commit(repo, "README.md", "base\n")
+    _write(repo, "_subfiles/_ok_exr.qmd", "::: {#exr-a}\nAsk.\n:::\n")
+    _write(repo, "_subfiles/plain.qmd", TWO)
+    report = ods.run_check("HEAD", ["_subfiles/*.qmd"], [], False)
+    assert (report.files, report.dropped) == (1, 1)
+    assert report.findings == []
+    monkeypatch.setenv("ODS_BASE_REF", "HEAD")
+    monkeypatch.setenv("ODS_GLOBS", "_subfiles/*.qmd")
+    ods.main()
+    assert "not subfiles" in capsys.readouterr().out
+
+
+def test_default_glob_drops_nothing(repo):
+    _commit(repo, "README.md", "base\n")
+    _write(repo, "_subfiles/_ok_exr.qmd", "::: {#exr-a}\nAsk.\n:::\n")
+    assert _run("HEAD").dropped == 0

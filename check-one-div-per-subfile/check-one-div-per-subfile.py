@@ -19,8 +19,16 @@ What is not counted:
 - a div nested inside another div (only top-level divs count);
 - a top-level div whose id starts with ``rem-source-`` (a source remark that
   belongs right after the item it credits);
-- fences inside code blocks;
+- fences inside code blocks (an opener indented four or more spaces, or a
+  backtick opener whose info string holds a backtick, is not a fence);
+- a div inside a blockquote (every line starting with ``>`` is ignored, fence
+  or div alike);
+- an ``{{< include >}}`` shortcode, which may pull in more divs at render time;
 - a subfile with one div, or none (a figure chunk, a paragraph).
+
+A subfile whose divs do not balance (an opener never closed, or a closer with
+no opener) gets a warning, because every div after the imbalance would
+otherwise go uncounted without notice.
 
 Design notes, in the model of ``check-wikipedia-further-reading``:
 
@@ -73,7 +81,7 @@ ADVICE = (
 
 # -- Parsing -----------------------------------------------------------------
 
-FENCE_RE = re.compile(r"^[ \t>]*(`{3,}|~{3,})(.*)$")
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 SOURCE_ID_RE = re.compile(r"#rem-source-")
 
@@ -89,10 +97,12 @@ def is_subfile(path: str) -> bool:
             and "_subfiles" in parts[:-1])
 
 
-def top_level_divs(lines: List[str]) -> List[Div]:
-    """Top-level fenced divs outside code fences, minus source remarks."""
+def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
+    """Top-level divs outside code fences, minus source remarks, and whether
+    the divs balance (no opener left open, no closer without an opener)."""
     fence: Optional[Tuple[str, int]] = None
     depth = 0
+    stray = False
     found: List[Div] = []
     for idx, raw in enumerate(lines):
         m = FENCE_RE.match(raw)
@@ -101,7 +111,7 @@ def top_level_divs(lines: List[str]) -> List[Div]:
                     and not m.group(2).strip()):
                 fence = None
             continue
-        if m:
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = (m.group(1)[0], len(m.group(1)))
             continue
         dm = DIV_RE.match(raw)
@@ -114,7 +124,14 @@ def top_level_divs(lines: List[str]) -> List[Div]:
             depth += 1
         elif depth > 0:
             depth -= 1
-    return found
+        else:
+            stray = True
+    return found, depth == 0 and not stray
+
+
+def top_level_divs(lines: List[str]) -> List[Div]:
+    """Top-level fenced divs outside code fences, minus source remarks."""
+    return scan_divs(lines)[0]
 
 
 def scan_file(lines: List[str], path: str = "") -> Tuple[List[Div], int]:
@@ -123,6 +140,10 @@ def scan_file(lines: List[str], path: str = "") -> Tuple[List[Div], int]:
         return [], 0
     divs = top_level_divs(lines)
     return divs[1:], len(divs)
+
+
+def is_balanced(lines: List[str]) -> bool:
+    return scan_divs(lines)[1]
 
 
 # -- Messages ----------------------------------------------------------------
@@ -236,6 +257,8 @@ class Report(NamedTuple):
     lines: int
     divs: int
     skipped: bool
+    dropped: int = 0  # glob matches that are not subfiles, so not examined
+    unbalanced: Tuple[str, ...] = ()  # subfiles whose divs do not balance
 
 
 def _read_lines(path: str) -> Optional[List[str]]:
@@ -278,9 +301,11 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
                            if text.strip() and text not in deleted}
 
     findings: List[Tuple[str, int, int]] = []
-    files = lines = divs = 0
+    unbalanced: List[str] = []
+    files = lines = divs = dropped = 0
     for rel in sorted(wanted):
         if not is_subfile(rel):
+            dropped += 1
             continue
         content = _read_lines(rel)
         if content is None:
@@ -290,9 +315,12 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         lines += len(content) if keep is None else len(keep)
         extra, seen = scan_file(content, rel)
         divs += seen
+        if not is_balanced(content):
+            unbalanced.append(rel)
         if extra and (keep is None or keep):
             findings.append((rel, extra[0].line, seen))
-    return Report(findings, files, lines, divs, False)
+    return Report(findings, files, lines, divs, False, dropped,
+                  tuple(unbalanced))
 
 
 def main() -> int:
@@ -318,6 +346,18 @@ def main() -> int:
         f"Examined {report.lines} line(s) across {report.files} subfile(s), "
         f"{report.divs} top-level div(s) (scope: {scope})."
     )
+    if report.dropped:
+        print(
+            f"::warning::{report.dropped} file(s) matched 'globs' but are not "
+            f"subfiles (a '_*.qmd' file under a '_subfiles' directory), so "
+            f"they were not examined."
+        )
+    for rel in report.unbalanced:
+        print(
+            f"::warning file={rel}::Divs in this subfile do not balance (an "
+            f"opening ':::' is never closed, or a closing ':::' has no "
+            f"opener), so divs after the imbalance may not be counted."
+        )
     if not report.findings:
         print("No subfile holds more than one top-level div.")
         return 0

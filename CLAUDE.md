@@ -412,7 +412,9 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   for flagging a `_subfiles/_*.qmd` file that holds more than one top-level fenced div when a PR adds a line to it.
   It takes the same diff model, but a touched file is judged whole, because a div opens far above the line that changed,
   and it is warn-only by default (`fail: false`), since the layout predates the rule and the rename sweep is separate work.
-  Nested divs and `rem-source-` remarks do not count, and both subfile name forms (`_def-x.qmd`, `_x_def.qmd`) are accepted;
+  Nested divs, `rem-source-` remarks, blockquoted divs and `include` shortcodes do not count,
+  any `_*.qmd` under a `_subfiles` directory is a subfile (the name form is not checked),
+  and a subfile whose divs do not balance gets its own warning;
   `check-term-links/` (Python, stdlib only, gha#1078) bundles the composite action, script, and pytest suite
   for flagging a defined term whose first use in a div, or in a paragraph outside a div, is not linked to its definition,
   and a bold term no definition div covers.
