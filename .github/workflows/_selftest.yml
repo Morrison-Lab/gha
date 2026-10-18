@@ -1557,9 +1557,10 @@ jobs:
           printf '%s\n' '::: {#def-zebra}' '' '#### Zebra' '' 'A **zebra** is striped.' '' ':::' > _ci-term-links/def.qmd
           printf '%s\n' '::: {#exm-a}' '' 'The zebra ran.' '' ':::' > _ci-term-links/page.qmd
           git add -f _ci-term-links
-      - name: Check the staged page, warn-only by default
+      - name: Check the staged page, warn-only with fail false
         uses: ./check-term-links
         with:
+          fail: 'false'
           whole-tree: 'true'
           globs: '_ci-term-links/*.qmd'
       - name: Check the staged page, expecting a failure

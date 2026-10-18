@@ -2,7 +2,7 @@
 title: "check-term-links.yml"
 ---
 
-Diff-scoped, warn-only check that every technical term is linked to its
+Diff-scoped, blocking check that every technical term is linked to its
 definition the first time it appears in each div, or in each paragraph outside
 a div.
 This is the lab's linking rule
@@ -86,7 +86,7 @@ jobs:
 | `terms-file` | `''` | File of extra terms, one per line |
 | `allow-file` | `''` | File of terms to leave alone, one per line |
 | `whole-tree` | `false` | Report every finding, not only those on added lines |
-| `fail` | `false` | Fail the job on a finding (else warning annotations) |
+| `fail` | `true` | Fail the job on a finding (`false`: warning annotations only) |
 | `python-version` | `3.x` | Python version to set up |
 
 The reusable workflow needs only `contents: read`.

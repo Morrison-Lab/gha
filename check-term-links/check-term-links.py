@@ -501,7 +501,7 @@ def main() -> int:
     ap.add_argument("--base-ref", default=env("TERM_LINKS_BASE_REF", ""))
     ap.add_argument("--diff", default=env("TERM_LINKS_DIFF_FILE", ""))
     ap.add_argument("--whole-tree", default=env("TERM_LINKS_WHOLE_TREE", "false"))
-    ap.add_argument("--fail", default=env("TERM_LINKS_FAIL", "false"))
+    ap.add_argument("--fail", default=env("TERM_LINKS_FAIL", "true"))
     args = ap.parse_args()
 
     root = Path.cwd()

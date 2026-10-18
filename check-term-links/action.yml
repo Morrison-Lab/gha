@@ -5,7 +5,7 @@ description: >-
   definition, and a bold term that no definition div covers. Learns the terms
   from the corpus itself: the titles and bold terms of `::: {#def-...}` divs,
   and the text of any link whose target ends in `#def-...`. Skips code, math,
-  comments, front matter, images and headings. Warn-only by default.
+  comments, front matter, images and headings. Blocking by default (`fail: false` makes it warn-only).
 inputs:
   python-version:
     description: Python version to set up.
@@ -49,8 +49,8 @@ inputs:
   fail:
     description: >-
       Fail the action when a finding is reported (else non-blocking).
-      Defaults to 'false' (warning annotations only).
-    default: 'false'
+      Defaults to 'true'; 'false' reports warning annotations only.
+    default: 'true'
 runs:
   using: composite
   steps:
