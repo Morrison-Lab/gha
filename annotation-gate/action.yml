@@ -28,8 +28,21 @@ inputs:
       Optional extra name prefix of a job to skip. The gate's own job is always
       skipped.
     default: ''
+  run-id:
+    description: >-
+      Gate this run instead of the current one, as the `workflow_run` mode does
+      with `github.event.workflow_run.id`. No job is skipped as the gate's own.
+    default: ''
+  run-attempt:
+    description: Attempt of `run-id`, default the latest the API reports for it.
+    default: ''
+  head-sha:
+    description: >-
+      With `run-id`, also post the result as a check run named `annotation-gate`
+      on this commit, so it shows on the pull request. Needs `checks: write`.
+    default: ''
   token:
-    description: Token granted actions read and checks read.
+    description: Token granted actions read and checks read, plus checks write with `head-sha`.
     default: ${{ github.token }}
 runs:
   using: composite
@@ -42,4 +55,7 @@ runs:
         GATE_ALLOW: ${{ inputs.allow-patterns }}
         GATE_DEFAULT_ALLOW: ${{ inputs.default-allow }}
         GATE_JOB_NAME: ${{ inputs.job-name }}
+        GATE_RUN_ID: ${{ inputs.run-id }}
+        GATE_RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        GATE_HEAD_SHA: ${{ inputs.head-sha }}
       run: python3 "$GITHUB_ACTION_PATH/annotation_gate.py"

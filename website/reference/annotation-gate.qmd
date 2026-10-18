@@ -45,3 +45,35 @@ Annotations from the gate's own job, and from a job that has not finished,
 are not seen.
 A reusable-workflow job is covered, because the jobs endpoint lists each by
 its full name.
+
+## One gate for a repository with many workflow files
+
+The job above sees only the jobs of its own run.
+A repository whose checks live in separate workflow files calls
+`annotation-gate-run.yml` from one `workflow_run` workflow instead.
+It gates each run that finishes and posts the result as a check run named
+`annotation-gate` on that run's commit, so it shows on the pull request.
+
+```yaml
+name: Annotation gate
+on:
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+jobs:
+  gate:
+    # The gate's own run must not trigger another gate.
+    if: ${{ github.event.workflow_run.name != 'Annotation gate' }}
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/annotation-gate-run.yml@v3
+    with:
+      run-id: ${{ github.event.workflow_run.id }}
+      run-attempt: ${{ github.event.workflow_run.run_attempt }}
+      head-sha: ${{ github.event.workflow_run.head_sha }}
+```
+
+It takes the same `levels` and `allow-patterns` inputs.
+Grant `checks: write`; the job posts one check run per gated run.

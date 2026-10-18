@@ -9,6 +9,11 @@ message matches an allow pattern. Environment:
   GITHUB_TOKEN        token with `actions: read` and `checks: read`
   GITHUB_REPOSITORY   owner/repo
   GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT
+  GATE_RUN_ID, GATE_RUN_ATTEMPT
+                      gate another run (the `workflow_run` mode); then no job is
+                      skipped as the gate's own, and the result is also posted
+                      as a check run named `annotation-gate` on GATE_HEAD_SHA
+                      (needs `checks: write`)
   GITHUB_API_URL      defaults to https://api.github.com
   GITHUB_JOB          the gate's own job id; it and `<caller> / <id>` are skipped
   GATE_JOB_NAME       optional extra name prefix to skip
@@ -73,6 +78,23 @@ def api(url, token):
         return json.load(resp)
 
 
+def post_check_run(base, repo, token, sha, ok, summary):
+    body = json.dumps({
+        "name": "annotation-gate",
+        "head_sha": sha,
+        "status": "completed",
+        "conclusion": "success" if ok else "failure",
+        "output": {"title": "Annotation gate", "summary": summary[:60000]},
+    }).encode()
+    req = urllib.request.Request(f"{base}/repos/{repo}/check-runs", data=body, method="POST", headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    })
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        resp.read()
+
+
 def paged(url, token, key=None):
     page = 1
     while True:
@@ -88,11 +110,13 @@ def paged(url, token, key=None):
 def main():
     token = os.environ["GITHUB_TOKEN"]
     repo = os.environ["GITHUB_REPOSITORY"]
-    run_id = os.environ["GITHUB_RUN_ID"]
-    attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+    target_run = os.environ.get("GATE_RUN_ID", "")
+    run_id = target_run or os.environ["GITHUB_RUN_ID"]
+    attempt = os.environ.get("GATE_RUN_ATTEMPT") or os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+    head_sha = os.environ.get("GATE_HEAD_SHA", "")
     base = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     gate = os.environ.get("GATE_JOB_NAME", "")
-    own_job = os.environ.get("GITHUB_JOB", "")
+    own_job = "" if target_run else os.environ.get("GITHUB_JOB", "")
     levels = parse_levels(os.environ.get("GATE_LEVELS", ",".join(LEVELS_ALL)))
     allow = split_lines(os.environ.get("GATE_DEFAULT_ALLOW")) + split_lines(os.environ.get("GATE_ALLOW"))
 
@@ -108,9 +132,14 @@ def main():
 
     bad = find_violations(annotations, levels, allow)
     print(f"annotation-gate: {checked} job(s), {len(annotations)} annotation(s), {len(bad)} not allowed.")
+    lines = []
     for job, ann in bad:
         message = (ann.get("message") or "").replace("\n", " ")[:300]
         print(f"::error title=Unallowed {ann['annotation_level']} annotation::[{job}] {message}")
+        lines.append(f"- {ann['annotation_level']} in `{job}`: {message}")
+    if target_run and head_sha:
+        summary = "\n".join(lines) or f"{len(annotations)} annotation(s) in {checked} job(s), all allowed."
+        post_check_run(base, repo, token, head_sha, not bad, summary)
     if bad:
         print("Fix the cause, or allow a tracked exception with the `allow-patterns` input.")
         return 1

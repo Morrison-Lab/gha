@@ -76,3 +76,50 @@ def test_prefix_still_skips_extra_job():
 def test_exit_code_annotation_allowed_by_default():
     default = [r"^Process completed with exit code \d+"]
     assert not g.find_violations([ann("failure", "Process completed with exit code 1.")], set(g.LEVELS_ALL), default)
+
+
+def run_main(monkeypatch, env, annotations):
+    posted = []
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in {"GITHUB_TOKEN": "t", "GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "1", **env}.items():
+        monkeypatch.setenv(key, value)
+
+    def fake_paged(url, token, key=None):
+        if key == "jobs":
+            return iter([{"id": 7, "name": "annotation-gate"}, {"id": 8, "name": "build"}])
+        return iter(annotations)
+
+    monkeypatch.setattr(g, "paged", fake_paged)
+    monkeypatch.setattr(g, "post_check_run", lambda *args: posted.append(args))
+    return g.main(), posted
+
+
+def test_run_mode_gates_the_named_run_and_posts_a_check_run(monkeypatch):
+    code, posted = run_main(
+        monkeypatch,
+        {"GATE_RUN_ID": "99", "GATE_HEAD_SHA": "abc", "GITHUB_JOB": "annotation-gate"},
+        [ann("warning", "something odd")[1]],
+    )
+    assert code == 1
+    assert len(posted) == 1 and posted[0][3] == "abc" and posted[0][4] is False
+
+
+def test_run_mode_does_not_skip_a_job_named_like_the_gate(monkeypatch, capsys):
+    code, posted = run_main(
+        monkeypatch,
+        {"GATE_RUN_ID": "99", "GATE_HEAD_SHA": "abc", "GITHUB_JOB": "annotation-gate"},
+        [ann("warning", "something odd")[1]],
+    )
+    assert code == 1
+    assert "2 job" in capsys.readouterr().out
+
+
+def test_run_mode_clean_run_posts_success(monkeypatch):
+    code, posted = run_main(monkeypatch, {"GATE_RUN_ID": "99", "GATE_HEAD_SHA": "abc"}, [])
+    assert code == 0 and posted[0][4] is True
+
+
+def test_current_run_mode_posts_nothing(monkeypatch):
+    code, posted = run_main(monkeypatch, {"GITHUB_JOB": "annotation-gate"}, [])
+    assert code == 0 and posted == []
