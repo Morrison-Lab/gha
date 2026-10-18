@@ -39,7 +39,10 @@ a label such as "note" or "example".
   The first occurrence of a known term in a passage is plain text.
   A passage is one div (between its fences), or one paragraph outside divs.
   An occurrence inside a link, or followed by `(@def-...)`, is linked.
-  A term's own definition div is skipped.
+  A term's own definition div is skipped,
+  and so is any other div in the file that holds that definition
+  (such as a source callout).
+  A paragraph outside divs is still checked.
   The plural of a term counts as the term, and the longest term wins, so
   "test set" is not also a use of "set".
 - **`no-definition`.**

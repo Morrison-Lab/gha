@@ -18,7 +18,7 @@ Which words are terms: the check learns them from the corpus itself.
 Findings:
 - `unlinked-first-use`: the first occurrence of a known term in a passage is plain
   text, not inside a link or an `@def-...` cross-reference. The term's own def div
-  is skipped.
+  is skipped, and so is any other passage in a div of a file that holds that def div.
 - `no-definition`: a bold term in a passage that is not a def div, and that
   matches no known term, so it is introduced as technical with no definition
   anywhere in the corpus. Give it a `#def-` div.
@@ -86,6 +86,7 @@ COMMON_LABELS = frozenset({
     "definition", "step", "case", "proof", "solution", "answer", "question",
     "summary", "recap", "prerequisite", "prerequisites", "todo", "fixme",
     "exercise", "hint", "why", "how", "what", "when", "where", "goal",
+    "source", "sources", "reference", "references",
 })
 # Bold used for emphasis on a function word, which no definition div would cover.
 EMPHASIS_WORDS = frozenset({
@@ -304,6 +305,7 @@ def scan_passage(
     rx: Optional["re.Pattern[str]"],
     opted: Set[int],
     added: Optional[Set[int]],
+    own_defs: Optional[Set[str]] = None,
 ) -> List[Finding]:
     findings: List[Finding] = []
     line_of: List[int] = []  # offset -> 1-based line number
@@ -335,6 +337,9 @@ def scan_passage(
                 continue
             seen.add(key)
             if passage.div_id and passage.div_id in terms[key]:
+                continue
+            # A div beside the def div in the same file (a source callout) is part of that definition; prose outside divs is still checked.
+            if passage.in_div and own_defs and terms[key] & own_defs:
                 continue
             start = m.start()
             if any(a <= start < b for a, b in link_spans):
@@ -387,8 +392,10 @@ def scan_file(
         return []
     masked, opted = preprocess(lines)
     findings: List[Finding] = []
-    for passage in split_passages(masked):
-        findings.extend(scan_passage(path, passage, terms, rx, opted, added))
+    passages = split_passages(masked)
+    own_defs = {p.div_id for p in passages if p.div_id}
+    for passage in passages:
+        findings.extend(scan_passage(path, passage, terms, rx, opted, added, own_defs))
     return sorted(findings, key=lambda f: (f.line, f.rule, f.term))
 
 
