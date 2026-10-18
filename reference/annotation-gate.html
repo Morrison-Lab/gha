@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -837,6 +872,7 @@ cookieconsent.run({
   <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#allowed-for-everyone" id="toc-allowed-for-everyone" class="nav-link" data-scroll-target="#allowed-for-everyone">Allowed for everyone</a></li>
   <li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a></li>
+  <li><a href="#one-gate-for-a-repository-with-many-workflow-files" id="toc-one-gate-for-a-repository-with-many-workflow-files" class="nav-link" data-scroll-target="#one-gate-for-a-repository-with-many-workflow-files">One gate for a repository with many workflow files</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/annotation-gate.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
@@ -876,7 +912,7 @@ cookieconsent.run({
 <li><code>allow-patterns</code>: newline-separated case-insensitive regexes for tracked exceptions.</li>
 <li><code>job-name</code>: optional extra name prefix of a job to skip. The gate’s own job is always skipped, whatever the caller named it.</li>
 </ul>
-<p>The composite action <code>Morrison-Lab/gha/annotation-gate@v3</code> also takes <code>default-allow</code>, which replaces the allowed-for-everyone list below, and <code>token</code>. The reusable workflow keeps the defaults.</p>
+<p>The composite action <code>Morrison-Lab/gha/annotation-gate@v3</code> also takes <code>default-allow</code>, which replaces the allowed-for-everyone list below, and <code>token</code>. The reusable workflow keeps the defaults. It takes three more inputs for the <code>workflow_run</code> mode described at the end: <code>run-id</code> (the run to gate instead of the current one), <code>run-attempt</code>, and <code>head-sha</code> (post the result as a check run on this commit).</p>
 </section>
 <section id="allowed-for-everyone" class="level2">
 <h2 class="anchored" data-anchor-id="allowed-for-everyone">Allowed for everyone</h2>
@@ -889,6 +925,30 @@ cookieconsent.run({
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
 <p>Annotations from the gate’s own job, and from a job that has not finished, are not seen. A reusable-workflow job is covered, because the jobs endpoint lists each by its full name.</p>
+</section>
+<section id="one-gate-for-a-repository-with-many-workflow-files" class="level2">
+<h2 class="anchored" data-anchor-id="one-gate-for-a-repository-with-many-workflow-files">One gate for a repository with many workflow files</h2>
+<p>The job above sees only the jobs of its own run. A repository whose checks live in separate workflow files calls <code>annotation-gate-run.yml</code> from one <code>workflow_run</code> workflow instead. It gates each run that finishes and posts the result as a check run named <code>annotation-gate</code> on that run’s commit, so it shows on the pull request.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Annotation gate</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_run</span><span class="kw">:</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">workflows</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"*"</span><span class="kw">]</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">completed</span><span class="kw">]</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">gate</span><span class="kw">:</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">    # The gate's own run must not trigger another gate.</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">if</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.name != 'Annotation gate' }}</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">checks</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/annotation-gate-run.yml@v3</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">run-id</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.id }}</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">run-attempt</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.run_attempt }}</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">head-sha</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.head_sha }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>It takes the same <code>levels</code> and <code>allow-patterns</code> inputs. Grant <code>checks: write</code>; the job posts one check run per gated run.</p>
+<p>Each gated run posts its own check run named <code>annotation-gate</code>. When several workflows finish on one commit, the commit carries several checks of that name, and a failing one blocks a required check. <code>annotation-gate-run.yml</code> holds <code>checks: write</code>, so it is not in the read-only list on the permissions page. It calls the action at <code>@v3</code>, so it gates the right run only once <code>v3</code> has slid past the commit that added these inputs; before that the unknown inputs are ignored and the gate checks its own run. See <code>examples/annotation-gate-run.yml</code> for the stub to copy.</p>
 
 
 </section>
