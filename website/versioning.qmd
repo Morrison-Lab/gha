@@ -31,7 +31,7 @@ only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
-`check-wikipedia-further-reading.yml`, `check-term-links.yml`,
+`check-wikipedia-further-reading.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`,
 `check-local-macros.yml`, `check-fform-paren.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
@@ -175,7 +175,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
-`check-wikipedia-further-reading.yml`, `check-term-links.yml`,
+`check-wikipedia-further-reading.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`,
 `check-local-macros.yml`, `check-fform-paren.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`,

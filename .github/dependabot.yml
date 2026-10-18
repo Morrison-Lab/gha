@@ -29,6 +29,7 @@ updates:
       - "/check-informal-definitions"
       - "/check-literal-math-letters"
       - "/check-wikipedia-further-reading"
+      - "/check-one-div-per-subfile"
       - "/check-term-links"
       - "/check-local-macros"
       - "/check-links"
