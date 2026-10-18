@@ -24,8 +24,10 @@ The check does not count:
   (a backtick opener whose info string holds a backtick is not a fence;
   any indentation is accepted, for fences inside list items);
 - anything inside an HTML comment;
-- a div inside a blockquote, since every line starting with `>` is ignored;
-- an `include` shortcode, which may pull in more divs at render time.
+- a div inside a blockquote,
+  since a line starting with `>` neither opens a fence nor a div;
+- the divs an `include` shortcode may pull in at render time,
+  since the shortcode is not expanded.
 
 It accepts any `_*.qmd` file under a `_subfiles` directory
 and does not check the name form

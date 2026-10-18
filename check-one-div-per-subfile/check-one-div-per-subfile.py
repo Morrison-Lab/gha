@@ -23,9 +23,10 @@ What is not counted:
   backtick is not a fence; any indentation is accepted, for fences inside
   list items);
 - divs inside an HTML comment;
-- a div inside a blockquote (every line starting with ``>`` is ignored, fence
-  or div alike);
-- an ``{{< include >}}`` shortcode, which may pull in more divs at render time;
+- a div inside a blockquote (a line starting with ``>`` neither opens a
+  fence nor a div);
+- an ``{{< include >}}`` shortcode, which is not expanded, so the divs it may
+  pull in at render time are not counted;
 - a subfile with one div, or none (a figure chunk, a paragraph).
 
 A touched subfile with a div, code fence or HTML comment that is never closed
@@ -100,6 +101,32 @@ def is_subfile(path: str) -> bool:
             and "_subfiles" in parts[:-1])
 
 
+CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
+COMMENT_RE = re.compile(r"<!--.*?-->")
+
+
+def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
+    """Remove HTML comment text from one line; say whether one stays open.
+
+    A ``<!--`` inside an inline code span is prose, not a comment, and text
+    after a closing ``-->`` stays on the line.
+    """
+    if in_comment:
+        end = raw.find("-->")
+        if end < 0:
+            return "", True
+        raw = raw[end + 3:]
+    spans: List[str] = []
+    raw = CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
+    raw = COMMENT_RE.sub("", raw)
+    start = raw.find("<!--")
+    opened = start >= 0
+    if opened:
+        raw = raw[:start]
+    it = iter(spans)
+    return re.sub("\0", lambda _: next(it), raw), opened
+
+
 def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
     """Top-level divs outside code fences and HTML comments, minus source
     remarks, and whether the scan ended clean (no div left open, no code
@@ -109,12 +136,8 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
     in_comment = False
     found: List[Div] = []
     for idx, raw in enumerate(lines):
-        if in_comment:
-            in_comment = "-->" not in raw
-            continue
-        if fence is None and "<!--" in raw and "-->" not in raw.split("<!--", 1)[1]:
-            in_comment = True
-            continue
+        if fence is None:
+            raw, in_comment = strip_comments(raw, in_comment)
         m = FENCE_RE.match(raw)
         if fence is not None:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]

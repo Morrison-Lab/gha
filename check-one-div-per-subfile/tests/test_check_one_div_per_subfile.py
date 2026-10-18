@@ -358,3 +358,26 @@ def test_default_glob_drops_nothing(repo):
     _commit(repo, "README.md", "base\n")
     _write(repo, "_subfiles/_ok_exr.qmd", "::: {#exr-a}\nAsk.\n:::\n")
     assert _run("HEAD").dropped == 0
+
+
+# -- HTML comments -----------------------------------------------------------
+
+def test_comment_marker_in_a_code_span_is_prose():
+    doc = "Use `<!--` to open.\n::: {#a}\nx\n:::\n::: {#b}\ny\n:::\n"
+    assert ods.is_balanced(doc.split("\n"))
+    assert extra_lines(doc) == [5]
+
+
+def test_second_comment_on_a_line_stays_open():
+    doc = "<!-- a --> <!-- b\n::: {#a}\n:::\n-->\n::: {#b}\n:::\n::: {#c}\n:::\n"
+    assert [d.line for d in ods.top_level_divs(doc.split("\n"))] == [5, 7]
+
+
+def test_text_after_a_closing_marker_is_kept():
+    doc = "<!--\nx\n--> ::: {#a}\nx\n:::\n::: {#b}\ny\n:::\n"
+    assert [d.line for d in ods.top_level_divs(doc.split("\n"))] == [3, 6]
+
+
+def test_div_opener_before_a_comment_is_kept():
+    doc = "::: {#a} <!-- c\nx\n-->\n:::\n::: {#b}\ny\n:::\n"
+    assert [d.line for d in ods.top_level_divs(doc.split("\n"))] == [1, 5]
