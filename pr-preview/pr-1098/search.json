@@ -2500,7 +2500,7 @@
     "href": "reference/annotation-gate.html#inputs",
     "title": "annotation-gate.yml",
     "section": "Inputs",
-    "text": "Inputs\n\nlevels: levels to enforce, default notice,warning,failure.\nallow-patterns: newline-separated case-insensitive regexes for tracked exceptions.\njob-name: name prefix of the gate’s own job, which is skipped. The default is gate.",
+    "text": "Inputs\n\nlevels: levels to enforce, default notice,warning,failure.\nallow-patterns: newline-separated case-insensitive regexes for tracked exceptions.\njob-name: optional extra name prefix of a job to skip. The gate’s own job is always skipped, whatever the caller named it.\n\nThe composite action Morrison-Lab/gha/annotation-gate@v3 also takes default-allow, which replaces the allowed-for-everyone list below, and token. The reusable workflow keeps the defaults.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2512,7 +2512,7 @@
     "href": "reference/annotation-gate.html#allowed-for-everyone",
     "title": "annotation-gate.yml",
     "section": "Allowed for everyone",
-    "text": "Allowed for everyone\n\nGitHub’s runner-image migration notice (“The ubuntu-latest label will migrate to …”).\nThe forced-Node deprecation warning, until the action pins are bumped. It reads “Node.js N is deprecated” and then “The following actions target Node”.",
+    "text": "Allowed for everyone\n\nGitHub’s runner-image migration notice (“The ubuntu-latest label will migrate to …”).\nA job’s own “Process completed with exit code N” failure annotation. A failed job already fails the run, and the gate runs under if: always(), so this one would only repeat it.\nThe forced-Node deprecation warning, until the action pins are bumped. It reads “Node.js N is deprecated” and then “The following actions target Node”.",
     "crumbs": [
       "Overview",
       "Reference",
