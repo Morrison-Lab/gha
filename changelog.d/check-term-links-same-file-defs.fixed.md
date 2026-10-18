@@ -1,1 +1,3 @@
-check-term-links no longer flags a defined term in a source callout beside its definition div in the same file, or the word "source" used as a label.
+- **`check-term-links` skips a source callout beside its definition div.**
+  A defined term in another div of the file that holds its definition,
+  and the word "source" used as a label, are no longer flagged.
