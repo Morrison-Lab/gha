@@ -1519,6 +1519,105 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-literal-math || true
           rm -rf _ci-literal-math
+  # check-wikipedia-further-reading is brand new, so its reusable workflow's
+  # internal `uses: Morrison-Lab/gha/check-wikipedia-further-reading@v3` does
+  # not resolve until the tag slides past the merge. Exercise the local
+  # composite directly. The unit tests cover the rules and both scopes; the
+  # composite calls below prove action.yml wires each input through.
+  wikipedia-further-reading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-wikipedia-further-reading unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-wikipedia-further-reading/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-wikipedia-further-reading
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # A clean tree has nothing to flag, so stage a page that lists Wikipedia
+      # under Further reading and assert that the blocking call really fails.
+      - name: Stage a page with Wikipedia in Further reading
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-wikipedia-reading
+          printf '%s\n' '## Further reading' '' '- @wikipedia_slope --- slopes' > _ci-wikipedia-reading/page.qmd
+          git add -f _ci-wikipedia-reading/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: wikipedia-reading-expected-failure
+        continue-on-error: true
+        uses: ./check-wikipedia-further-reading
+        with:
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.wikipedia-reading-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-wikipedia-further-reading to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # fail: false must downgrade the same finding to a warning.
+      - name: Check the staged page with fail false
+        uses: ./check-wikipedia-further-reading
+        with:
+          whole-tree: 'true'
+          fail: 'false'
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: wikipedia-reading-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-wikipedia-further-reading
+        with:
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.wikipedia-reading-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-wikipedia-further-reading
+        with:
+          base-ref: ''
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-wikipedia-further-reading
+        with:
+          whole-tree: 'true'
+          # The unit tests carry Wikipedia bullets as fixtures.
+          paths-ignore: '_ci-wikipedia-reading'
+      - name: Check again with globs excluding the page
+        uses: ./check-wikipedia-further-reading
+        with:
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-wikipedia-reading || true
+          rm -rf _ci-wikipedia-reading
   # check-term-links is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-term-links@v3` does not resolve until the tag
   # slides past the merge. Exercise the local composite directly. The unit
