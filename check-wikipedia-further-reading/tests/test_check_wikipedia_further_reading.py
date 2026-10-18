@@ -270,3 +270,9 @@ def test_main_exit_codes(repo, monkeypatch):
     assert wfr.main() == 1
     monkeypatch.setenv("WFR_FAIL", "false")
     assert wfr.main() == 0
+
+
+def test_reading_data_heading_deliberately_opens_a_context():
+    # The reading-word heading rule is broad on purpose: "Reading data into R"
+    # opens a reading context, as the module docstring says.
+    assert flagged("## Reading data into R\n- @wikipedia_x\n") == [2]

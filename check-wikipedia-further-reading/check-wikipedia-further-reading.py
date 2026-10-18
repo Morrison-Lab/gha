@@ -13,7 +13,8 @@ What is flagged, in ``.qmd``/``.md`` files: a list item (starting with ``-``,
 
 - a section whose nearest preceding heading matches ``further reading``,
   ``online references``, ``going further``, ``additional reading``,
-  ``learn more`` or the word ``reading``;
+  ``learn more`` or the word ``reading``. The word match is deliberately
+  broad: a heading such as "Reading data into R" opens a context too;
 - a ``::: {.reading}`` div (the lab's class for a reading list);
 - any part of a file whose name contains ``further-reading`` or
   ``sec-reading``. A subfile has its heading in the parent chapter, so the

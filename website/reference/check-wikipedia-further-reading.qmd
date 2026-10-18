@@ -1,0 +1,95 @@
+---
+title: "check-wikipedia-further-reading.yml"
+---
+
+Diff-scoped, blocking check that flags a Wikipedia citation or link
+in a list item of a Further reading section.
+The lab's rule (Ezra, 2026-10-18) is that Wikipedia pages never appear
+in Further reading sections: they are citations only.
+This implements
+[gha#1093](https://github.com/Morrison-Lab/gha/issues/1093).
+
+The check flags a list item (starting with `-`, `*`, `+` or `1.`)
+that contains a `@wikipedia_<key>` citation,
+a link or URL to `wikipedia.org`,
+or the words `Wikipedia on`,
+when the item is in a reading context:
+
+- **A reading heading.**
+  The item's nearest preceding heading matches
+  *further reading*, *online references*, *going further*,
+  *additional reading*, *learn more*, or the word *reading*.
+  The match is deliberately broad:
+  a heading such as "Reading data into R" opens a reading context too,
+  since a section about reading can still hold a reading list.
+  Any later heading resets the context.
+- **A `.reading` div.**
+  The item sits in a `::: {.reading}` div.
+- **A reading subfile.**
+  The file name contains `further-reading` or `sec-reading`.
+  A subfile's heading is in its parent chapter, which the check cannot see,
+  so the whole file counts.
+
+The check does not flag a Wikipedia citation in ordinary prose,
+a list item outside a reading context,
+or anything in a code fence.
+
+## Scope
+
+Only lines a pull request adds are reported.
+The whole file is parsed, because the heading sits far above the item,
+and only items with an added line are kept.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+Every run prints how many lines, files and reading-context list items
+it examined.
+
+## Inputs
+
+| Input          | Type    | Default               | Description |
+| -------------- | ------- | --------------------- | ----------- |
+| `globs`        | string  | `'*.qmd *.md'`        | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`                  | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`                | Fail the workflow when Wikipedia is found in Further reading. Set `false` for warnings only. |
+| `whole-tree`   | boolean | `false`               | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`              | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-wikipedia-further-reading.yml in your repo.
+# Diff-scoped check: flags a Wikipedia citation (`@wikipedia_<key>`) or link in a
+# Further reading list item on lines a PR adds. Wikipedia pages are citations
+# only and never belong in Further reading. Blocks by default; ordinary prose
+# citations are never flagged.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check Wikipedia in Further reading
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-wikipedia-further-reading.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                    # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: false                            # warn instead of block (defaults to true)
+    #   whole-tree: true                       # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-wikipedia-further-reading.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-wikipedia-further-reading.yml)
+for the full caller stub.
