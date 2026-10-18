@@ -73,6 +73,7 @@ not reference `@main` from consumers.
 | `check-quarto-prose.yml` | Diff-scoped, blocking prose check over `.qmd` and `.md` files: a notes div that holds an example, remark or definition, and a phrase from a list of idioms, cliches and slang (bundled or your own); code, math, comments and most front matter are not scanned | `globs`, `paths-ignore`, `base-ref`, `idioms-file`, `allow-file`, `fail` |
 | `check-informal-definitions.yml` | Flag technical concepts defined in running prose rather than inside formal Quarto definition divs (`::: {#def-...}`) -- whole-tree or diff-scoped | `globs`, `paths-ignore`, `fail`, `diff-scoped`, `base-ref` |
 | `check-literal-math-letters.yml` | Diff-scoped, warn-only check that flags literal Latin and Greek letters in math (a bare `y`, `\theta`) where a semantic macro from Morrison-Lab/macros belongs | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| `check-wikipedia-further-reading.yml` | Diff-scoped, blocking check that flags a Wikipedia citation or link in a Further reading list item (Wikipedia pages are citations only) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-local-macros.yml` | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
 | `check-term-links.yml` | Diff-scoped, blocking check that flags a defined technical term whose first use in a div or paragraph is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus's own `#def-` divs and links | `globs`, `paths-ignore`, `terms-file`, `allow-file`, `fail`, `whole-tree` |
 | `check-fform-paren.yml` | Diff-scoped, warn-only check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where an f form `\namef{...}` is defined in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
@@ -131,7 +132,7 @@ that need to write must have the **caller** grant it on the calling job:
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
@@ -669,7 +670,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-term-links.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-term-links.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -817,7 +818,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-term-links.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-term-links.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
