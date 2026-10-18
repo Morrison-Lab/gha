@@ -912,7 +912,7 @@ cookieconsent.run({
 <li><code>allow-patterns</code>: newline-separated case-insensitive regexes for tracked exceptions.</li>
 <li><code>job-name</code>: optional extra name prefix of a job to skip. The gate’s own job is always skipped, whatever the caller named it.</li>
 </ul>
-<p>The composite action <code>Morrison-Lab/gha/annotation-gate@v3</code> also takes <code>default-allow</code>, which replaces the allowed-for-everyone list below, and <code>token</code>. The reusable workflow keeps the defaults.</p>
+<p>The composite action <code>Morrison-Lab/gha/annotation-gate@v3</code> also takes <code>default-allow</code>, which replaces the allowed-for-everyone list below, and <code>token</code>. The reusable workflow keeps the defaults. It takes three more inputs for the <code>workflow_run</code> mode described at the end: <code>run-id</code> (the run to gate instead of the current one), <code>run-attempt</code>, and <code>head-sha</code> (post the result as a check run on this commit).</p>
 </section>
 <section id="allowed-for-everyone" class="level2">
 <h2 class="anchored" data-anchor-id="allowed-for-everyone">Allowed for everyone</h2>
@@ -948,6 +948,7 @@ cookieconsent.run({
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">run-attempt</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.run_attempt }}</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">head-sha</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.head_sha }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>It takes the same <code>levels</code> and <code>allow-patterns</code> inputs. Grant <code>checks: write</code>; the job posts one check run per gated run.</p>
+<p>Each gated run posts its own check run named <code>annotation-gate</code>. When several workflows finish on one commit, the commit carries several checks of that name, and a failing one blocks a required check. <code>annotation-gate-run.yml</code> holds <code>checks: write</code>, so it is not in the read-only list on the permissions page. It calls the action at <code>@v3</code>, so it gates the right run only once <code>v3</code> has slid past the commit that added these inputs; before that the unknown inputs are ignored and the gate checks its own run. See <code>examples/annotation-gate-run.yml</code> for the stub to copy.</p>
 
 
 </section>
