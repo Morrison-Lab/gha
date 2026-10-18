@@ -21,8 +21,9 @@ The check does not count:
 - a top-level div whose id starts with `rem-source-`,
   a source remark that belongs right after the item it credits;
 - anything inside a code fence
-  (an opener indented four or more spaces, or a backtick opener
-  whose info string holds a backtick, is not a fence);
+  (a backtick opener whose info string holds a backtick is not a fence;
+  any indentation is accepted, for fences inside list items);
+- anything inside an HTML comment;
 - a div inside a blockquote, since every line starting with `>` is ignored;
 - an `include` shortcode, which may pull in more divs at render time.
 
@@ -30,12 +31,14 @@ It accepts any `_*.qmd` file under a `_subfiles` directory
 and does not check the name form
 (the older `_def-name.qmd` or the newer `_name_def.qmd`).
 
-A subfile whose divs do not balance
-(an opening `:::` never closed, or a closing `:::` with no opener)
-gets a warning,
-because the divs after the imbalance would go uncounted without notice.
-A file that matches `globs` but is not a subfile is not examined,
-and the run reports how many such files it skipped.
+A touched subfile with a div, code fence or HTML comment that is never closed
+is reported too, as an error when `fail` is true,
+because the divs after it would go uncounted without notice.
+A stray closing `:::` hides nothing and is ignored.
+A file that matches `globs` but is not a subfile is not examined.
+The run prints a notice with how many such files it skipped,
+which includes any non-underscore `.qmd` file under `_subfiles`
+because the default glob matches those.
 
 ## Scope
 

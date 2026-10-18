@@ -251,9 +251,16 @@ def test_tilde_fence_does_not_close_backtick_fence():
     assert ods.top_level_divs(doc.split("\n"))[0].line == 5
 
 
-def test_indented_four_spaces_is_not_a_fence():
-    doc = "    ```\n::: {#a}\nx\n:::\n::: {#b}\ny\n:::\n"
-    assert extra_lines(doc) == [5]
+def test_fence_inside_a_list_item_hides_divs():
+    doc = "- x\n\n    ```\n::: {#a}\n:::\n    ```\n::: {#b}\n:::\n"
+    assert ods.top_level_divs(doc.split("\n"))[0].line == 7
+    assert extra_lines(doc) == []
+
+
+def test_divs_in_an_html_comment_are_ignored():
+    doc = "<!--\n::: {#a}\n:::\n-->\n::: {#b}\n:::\n::: {#c}\n:::\n"
+    assert extra_lines(doc) == [7]
+    assert extra_lines("<!-- ::: {#a} -->\n::: {#b}\n:::\n") == []
 
 
 def test_backtick_opener_with_backtick_info_string_is_not_a_fence():
@@ -279,14 +286,30 @@ def test_include_shortcode_is_not_a_div():
     assert extra_lines(doc) == []
 
 
-def test_unclosed_div_is_unbalanced_and_swallows_later_divs():
-    lines = "::: {#a}\nx\n\n::: {#b}\ny\n:::\n".split("\n")
-    assert not ods.is_balanced(lines)
+def test_unclosed_div_is_unclosed_and_hides_later_divs():
+    doc = "::: {#a}\nx\n\n::: {#b}\ny\n:::\n"
+    assert not ods.is_balanced(doc.split("\n"))
+    assert extra_lines(doc) == []
     assert ods.is_balanced("::: {#a}\nx\n:::\n".split("\n"))
 
 
-def test_stray_closer_is_unbalanced():
-    assert not ods.is_balanced(":::\n::: {#a}\nx\n:::\n".split("\n"))
+def test_unclosed_code_fence_is_reported():
+    doc = "```\n::: {#a}\n:::\n::: {#b}\n:::\n"
+    assert not ods.is_balanced(doc.split("\n"))
+
+
+def test_unclosed_html_comment_is_reported():
+    assert not ods.is_balanced("<!--\n::: {#a}\n:::\n".split("\n"))
+
+
+def test_stray_closer_hides_nothing_and_is_not_reported():
+    doc = ":::\n::: {#a}\nx\n:::\n"
+    assert ods.is_balanced(doc.split("\n"))
+
+
+def test_lazy_blockquote_closer_is_not_reported():
+    doc = "> ::: {#a}\n> x\n:::\n::: {#b}\n:::\n"
+    assert ods.is_balanced(doc.split("\n"))
 
 
 def test_fenced_divs_do_not_unbalance():
@@ -300,7 +323,15 @@ def test_unbalanced_subfile_is_reported_by_the_run(repo, capsys, monkeypatch):
     assert report.unbalanced == ("_subfiles/_bad_exr.qmd",)
     monkeypatch.setenv("ODS_BASE_REF", "HEAD")
     assert ods.main() == 0
-    assert "do not balance" in capsys.readouterr().out
+    assert "never closed" in capsys.readouterr().out
+    monkeypatch.setenv("ODS_FAIL", "true")
+    assert ods.main() == 1
+
+
+def test_untouched_unclosed_subfile_is_not_reported(repo):
+    _commit(repo, "_subfiles/_bad_exr.qmd", "::: {#exr-a}\nAsk.\n")
+    _write(repo, "_subfiles/_ok_exr.qmd", "::: {#exr-b}\nAsk.\n:::\n")
+    assert _run("HEAD").unbalanced == ()
 
 
 def test_balanced_subfile_is_not_reported_unbalanced(repo):

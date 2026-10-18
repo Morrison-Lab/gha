@@ -19,16 +19,19 @@ What is not counted:
 - a div nested inside another div (only top-level divs count);
 - a top-level div whose id starts with ``rem-source-`` (a source remark that
   belongs right after the item it credits);
-- fences inside code blocks (an opener indented four or more spaces, or a
-  backtick opener whose info string holds a backtick, is not a fence);
+- fences inside code blocks (a backtick opener whose info string holds a
+  backtick is not a fence; any indentation is accepted, for fences inside
+  list items);
+- divs inside an HTML comment;
 - a div inside a blockquote (every line starting with ``>`` is ignored, fence
   or div alike);
 - an ``{{< include >}}`` shortcode, which may pull in more divs at render time;
 - a subfile with one div, or none (a figure chunk, a paragraph).
 
-A subfile whose divs do not balance (an opener never closed, or a closer with
-no opener) gets a warning, because every div after the imbalance would
-otherwise go uncounted without notice.
+A touched subfile with a div, code fence or HTML comment that is never closed
+is reported too (an error under ``ODS_FAIL``), because every div after it
+would otherwise go uncounted without notice. A stray closing ``:::`` hides
+nothing and is ignored.
 
 Design notes, in the model of ``check-wikipedia-further-reading``:
 
@@ -81,7 +84,7 @@ ADVICE = (
 
 # -- Parsing -----------------------------------------------------------------
 
-FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 SOURCE_ID_RE = re.compile(r"#rem-source-")
 
@@ -98,13 +101,20 @@ def is_subfile(path: str) -> bool:
 
 
 def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
-    """Top-level divs outside code fences, minus source remarks, and whether
-    the divs balance (no opener left open, no closer without an opener)."""
+    """Top-level divs outside code fences and HTML comments, minus source
+    remarks, and whether the scan ended clean (no div left open, no code
+    fence left open). A stray closer hides nothing, so it is harmless."""
     fence: Optional[Tuple[str, int]] = None
     depth = 0
-    stray = False
+    in_comment = False
     found: List[Div] = []
     for idx, raw in enumerate(lines):
+        if in_comment:
+            in_comment = "-->" not in raw
+            continue
+        if fence is None and "<!--" in raw and "-->" not in raw.split("<!--", 1)[1]:
+            in_comment = True
+            continue
         m = FENCE_RE.match(raw)
         if fence is not None:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
@@ -124,9 +134,7 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
             depth += 1
         elif depth > 0:
             depth -= 1
-        else:
-            stray = True
-    return found, depth == 0 and not stray
+    return found, depth == 0 and fence is None and not in_comment
 
 
 def top_level_divs(lines: List[str]) -> List[Div]:
@@ -315,7 +323,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         lines += len(content) if keep is None else len(keep)
         extra, seen = scan_file(content, rel)
         divs += seen
-        if not is_balanced(content):
+        if not is_balanced(content) and (keep is None or keep):
             unbalanced.append(rel)
         if extra and (keep is None or keep):
             findings.append((rel, extra[0].line, seen))
@@ -348,24 +356,23 @@ def main() -> int:
     )
     if report.dropped:
         print(
-            f"::warning::{report.dropped} file(s) matched 'globs' but are not "
+            f"::notice::{report.dropped} file(s) matched 'globs' but are not "
             f"subfiles (a '_*.qmd' file under a '_subfiles' directory), so "
             f"they were not examined."
         )
+    severity = "error" if fail else "warning"
     for rel in report.unbalanced:
         print(
-            f"::warning file={rel}::Divs in this subfile do not balance (an "
-            f"opening ':::' is never closed, or a closing ':::' has no "
-            f"opener), so divs after the imbalance may not be counted."
+            f"::{severity} file={rel}::A div or code fence in this subfile is "
+            f"never closed, so the divs after it cannot be counted."
         )
-    if not report.findings:
-        print("No subfile holds more than one top-level div.")
-        return 0
-
-    severity = "error" if fail else "warning"
     for rel, line, count in report.findings:
         print(f"::{severity} file={rel},line={line}::{format_message(count)}")
-    print(f"\n{len(report.findings)} subfile(s) hold more than one top-level div.")
+    if not report.findings and not report.unbalanced:
+        print("No subfile holds more than one top-level div.")
+        return 0
+    print(f"\n{len(report.findings)} subfile(s) hold more than one top-level div"
+          f" and {len(report.unbalanced)} have an unclosed div or code fence.")
     return 1 if fail else 0
 
 
