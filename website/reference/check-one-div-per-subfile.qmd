@@ -1,0 +1,87 @@
+---
+title: "check-one-div-per-subfile.yml"
+---
+
+Diff-scoped, warn-only check that flags a Quarto subfile
+holding more than one top-level div.
+The lab's rule (Ezra, 2026-10-18) is that new and revised content
+gets one div per subfile, a solution in its own `_sol` file included.
+This implements
+[gha#1092](https://github.com/Morrison-Lab/gha/issues/1092).
+
+A subfile is a `.qmd` file whose name starts with `_`
+and which sits under a `_subfiles` directory.
+The check reports a subfile that has more than one top-level fenced div
+when the pull request adds a line to it.
+The finding sits on the opening line of the second div.
+
+The check does not count:
+
+- a div nested inside another div;
+- a top-level div whose id starts with `rem-source-`,
+  a source remark that belongs right after the item it credits;
+- anything inside a code fence.
+
+It accepts both subfile name forms,
+the older `_def-name.qmd` and the newer `_name_def.qmd`.
+
+## Scope
+
+Only a subfile with a line a pull request adds is reported.
+A touched subfile counts as revised,
+so the whole file is parsed (a div opens far above the changed line)
+and a one-line fix to a file that still holds an exercise and its solution is reported.
+An untouched subfile keeps its layout.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked subfile in full on purpose,
+which measures how many existing subfiles hold several divs.
+Every run prints how many lines, subfiles and divs it examined.
+
+## Inputs
+
+| Input          | Type    | Default               | Description |
+| -------------- | ------- | --------------------- | ----------- |
+| `globs`        | string  | `'*_subfiles/*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`                  | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`               | Fail the workflow when a subfile holds more than one top-level div. The default gives warning annotations only. |
+| `whole-tree`   | boolean | `false`               | Scan every tracked subfile in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`              | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-one-div-per-subfile.yml in your repo.
+# Diff-scoped check: flags a subfile (_subfiles/_*.qmd) that holds more than one
+# top-level div when a PR adds a line to it. New and revised content gets one div
+# per subfile, a solution in its own _sol file included. Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check one div per subfile
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-one-div-per-subfile.yml@v3
+    # with:
+    #   globs: '*_subfiles/*.qmd'              # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every subfile, not just a PR's additions
+```
+
+See
+[`examples/check-one-div-per-subfile.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-one-div-per-subfile.yml)
+for the full caller stub.

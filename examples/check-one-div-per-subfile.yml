@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-one-div-per-subfile.yml in your repo.
+# Diff-scoped check: flags a subfile (_subfiles/_*.qmd) that holds more than one
+# top-level div when a PR adds a line to it. New and revised content gets one div
+# per subfile, a solution in its own _sol file included. Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check one div per subfile
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-one-div-per-subfile.yml@v3
+    # with:
+    #   globs: '*_subfiles/*.qmd'              # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every subfile, not just a PR's additions
