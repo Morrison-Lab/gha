@@ -59,3 +59,20 @@ def test_parse_levels_rejects_empty():
 
 def test_split_lines_drops_blanks():
     assert g.split_lines("a\n\n  b \n") == ["a", "b"]
+
+
+def test_gate_job_found_through_reusable_workflow_name():
+    assert g.is_gate_job("anything / annotation-gate", "annotation-gate", "")
+
+
+def test_other_job_is_not_the_gate():
+    assert not g.is_gate_job("check / check-term-links", "annotation-gate", "")
+
+
+def test_prefix_still_skips_extra_job():
+    assert g.is_gate_job("deploy / build", "", "deploy")
+
+
+def test_exit_code_annotation_allowed_by_default():
+    default = [r"^Process completed with exit code \d+"]
+    assert not g.find_violations([ann("failure", "Process completed with exit code 1.")], set(g.LEVELS_ALL), default)

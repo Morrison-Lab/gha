@@ -10,7 +10,8 @@ message matches an allow pattern. Environment:
   GITHUB_REPOSITORY   owner/repo
   GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT
   GITHUB_API_URL      defaults to https://api.github.com
-  GATE_JOB_NAME       skip the job(s) whose name starts with this (the gate)
+  GITHUB_JOB          the gate's own job id; it and `<caller> / <id>` are skipped
+  GATE_JOB_NAME       optional extra name prefix to skip
   GATE_LEVELS         comma list of levels to enforce
   GATE_ALLOW          newline list of regexes; a message matching one is allowed
   GATE_DEFAULT_ALLOW  newline list of regexes allowed for every caller
@@ -34,6 +35,18 @@ def parse_levels(text):
     if bad or not levels:
         raise ValueError(f"levels must be a comma list from {LEVELS_ALL}, got {text!r}")
     return set(levels)
+
+
+def is_gate_job(name, own_job, prefix):
+    """True for the job running this script.
+
+    A job called through a reusable workflow is named `<caller job> / <callee
+    job>`, and the callee job id is GITHUB_JOB, so the gate is found whatever
+    the caller named it. `prefix` is an extra, optional name prefix.
+    """
+    if own_job and (name == own_job or name.endswith(f" / {own_job}")):
+        return True
+    return bool(prefix) and name.startswith(prefix)
 
 
 def find_violations(annotations, levels, allow_patterns):
@@ -79,13 +92,14 @@ def main():
     attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
     base = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     gate = os.environ.get("GATE_JOB_NAME", "")
+    own_job = os.environ.get("GITHUB_JOB", "")
     levels = parse_levels(os.environ.get("GATE_LEVELS", ",".join(LEVELS_ALL)))
     allow = split_lines(os.environ.get("GATE_DEFAULT_ALLOW")) + split_lines(os.environ.get("GATE_ALLOW"))
 
     jobs_url = f"{base}/repos/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs"
     annotations, checked = [], 0
     for job in paged(jobs_url, token, "jobs"):
-        if gate and job["name"].startswith(gate):
+        if is_gate_job(job["name"], own_job, gate):
             continue
         checked += 1
         url = f"{base}/repos/{repo}/check-runs/{job['id']}/annotations"

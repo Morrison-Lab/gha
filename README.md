@@ -134,7 +134,7 @@ that need to write must have the **caller** grant it on the calling job:
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-one-div-per-subfile`, `check-term-links`, `annotation-gate`, `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-one-div-per-subfile`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,

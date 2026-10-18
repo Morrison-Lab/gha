@@ -14,9 +14,9 @@ on:
         type: string
         default: ''
       job-name:
-        description: Name prefix of the caller's gate job, which is skipped. Defaults to `gate`.
+        description: Optional extra name prefix of a job to skip. The gate's own job is always skipped.
         type: string
-        default: 'gate'
+        default: ''
 
 jobs:
   annotation-gate:

@@ -22,8 +22,11 @@ inputs:
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
+      ^Process completed with exit code \d+
   job-name:
-    description: Name prefix of the gate's own job, which is skipped.
+    description: >-
+      Optional extra name prefix of a job to skip. The gate's own job is always
+      skipped.
     default: ''
   token:
     description: Token granted actions read and checks read.
