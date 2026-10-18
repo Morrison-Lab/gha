@@ -92,6 +92,17 @@ def test_a_terms_own_def_div_is_skipped():
     assert run_text(RISK_DEF) == []
 
 
+def test_a_callout_in_the_same_file_as_the_def_div_is_skipped():
+    page = RISK_DEF + "\n::: {.callout-note}\n\nThe risk was introduced in 1990.\n\n:::\n"
+    assert rules(run_text(page)) == []
+
+
+def test_source_label_is_not_a_term():
+    kappa = "::: {#def-kappa}\n\n**Source**: a note on kappa.\n\n:::\n"
+    page = "::: {#exm-a}\n\nSource of the data.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": kappa})) == []
+
+
 def test_the_longer_term_wins_over_its_prefix():
     defs = RISK_DEF + "\n::: {#def-test-set}\n\n#### Test set\n\nA **test set** is held out.\n\n:::\n"
     defs += "\n::: {#def-set}\n\n#### Set\n\nA **set** is a collection.\n\n:::\n"
