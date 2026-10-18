@@ -898,9 +898,13 @@ cookieconsent.run({
 <ul>
 <li>a div nested inside another div;</li>
 <li>a top-level div whose id starts with <code>rem-source-</code>, a source remark that belongs right after the item it credits;</li>
-<li>anything inside a code fence.</li>
+<li>anything inside a code fence (a backtick opener whose info string holds a backtick is not a fence; any indentation is accepted, for fences inside list items);</li>
+<li>anything inside an HTML comment;</li>
+<li>a div inside a blockquote, since every line starting with <code>&gt;</code> is ignored;</li>
+<li>an <code>include</code> shortcode, which may pull in more divs at render time.</li>
 </ul>
-<p>It accepts both subfile name forms, the older <code>_def-name.qmd</code> and the newer <code>_name_def.qmd</code>.</p>
+<p>It accepts any <code>_*.qmd</code> file under a <code>_subfiles</code> directory and does not check the name form (the older <code>_def-name.qmd</code> or the newer <code>_name_def.qmd</code>).</p>
+<p>A touched subfile with a div, code fence or HTML comment that is never closed is reported too, as an error when <code>fail</code> is true, because the divs after it would go uncounted without notice. A stray closing <code>:::</code> hides nothing and is ignored. A file that matches <code>globs</code> but is not a subfile is not examined. The run prints a notice with how many such files it skipped, which includes any non-underscore <code>.qmd</code> file under <code>_subfiles</code> because the default glob matches those.</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
 <p>Only a subfile with a line a pull request adds is reported. A touched subfile counts as revised, so the whole file is parsed (a div opens far above the changed line) and a one-line fix to a file that still holds an exercise and its solution is reported. An untouched subfile keeps its layout. An added line whose exact text was also deleted in the same diff counts as moved rather than new, and a blank added line is not content.</p>
