@@ -881,7 +881,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that every technical term is linked to its definition the first time it appears in each div, or in each paragraph outside a div. This is the lab’s linking rule (<a href="https://github.com/Morrison-Lab/ai-config/pull/4553">ai-config#4553</a>, <a href="https://github.com/Morrison-Lab/psw/pull/223">psw#223</a>, <a href="https://github.com/Morrison-Lab/psw/pull/227">psw#227</a>); the check is <a href="https://github.com/Morrison-Lab/gha/issues/1078">gha#1078</a>.</p>
+<p>Diff-scoped, blocking check that every technical term is linked to its definition the first time it appears in each div, or in each paragraph outside a div. This is the lab’s linking rule (<a href="https://github.com/Morrison-Lab/ai-config/pull/4553">ai-config#4553</a>, <a href="https://github.com/Morrison-Lab/psw/pull/223">psw#223</a>, <a href="https://github.com/Morrison-Lab/psw/pull/227">psw#227</a>); the check is <a href="https://github.com/Morrison-Lab/gha/issues/1078">gha#1078</a>.</p>
 <section id="which-words-are-terms" class="level2">
 <h2 class="anchored" data-anchor-id="which-words-are-terms">Which words are terms</h2>
 <p>The check learns them from the files it scans, so it needs no list:</p>
@@ -895,7 +895,7 @@ cookieconsent.run({
 <section id="what-it-flags" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-flags">What it flags</h2>
 <ul>
-<li><strong><code>unlinked-first-use</code>.</strong> The first occurrence of a known term in a passage is plain text. A passage is one div (between its fences), or one paragraph outside divs. An occurrence inside a link, or followed by <code>(@def-...)</code>, is linked. A term’s own definition div is skipped. The plural of a term counts as the term, and the longest term wins, so “test set” is not also a use of “set”.</li>
+<li><strong><code>unlinked-first-use</code>.</strong> The first occurrence of a known term in a passage is plain text. A passage is one div (between its fences), or one paragraph outside divs. An occurrence inside a link, or followed by <code>(@def-...)</code>, is linked. A term’s own definition div is skipped, and so is any other div in the file that holds that definition (such as a source callout). A paragraph outside divs is still checked. The plural of a term counts as the term, and the longest term wins, so “test set” is not also a use of “set”.</li>
 <li><strong><code>no-definition</code>.</strong> A bold term in a passage that is not a definition div, and that matches no known term: it is introduced as technical and defined nowhere. Give it a <code>#def-</code> div and link to it. Bold function words (“not”, “once”) are ignored.</li>
 </ul>
 <p>It skips code fences and spans, math, HTML comments, YAML front matter, include shortcodes, headings, images, and the target of a link. <code>&lt;!-- check-term-links: allow --&gt;</code> exempts a line, and <code>&lt;!-- check-term-links: ignore-file --&gt;</code> a file.</p>
@@ -957,8 +957,8 @@ cookieconsent.run({
 </tr>
 <tr class="even">
 <td><code>fail</code></td>
-<td><code>false</code></td>
-<td>Fail the job on a finding (else warning annotations)</td>
+<td><code>true</code></td>
+<td>Fail the job on a finding (<code>false</code>: warning annotations only)</td>
 </tr>
 <tr class="odd">
 <td><code>python-version</code></td>

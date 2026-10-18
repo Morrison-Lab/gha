@@ -2779,7 +2779,7 @@
     "href": "reference/check-term-links.html",
     "title": "check-term-links.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that every technical term is linked to its definition the first time it appears in each div, or in each paragraph outside a div. This is the lab’s linking rule (ai-config#4553, psw#223, psw#227); the check is gha#1078.",
+    "text": "Diff-scoped, blocking check that every technical term is linked to its definition the first time it appears in each div, or in each paragraph outside a div. This is the lab’s linking rule (ai-config#4553, psw#223, psw#227); the check is gha#1078.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2803,7 +2803,7 @@
     "href": "reference/check-term-links.html#what-it-flags",
     "title": "check-term-links.yml",
     "section": "What it flags",
-    "text": "What it flags\n\nunlinked-first-use. The first occurrence of a known term in a passage is plain text. A passage is one div (between its fences), or one paragraph outside divs. An occurrence inside a link, or followed by (@def-...), is linked. A term’s own definition div is skipped. The plural of a term counts as the term, and the longest term wins, so “test set” is not also a use of “set”.\nno-definition. A bold term in a passage that is not a definition div, and that matches no known term: it is introduced as technical and defined nowhere. Give it a #def- div and link to it. Bold function words (“not”, “once”) are ignored.\n\nIt skips code fences and spans, math, HTML comments, YAML front matter, include shortcodes, headings, images, and the target of a link. &lt;!-- check-term-links: allow --&gt; exempts a line, and &lt;!-- check-term-links: ignore-file --&gt; a file.",
+    "text": "What it flags\n\nunlinked-first-use. The first occurrence of a known term in a passage is plain text. A passage is one div (between its fences), or one paragraph outside divs. An occurrence inside a link, or followed by (@def-...), is linked. A term’s own definition div is skipped, and so is any other div in the file that holds that definition (such as a source callout). A paragraph outside divs is still checked. The plural of a term counts as the term, and the longest term wins, so “test set” is not also a use of “set”.\nno-definition. A bold term in a passage that is not a definition div, and that matches no known term: it is introduced as technical and defined nowhere. Give it a #def- div and link to it. Bold function words (“not”, “once”) are ignored.\n\nIt skips code fences and spans, math, HTML comments, YAML front matter, include shortcodes, headings, images, and the target of a link. &lt;!-- check-term-links: allow --&gt; exempts a line, and &lt;!-- check-term-links: ignore-file --&gt; a file.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2839,7 +2839,7 @@
     "href": "reference/check-term-links.html#inputs",
     "title": "check-term-links.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of files to learn from and check\n\n\npaths-ignore\n''\nComma/newline-separated globs to skip (*, ?, **)\n\n\nterms-file\n''\nFile of extra terms, one per line\n\n\nallow-file\n''\nFile of terms to leave alone, one per line\n\n\nwhole-tree\nfalse\nReport every finding, not only those on added lines\n\n\nfail\nfalse\nFail the job on a finding (else warning annotations)\n\n\npython-version\n3.x\nPython version to set up\n\n\n\nThe reusable workflow needs only contents: read.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of files to learn from and check\n\n\npaths-ignore\n''\nComma/newline-separated globs to skip (*, ?, **)\n\n\nterms-file\n''\nFile of extra terms, one per line\n\n\nallow-file\n''\nFile of terms to leave alone, one per line\n\n\nwhole-tree\nfalse\nReport every finding, not only those on added lines\n\n\nfail\ntrue\nFail the job on a finding (false: warning annotations only)\n\n\npython-version\n3.x\nPython version to set up\n\n\n\nThe reusable workflow needs only contents: read.",
     "crumbs": [
       "Overview",
       "Reference",
