@@ -1,0 +1,49 @@
+name: Annotation gate for a finished run (reusable)
+
+# For a repository whose CI is spread over many workflow files: call this from
+# one `workflow_run` workflow. It gates the run that just finished and posts
+# the result as a check run on that run's commit.
+
+on:
+  workflow_call:
+    inputs:
+      run-id:
+        description: The finished run to gate, github.event.workflow_run.id.
+        type: string
+        required: true
+      run-attempt:
+        description: Its attempt, github.event.workflow_run.run_attempt.
+        type: string
+        default: ''
+      head-sha:
+        description: Its commit, github.event.workflow_run.head_sha.
+        type: string
+        required: true
+      levels:
+        description: Comma list of annotation levels to enforce (notice, warning, failure).
+        type: string
+        default: 'notice,warning,failure'
+      allow-patterns:
+        description: >-
+          Newline-separated regexes (case-insensitive) for tracked exceptions;
+          an annotation whose message matches one is allowed.
+        type: string
+        default: ''
+
+jobs:
+  annotation-gate-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+    steps:
+      - name: Fail on unallowed annotations
+        uses: Morrison-Lab/gha/annotation-gate@v3
+        with:
+          run-id: ${{ inputs.run-id }}
+          run-attempt: ${{ inputs.run-attempt }}
+          head-sha: ${{ inputs.head-sha }}
+          levels: ${{ inputs.levels }}
+          allow-patterns: ${{ inputs.allow-patterns }}

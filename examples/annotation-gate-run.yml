@@ -1,0 +1,30 @@
+# Copy to .github/workflows/annotation-gate.yml in your repo.
+# For a repository whose checks are spread over many workflow files: this
+# gates each run that finishes and posts an `annotation-gate` check run on the
+# run's commit, so it shows on the pull request. Add that check to the
+# repository ruleset as required. Each gated run posts its own check run of
+# that name, so a commit with several workflows can carry both a passing and a
+# failing one; the failing one blocks a required check.
+name: Annotation gate
+
+on:
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+jobs:
+  gate:
+    # The gate's own run must not trigger another gate.
+    if: ${{ github.event.workflow_run.name != 'Annotation gate' }}
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/annotation-gate-run.yml@v3
+    with:
+      run-id: ${{ github.event.workflow_run.id }}
+      run-attempt: ${{ github.event.workflow_run.run_attempt }}
+      head-sha: ${{ github.event.workflow_run.head_sha }}
+    #   levels: 'warning,failure'              # skip notices
+    #   allow-patterns: |                      # tracked exceptions, regexes
+    #     lychee .* Rejected status code: 503

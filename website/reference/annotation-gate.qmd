@@ -28,6 +28,9 @@ Grant the job `actions: read`, `checks: read` and `contents: read`.
 The composite action `Morrison-Lab/gha/annotation-gate@v3` also takes
 `default-allow`, which replaces the allowed-for-everyone list below, and `token`.
 The reusable workflow keeps the defaults.
+It takes three more inputs for the `workflow_run` mode described at the end:
+`run-id` (the run to gate instead of the current one), `run-attempt`, and
+`head-sha` (post the result as a check run on this commit).
 
 ## Allowed for everyone
 
@@ -45,3 +48,45 @@ Annotations from the gate's own job, and from a job that has not finished,
 are not seen.
 A reusable-workflow job is covered, because the jobs endpoint lists each by
 its full name.
+
+## One gate for a repository with many workflow files
+
+The job above sees only the jobs of its own run.
+A repository whose checks live in separate workflow files calls
+`annotation-gate-run.yml` from one `workflow_run` workflow instead.
+It gates each run that finishes and posts the result as a check run named
+`annotation-gate` on that run's commit, so it shows on the pull request.
+
+```yaml
+name: Annotation gate
+on:
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+jobs:
+  gate:
+    # The gate's own run must not trigger another gate.
+    if: ${{ github.event.workflow_run.name != 'Annotation gate' }}
+    permissions:
+      actions: read
+      checks: write
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/annotation-gate-run.yml@v3
+    with:
+      run-id: ${{ github.event.workflow_run.id }}
+      run-attempt: ${{ github.event.workflow_run.run_attempt }}
+      head-sha: ${{ github.event.workflow_run.head_sha }}
+```
+
+It takes the same `levels` and `allow-patterns` inputs.
+Grant `checks: write`; the job posts one check run per gated run.
+
+Each gated run posts its own check run named `annotation-gate`.
+When several workflows finish on one commit, the commit carries several checks
+of that name, and a failing one blocks a required check.
+`annotation-gate-run.yml` holds `checks: write`, so it is not in the
+read-only list on the permissions page.
+It calls the action at `@v3`, so it gates the right run only once `v3` has
+slid past the commit that added these inputs; before that the unknown inputs
+are ignored and the gate checks its own run.
+See `examples/annotation-gate-run.yml` for the stub to copy.
