@@ -1447,10 +1447,9 @@ jobs:
           printf '%s\n' 'Let $y_i$ be the outcome.' > _ci-literal-math/page.qmd
           git add -f _ci-literal-math/page.qmd
       # Warn-only is the default: the same page must not fail the job.
-      - name: Check the staged page, warn-only with fail false
+      - name: Check the staged page, warn-only by default
         uses: ./check-literal-math-letters
         with:
-          fail: 'false'
           whole-tree: 'true'
       - name: Check the staged page, expecting a failure
         id: literal-math-expected-failure
@@ -1458,7 +1457,6 @@ jobs:
         uses: ./check-literal-math-letters
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
       - name: Assert the failing call actually failed
         shell: bash
@@ -1506,7 +1504,6 @@ jobs:
         uses: ./check-literal-math-letters
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
           # check-ai-tells' positive control quotes a literal x in math on purpose.
           paths-ignore: '_ci-literal-math,check-ai-tells/tests/**'
@@ -1514,7 +1511,6 @@ jobs:
         uses: ./check-literal-math-letters
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
           globs: 'website/reference/*.qmd'
       - name: Remove the staged page
@@ -1675,10 +1671,9 @@ jobs:
           printf '%s\n' 'Use $\newcommand{\foo}{x}$ here.' > _ci-local-macros/page.qmd
           git add -f _ci-local-macros/page.qmd
       # Warn-only is the default: the same page must not fail the job.
-      - name: Check the staged page, warn-only with fail false
+      - name: Check the staged page, warn-only by default
         uses: ./check-local-macros
         with:
-          fail: 'false'
           whole-tree: 'true'
       - name: Check the staged page, expecting a failure
         id: local-macros-expected-failure
@@ -1686,7 +1681,6 @@ jobs:
         uses: ./check-local-macros
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
       - name: Assert the failing call actually failed
         shell: bash
@@ -1734,14 +1728,12 @@ jobs:
         uses: ./check-local-macros
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
           paths-ignore: '_ci-local-macros'
       - name: Check again with globs excluding the page
         uses: ./check-local-macros
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
           globs: 'website/reference/*.qmd'
       # The page is an override file naming a macro the library lacks: that is
@@ -1830,10 +1822,9 @@ jobs:
           printf '%s\n' 'Fit $\fitproc\paren{x}$ here.' > _ci-fform-paren/page.qmd
           git add -f _ci-fform-paren/macros.qmd _ci-fform-paren/page.qmd
       # Warn-only is the default: the same page must not fail the job.
-      - name: Check the staged page, warn-only with fail false
+      - name: Check the staged page, warn-only by default
         uses: ./check-fform-paren
         with:
-          fail: 'false'
           whole-tree: 'true'
           macros-file: '_ci-fform-paren/macros.qmd'
       - name: Check the staged page, expecting a failure
@@ -1842,7 +1833,6 @@ jobs:
         uses: ./check-fform-paren
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
           macros-file: '_ci-fform-paren/macros.qmd'
       - name: Assert the failing call actually failed
@@ -1893,7 +1883,6 @@ jobs:
         uses: ./check-fform-paren
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
           macros-file: '_ci-fform-paren/macros.qmd'
           paths-ignore: '_ci-fform-paren'
@@ -1901,7 +1890,6 @@ jobs:
         uses: ./check-fform-paren
         with:
           fail: 'true'
-          fail: 'false'
           whole-tree: 'true'
           macros-file: '_ci-fform-paren/macros.qmd'
           globs: 'website/reference/*.qmd'
