@@ -1,10 +1,22 @@
-# Add this job to a workflow, listing every other job in `needs`.
-# It fails the run when any of them carries a notice, warning or failure
+# Copy to .github/workflows/ci.yml in your repo, or add the `gate` job to a
+# workflow you already have and list every other job in its `needs`.
+# The gate fails the run when any of them carries a notice, warning or failure
 # annotation that is not allowlisted, so an annotation cannot sit on a green
 # job unnoticed. GitHub's runner-image migration notice and the forced-Node
 # deprecation warning are allowed for everyone.
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
 jobs:
-  # ... your other jobs ...
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "your checks go here, or call other reusable workflows"
   gate:
     if: ${{ always() }}
     needs: [check] # every other job in this workflow
