@@ -208,8 +208,14 @@ def test_cli_diff_scope_reports_only_the_pr(repo):
     assert "::error file=new.qmd" in res.stdout
 
 
-def test_cli_warn_only_by_default(repo):
+def test_cli_blocks_with_error_annotations_by_default(repo):
     res = run_cli(repo, BASE_REF="main")
+    assert res.returncode == 1
+    assert "::error file=new.qmd" in res.stdout
+
+
+def test_cli_fail_false_warns_without_failing(repo):
+    res = run_cli(repo, BASE_REF="main", FAIL="false")
     assert res.returncode == 0
     assert "::warning file=new.qmd" in res.stdout
 

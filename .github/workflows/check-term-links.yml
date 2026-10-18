@@ -37,9 +37,9 @@ on:
       fail:
         description: >-
           Fail the workflow when a finding is reported (else non-blocking).
-          Defaults to false (warning annotations only).
+          Defaults to true; false reports warning annotations only.
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-term-links:
