@@ -1,0 +1,47 @@
+---
+title: "annotation-gate.yml"
+---
+
+Fail a run that carries an annotation nobody allowed.
+
+A check that emits a `::warning::` or `::notice::` on a green job tells the
+reader something is wrong without stopping the merge, and agents and authors
+skip it.
+This gate reads the annotations of every other job in the run through the
+check-runs API and fails when any `notice`, `warning` or `failure` annotation
+does not match an allow pattern.
+
+## Use
+
+Add one job that lists every other job in `needs` and runs `if: always()`.
+See `examples/annotation-gate.yml`.
+Grant the job `actions: read`, `checks: read` and `contents: read`.
+
+## Inputs
+
+- `levels`: levels to enforce, default `notice,warning,failure`.
+- `allow-patterns`: newline-separated case-insensitive regexes for tracked
+  exceptions.
+- `job-name`: optional extra name prefix of a job to skip.
+  The gate's own job is always skipped, whatever the caller named it.
+
+The composite action `Morrison-Lab/gha/annotation-gate@v3` also takes
+`default-allow`, which replaces the allowed-for-everyone list below, and `token`.
+The reusable workflow keeps the defaults.
+
+## Allowed for everyone
+
+- GitHub's runner-image migration notice ("The ubuntu-latest label will
+  migrate to ...").
+- A job's own "Process completed with exit code N" failure annotation.
+  A failed job already fails the run, and the gate runs under `if: always()`,
+  so this one would only repeat it.
+- The forced-Node deprecation warning, until the action pins are bumped.
+  It reads "Node.js N is deprecated" and then "The following actions target Node".
+
+## Scope
+
+Annotations from the gate's own job, and from a job that has not finished,
+are not seen.
+A reusable-workflow job is covered, because the jobs endpoint lists each by
+its full name.

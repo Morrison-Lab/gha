@@ -1,0 +1,35 @@
+name: Annotation gate (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      levels:
+        description: Comma list of annotation levels to enforce (notice, warning, failure).
+        type: string
+        default: 'notice,warning,failure'
+      allow-patterns:
+        description: >-
+          Newline-separated regexes (case-insensitive) for tracked exceptions;
+          an annotation whose message matches one is allowed.
+        type: string
+        default: ''
+      job-name:
+        description: Optional extra name prefix of a job to skip. The gate's own job is always skipped.
+        type: string
+        default: ''
+
+jobs:
+  annotation-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    steps:
+      - name: Fail on unallowed annotations
+        uses: Morrison-Lab/gha/annotation-gate@v3
+        with:
+          levels: ${{ inputs.levels }}
+          allow-patterns: ${{ inputs.allow-patterns }}
+          job-name: ${{ inputs.job-name }}
