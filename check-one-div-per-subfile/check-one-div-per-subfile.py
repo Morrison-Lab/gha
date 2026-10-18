@@ -102,6 +102,8 @@ def is_subfile(path: str) -> bool:
 
 
 CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
+
+
 def drop_closed_comments(text: str) -> str:
     """Remove each ``<!-- ... -->`` pair from one line, leaving an open one."""
     while True:
