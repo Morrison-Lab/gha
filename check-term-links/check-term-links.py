@@ -18,7 +18,7 @@ Which words are terms: the check learns them from the corpus itself.
 Findings:
 - `unlinked-first-use`: the first occurrence of a known term in a passage is plain
   text, not inside a link or an `@def-...` cross-reference. The term's own def div
-  is skipped, and so is any other passage in a file that holds that def div.
+  is skipped, and so is any other passage in a div of a file that holds that def div.
 - `no-definition`: a bold term in a passage that is not a def div, and that
   matches no known term, so it is introduced as technical with no definition
   anywhere in the corpus. Give it a `#def-` div.
@@ -338,8 +338,8 @@ def scan_passage(
             seen.add(key)
             if passage.div_id and passage.div_id in terms[key]:
                 continue
-            # A callout beside the def div, in the same file, is part of that definition.
-            if own_defs and terms[key] & own_defs:
+            # A div beside the def div in the same file (a source callout) is part of that definition; prose outside divs is still checked.
+            if passage.in_div and own_defs and terms[key] & own_defs:
                 continue
             start = m.start()
             if any(a <= start < b for a, b in link_spans):

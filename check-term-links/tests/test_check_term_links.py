@@ -97,6 +97,11 @@ def test_a_callout_in_the_same_file_as_the_def_div_is_skipped():
     assert rules(run_text(page)) == []
 
 
+def test_prose_after_the_def_div_in_the_same_file_is_still_checked():
+    page = RISK_DEF + "\nThe risk was introduced in 1990.\n"
+    assert rules(run_text(page)) == [("unlinked-first-use", "risk")]
+
+
 def test_source_label_is_not_a_term():
     kappa = "::: {#def-kappa}\n\n**Source**: a note on kappa.\n\n:::\n"
     page = "::: {#exm-a}\n\nSource of the data.\n\n:::\n"
