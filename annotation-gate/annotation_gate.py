@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Fail a workflow run that carries an annotation nobody allowed.
 
 Reads every other job's annotations in the current run through the REST API.
