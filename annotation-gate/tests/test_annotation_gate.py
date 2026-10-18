@@ -1,0 +1,61 @@
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import annotation_gate as g  # noqa: E402
+
+DEFAULT = [
+    r"The ubuntu-latest label will migrate to",
+    r"Node\.js \d+ is deprecated\. The following actions target Node",
+]
+
+
+def ann(level, message):
+    return ("job", {"annotation_level": level, "message": message})
+
+
+def test_unallowed_warning_is_a_violation():
+    bad = g.find_violations([ann("warning", "'bias' is a defined term")], set(g.LEVELS_ALL), DEFAULT)
+    assert len(bad) == 1
+
+
+def test_unallowed_notice_is_a_violation():
+    assert g.find_violations([ann("notice", "Running dry-run mode")], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_runner_migration_notice_is_allowed():
+    msg = "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026."
+    assert not g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_node_deprecation_is_allowed():
+    msg = "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced"
+    assert not g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_allow_match_is_case_insensitive_search():
+    assert not g.find_violations([ann("warning", "Skipping the X check")], set(g.LEVELS_ALL), ["skipping the"])
+
+
+def test_level_not_enforced_is_ignored():
+    assert not g.find_violations([ann("notice", "anything")], {"warning", "failure"}, [])
+
+
+def test_failure_level_counts():
+    assert g.find_violations([ann("failure", "Process completed with exit code 1.")], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_parse_levels_rejects_unknown():
+    with pytest.raises(ValueError):
+        g.parse_levels("warning,error")
+
+
+def test_parse_levels_rejects_empty():
+    with pytest.raises(ValueError):
+        g.parse_levels("")
+
+
+def test_split_lines_drops_blanks():
+    assert g.split_lines("a\n\n  b \n") == ["a", "b"]

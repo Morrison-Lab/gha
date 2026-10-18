@@ -6230,3 +6230,19 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Run the check-source-overlap tests
         run: python3 check-source-overlap/tests/test_check_source_overlap.py
+
+  # annotation-gate's reusable workflow resolves its action at @v3, which does
+  # not carry it until the tag slides, so only the unit tests run here.
+  annotation-gate-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run the annotation-gate unit tests
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest annotation-gate/tests/ -v

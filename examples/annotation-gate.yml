@@ -1,0 +1,19 @@
+# Add this job to a workflow, listing every other job in `needs`.
+# It fails the run when any of them carries a notice, warning or failure
+# annotation that is not allowlisted, so an annotation cannot sit on a green
+# job unnoticed. GitHub's runner-image migration notice and the forced-Node
+# deprecation warning are allowed for everyone.
+jobs:
+  # ... your other jobs ...
+  gate:
+    if: ${{ always() }}
+    needs: [check] # every other job in this workflow
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/annotation-gate.yml@v3
+    # with:
+    #   levels: 'warning,failure'              # skip notices
+    #   allow-patterns: |                      # tracked exceptions, regexes
+    #     lychee .* Rejected status code: 503

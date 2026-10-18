@@ -1,0 +1,42 @@
+name: Annotation gate
+description: >-
+  Fail the run when any other job in it carries a notice, warning or failure
+  annotation that is not allowlisted. Annotations are the one place agents and
+  authors are told something is wrong without the job going red, and they get
+  ignored; this makes each one either a failure or a tracked exception.
+  Run it in a job that `needs:` every other job, with `if: always()`.
+inputs:
+  levels:
+    description: Comma list of annotation levels to enforce (notice, warning, failure).
+    default: 'notice,warning,failure'
+  allow-patterns:
+    description: >-
+      Newline-separated regexes (case-insensitive, searched in the message).
+      An annotation matching one is allowed. Add the caller's tracked
+      exceptions here.
+    default: ''
+  default-allow:
+    description: >-
+      Newline-separated regexes allowed for every caller: messages GitHub or a
+      third-party action emits that no repository can silence.
+    default: |
+      The ubuntu-latest label will migrate to
+      Node\.js \d+ is deprecated\. The following actions target Node
+  job-name:
+    description: Name prefix of the gate's own job, which is skipped.
+    default: ''
+  token:
+    description: Token granted actions read and checks read.
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Check annotations
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GATE_LEVELS: ${{ inputs.levels }}
+        GATE_ALLOW: ${{ inputs.allow-patterns }}
+        GATE_DEFAULT_ALLOW: ${{ inputs.default-allow }}
+        GATE_JOB_NAME: ${{ inputs.job-name }}
+      run: python3 "$GITHUB_ACTION_PATH/annotation_gate.py"

@@ -1,0 +1,39 @@
+---
+title: "annotation-gate.yml"
+---
+
+Fail a run that carries an annotation nobody allowed.
+
+A check that emits a `::warning::` or `::notice::` on a green job tells the
+reader something is wrong without stopping the merge, and agents and authors
+skip it.
+This gate reads the annotations of every other job in the run through the
+check-runs API and fails when any `notice`, `warning` or `failure` annotation
+does not match an allow pattern.
+
+## Use
+
+Add one job that lists every other job in `needs` and runs `if: always()`.
+See `examples/annotation-gate.yml`.
+Grant the job `actions: read`, `checks: read` and `contents: read`.
+
+## Inputs
+
+- `levels`: levels to enforce, default `notice,warning,failure`.
+- `allow-patterns`: newline-separated case-insensitive regexes for tracked
+  exceptions.
+- `job-name`: name prefix of the gate's own job, skipped. Default `gate`.
+
+## Allowed for everyone
+
+- GitHub's runner-image migration notice ("The ubuntu-latest label will
+  migrate to ...").
+- The forced-Node deprecation warning ("Node.js N is deprecated. The
+  following actions target Node ...") until the action pins are bumped.
+
+## Scope
+
+Annotations from the gate's own job, and from a job that has not finished,
+are not seen.
+A reusable-workflow job is covered, because the jobs endpoint lists each by
+its full name.
