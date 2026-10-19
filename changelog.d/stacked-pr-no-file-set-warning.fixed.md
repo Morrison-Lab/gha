@@ -1,0 +1,1 @@
+- `detect-pr-workflow-edits` no longer emits a `::warning::` for a stacked PR (base is not the default branch). That case is by design, and the warning made the annotation gate fail the required check on stacked PRs. API failures and truncated lists still warn.
