@@ -59,7 +59,7 @@ It gates each run that finishes and posts the result as a check run named
 
 ```yaml
 name: Annotation gate
-on:
+on: # zizmor: ignore[dangerous-triggers] -- the gate checks out nothing and runs no code from the triggering run
   workflow_run:
     workflows: ["*"]
     types: [completed]

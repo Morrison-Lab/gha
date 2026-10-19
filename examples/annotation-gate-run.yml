@@ -7,7 +7,7 @@
 # failing one; the failing one blocks a required check.
 name: Annotation gate
 
-on:
+on: # zizmor: ignore[dangerous-triggers] -- the gate checks out nothing and runs no code from the triggering run
   workflow_run:
     workflows: ["*"]
     types: [completed]
