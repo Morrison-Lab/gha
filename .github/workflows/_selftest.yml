@@ -2168,6 +2168,7 @@ jobs:
         uses: ./check-write-idiom
         with:
           whole-tree: 'true'
+          globs: '_ci-write-idiom/*.qmd'
       - name: Check the staged page, expecting a failure
         id: write-idiom-expected-failure
         continue-on-error: true
@@ -2175,6 +2176,7 @@ jobs:
         with:
           fail: 'true'
           whole-tree: 'true'
+          globs: '_ci-write-idiom/*.qmd'
       - name: Assert the failing call actually failed
         shell: bash
         env:
@@ -2216,7 +2218,8 @@ jobs:
         with:
           fail: 'true'
           whole-tree: 'true'
-          paths-ignore: '_ci-write-idiom, conductor/workflow.md'
+          globs: '_ci-write-idiom/*.qmd'
+          paths-ignore: '_ci-write-idiom'
       - name: Check again with globs excluding the page
         uses: ./check-write-idiom
         with:
