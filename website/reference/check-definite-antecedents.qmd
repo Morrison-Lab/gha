@@ -21,7 +21,8 @@ The finding sits on that line.
 The check does not count:
 
 - code fences, HTML comments, YAML headers and headings;
-- a first sentence that defines a bolded term, such as "The **mean** of ...";
+- a first sentence that defines a bolded term, that is, one where "The" is followed
+  by a term wrapped in double asterisks;
 - a first sentence with a link, a cross-reference or an `include` shortcode.
 
 A definition that starts "The covariance function must be ..."
