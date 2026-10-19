@@ -28,6 +28,12 @@ title: A
 Uses @def-one and [b](b.qmd#thm-b)
 and [a definition elsewhere](https://morrison-lab.github.io/pds/expectation.html#def-expectation).
 See @exm-skipped.
+
+::: {.callout-note}
+A nested non-definition div.
+:::
+
+After the callout, still in the div: [a vector](https://example.org/mds/vectors.qmd#def-vector).
 :::
 
 ::: {#def-early}
@@ -64,6 +70,9 @@ def main() -> int:
           and ("t/b#thm-b", "t/a#def-one") in edge_set)
     check("cross-site edge and stub", ("t/a#def-two", "pds/expectation#def-expectation") in edge_set
           and nodes["pds/expectation#def-expectation"]["external"])
+    check("link after a nested div still belongs to the div", ("t/a#def-two", "mds/vectors#def-vector") in edge_set)
+    check("cross-site URL keeps its own host",
+          nodes["mds/vectors#def-vector"]["url"] == "https://example.org/mds/vectors.html#def-vector")
     check("example reference adds no edge", not any("exm" in b for _, b in edge_set))
     check("forward reference", ("t/a#def-early", "t/a#def-late") in forward)
     check("cycle", cycles == [["t/a#def-early", "t/a#def-late"]])

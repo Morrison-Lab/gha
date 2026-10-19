@@ -105,6 +105,7 @@
     var host = document.getElementById("dependency-graph-page");
     if (!host) return;
     var mine = Object.keys(nodes).filter(function (k) { return nodes[k].site === g.site && nodes[k].page === page; });
+    if (!mine.length) return;
     var level = {};
     function lv(k, seen) {
       if (k in level) return level[k];

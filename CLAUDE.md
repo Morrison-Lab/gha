@@ -461,7 +461,7 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   since Quarto 1.10.18 compares the whole value as one name
   (measured: `when-profile="assign,solution"` shows under no profile)
   and a list-valued attribute can never match;
-  `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
+  `preview/`, `quarto-publish/`, `open-sync-pr/`, `build-dependency-graph/` (gha#1125), and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
 - `.github/workflows/` -- the `workflow_call` reusable workflows that wrap the

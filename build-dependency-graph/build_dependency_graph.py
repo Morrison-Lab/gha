@@ -39,6 +39,8 @@ def expand(path, seen=()):
             if sub.exists() and sub not in seen:
                 yield from expand(sub, seen + (sub,))
                 continue
+            if not sub.exists():
+                print(f"warning: {path}: include target not found: {m.group(1)}", file=sys.stderr)
         yield line, path
 
 
@@ -103,21 +105,23 @@ def build(root, site):
         for d in divs:
             src = key(site, page, d["id"])
             body = "\n".join(d["text"])
-            targets = set()
+            targets = {}  # (site, page, id) -> the link's own URL, for a cross-site one
             for ref in AT_REF.findall(body):
-                targets.add((site, page, ref))
+                targets[(site, page, ref)] = ""
             for href, ref in LINK.findall(body):
                 href = href.strip()
                 um = URL_SITE.match(href)
+                url = ""
                 if um and not href.startswith("#"):
                     t_site, t_page = um.group(1), um.group(2)
-                elif href == "" :
+                    url = re.sub(r"\.qmd$", ".html", href) + "#" + ref
+                elif href == "":
                     t_site, t_page = site, page
                 else:
                     t_site = site
                     t_page = re.sub(r"\.(qmd|html)$", "", href.split("/")[-1])
-                targets.add((t_site, t_page, ref))
-            for t_site, t_page, ref in targets:
+                targets[(t_site, t_page, ref)] = url
+            for (t_site, t_page, ref), url in targets.items():
                 tk = key(t_site, t_page, ref)
                 if tk == src:
                     continue
@@ -126,7 +130,7 @@ def build(root, site):
                         continue  # a dangling local reference is check_site.py's business
                     nodes[tk] = {"id": tk, "site": t_site, "page": t_page, "div": ref, "kind": ref.split("-")[0],
                                  "title": ref.split("-", 1)[1].replace("-", " "), "external": True,
-                                 "url": f"https://morrison-lab.github.io/{t_site}/{t_page}.html#{ref}"}
+                                 "url": url}
                 edges.add((src, tk))
     forward = sorted((a, b) for a, b in edges
                      if a in order and b in order and nodes[a]["page"] == nodes[b]["page"] and order[b] > order[a])
@@ -182,13 +186,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--root", default=".")
     ap.add_argument("--out")
-    ap.add_argument("--site", default="lds", help="this site's name in cross-site keys")
+    ap.add_argument("--site", help="this site's name in cross-site keys (default: the root directory's name)")
     ap.add_argument("--fail", action="store_true", help="exit 1 on a cycle")
     a = ap.parse_args()
     root = Path(a.root).resolve()
+    a.site = a.site or root.name
     nodes, edges, forward, order = build(root, a.site)
     cycles = find_cycles(nodes, edges)
     out = Path(a.out) if a.out else root / "dependency-graph.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "site": a.site,
         "meaning": "edge [A, B] means A uses B: B is a prerequisite of A, A a postrequisite of B",

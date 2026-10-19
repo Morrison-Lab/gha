@@ -6275,3 +6275,36 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest annotation-gate/tests/ -v
+
+  # build-dependency-graph is composite-only and brand new, so exercise the
+  # local composite. The unit tests cover the parser; the composite call
+  # proves action.yml wires root, site and out-dir through. The fixture is
+  # generated at runtime.
+  build-dependency-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run the build-dependency-graph unit tests
+        run: python3 build-dependency-graph/tests/test_build_dependency_graph.py
+      - name: Generate a fixture site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-dg/chapters
+          printf '%s\n' '::: {#def-a}' 'A term.' ':::' '' '::: {#thm-b}' 'Uses @def-a.' ':::' > _ci-dg/chapters/page.qmd
+      - name: Build the graph
+        uses: ./build-dependency-graph
+        with:
+          root: _ci-dg
+          site: ci
+          out-dir: out
+      - name: Assert the graph and script were written
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f _ci-dg/out/dependency-graph.js
+          python3 -c "import json,sys; g=json.load(open('_ci-dg/out/dependency-graph.json')); assert g['edges']==[['ci/page#thm-b','ci/page#def-a']], g['edges']"
