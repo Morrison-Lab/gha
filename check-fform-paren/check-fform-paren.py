@@ -16,7 +16,10 @@ a warning, since without it no f form is known.
 
 What is flagged: in ``.qmd``, ``.md`` and ``.Rmd`` files, a macro ``\name``
 immediately followed by ``\paren{``, ``\sb{`` or ``\cb{`` (the ``DELIMITERS``
-constant) when ``\namef`` is a known f form. The message is
+constant) when ``\namef`` is a known f form that wraps its argument in that
+same delimiter. The delimiter is read from the f form's defining line,
+following ``\def`` aliases; an f form whose delimiter cannot be read is not
+suggested. The message is
 ``\name\paren{...} -> \namef{...}``, with ``\sb`` or ``\cb`` in place of
 ``\paren`` when that is what was written.
 
@@ -91,24 +94,65 @@ class Finding(NamedTuple):
     delimiter: str = "paren"
 
 
-def fform_names(path: str) -> Optional[Set[str]]:
-    """Names of the f forms (``fitprocf``, no backslash) the file defines.
+# Any macro definition, with the rest of its line as the body.
+DEF_RE = re.compile(
+    r"(?<!\\)\\(?:providecommand|newcommand)\*?\s*\{\s*\\([A-Za-z]+)\s*\}(.*)"
+    r"|(?<!\\)\\def\s*\\([A-Za-z]+)(?![A-Za-z])(.*)"
+)
+DELIMITER_RE = re.compile(r"\\(" + "|".join(DELIMITERS) + r")(?![A-Za-z])")
+ALIAS_BODY_RE = re.compile(r"\s*\{\s*\\([A-Za-z]+)\s*\}\s*(?:%.*)?")
+MAX_ALIAS_DEPTH = 5
 
-    ``None`` when the file cannot be read.
+
+def _macro_bodies(text: str) -> Dict[str, str]:
+    """Macro name (no backslash) -> the rest of its defining line."""
+    return {(m.group(1) or m.group(3)): (m.group(2) or m.group(4) or "")
+            for m in DEF_RE.finditer(text)}
+
+
+def _delimiter_of(name: str, bodies: Dict[str, str]) -> Optional[str]:
+    """The delimiter macro the definition of ``name`` wraps its argument in.
+
+    An alias such as ``\\def\\Ef{\\E}`` is followed to the macro it names.
+    ``None`` when no delimiter can be read.
+    """
+    for _ in range(MAX_ALIAS_DEPTH):
+        body = bodies.get(name)
+        if body is None:
+            return None
+        found = DELIMITER_RE.search(body)
+        if found:
+            return found.group(1)
+        alias = ALIAS_BODY_RE.fullmatch(body)
+        if not alias:
+            return None
+        name = alias.group(1)
+    return None
+
+
+def fform_delimiters(path: str) -> Optional[Dict[str, Optional[str]]]:
+    """f form name (``fitprocf``, no backslash) -> the delimiter it builds in.
+
+    The delimiter is ``None`` when it cannot be read from the definition;
+    such an f form is never suggested.  ``None`` when the file cannot be read.
     """
     try:
         with open(path, encoding="utf-8", errors="replace") as handle:
             text = handle.read()
     except OSError:
         return None
-    return {m.group(1) or m.group(2) for m in FFORM_DEF_RE.finditer(text)}
+    bodies = _macro_bodies(text)
+    return {m.group(1) or m.group(2):
+            _delimiter_of(m.group(1) or m.group(2), bodies)
+            for m in FFORM_DEF_RE.finditer(text)}
 
 
-def paren_uses(text: str, fforms: Set[str]) -> List[Tuple[str, str]]:
-    """``(foo, delimiter)`` for each ``\\foo\\paren{`` (or ``\\sb{``, ``\\cb{``)
-    of ``text`` whose ``foof`` is known."""
+def paren_uses(text: str, fforms: Dict[str, Optional[str]]
+               ) -> List[Tuple[str, str]]:
+    """``(foo, delimiter)`` for each ``\\foo\\paren{`` (or ``\\sb{``, ...) of
+    ``text`` whose ``foof`` builds in that same delimiter."""
     return [(m.group(1), m.group(2)) for m in PAREN_RE.finditer(text)
-            if m.group(1) + "f" in fforms]
+            if fforms.get(m.group(1) + "f") == m.group(2)]
 
 
 def _blank_closed_comments(line: str) -> str:
@@ -147,7 +191,7 @@ def _mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
     return out, in_comment
 
 
-def scan_file(lines: List[str], fforms: Set[str]) -> Tuple[List[Finding], int]:
+def scan_file(lines: List[str], fforms: Dict[str, Optional[str]]) -> Tuple[List[Finding], int]:
     """``([Finding, ...], lines examined)`` for a Markdown-family file."""
     found: List[Finding] = []
     examined = 0
@@ -299,7 +343,7 @@ def _read_lines(path: str) -> Optional[List[str]]:
 
 
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
-              fforms: Set[str], whole_tree: bool) -> Report:
+              fforms: Dict[str, Optional[str]], whole_tree: bool) -> Report:
     """Scan the added lines since ``base_ref``, or every line when whole-tree."""
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
@@ -350,7 +394,7 @@ def main() -> int:
     fail = _env_flag("CFP_FAIL", _DEFAULT_FAIL)
     whole_tree = _env_flag("CFP_WHOLE_TREE", False)
 
-    fforms = fform_names(macros_file)
+    fforms = fform_delimiters(macros_file)
     if fforms is None:
         print(
             f"::warning::Skipping the f-form check: macros file "
