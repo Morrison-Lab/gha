@@ -35,7 +35,10 @@ def expand(path, seen=()):
     for line in path.read_text(encoding="utf-8").splitlines():
         m = INCLUDE.search(line)
         if m and not line.lstrip().startswith("<!--"):
+            # Quarto resolves a nested include against the page, not the subfile.
             sub = (path.parent / m.group(1)).resolve()
+            if not sub.exists():
+                sub = (seen[0].parent / m.group(1)).resolve()
             if sub.exists() and sub not in seen:
                 yield from expand(sub, seen + (sub,))
                 continue
