@@ -911,7 +911,7 @@ cookieconsent.run({
 
 
 <p>Run the self-test of a notes repository’s vendored <code>build_dependency_graph.py</code>, then build the graph of its definition and result divs and fail on a cycle.</p>
-<p>The script comes from the <a href="https://github.com/Morrison-Lab/gha/tree/main/build-dependency-graph"><code>build-dependency-graph</code></a> action. Notes repositories vendor it under <code>tools/</code> so that a local render can run it as a <code>pre-render</code> step. Nothing else runs the vendored copy’s self-test, so a change to the script in one repository can break it without any check going red.</p>
+<p>The script comes from the <code>build-dependency-graph</code> action. Notes repositories vendor it under <code>tools/</code> so that a local render can run it as a <code>pre-render</code> step. Nothing else runs the vendored copy’s self-test, so a change to the script in one repository can break it without any check going red.</p>
 <section id="what-it-does" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-does">What it does</h2>
 <ol type="1">
