@@ -36,6 +36,10 @@ def test_indefinite_opener_is_fine():
     assert hits("::: {#exr-a}\nA label is a name.\n:::") == []
 
 
+def test_defining_a_bolded_term_is_fine():
+    assert hits("::: {#def-a}\nThe **mean** of a variable is its average.\n:::") == []
+
+
 def test_link_or_crossref_exempts():
     assert hits("::: {#exr-a}\nThe [labels](#def-label) are bad.\n:::") == []
     assert hits("::: {#exr-a}\nThe labels of @exm-data are bad.\n:::") == []

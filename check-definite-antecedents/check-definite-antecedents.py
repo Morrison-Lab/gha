@@ -15,7 +15,8 @@ reader has none unless a link supplies one. The finding sits on that line.
 It is warn-only: a definition that starts "The covariance function must be..."
 is reported although it may be fine, which is why it never fails by default.
 
-Not counted: code fences, HTML comments, YAML headers, headings, and a first
+Not counted: code fences, HTML comments, YAML headers, headings, a first
+sentence that defines a bolded term ("The **mean** of ..."), and a first
 sentence holding a Markdown link, a ``@`` cross-reference or an include
 shortcode. Diff-scoped by default: only a first sentence on an added line is
 reported (an added line whose exact text was also deleted counts as moved).
@@ -51,7 +52,7 @@ ADVICE = (
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 LIST_MARKER_RE = re.compile(r"^(?:[-*+]\s+|\d+[.)]\s+)")
-DEFINITE_RE = re.compile(r"^(The|These|Those|This|That)\s+(\S+)")
+DEFINITE_RE = re.compile(r"^(The|These|Those|This|That)\s+(?!\*\*)(\S+)")
 LINKED_RE = re.compile(r"\]\(|@[A-Za-z]|\{\{<")
 
 
