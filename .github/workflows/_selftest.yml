@@ -2019,7 +2019,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _ci-fform-paren
-          printf '%s\n' '\providecommand{\fitprocf}[1]{x}' > _ci-fform-paren/macros.qmd
+          printf '%s\n' '\providecommand{\fitprocf}[1]{\fitproc\paren{#1}}' > _ci-fform-paren/macros.qmd
           printf '%s\n' 'Fit $\fitproc\paren{x}$ here.' > _ci-fform-paren/page.qmd
           git add -f _ci-fform-paren/macros.qmd _ci-fform-paren/page.qmd
       # Warn-only is the default: the same page must not fail the job.
