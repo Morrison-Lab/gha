@@ -492,7 +492,10 @@ runs:
           # as "html,pdf" fails with "Unknown format", and one invocation per
           # format would prune the other formats' supporting files.
           if [ "$SKIP_DOCX" = "true" ] && [ "$HAS_LABEL_DOCX" != "true" ]; then
-            echo "::notice::skip-docx does not apply to formats: default; rendering every declared format."
+            # A plain log line, not an annotation: skip-docx defaults to true, so every
+            # caller with formats: default would otherwise fail the annotation gate on a
+            # by-design condition (gha#1062).
+            echo "skip-docx does not apply to formats: default; rendering every declared format."
           fi
           quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
         else
