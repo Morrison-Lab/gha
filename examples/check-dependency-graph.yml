@@ -1,0 +1,21 @@
+# Copy to .github/workflows/check-dependency-graph.yml in your repo.
+name: Check Dependency Graph
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-dependency-graph.yml@v3
+    # with:
+    #   # Pages at the repository root instead of chapters/.
+    #   pages-dir: .
+    #   # Where the vendored script and its tests live.
+    #   script-dir: tools
+    #   # Warn instead of failing on a cycle.
+    #   fail-on-cycle: false

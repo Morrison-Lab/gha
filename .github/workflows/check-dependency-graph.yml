@@ -1,0 +1,53 @@
+name: Check Dependency Graph (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      script-dir:
+        description: >-
+          Directory holding the vendored `build_dependency_graph.py`, with its
+          self-test under `tests/`.
+        type: string
+        default: tools
+      pages-dir:
+        description: >-
+          Directory under the repository root holding the pages (`.` when
+          pages sit at the root).
+        type: string
+        default: chapters
+      site:
+        description: >-
+          This site's name in cross-site node keys (default: the repository
+          name).
+        type: string
+        default: ''
+      fail-on-cycle:
+        description: Fail the job when the graph has a cycle (else warn only).
+        type: boolean
+        default: true
+
+jobs:
+  check-dependency-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the builder's self-test
+        env:
+          DG_SCRIPT_DIR: ${{ inputs.script-dir }}
+        run: python3 "$DG_SCRIPT_DIR/tests/test_build_dependency_graph.py"
+
+      - name: Build the graph
+        env:
+          DG_SCRIPT_DIR: ${{ inputs.script-dir }}
+          DG_PAGES: ${{ inputs.pages-dir }}
+          DG_SITE: ${{ inputs.site || github.event.repository.name }}
+          DG_FAIL: ${{ inputs.fail-on-cycle }}
+        run: |
+          args=(--pages "$DG_PAGES" --site "$DG_SITE" --out "${RUNNER_TEMP}/dependency-graph.json")
+          if [ "$DG_FAIL" = "true" ]; then args+=(--fail); fi
+          python3 "$DG_SCRIPT_DIR/build_dependency_graph.py" "${args[@]}"
