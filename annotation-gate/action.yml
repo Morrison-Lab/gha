@@ -18,11 +18,14 @@ inputs:
   default-allow:
     description: >-
       Newline-separated regexes allowed for every caller: messages GitHub or a
-      third-party action emits that no repository can silence.
+      third-party action emits that no repository can silence, and the two the
+      review workflow emits when a newer push supersedes a review.
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
       ^Process completed with exit code \d+
+      ^Canceling since a higher priority waiting request for
+      not posting a stale review
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always
