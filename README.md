@@ -90,7 +90,7 @@ not reference `@main` from consumers.
 | `lint-workflows.yml` | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail` |
 | `spellcheck.yml` | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto` |
 | `check-typos.yml` | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail` |
-| `summary.yml` | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`) | `endpoint`, `model` |
+| `summary.yml` | One-paragraph Claude summary comment on newly opened issues, using the `CLAUDE_CODE_OAUTH_TOKEN` subscription secret (skips with a job-summary note when it is absent) | `model` |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`, `examples-coverage`, `min-coverage` |
 | `check-extra.yml` | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness` |
@@ -134,8 +134,8 @@ that need to write must have the **caller** grant it on the calling job:
 - `report-failure` (files or updates the issue tracking a failing workflow) →
   grant `issues: write` on the reporting job only; the job it watches keeps
   its own permissions.
-- `summary` (comments on issues, calls the models API) → grant `issues: write`,
-  `models: read`, `contents: read`.
+- `summary` (comments on issues, runs Claude through `claude-code-action`) → grant `issues: write`,
+  `contents: read`; pass `secrets: inherit` for `CLAUDE_CODE_OAUTH_TOKEN`.
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
@@ -695,9 +695,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
 `update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine
 
@@ -736,7 +736,7 @@ well after the freeze -- see
 `opencode-code-review.yml` postdates the freeze as well
 (added in [gha#586](https://github.com/Morrison-Lab/gha/issues/586)); pin to
 `@v2`.
-`summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+`bump-submodule.yml` and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
 but later gained the configurable `no-changelog-label` input at
@@ -804,12 +804,6 @@ change what runs -- which matters here because jobs like the preview deploy run
 with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.github/dependabot.yml)
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing.
-One action is deliberately exempt: `actions/ai-inference` is pinned to `@v2`
-and ignores major updates,
-because v3 removed the configurable `endpoint` transport `summary.yml` uses
-and switched to a Copilot-CLI-only runner interface.
-The v2 pin is permanently retained to preserve custom OpenAI-compatible
-endpoint support ([gha#835](https://github.com/Morrison-Lab/gha/issues/835)).
 When adding a new third-party action, pin it the same way.
 
 First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
@@ -843,7 +837,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 

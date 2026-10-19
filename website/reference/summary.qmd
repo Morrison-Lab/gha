@@ -2,43 +2,49 @@
 title: "summary.yml"
 ---
 
-Post an AI summary comment on newly opened issues.
+Post a Claude summary comment on newly opened issues.
 
-> [!WARNING]
-> **GitHub Models retirement notice**:
-> The default GitHub Models endpoint is in a scheduled retirement brownout
-> ([gha#617](https://github.com/Morrison-Lab/gha/issues/617)) and returns 410 errors.
-> Pass a custom `endpoint`, `model`, and `API_KEY` secret,
-> or prefer [`claude.yml`](claude.qmd) for richer issue triage and engagement.
-
-If inference fails or returns an empty response, the workflow emits a warning
-and leaves the issue unchanged instead of failing the issue-open run.
+The workflow runs [`claude-code-action`](https://github.com/anthropics/claude-code-action)
+authenticated with the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+A read-only job writes the summary,
+and a separate job with `issues: write` posts it.
+If the secret is missing or the summary comes back empty,
+the workflow emits a notice and leaves the issue unchanged
+instead of failing the issue-open run.
 
 ## Inputs
 
 | Input | Description | Type | Default | Required |
 | --- | --- | --- | --- | --- |
-| `endpoint` | Inference endpoint URL (e.g. `http://localhost:11434/v1` or custom OpenAI-compatible endpoint). | string | `https&#58;//models.github.ai/inference` | No |
-| `model` | Model identifier to query. | string | `openai/gpt-4o-mini` | No |
+| `model` | Claude model identifier. Letters, digits, and `. _ : / -` only. When empty, the action's default model is used. | string | `""` | No |
 
 ## Secrets
 
 | Secret | Description | Required |
 | --- | --- | --- |
-| `API_KEY` | API key for the custom inference endpoint. | No |
-| `OPENAI_API_KEY` | Alternative API key secret name. | No |
+| `CLAUDE_CODE_OAUTH_TOKEN` | OAuth token for `claude-code-action`. | No |
 
 ## Permissions
 
-Grant `issues: write`, `models: read`, and `contents: read`.
+Grant `issues: write` and `contents: read`.
+
+## Migrating from the `endpoint` input
+
+The workflow no longer calls GitHub Models,
+which is retiring ([gha#617](https://github.com/Morrison-Lab/gha/issues/617),
+[gha#1133](https://github.com/Morrison-Lab/gha/issues/1133)).
+Delete `with: endpoint:` and the `API_KEY` and `OPENAI_API_KEY` secrets
+from the caller,
+drop `models: read` from its permissions,
+and pass `secrets: inherit` so the job receives `CLAUDE_CODE_OAUTH_TOKEN`.
 
 ## Example
 
 ```yaml
 # Copy to .github/workflows/summary.yml in your repo.
-# NOTE: GitHub Models (the default endpoint) is in scheduled retirement brownout (gha#617).
-# Provide a custom `endpoint` / `model` and API_KEY secret, or prefer `claude.yml` for richer issue engagement.
-# The calling job must grant issues:write + models:read.
+# Posts a Claude summary comment on each newly opened issue.
+# Needs the CLAUDE_CODE_OAUTH_TOKEN secret; without it the run is skipped with a notice.
+# The calling job must grant issues:write + contents:read.
 name: Summarize new issues
 
 on:
@@ -49,14 +55,11 @@ jobs:
   summary:
     permissions:
       issues: write
-      models: read
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1
-    # secrets:
-    #   API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v3
+    secrets: inherit
     # with:
-    #   endpoint: http://localhost:11434/v1
-    #   model: openai/gpt-4o-mini
+    #   model: claude-haiku-5-5
 ```
 
 See [`examples/summary.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/summary.yml)
