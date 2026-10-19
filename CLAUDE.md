@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 

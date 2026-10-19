@@ -1,0 +1,56 @@
+---
+title: "check-dependency-graph.yml"
+---
+
+Run the self-test of a notes repository's vendored
+`build_dependency_graph.py`,
+then build the graph of its definition and result divs and fail on a cycle.
+
+The script comes from the `build-dependency-graph` action.
+Notes repositories vendor it under `tools/`
+so that a local render can run it as a `pre-render` step.
+Nothing else runs the vendored copy's self-test,
+so a change to the script in one repository
+can break it without any check going red.
+
+## What it does
+
+1. Runs `<script-dir>/tests/test_build_dependency_graph.py`.
+2. Runs `<script-dir>/build_dependency_graph.py` on the pages,
+   writing the JSON to the runner's temporary directory.
+   With `fail-on-cycle` it exits non-zero
+   when a definition or result div
+   depends on itself through other divs.
+
+Forward references are printed and never fail the job.
+
+## Inputs
+
+| Input           | Type    | Default | Description |
+| --------------- | ------- | ------- | ----------- |
+| `script-dir`    | string  | `tools` | Directory holding the vendored script, with its self-test under `tests/`. |
+| `pages-dir`     | string  | `chapters` | Directory under the repository root holding the pages (`.` when pages sit at the root). |
+| `site`          | string  | the repository name | This site's name in cross-site node keys. |
+| `fail-on-cycle` | boolean | `true`  | Fail the job when the graph has a cycle (else warn only). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+name: Check dependency graph
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-dependency-graph.yml@v3
+    # with:
+    #   pages-dir: .
+```
+
+See `check-dependency-graph.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.
