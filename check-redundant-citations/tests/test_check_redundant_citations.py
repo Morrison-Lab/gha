@@ -166,7 +166,7 @@ def _git(repo: Path, *args: str) -> None:
 
 def test_run_check_flags_only_repeats_the_diff_touches(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
+    _git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow
     _git(tmp_path, "config", "user.name", "t")
     page = tmp_path / "page.qmd"
     page.write_text("::: {#def-old}\nA [@k].\nB [@k].\n:::\n")

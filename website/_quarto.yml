@@ -69,6 +69,7 @@ website:
           - reference/check-informal-definitions.qmd
           - reference/check-literal-math-letters.qmd
           - reference/check-wikipedia-further-reading.qmd
+          - reference/check-redundant-citations.qmd
           - reference/check-one-div-per-subfile.qmd
           - reference/check-term-links.qmd
           - reference/annotation-gate.qmd
