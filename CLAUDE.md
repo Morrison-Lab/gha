@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-one-div-per-subfile`, `check-term-links`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `cleanup-pr-previews`, `student-qmd`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 
@@ -408,6 +408,9 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   `check-literal-math-letters/` bundles the composite action, stdlib-only parser script, and pytest suite for flagging literal Latin and Greek letters in math;
   `check-wikipedia-further-reading/` (Python, stdlib only, gha#1093) bundles the composite action, script, and pytest suite for flagging a Wikipedia citation or link in a Further reading list item;
   it copies `check-literal-math-letters/`'s diff model (added lines only, moved lines exempt, skip-not-fall-back) but blocks by default (`fail: true`);
+  `check-redundant-citations/` (Python, stdlib only, gha#1105) bundles the composite action, script, and pytest suite
+  for flagging a source cited twice, with the same locator, in one div or passage;
+  it takes the same diff model and is warn-only by default (`fail: false`), because the same key twice is sometimes right;
   `check-one-div-per-subfile/` (Python, stdlib only, gha#1092) bundles the composite action, script, and pytest suite
   for flagging a `_subfiles/_*.qmd` file that holds more than one top-level fenced div when a PR adds a line to it.
   It takes the same diff model, but a touched file is judged whole, because a div opens far above the line that changed,
