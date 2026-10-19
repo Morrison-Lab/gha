@@ -92,7 +92,8 @@ def key(site, page, id_):
 
 
 def build(root, site, pages_dir="chapters"):
-    chapters = sorted((root / pages_dir).glob("*.qmd"))
+    # A `_`-prefixed file is an include, never a page: Quarto does not render it.
+    chapters = sorted(p for p in (root / pages_dir).glob("*.qmd") if not p.name.startswith("_"))
     pages = {}
     for qmd in chapters:
         pages[qmd.stem] = parse_page(qmd, site)

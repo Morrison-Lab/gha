@@ -56,6 +56,7 @@ def main() -> int:
         (root / "chapters" / "a.qmd").write_text(PAGE_A)
         (root / "chapters" / "b.qmd").write_text(PAGE_B)
         (root / "chapters" / "_subfiles" / "a" / "_def-one.qmd").write_text(SUB)
+        (root / "chapters" / "_include.qmd").write_text("::: {#def-hidden}\nHidden\n:::\n")
         nodes, edges, forward, _ = bdg.build(root, "t")
         cycles = bdg.find_cycles(nodes, edges)
         (root / "chapters" / "a.qmd").rename(root / "a.qmd")
@@ -81,6 +82,7 @@ def main() -> int:
     check("forward reference", ("t/a#def-early", "t/a#def-late") in forward)
     check("cycle", cycles == [["t/a#def-early", "t/a#def-late"]])
     check("pages at the root with --pages .", set(root_nodes) == set(nodes))
+    check("an underscore-prefixed file is an include, not a page", not any("_include" in k or "hidden" in k for k in nodes))
     for f in failures:
         print("FAIL:", f)
     print("ok" if not failures else f"{len(failures)} failed")
