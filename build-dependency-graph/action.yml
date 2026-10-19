@@ -1,0 +1,47 @@
+name: Build dependency graph
+description: >-
+  Builds the prerequisite graph of a Quarto notes site's definitions and
+  results. Parses every `#def-`, `#thm-`, `#lem-`, `#prp-` and `#cor-` div under
+  `chapters/` (following includes), takes each `@id`, `page.qmd#id` or cross-site
+  link inside a div as an edge "A uses B", and writes `dependency-graph.json`.
+  Also copies `dependency-graph.js`, which draws each div's prerequisites and
+  postrequisites as an SVG, next to it. Reports cycles and forward references.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  root:
+    description: Repository root holding `chapters/`.
+    default: '.'
+  site:
+    description: This site's name in cross-site node keys (the repository name).
+    default: ${{ github.event.repository.name }}
+  out-dir:
+    description: >-
+      Directory that receives `dependency-graph.json` and `dependency-graph.js`.
+      List both under the site's `resources:`, and load the script with
+      `include-after-body` (see the README of this action).
+    default: chapters
+  fail:
+    description: Fail the action when the graph has a cycle (else warning only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Build the dependency graph
+      shell: bash
+      env:
+        DG_ROOT: ${{ inputs.root }}
+        DG_SITE: ${{ inputs.site }}
+        DG_OUT_DIR: ${{ inputs.out-dir }}
+        DG_FAIL: ${{ inputs.fail }}
+      run: |
+        args=(--root "$DG_ROOT" --site "$DG_SITE" --out "$DG_ROOT/$DG_OUT_DIR/dependency-graph.json")
+        if [ "$DG_FAIL" = "true" ]; then args+=(--fail); fi
+        python3 "$GITHUB_ACTION_PATH/build_dependency_graph.py" "${args[@]}"
+        cp "$GITHUB_ACTION_PATH/dependency-graph.js" "$DG_ROOT/$DG_OUT_DIR/dependency-graph.js"

@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Self-test for build-dependency-graph/build_dependency_graph.py.
+
+Builds a tiny site and pins: an `@id` edge, a `page.qmd#id` edge, a cross-site
+URL edge (with an external stub node), an edge from a subfile, a forward
+reference, a cycle, and that a reference to an example div adds no edge.
+
+Run with ``python3 build-dependency-graph/tests/test_build_dependency_graph.py``. Needs no pytest.
+"""
+
+from __future__ import annotations
+
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import build_dependency_graph as bdg  # noqa: E402
+
+PAGE_A = """---
+title: A
+---
+
+{{< include _subfiles/a/_def-one.qmd >}}
+
+::: {#def-two}
+Uses @def-one and [b](b.qmd#thm-b)
+and [a definition elsewhere](https://morrison-lab.github.io/pds/expectation.html#def-expectation).
+See @exm-skipped.
+:::
+
+::: {#def-early}
+Uses @def-late.
+:::
+
+::: {#def-late}
+Uses @def-early.
+:::
+"""
+SUB = "::: {#def-one}\n\n#### One\n\nNo references.\n\n:::\n"
+PAGE_B = "::: {#thm-b}\nUses [one](a.qmd#def-one).\n:::\n"
+
+
+def main() -> int:
+    failures = []
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "chapters" / "_subfiles" / "a").mkdir(parents=True)
+        (root / "chapters" / "a.qmd").write_text(PAGE_A)
+        (root / "chapters" / "b.qmd").write_text(PAGE_B)
+        (root / "chapters" / "_subfiles" / "a" / "_def-one.qmd").write_text(SUB)
+        nodes, edges, forward, _ = bdg.build(root, "t")
+        cycles = bdg.find_cycles(nodes, edges)
+    edge_set = set(edges)
+
+    def check(name, ok):
+        if not ok:
+            failures.append(name)
+
+    check("subfile div found with its title", nodes["t/a#def-one"]["title"] == "One")
+    check("@id edge", ("t/a#def-two", "t/a#def-one") in edge_set)
+    check("page.qmd#id edge", ("t/a#def-two", "t/b#thm-b") in edge_set
+          and ("t/b#thm-b", "t/a#def-one") in edge_set)
+    check("cross-site edge and stub", ("t/a#def-two", "pds/expectation#def-expectation") in edge_set
+          and nodes["pds/expectation#def-expectation"]["external"])
+    check("example reference adds no edge", not any("exm" in b for _, b in edge_set))
+    check("forward reference", ("t/a#def-early", "t/a#def-late") in forward)
+    check("cycle", cycles == [["t/a#def-early", "t/a#def-late"]])
+    for f in failures:
+        print("FAIL:", f)
+    print("ok" if not failures else f"{len(failures)} failed")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
