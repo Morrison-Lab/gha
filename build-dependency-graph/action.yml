@@ -11,8 +11,11 @@ inputs:
     description: Python version to set up.
     default: '3.x'
   root:
-    description: Repository root holding `chapters/`.
+    description: Repository root.
     default: '.'
+  pages-dir:
+    description: Directory under `root` holding the pages (`.` when pages sit at the root).
+    default: chapters
   site:
     description: This site's name in cross-site node keys (the repository name).
     default: ${{ github.event.repository.name }}
@@ -38,10 +41,11 @@ runs:
       env:
         DG_ROOT: ${{ inputs.root }}
         DG_SITE: ${{ inputs.site }}
+        DG_PAGES: ${{ inputs.pages-dir }}
         DG_OUT_DIR: ${{ inputs.out-dir }}
         DG_FAIL: ${{ inputs.fail }}
       run: |
-        args=(--root "$DG_ROOT" --site "$DG_SITE" --out "$DG_ROOT/$DG_OUT_DIR/dependency-graph.json")
+        args=(--root "$DG_ROOT" --site "$DG_SITE" --pages "$DG_PAGES" --out "$DG_ROOT/$DG_OUT_DIR/dependency-graph.json")
         if [ "$DG_FAIL" = "true" ]; then args+=(--fail); fi
         python3 "$GITHUB_ACTION_PATH/build_dependency_graph.py" "${args[@]}"
         cp "$GITHUB_ACTION_PATH/dependency-graph.js" "$DG_ROOT/$DG_OUT_DIR/dependency-graph.js"

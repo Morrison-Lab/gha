@@ -17,6 +17,9 @@ Lean `leanblueprint` and KnowTeX build the same kind of graph from hand-written 
 
    For local renders, vendor `build_dependency_graph.py` and run it as a `pre-render` step, as `Morrison-Lab/lds` does.
 
+   Pages that sit at the repository root instead of `chapters/` need `pages-dir: .` and `out-dir: .`
+   (the script's flag is `--pages .`).
+
 2. List `chapters/dependency-graph.js` and `chapters/dependency-graph.json` under `resources:`.
 
 3. Add `- text: '<script src="dependency-graph.js" defer></script>'` to the HTML format's `include-after-body` list.

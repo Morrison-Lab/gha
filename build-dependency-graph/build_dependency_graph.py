@@ -3,7 +3,7 @@
 """Build the prerequisite graph of a notes site's definitions and results.
 
 Parses every `#def-`, `#thm-`, `#lem-`, `#prp-` and `#cor-` div in
-`<root>/chapters/*.qmd` (following `{{< include >}}` subfiles) and records the
+`<root>/<pages>/*.qmd` (`chapters` by default; following `{{< include >}}` subfiles) and records the
 other such divs each one uses, through an `@id` cross-reference or a link to
 `page.qmd#id` / `page.html#id` / a cross-site URL.  An edge A -> B means
 "A uses B", so B is a prerequisite of A and A is a postrequisite of B.
@@ -91,8 +91,8 @@ def key(site, page, id_):
     return f"{site}/{page}#{id_}"
 
 
-def build(root, site):
-    chapters = sorted((root / "chapters").glob("*.qmd"))
+def build(root, site, pages_dir="chapters"):
+    chapters = sorted((root / pages_dir).glob("*.qmd"))
     pages = {}
     for qmd in chapters:
         pages[qmd.stem] = parse_page(qmd, site)
@@ -190,11 +190,13 @@ def main():
     ap.add_argument("--root", default=".")
     ap.add_argument("--out")
     ap.add_argument("--site", help="this site's name in cross-site keys (default: the root directory's name)")
+    ap.add_argument("--pages", default="chapters",
+                    help="directory under --root holding the pages (default: chapters; . for pages at the root)")
     ap.add_argument("--fail", action="store_true", help="exit 1 on a cycle")
     a = ap.parse_args()
     root = Path(a.root).resolve()
     a.site = a.site or root.name
-    nodes, edges, forward, order = build(root, a.site)
+    nodes, edges, forward, order = build(root, a.site, a.pages)
     cycles = find_cycles(nodes, edges)
     out = Path(a.out) if a.out else root / "dependency-graph.json"
     out.parent.mkdir(parents=True, exist_ok=True)

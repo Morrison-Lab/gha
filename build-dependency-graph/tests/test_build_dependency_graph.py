@@ -58,6 +58,10 @@ def main() -> int:
         (root / "chapters" / "_subfiles" / "a" / "_def-one.qmd").write_text(SUB)
         nodes, edges, forward, _ = bdg.build(root, "t")
         cycles = bdg.find_cycles(nodes, edges)
+        (root / "chapters" / "a.qmd").rename(root / "a.qmd")
+        (root / "chapters" / "b.qmd").rename(root / "b.qmd")
+        (root / "chapters" / "_subfiles").rename(root / "_subfiles")
+        root_nodes = bdg.build(root, "t", ".")[0]
     edge_set = set(edges)
 
     def check(name, ok):
@@ -76,6 +80,7 @@ def main() -> int:
     check("example reference adds no edge", not any("exm" in b for _, b in edge_set))
     check("forward reference", ("t/a#def-early", "t/a#def-late") in forward)
     check("cycle", cycles == [["t/a#def-early", "t/a#def-late"]])
+    check("pages at the root with --pages .", set(root_nodes) == set(nodes))
     for f in failures:
         print("FAIL:", f)
     print("ok" if not failures else f"{len(failures)} failed")
