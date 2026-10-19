@@ -1,0 +1,9 @@
+# Fixture
+
+::: {#def-one}
+One uses @def-two.
+:::
+
+::: {#def-two}
+Two uses @def-one.
+:::

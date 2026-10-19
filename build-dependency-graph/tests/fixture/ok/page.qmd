@@ -1,0 +1,13 @@
+# Fixture
+
+::: {#def-alpha}
+Alpha is a term.
+:::
+
+::: {#def-beta}
+Beta is a term.
+:::
+
+::: {#thm-gamma}
+A result that uses @def-alpha.
+:::
