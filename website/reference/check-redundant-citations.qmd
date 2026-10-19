@@ -1,0 +1,94 @@
+---
+title: "check-redundant-citations.yml"
+---
+
+Diff-scoped, warn-only check that flags a source cited twice in one div or passage.
+The lab's rule (Ezra, 2026-10-19) is to cite a source once per div or passage,
+at the claim it supports.
+A second citation of the same source adds a number
+that the reader must look up again and tells them nothing new.
+This implements
+[gha#1105](https://github.com/Morrison-Lab/gha/issues/1105).
+
+A div or passage is the text between two `:::` lines or slide breaks.
+The check flags a citation key that occurs twice in one such block
+with the same locator, or with none.
+Two kinds of citation count:
+
+- **A bracketed citation.**
+  Every key in `[@key]`, `[@key, p. 5]` or `[@a; @b, p. 5]` counts,
+  including a citation that spans lines.
+- **A `Source:` line.**
+  Every `@key` on a line that starts with `Source:` counts,
+  unless it sits inside brackets on that line, where it is already counted.
+
+The check does not flag:
+
+- an in-text citation (`@key [p. 5]` or `@key recommend ...`),
+  because the author is the subject of the sentence;
+- the same key with a different locator, which cites a different part of the source;
+- the same key in different list items, because each item is its own claim;
+- a cross-reference (`@def-`, `@eq-`, `@fig-` and the like),
+  a code fence or a chunk option.
+
+## Scope
+
+Only repeats that touch a line a pull request adds are reported.
+The whole file is parsed,
+because the first citation can sit far above the added one.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+Every run prints how many lines, files and blocks with a citation it examined.
+
+The check warns by default, because the same key twice is sometimes right,
+for instance the same book with the same locator for two separate claims.
+
+## Inputs
+
+| Input          | Type    | Default               | Description |
+| -------------- | ------- | --------------------- | ----------- |
+| `globs`        | string  | `'*.qmd *.md'`        | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`                  | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`               | Fail the workflow when a source is cited twice in one div or passage. The default only annotates. |
+| `whole-tree`   | boolean | `false`               | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`              | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-redundant-citations.yml in your repo.
+# Diff-scoped check: flags a source cited twice, with the same locator, in one
+# div or passage on lines a PR adds. Cite a source once per div, at the claim it
+# supports. Warns by default; in-text citations and different locators are
+# never flagged.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check redundant citations
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-redundant-citations.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                    # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-redundant-citations.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-redundant-citations.yml)
+for the full caller stub.
