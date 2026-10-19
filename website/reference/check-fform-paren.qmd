@@ -23,7 +23,7 @@ Each finding reports the file, the line,
 and the suggestion `\name\paren{...} -> \namef{...}`,
 with the delimiter macro as written in place of `\paren`.
 An alias of the operator counts as the operator:
-`\Ep\sb{X}` is flagged when `\Epf` is defined.
+`\Exp\sb{X}` is flagged when `\Expf` is defined.
 The delimiter macros are the `DELIMITERS` constant in the script.
 
 ## Known f forms

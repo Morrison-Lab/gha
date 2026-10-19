@@ -68,7 +68,7 @@ DEFAULT_MACROS_FILE = "latex-macros/macros.qmd"
 _DEFAULT_FAIL = False
 
 # An f-form definition: \providecommand{\XXXf}, \newcommand{\XXXf} or \def\XXXf
-# (the last is how macros.qmd writes an alias such as \def\Epf{\E}).
+# (the last is how macros.qmd writes an alias such as \def\Expf{\E}).
 FFORM_DEF_RE = re.compile(
     r"(?<!\\)\\(?:providecommand|newcommand)\*?\s*\{\s*\\([A-Za-z]+f)\s*\}"
     r"|(?<!\\)\\def\s*\\([A-Za-z]+f)(?![A-Za-z])"

@@ -30,7 +30,7 @@ MACROS = (
     "\\providecommand{\\fitprocf}[1]{\\fitproc\\paren{#1}}\n"
     "\\newcommand{\\Ef}[1]{\\E\\paren{#1}}\n"
     "\\providecommand{\\fitproc}{f}\n"
-    "\\def\\Epf{\\E}\n"
+    "\\def\\Expf{\\E}\n"
     "\\def\\Efx{\\E}\n"
     "```\n"
 )
@@ -47,13 +47,13 @@ def found(text: str, fforms=frozenset({"fitprocf"})):
 def test_fform_names_read_provide_new_command_and_def(tmp_path):
     macros = tmp_path / "macros.qmd"
     macros.write_text(MACROS)
-    assert fp.fform_names(str(macros)) == {"fitprocf", "Ef", "Epf"}
+    assert fp.fform_names(str(macros)) == {"fitprocf", "Ef", "Expf"}
 
 
 def test_alias_operator_then_delimiter_is_flagged():
-    hits, _ = fp.scan_file([r"Use $\Ep\sb{X}$ here."], {"Epf"})
+    hits, _ = fp.scan_file([r"Use $\Exp\sb{X}$ here."], {"Expf"})
     assert [(h.name, h.delimiter) for h in hits] == [("Ep", "sb")]
-    assert "\\Ep\\sb{...} -> \\Epf{...}" in fp.format_message(hits[0])
+    assert "\\Exp\\sb{...} -> \\Expf{...}" in fp.format_message(hits[0])
 
 
 def test_fform_names_missing_file_is_none(tmp_path):
