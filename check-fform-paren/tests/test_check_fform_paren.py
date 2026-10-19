@@ -30,6 +30,8 @@ MACROS = (
     "\\providecommand{\\fitprocf}[1]{\\fitproc\\paren{#1}}\n"
     "\\newcommand{\\Ef}[1]{\\E\\paren{#1}}\n"
     "\\providecommand{\\fitproc}{f}\n"
+    "\\def\\Epf{\\E}\n"
+    "\\def\\Efx{\\E}\n"
     "```\n"
 )
 
@@ -42,10 +44,16 @@ def found(text: str, fforms=frozenset({"fitprocf"})):
 
 # -- the macros file ---------------------------------------------------------
 
-def test_fform_names_read_provide_and_new_command(tmp_path):
+def test_fform_names_read_provide_new_command_and_def(tmp_path):
     macros = tmp_path / "macros.qmd"
     macros.write_text(MACROS)
-    assert fp.fform_names(str(macros)) == {"fitprocf", "Ef"}
+    assert fp.fform_names(str(macros)) == {"fitprocf", "Ef", "Epf"}
+
+
+def test_alias_operator_then_delimiter_is_flagged():
+    hits, _ = fp.scan_file([r"Use $\Ep\sb{X}$ here."], {"Epf"})
+    assert [(h.name, h.delimiter) for h in hits] == [("Ep", "sb")]
+    assert "\\Ep\\sb{...} -> \\Epf{...}" in fp.format_message(hits[0])
 
 
 def test_fform_names_missing_file_is_none(tmp_path):
@@ -80,7 +88,8 @@ def test_each_use_on_a_line_is_found():
     assert [h.name for h in hits] == ["fitproc", "fitproc"]
 
 
-@pytest.mark.parametrize("delim", ["paren", "sb", "cb"])
+@pytest.mark.parametrize(
+    "delim", ["paren", "sb", "cb", "set", "abs", "norm", "angb"])
 def test_each_delimiter_is_flagged_and_named_in_the_message(delim):
     text = "Fit $\\fitproc\\" + delim + "{x}$ here."
     hits, _ = fp.scan_file([text], {"fitprocf"})
@@ -90,16 +99,17 @@ def test_each_delimiter_is_flagged_and_named_in_the_message(delim):
 
 
 def test_delimiter_list_is_a_constant():
-    assert fp.DELIMITERS == ("paren", "sb", "cb")
+    assert fp.DELIMITERS == (
+        "paren", "sb", "cb", "set", "abs", "norm", "angb")
 
 
-@pytest.mark.parametrize("delim", ["sb", "cb"])
-def test_bare_sb_and_cb_pass(delim):
+@pytest.mark.parametrize("delim", ["sb", "cb", "set", "abs", "norm", "angb"])
+def test_bare_delimiters_pass(delim):
     assert found("Group $\\" + delim + "{x}$ and $a + \\" + delim + "{y}$.") == {}
 
 
-@pytest.mark.parametrize("delim", ["sb", "cb"])
-def test_sb_and_cb_without_f_form_pass(delim):
+@pytest.mark.parametrize("delim", ["sb", "cb", "set", "abs", "norm", "angb"])
+def test_delimiters_without_f_form_pass(delim):
     assert found("Use $\\foo\\" + delim + "{x}$ here.") == {}
 
 
