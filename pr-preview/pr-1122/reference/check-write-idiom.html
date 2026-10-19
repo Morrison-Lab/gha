@@ -911,7 +911,7 @@ cookieconsent.run({
 
 
 <p>Diff-scoped, warn-only check that flags a line opening with <code>Write the</code>, <code>Write a</code> or <code>Write an</code>. In an exercise, “Write …” means derive, express, state or give, and the instruction should name the action literally (“Derive an expression for”, “Express”, “State”, “Give”). This is <a href="https://github.com/Morrison-Lab/gha/issues/1121">gha#1121</a>, from psw#297.</p>
-<p>The check flags a line a pull request adds, in <code>.qmd</code> and <code>.md</code> files, that begins, after optional whitespace, an optional list marker (<code>-</code>, <code>*</code>, <code>1.</code>, <code>1)</code>) and an optional label such as <code>(a)</code> or <code>a)</code>, with <code>Write the</code>, <code>Write a</code> or <code>Write an</code> (<code>Write</code> is case-sensitive).</p>
+<p>The check flags a line a pull request adds, in <code>.qmd</code> and <code>.md</code> files, that begins, after optional whitespace, an optional list marker (<code>-</code>, <code>*</code>, <code>1.</code>, <code>1)</code>) and an optional label such as <code>(a)</code> or <code>a)</code>, with <code>Write</code> followed by <code>the</code>, <code>a</code> or <code>an</code> (<code>Write</code> is case-sensitive).</p>
 <p>The check does not flag:</p>
 <ul>
 <li><code>Write $...$ for ...</code>, which is notation;</li>

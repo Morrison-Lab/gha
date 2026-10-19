@@ -3487,7 +3487,7 @@
     "href": "reference/check-write-idiom.html",
     "title": "check-write-idiom.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags a line opening with Write the, Write a or Write an. In an exercise, “Write …” means derive, express, state or give, and the instruction should name the action literally (“Derive an expression for”, “Express”, “State”, “Give”). This is gha#1121, from psw#297.\nThe check flags a line a pull request adds, in .qmd and .md files, that begins, after optional whitespace, an optional list marker (-, *, 1., 1)) and an optional label such as (a) or a), with Write the, Write a or Write an (Write is case-sensitive).\nThe check does not flag:",
+    "text": "Diff-scoped, warn-only check that flags a line opening with Write the, Write a or Write an. In an exercise, “Write …” means derive, express, state or give, and the instruction should name the action literally (“Derive an expression for”, “Express”, “State”, “Give”). This is gha#1121, from psw#297.\nThe check flags a line a pull request adds, in .qmd and .md files, that begins, after optional whitespace, an optional list marker (-, *, 1., 1)) and an optional label such as (a) or a), with Write followed by the, a or an (Write is case-sensitive).\nThe check does not flag:",
     "crumbs": [
       "Overview",
       "Reference",
