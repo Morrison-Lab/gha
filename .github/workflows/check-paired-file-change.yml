@@ -1,0 +1,62 @@
+name: Check Paired File Change (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      trigger-paths:
+        description: >-
+          Comma- or newline-separated git pathspecs. A changed file matching
+          any of them requires a change matching `required-paths`.
+        type: string
+        required: true
+      required-paths:
+        description: >-
+          Comma- or newline-separated git pathspecs. At least one changed file
+          must match one of them whenever a changed file matches
+          `trigger-paths`.
+        type: string
+        required: true
+      skip-label:
+        description: >-
+          PR label that waives the pairing, read live from the API. Set to an
+          empty string to disable the escape hatch (an empty string never
+          matches a real label).
+        type: string
+        default: 'no-notation-change'
+      message:
+        description: >-
+          Text shown in the failure annotation, saying what to update.
+        type: string
+        default: 'A file matching trigger-paths changed without a change to a file matching required-paths. Update the paired file in the same pull request.'
+
+jobs:
+  check-paired-file-change:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # For the live skip-label read: the event payload's labels are stale for
+      # any label applied after the triggering event. Both scopes, as in
+      # check-news.yml: GitHub authorizes a label read on a pull request
+      # against pull-requests, and issues: read is kept defensively.
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so the PR's diff against its base can be computed.
+          fetch-depth: 0
+
+      - name: Check for the paired file change
+        uses: Morrison-Lab/gha/check-paired-file-change@v3
+        with:
+          trigger-paths: ${{ inputs.trigger-paths }}
+          required-paths: ${{ inputs.required-paths }}
+          skip-label: ${{ inputs.skip-label }}
+          message: ${{ inputs.message }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base
+          # tip it was built on (gha#1007). A push run has no base: skipped.
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          pr-number: ${{ github.event.pull_request.number }}
+          github-token: ${{ github.token }}
