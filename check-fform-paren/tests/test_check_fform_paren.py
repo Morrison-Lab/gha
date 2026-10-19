@@ -52,7 +52,7 @@ def test_fform_names_read_provide_new_command_and_def(tmp_path):
 
 def test_alias_operator_then_delimiter_is_flagged():
     hits, _ = fp.scan_file([r"Use $\Exp\sb{X}$ here."], {"Expf"})
-    assert [(h.name, h.delimiter) for h in hits] == [("Ep", "sb")]
+    assert [(h.name, h.delimiter) for h in hits] == [("Exp", "sb")]
     assert "\\Exp\\sb{...} -> \\Expf{...}" in fp.format_message(hits[0])
 
 
