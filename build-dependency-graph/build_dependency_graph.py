@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Build the prerequisite graph of a notes site's definitions and results.
 
 Parses every `#def-`, `#thm-`, `#lem-`, `#prp-` and `#cor-` div in
