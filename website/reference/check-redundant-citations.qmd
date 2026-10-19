@@ -5,8 +5,8 @@ title: "check-redundant-citations.yml"
 Diff-scoped, warn-only check that flags a source cited twice in one div or passage.
 The lab's rule (Ezra, 2026-10-19) is to cite a source once per div or passage,
 at the claim it supports.
-A second citation of the same source adds a number that the reader must look up again
-and tells them nothing new.
+A second citation of the same source adds a number
+that the reader must look up again and tells them nothing new.
 This implements
 [gha#1105](https://github.com/Morrison-Lab/gha/issues/1105).
 
@@ -28,12 +28,14 @@ The check does not flag:
   because the author is the subject of the sentence;
 - the same key with a different locator, which cites a different part of the source;
 - the same key in different list items, because each item is its own claim;
-- a cross-reference (`@def-`, `@eq-`, `@fig-` and the like), a code fence or a chunk option.
+- a cross-reference (`@def-`, `@eq-`, `@fig-` and the like),
+  a code fence or a chunk option.
 
 ## Scope
 
 Only repeats that touch a line a pull request adds are reported.
-The whole file is parsed, because the first citation can sit far above the added one.
+The whole file is parsed,
+because the first citation can sit far above the added one.
 An added line whose exact text was also deleted in the same diff
 counts as moved rather than new.
 
