@@ -1,0 +1,72 @@
+---
+title: "check-paired-file-change.yml"
+---
+
+Fail a pull request that changes a file matching `trigger-paths` without also
+changing a file matching `required-paths`, unless the PR carries the skip
+label.
+
+The first use is a macro library and the page that documents its notation:
+a change to `macros.qmd` must come with a change to `notation-choices.qmd`
+([Morrison-Lab/macros#248](https://github.com/Morrison-Lab/macros/issues/248)).
+Nothing in the check knows that pair; the paths are the caller's.
+
+## What it compares
+
+**The files the pull request changes.**
+The check diffs `HEAD^1...HEAD` on a `pull_request` run,
+where the checkout is GitHub's merge ref
+and `HEAD^1` is the base tip it was built on.
+On any other event there is no base, and the check skips with a notice.
+A renamed file counts at both its old and its new path.
+
+**Matching is git's own.**
+Both path inputs are git pathspecs, comma- or newline-separated,
+passed to `git diff --name-only`.
+A bare `*` also crosses `/`; use `:(glob)` magic for `**`.
+
+**The skip label is read live.**
+The label is read from the API at the moment of the check,
+because the event payload's labels are frozen at the triggering event
+and miss any label applied later.
+The read happens only when the check would otherwise fail, and an API error
+fails the check rather than reading as "no labels".
+An empty `skip-label` never matches.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `trigger-paths` | string | required | Comma- or newline-separated git pathspecs. A changed file matching any of them requires a change matching `required-paths`. |
+| `required-paths` | string | required | Comma- or newline-separated git pathspecs. At least one changed file must match one of them whenever a changed file matches `trigger-paths`. |
+| `skip-label` | string | `'no-notation-change'` | PR label that waives the pairing, matched case-insensitively. Set to an empty string to disable the escape hatch. |
+| `message` | string | see the workflow | Text shown in the failure annotation, saying what to update. |
+
+An empty `trigger-paths` or `required-paths` is an error, not a pass.
+
+## Permissions
+
+Read-only: `contents: read`, plus `issues: read` and `pull-requests: read`
+for the live label read.
+A caller that pins the calling job's `permissions` must include all three.
+
+## Example
+
+```yaml
+name: Check paired file change
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-paired-file-change.yml@v3
+    with:
+      trigger-paths: 'macros.qmd'
+      required-paths: 'notation-choices.qmd'
+      # skip-label: 'no-notation-change'
+      # message: 'Update notation-choices.qmd to match the macro change.'
+```
+
+See `check-paired-file-change.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.

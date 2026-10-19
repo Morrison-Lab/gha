@@ -109,6 +109,7 @@ python3 -m pytest check-merge-drops/tests/ -q
 python3 -m pytest check-typos/tests/ -q
 python3 -m pytest check-quarto-prose/tests/ -q
 bash check-junk-files/tests/test-check-junk-files.sh
+bash check-paired-file-change/tests/test-check-paired-file-change.sh
 bash check-extra/tests/test-check-extra.sh
 Rscript lint-changed-files/tests/test-lint-r-scope.R
 python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test

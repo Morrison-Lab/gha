@@ -5523,6 +5523,68 @@ jobs:
         shell: bash
         run: bash check-junk-files/tests/test-check-junk-files.sh
 
+  # check-paired-file-change is brand new, so (like check-junk-files above) it
+  # does not exist at the released tag its reusable workflow's internal `uses:`
+  # step resolves against yet. Exercise the local composite directly.
+  # The offline suite calls the script, so it cannot see whether action.yml
+  # wires its inputs through; these calls can. A throwaway commit on top of the
+  # checkout gives `HEAD^1` a diff to read, whatever the triggering event was.
+  paired-file-change:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run check-paired-file-change tests
+        shell: bash
+        run: bash check-paired-file-change/tests/test-check-paired-file-change.sh
+
+      - name: Commit a trigger file with no pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'selftest\n' > selftest-trigger.txt
+          git add selftest-trigger.txt
+          git config user.name selftest
+          git config user.email selftest@example.invalid  # phi-allow
+          git commit -q -m 'selftest trigger'
+
+      - name: Check the unpaired change, expecting a failure
+        id: paired-expected-failure
+        continue-on-error: true
+        uses: ./check-paired-file-change
+        with:
+          trigger-paths: selftest-trigger.txt
+          required-paths: selftest-required.txt
+          skip-label: ''
+          base-ref: HEAD^1
+
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.paired-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-paired-file-change to fail on an unpaired change, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-paired-file-change failed on an unpaired change, as expected."
+
+      # And that required-paths reaches the script: the same commit, paired.
+      - name: Check again with the pair present in required-paths
+        uses: ./check-paired-file-change
+        with:
+          trigger-paths: selftest-trigger.txt
+          required-paths: selftest-required.txt, selftest-trigger.txt
+          skip-label: ''
+          base-ref: HEAD^1
+
   # check-typos is brand new, so (like check-junk-files above) it does not
   # exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-typos@v3` step resolves against yet.
