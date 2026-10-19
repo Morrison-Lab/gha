@@ -11,6 +11,7 @@ DEFAULT = [
     r"Node\.js \d+ is deprecated\. The following actions target Node",
     r"^Canceling since a higher priority waiting request for",
     r"not posting a stale review",
+    r"^PR edits workflow files; restored",
 ]
 
 
@@ -45,6 +46,19 @@ def test_superseded_review_cancellation_is_allowed():
 def test_stale_review_skip_is_allowed():
     msg = "PR head moved (aaa -> bbb); not posting a stale review."
     assert not g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_workflow_edit_restore_notice_is_allowed():
+    msg = (
+        "PR edits workflow files; restored .github/workflows/ from the default branch and passing "
+        "github_token so the review can run without executing PR-head workflow YAML (gha#598)."
+    )
+    assert not g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_workflow_edit_restore_pattern_is_anchored_to_the_message_start():
+    msg = "Warning: PR edits workflow files; restored something else"
+    assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def test_cancellation_pattern_is_anchored_to_the_message_start():
