@@ -927,6 +927,7 @@ cookieconsent.run({
 <li>A job’s own “Process completed with exit code N” failure annotation. A failed job already fails the run, and the gate runs under <code>if: always()</code>, so this one would only repeat it.</li>
 <li>The forced-Node deprecation warning, until the action pins are bumped. It reads “Node.js N is deprecated” and then “The following actions target Node”.</li>
 <li>The two annotations the review workflow emits when a newer push supersedes a review: the concurrency group’s “Canceling since a higher priority waiting request for …” and the stale-review skip “PR head moved …; not posting a stale review”. Both describe a run that was meant to stop, and the newer push gets its own review.</li>
+<li>The preview’s “Skipping element-level diff highlighting” notice. It says a page has more elements than the highlighter compares (500), so the preview shows that page without change highlights. A pull request that touches a large chapter always emits it, and no edit to the pull request removes it.</li>
 </ul>
 </section>
 <section id="scope" class="level2">
