@@ -47,6 +47,7 @@ input tables and a copy-paste example.
 | [`annotation-gate.yml`](reference/annotation-gate.qmd) | Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job | `levels`, `allow-patterns`, `job-name` |
 | [`annotation-gate-run.yml`](reference/annotation-gate.qmd) | Gate a finished run from a `workflow_run` workflow and post the result as an `annotation-gate` check run, for repositories whose checks are spread over many workflow files | `run-id`, `head-sha`, `run-attempt`, `levels`, `allow-patterns` |
 | [`check-fform-paren.yml`](reference/check-fform-paren.qmd) | Diff-scoped, warn-only check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where an f form `\namef{...}` is defined in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
+| [`check-dependency-graph.yml`](reference/check-dependency-graph.qmd) | Run the self-test of a notes repo's vendored `build_dependency_graph.py`, then build its definition and result graph and fail on a cycle | `script-dir`, `pages-dir`, `site`, `fail-on-cycle` |
 | [`check-write-idiom.yml`](reference/check-write-idiom.qmd) | Diff-scoped, warn-only check that flags a line opening with `Write the`, `Write a` or `Write an` (after an optional list marker and label), because "Write ..." hides whether to derive, express, state or give | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`lint-qmd.yml`](reference/lint-qmd.qmd)                                 | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length`                                                                                                                   |
 | [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd)               | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally                                                                                                | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`                                                              |
@@ -120,6 +121,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `annotation-gate.yml`,
 `annotation-gate-run.yml`,
 `check-local-macros.yml`, `check-fform-paren.yml`, `check-write-idiom.yml`,
+`check-dependency-graph.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and

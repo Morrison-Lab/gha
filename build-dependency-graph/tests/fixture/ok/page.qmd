@@ -1,0 +1,13 @@
+# Fixture
+
+::: {#lem-alpha}
+Alpha is a result.
+:::
+
+::: {#lem-beta}
+Beta is a result.
+:::
+
+::: {#thm-gamma}
+A result that uses @lem-alpha.
+:::
