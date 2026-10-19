@@ -130,6 +130,40 @@
     });
   }
 
+  /* Optional: an element with id "dependency-graph-page" gets a folded graph of every
+     div on the page, prerequisites at the top (a div sits one row below the lowest
+     div it uses). */
+  function wholePage(g, nodes, uses) {
+    var host = document.getElementById("dependency-graph-page");
+    if (!host) return;
+    var mine = Object.keys(nodes).filter(function (k) { return nodes[k].site === g.site && nodes[k].page === page; });
+    if (!mine.length) return;
+    var level = {};
+    function lv(k, seen) {
+      if (k in level) return level[k];
+      if (seen[k]) return 0;
+      seen[k] = 1;
+      var m = 0;
+      (uses[k] || []).forEach(function (p) { if (nodes[p].site === g.site && nodes[p].page === page) m = Math.max(m, lv(p, seen) + 1); });
+      return (level[k] = m);
+    }
+    mine.forEach(function (k) { lv(k, {}); });
+    var levels = [], ids = {};
+    mine.forEach(function (k) { ids[k] = 1; (levels[level[k]] = levels[level[k]] || []).push(nodes[k]); });
+    var edges = g.edges.filter(function (e) { return ids[e[0]] && ids[e[1]]; }).map(function (e) { return [e[1], e[0]]; });
+    var det = document.createElement("details");
+    det.className = "dependency-graph";
+    var sum = document.createElement("summary");
+    sum.textContent = "Dependencies of every definition and result on this page (" + mine.length + ")";
+    det.appendChild(sum);
+    var drawn = false;
+    det.addEventListener("toggle", function () {
+      if (det.open && !drawn) { drawn = true; var s = document.createElement("div"); s.style.overflowX = "auto";
+        s.appendChild(draw(levels.filter(Boolean), edges, null, g)); det.appendChild(s); }
+    });
+    host.appendChild(det);
+  }
+
   fetch(base + "dependency-graph.json").then(function (r) { return r.json(); }).then(function (g) {
     var nodes = {}, uses = {}, usedBy = {};
     g.nodes.forEach(function (n) { nodes[n.id] = n; });
@@ -138,5 +172,6 @@
       (usedBy[e[1]] = usedBy[e[1]] || []).push(e[0]);
     });
     perDiv(g, nodes, uses, usedBy);
+    wholePage(g, nodes, uses);
   }).catch(function () { /* the graph is an extra; a missing file leaves the page as it was */ });
 })();
