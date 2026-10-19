@@ -124,7 +124,8 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `opposition-research.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
+only ever shipped at `@v3` (or moved to `@v3` for
+`cleanup-pr-previews.yml`, `summary.yml`, and
 `update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to

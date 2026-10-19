@@ -6,9 +6,11 @@ Post a Claude summary comment on newly opened issues.
 
 The workflow runs [`claude-code-action`](https://github.com/anthropics/claude-code-action)
 authenticated with the `CLAUDE_CODE_OAUTH_TOKEN` secret.
-A read-only job writes the summary, and a separate job with `issues: write` posts it.
+A read-only job writes the summary,
+and a separate job with `issues: write` posts it.
 If the secret is missing or the summary comes back empty,
-the workflow emits a notice and leaves the issue unchanged instead of failing the issue-open run.
+the workflow emits a notice and leaves the issue unchanged
+instead of failing the issue-open run.
 
 ## Inputs
 
@@ -31,7 +33,8 @@ Grant `issues: write` and `contents: read`.
 The workflow no longer calls GitHub Models,
 which is retiring ([gha#617](https://github.com/Morrison-Lab/gha/issues/617),
 [gha#1133](https://github.com/Morrison-Lab/gha/issues/1133)).
-Delete `with: endpoint:` and the `API_KEY` and `OPENAI_API_KEY` secrets from the caller,
+Delete `with: endpoint:` and the `API_KEY` and `OPENAI_API_KEY` secrets
+from the caller,
 drop `models: read` from its permissions,
 and pass `secrets: inherit` so the job receives `CLAUDE_CODE_OAUTH_TOKEN`.
 
