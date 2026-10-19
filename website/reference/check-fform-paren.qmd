@@ -15,20 +15,22 @@ where `\fitproc\paren{...}` was typed by hand
 although `\fitprocf` existed.
 
 The check flags a macro name immediately followed by
-`\paren{`, `\sb{` or `\cb{`
+`\paren{`, `\sb{`, `\cb{`, `\set{`, `\abs{`, `\norm{` or `\angb{`
 on a line a pull request adds,
 in `.qmd`, `.Rmd` and `.md` files,
 when `\namef` is defined.
 Each finding reports the file, the line,
 and the suggestion `\name\paren{...} -> \namef{...}`,
-with `\sb` or `\cb` in place of `\paren` as written.
+with the delimiter macro as written in place of `\paren`.
+An alias of the operator counts as the operator:
+`\Exp\sb{X}` is flagged when `\Expf` is defined.
 The delimiter macros are the `DELIMITERS` constant in the script.
 
 ## Known f forms
 
 The f forms are read from a macros file (`macros-file`,
 default `latex-macros/macros.qmd`, the `latex-macros` submodule's file):
-every `\providecommand{\XXXf}` and `\newcommand{\XXXf}` defines one.
+every `\providecommand{\XXXf}`, `\newcommand{\XXXf}` and `\def\XXXf` defines one.
 When the file is missing, the check skips with a warning,
 because without it no f form is known.
 The reusable workflow checks out submodules by default
@@ -36,7 +38,7 @@ so the file is there.
 
 The check does not flag:
 
-- `\paren{`, `\sb{` or `\cb{` with no macro directly before it;
+- a delimiter macro with no macro directly before it;
 - a macro with no f form (`\foo\paren{x}` when `\foof` is not defined);
 - the f form itself (`\fitprocf{x}`);
 - a macro and the delimiter macro separated by a space;

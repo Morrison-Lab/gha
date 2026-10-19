@@ -1,8 +1,8 @@
 name: Check f forms written as \name\paren{...}
 description: >-
-  Diff-scoped check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where a `\namef{...}` macro
+  Diff-scoped check that flags `\name\paren{...}` (or `\sb{`, `\cb{`, `\set{`, `\abs{`, `\norm{`, `\angb{`) where a `\namef{...}` macro
   exists, in `.qmd`, `.Rmd` and `.md` files. The known f forms are read from
-  the `\providecommand{\XXXf}` and `\newcommand{\XXXf}` definitions in a
+  the `\providecommand{\XXXf}`, `\newcommand{\XXXf}` and `\def\XXXf` definitions in a
   macros file (default `latex-macros/macros.qmd`); a missing file skips the
   check with a warning. Does not flag a bare delimiter macro or a macro with no f
   form. Skips code fences and spans, HTML comments and front matter.

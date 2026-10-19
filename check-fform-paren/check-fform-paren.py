@@ -67,12 +67,14 @@ DEFAULT_GLOBS = "*.qmd *.Rmd *.md"
 DEFAULT_MACROS_FILE = "latex-macros/macros.qmd"
 _DEFAULT_FAIL = False
 
-# An f-form definition: \providecommand{\XXXf} or \newcommand{\XXXf}.
+# An f-form definition: \providecommand{\XXXf}, \newcommand{\XXXf} or \def\XXXf
+# (the last is how macros.qmd writes an alias such as \def\Expf{\E}).
 FFORM_DEF_RE = re.compile(
     r"(?<!\\)\\(?:providecommand|newcommand)\*?\s*\{\s*\\([A-Za-z]+f)\s*\}"
+    r"|(?<!\\)\\def\s*\\([A-Za-z]+f)(?![A-Za-z])"
 )
-# The delimiter macros that an f form replaces: \paren{, \sb{ and \cb{.
-DELIMITERS = ("paren", "sb", "cb")
+# The delimiter macros that an f form replaces.
+DELIMITERS = ("paren", "sb", "cb", "set", "abs", "norm", "angb")
 # A macro name directly followed by a delimiter macro and its opening brace
 # (the name's backslash not escaped).
 PAREN_RE = re.compile(
@@ -99,7 +101,7 @@ def fform_names(path: str) -> Optional[Set[str]]:
             text = handle.read()
     except OSError:
         return None
-    return {m.group(1) for m in FFORM_DEF_RE.finditer(text)}
+    return {m.group(1) or m.group(2) for m in FFORM_DEF_RE.finditer(text)}
 
 
 def paren_uses(text: str, fforms: Set[str]) -> List[Tuple[str, str]]:
@@ -374,7 +376,7 @@ def main() -> int:
         f"against {len(fforms)} f form(s) from {macros_file} (scope: {scope})."
     )
     if not report.findings:
-        print("No \\name\\paren{...}, \\name\\sb{...} or \\name\\cb{...} "
+        print("No \\name followed by a delimiter macro "
               "where an f form exists.")
         return 0
 
