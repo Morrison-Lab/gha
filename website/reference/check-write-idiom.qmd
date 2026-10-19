@@ -14,7 +14,7 @@ The check flags a line a pull request adds, in `.qmd` and `.md` files,
 that begins, after optional whitespace,
 an optional list marker (`-`, `*`, `1.`, `1)`)
 and an optional label such as `(a)` or `a)`,
-with `Write the `, `Write a ` or `Write an ` (`Write` is case-sensitive).
+with `Write` followed by `the`, `a` or `an` (`Write` is case-sensitive).
 
 The check does not flag:
 

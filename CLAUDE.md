@@ -429,7 +429,7 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   and suggests `\namef{...}`.
   It copies `check-local-macros`'s diff model and Markdown masking rather than importing them (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default).
   The known f forms are read from `macros-file` (`latex-macros/macros.qmd` by default), and a missing file skips with a warning, because without it no f form is known;
-  `check-write-idiom/` (Python, stdlib only, gha#1121, from psw#297) flags a line a PR adds in a `.qmd` or `.md` file that opens, after an optional list marker and label such as `(a)`, with `Write the `, `Write a ` or `Write an `,
+  `check-write-idiom/` (Python, stdlib only, gha#1121, from psw#297) flags a line a PR adds in a `.qmd` or `.md` file that opens, after an optional list marker and label such as `(a)`, with `Write` followed by `the`, `a` or `an`,
   because "Write ..." hides whether to derive, express, state or give.
   It copies `check-fform-paren`'s diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default), and its env vars use the `CWI_` prefix.
   `Write $...$ for ...` (notation) and `Write down` pass, as do fences, spans, comments and front matter;

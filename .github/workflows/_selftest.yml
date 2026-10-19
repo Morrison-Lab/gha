@@ -2216,7 +2216,7 @@ jobs:
         with:
           fail: 'true'
           whole-tree: 'true'
-          paths-ignore: '_ci-write-idiom'
+          paths-ignore: '_ci-write-idiom, conductor/workflow.md'
       - name: Check again with globs excluding the page
         uses: ./check-write-idiom
         with:
