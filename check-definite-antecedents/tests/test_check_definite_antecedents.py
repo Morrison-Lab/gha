@@ -46,7 +46,7 @@ def test_link_or_crossref_exempts():
 
 
 def test_email_is_not_a_crossref():
-    assert hits("::: {#exr-a}\nThe user a@b.org wrote.\n:::") == [(2, "The user")]
+    assert hits("::: {#exr-a}\nThe user a@b.org wrote.\n:::") == [(2, "The user")]  # phi-allow
 
 
 def test_heading_is_skipped():
