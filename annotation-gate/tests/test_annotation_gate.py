@@ -10,6 +10,7 @@ DEFAULT = [
     r"The ubuntu-latest label will migrate to",
     r"Node\.js \d+ is deprecated\. The following actions target Node",
     r"^Canceling since a higher priority waiting request for",
+    r"^The operation was canceled\.$",
     r"not posting a stale review",
     r"^PR edits workflow files; restored",
     r"^Skipping element-level diff highlighting: \d+ old / \d+ new candidate elements exceed the \d+-element cap",
@@ -160,3 +161,7 @@ def test_run_mode_clean_run_posts_success(monkeypatch):
 def test_current_run_mode_posts_nothing(monkeypatch):
     code, posted = run_main(monkeypatch, {"GITHUB_JOB": "annotation-gate"}, [])
     assert code == 0 and posted == []
+
+
+def test_superseded_job_cancellation_is_allowed():
+    assert not g.find_violations([ann("failure", "The operation was canceled.")], set(g.LEVELS_ALL), DEFAULT)

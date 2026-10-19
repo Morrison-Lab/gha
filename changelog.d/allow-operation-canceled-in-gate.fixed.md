@@ -1,0 +1,1 @@
+- `annotation-gate` allows "The operation was canceled.", which GitHub puts on a job cancelled by a newer push, so a superseded run no longer fails the gate.
