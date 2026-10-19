@@ -37,14 +37,14 @@ def step(text: str, name: str) -> str:
 
 
 def mutate_step(text: str, name: str, old: str, new: str) -> Optional[str]:
-    """Replace one anchor only within the named step."""
+    """Replace every occurrence of an anchor only within the named step."""
     bounds = step_span(text, name)
     if bounds is None:
         return None
     body = text[bounds[0] : bounds[1]]
     if old not in body:
         return None
-    return text[: bounds[0]] + body.replace(old, new, 1) + text[bounds[1] :]
+    return text[: bounds[0]] + body.replace(old, new) + text[bounds[1] :]
 
 
 def check(workflow: Path) -> int:
@@ -97,6 +97,10 @@ def check(workflow: Path) -> int:
         ),
         "extracts the result with a delimited output": (
             '"summary<<$delimiter"' in extract
+        ),
+        "validates the model input before use": (
+            "MODEL: ${{ inputs.model }}" in token
+            and "A-Za-z0-9._:/-" in token
         ),
         "comments only when a summary exists": (
             "if: needs.summarize.outputs.summary != ''" in comment_job
@@ -162,6 +166,11 @@ def run_self_test(workflow: Path) -> int:
             "Check for the Claude token",
             '>> "$GITHUB_STEP_SUMMARY"',
             "",
+        ),
+        "model validation removed": (
+            "Check for the Claude token",
+            "A-Za-z0-9._:/-",
+            "A-Za-z0-9",
         ),
         "multiline delimiter removed": (
             "Extract the summary",

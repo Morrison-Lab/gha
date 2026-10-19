@@ -694,9 +694,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
 `update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine
 
@@ -735,7 +735,7 @@ well after the freeze -- see
 `opencode-code-review.yml` postdates the freeze as well
 (added in [gha#586](https://github.com/Morrison-Lab/gha/issues/586)); pin to
 `@v2`.
-`summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+`bump-submodule.yml` and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
 but later gained the configurable `no-changelog-label` input at
@@ -836,7 +836,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 

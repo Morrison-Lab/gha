@@ -49,10 +49,16 @@ jobs:
         id: token
         env:
           HAS_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          MODEL: ${{ inputs.model }}
         run: |
-          echo "available=$HAS_TOKEN" >> "$GITHUB_OUTPUT"
           if [ "$HAS_TOKEN" != "true" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
             echo "Issue summary skipped: no CLAUDE_CODE_OAUTH_TOKEN secret." >> "$GITHUB_STEP_SUMMARY"
+          elif ! printf '%s' "$MODEL" | grep -Eq '^[A-Za-z0-9._:/-]*$'; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Issue summary skipped: the model input has characters outside A-Za-z0-9._:/-." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
           fi
 
       # Randomized nonce prevents an issue author from escaping the

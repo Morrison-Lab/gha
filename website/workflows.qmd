@@ -59,7 +59,7 @@ input tables and a copy-paste example.
 | [`check-extra.yml`](reference/check-extra.qmd)                             | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale                                    | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness`                                                        |
 | [`r-cmd-check.yml`](reference/r-cmd-check.qmd)                             | Run `R CMD check` across an OS x R-version matrix, with an optional hard-dependencies-only job gated to `pull_request`                                                                                                           | `hard`, `error-on`, `force-suggests`, `setup-julia`, `julia-project`, `apt-packages`, `brew-packages`, `brew-casks`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes`                                                        |
 | [`update-snapshots.yml`](reference/update-snapshots.qmd)                   | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit                                                                                          | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`; secret `WORKFLOW_TOKEN`                                                                              |
-| [`summary.yml`](reference/summary.qmd)                                     | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`)                                                                                                       | `endpoint`, `model`                                                                                                                                                                 |
+| [`summary.yml`](reference/summary.qmd)                                     | Claude summary comment on newly opened issues (needs `CLAUDE_CODE_OAUTH_TOKEN`)                                                                                                                                                   | `model`                                                                                                                                                                             |
 | [`quarto-publish.yml`](reference/quarto-publish.qmd)                       | Render a Quarto site and deploy it to GitHub Pages                                                                                                                                                                                | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
 | [`report-failure.yml`](reference/report-failure.qmd)                       | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
 | [`preview.yml`](reference/preview.qmd)                                     | Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)                                                                                                                                  | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `submodules`, `render-profile`, `output-dir`, `formats`, `skip-docx`, `extra-preview-labels`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `detect-changed-chapters`, `changed-chapters-banner`, `highlight-changes`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `max-elements-for-pairwise`, `banner-index`, `docx-tracked-changes`, `docx-tracked-changes-glob` |
@@ -122,9 +122,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-local-macros.yml`, `check-fform-paren.yml`, `check-write-idiom.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
 `update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
@@ -159,7 +159,7 @@ pin to `@v2`.
 `check-ai-tells.yml` postdates the freeze too
 (added in [gha#382](https://github.com/Morrison-Lab/gha/issues/382));
 pin to `@v2`.
-`summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+`bump-submodule.yml` and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1` remains
 current for them. `check-news.yml` was initially grouped with them, but later
 gained the configurable `no-changelog-label` input at

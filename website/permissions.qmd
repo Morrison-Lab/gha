@@ -35,8 +35,7 @@ already include the right `permissions:` blocks; copy them as-is.
   markers around it.
 - `check-links` opens an issue on `main` failures, so grant `issues: write`,
   `pull-requests: read`, `contents: read`.
-- `summary` comments on issues and calls the models API, so grant
-  `issues: write`, `models: read`, `contents: read`.
+- `summary` comments on issues, so grant `issues: write`, `contents: read`.
 - `update-snapshots` pushes the snapshot-update commit back to the branch, so
   grant `contents: write`.
 - `quarto-publish` deploys to the `gh-pages` branch, so grant `contents: write`,
