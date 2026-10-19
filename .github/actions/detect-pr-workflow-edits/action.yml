@@ -61,8 +61,18 @@ runs:
       run: |
         set -euo pipefail
         ACTION_SCRIPTS="${{ github.action_path }}/../../workflows/scripts"
-        if ! files=$(DEFAULT_BRANCH="$DEFAULT_BRANCH" REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$ACTION_SCRIPTS/list-pr-changed-files.sh"); then
-          echo "::warning::Could not list a complete file set for PR #$PR_NUMBER; treating as a workflow-file edit so the review restores default-branch YAML rather than executing an unknown or truncated PR tree (gha#598, gha#916)."
+        err=$(mktemp)
+        if ! files=$(DEFAULT_BRANCH="$DEFAULT_BRANCH" REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$ACTION_SCRIPTS/list-pr-changed-files.sh" 2>"$err"); then
+          cat "$err" >&2
+          # list-pr-changed-files.sh words its stacked-PR error with "(stacked PR)"; keep the two in sync.
+          if grep -q '(stacked PR)' "$err"; then
+            # By design, not a fault: a stacked PR's file list is not a diff against the default branch.
+            # A plain log line, not an annotation, so the annotation gate has nothing to allowlist (gha#916).
+            echo "PR #$PR_NUMBER is stacked on a non-default base; treating it as a workflow-file edit so the review restores default-branch YAML (gha#598, gha#916)."
+          else
+            echo "::warning::Could not list a complete file set for PR #$PR_NUMBER; treating as a workflow-file edit so the review restores default-branch YAML rather than executing an unknown or truncated PR tree (gha#598, gha#916)."
+          fi
+          rm -f "$err"
           echo "workflow_edits=true" >> "$GITHUB_OUTPUT"
           echo "caller_edited=false" >> "$GITHUB_OUTPUT"
           echo "edited_path=" >> "$GITHUB_OUTPUT"
