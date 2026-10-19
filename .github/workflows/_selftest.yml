@@ -6308,3 +6308,15 @@ jobs:
           set -euo pipefail
           test -f _ci-dg/out/dependency-graph.js
           python3 -c "import json,sys; g=json.load(open('_ci-dg/out/dependency-graph.json')); assert g['edges']==[['ci/page#thm-b','ci/page#def-a']], g['edges']"
+
+  # check-dependency-graph.yml is a reusable workflow, so call it through its
+  # local path. This repository has no notes pages, so the call runs the
+  # vendored-script self-test from build-dependency-graph/ and builds the
+  # graph of website/, which has no definition divs. That proves the inputs
+  # reach the steps; the parser itself is covered by build-dependency-graph.
+  check-dependency-graph:
+    uses: ./.github/workflows/check-dependency-graph.yml
+    with:
+      script-dir: build-dependency-graph
+      pages-dir: website
+      site: gha
