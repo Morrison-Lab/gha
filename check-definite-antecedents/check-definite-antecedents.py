@@ -53,7 +53,7 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 LIST_MARKER_RE = re.compile(r"^(?:[-*+]\s+|\d+[.)]\s+)")
 DEFINITE_RE = re.compile(r"^(The|These|Those|This|That)\s+(?!\*\*)(\S+)")
-LINKED_RE = re.compile(r"\]\(|@[A-Za-z]|\{\{<")
+LINKED_RE = re.compile(r"\]\(|(?<!\w)@[A-Za-z]+-|\{\{<")
 
 
 class Hit(NamedTuple):
@@ -94,7 +94,6 @@ def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
         raw = raw[:start]
     it = iter(spans)
     return re.sub("\0", lambda _: next(it), raw), opened
-
 
 
 def first_sentence(text: str) -> str:
@@ -252,7 +251,6 @@ def _env_flag(name: str, default: bool) -> bool:
     if not value:
         return default
     return value in ("1", "true", "yes", "on")
-
 
 
 class Report(NamedTuple):

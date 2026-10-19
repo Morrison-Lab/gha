@@ -41,6 +41,7 @@ input tables and a copy-paste example.
 | [`check-wikipedia-further-reading.yml`](reference/check-wikipedia-further-reading.qmd) | Diff-scoped, blocking check that flags a Wikipedia citation or link in a Further reading list item (Wikipedia pages are citations only) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-redundant-citations.yml`](reference/check-redundant-citations.qmd) | Diff-scoped, warn-only check that flags a source cited twice, with the same locator, in one div or passage (cite a source once per div) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-one-div-per-subfile.yml`](reference/check-one-div-per-subfile.qmd) | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile, solutions in their own `_sol` file) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-definite-antecedents.yml`](reference/check-definite-antecedents.qmd) | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-local-macros.yml`](reference/check-local-macros.qmd) | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
 | [`check-term-links.yml`](reference/check-term-links.qmd) | Diff-scoped, blocking check that flags a defined technical term whose first use in a div or paragraph is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus's own `#def-` divs and links | `globs`, `paths-ignore`, `terms-file`, `allow-file`, `fail`, `whole-tree` |
 | [`annotation-gate.yml`](reference/annotation-gate.qmd) | Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job | `levels`, `allow-patterns`, `job-name` |
@@ -114,7 +115,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`,
-`check-one-div-per-subfile.yml`, `check-term-links.yml`,
+`check-one-div-per-subfile.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`,
 `annotation-gate.yml`,
 `annotation-gate-run.yml`,
 `check-local-macros.yml`, `check-fform-paren.yml`,

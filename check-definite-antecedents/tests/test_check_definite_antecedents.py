@@ -45,6 +45,10 @@ def test_link_or_crossref_exempts():
     assert hits("::: {#exr-a}\nThe labels of @exm-data are bad.\n:::") == []
 
 
+def test_email_is_not_a_crossref():
+    assert hits("::: {#exr-a}\nThe user a@b.org wrote.\n:::") == [(2, "The user")]
+
+
 def test_heading_is_skipped():
     assert hits("::: {#exr-a}\n## Title\nThe labels are bad.\n:::") == [(3, "The labels")]
 
