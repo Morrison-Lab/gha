@@ -177,11 +177,14 @@ def scan_block(block: List[Tuple[int, str, int]]) -> List[Finding]:
     for off, inside in _bracket_groups(body):
         for key, loc, rel in _citations_in_group(inside):
             events.append((off + rel, key, loc))
+    bracketed = {off for off, _k, _l in events}
     for idx, text in enumerate(joined):
         if SOURCE_RE.match(text):
             for m in KEY_RE.finditer(text):
-                if not m.group(1).startswith(XREF_PREFIXES):
-                    events.append((starts[idx] + m.start(), m.group(1), ""))
+                off = starts[idx] + m.start()
+                # A key inside brackets on a Source line is already counted.
+                if off not in bracketed and not m.group(1).startswith(XREF_PREFIXES):
+                    events.append((off, m.group(1), ""))
     for off, key, loc in sorted(events):
         note(key, loc, line_of(off))
     return found

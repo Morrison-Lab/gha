@@ -67,6 +67,11 @@ def test_citation_spanning_lines():
     assert flagged(text) == [(3, "james")]
 
 
+def test_bracketed_key_on_a_source_line_is_counted_once():
+    text = "::: {#def-a}\nBody.\n\nSource: Holm [-@holm]; @other.\n:::\n"
+    assert flagged(text) == []
+
+
 def test_source_line_lists_key_twice_with_bracket():
     text = "::: {#def-a}\nSee [@k].\nSource: @k; @other.\n:::\n"
     assert flagged(text) == [(3, "k")]
