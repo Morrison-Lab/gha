@@ -5,7 +5,7 @@ name: Summarize new issues (reusable)
 # that claude.yml already uses. It needs no pay-per-use API key (gha#1133).
 #
 # The previous version called actions/ai-inference against GitHub Models,
-# which GitHub retired (gha#617, gha#834, gha#835). A repo that cannot pass
+# which GitHub is retiring (gha#617, gha#834, gha#835). A repo that cannot pass
 # the token sees a skipped run, never a failure: the skip is written to the
 # job summary, not to an annotation, because every annotation fails CI.
 #
@@ -54,7 +54,7 @@ jobs:
           if [ "$HAS_TOKEN" != "true" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "Issue summary skipped: no CLAUDE_CODE_OAUTH_TOKEN secret." >> "$GITHUB_STEP_SUMMARY"
-          elif ! printf '%s' "$MODEL" | grep -Eq '^[A-Za-z0-9._:/-]*$'; then
+          elif case "$MODEL" in *[!A-Za-z0-9._:/-]*) true ;; *) false ;; esac; then
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "Issue summary skipped: the model input has characters outside A-Za-z0-9._:/-." >> "$GITHUB_STEP_SUMMARY"
           else

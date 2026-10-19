@@ -6,6 +6,7 @@ import contextlib
 import io
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 from typing import Optional, Tuple
@@ -45,6 +46,42 @@ def mutate_step(text: str, name: str, old: str, new: str) -> Optional[str]:
     if old not in body:
         return None
     return text[: bounds[0]] + body.replace(old, new) + text[bounds[1] :]
+
+
+def token_step_available(token: str, model: str, has_token: str = "true") -> str:
+    """Run the token step's script and return its `available` output."""
+    match = re.search(r"^        run: \|\n((?:          .*\n|\n)+)", token, re.M)
+    if match is None:
+        return "no-script"
+    script = "\n".join(
+        line[10:] for line in match.group(1).splitlines()
+    )
+    with tempfile.TemporaryDirectory() as temporary_dir:
+        output = Path(temporary_dir) / "output"
+        summary = Path(temporary_dir) / "summary"
+        environment = {
+            "HAS_TOKEN": has_token,
+            "MODEL": model,
+            "GITHUB_OUTPUT": str(output),
+            "GITHUB_STEP_SUMMARY": str(summary),
+            "PATH": "/usr/bin:/bin",
+        }
+        subprocess.run(
+            ["bash", "-e", "-c", script], env=environment, check=True
+        )
+        found = re.findall(r"^available=(.*)$", output.read_text(), re.M)
+    return found[-1] if found else "unset"
+
+
+def model_validation_behaves(token: str) -> bool:
+    """Valid models pass; multi-line and shell-looking models are refused."""
+    accepted = ["", "claude-haiku-5-5", "anthropic/claude-x:1.0"]
+    refused = ["a\n--x", "a b", "a;b", "$(id)", "a\n"]
+    return all(
+        token_step_available(token, model) == "true" for model in accepted
+    ) and all(
+        token_step_available(token, model) == "false" for model in refused
+    )
 
 
 def check(workflow: Path) -> int:
@@ -100,7 +137,7 @@ def check(workflow: Path) -> int:
         ),
         "validates the model input before use": (
             "MODEL: ${{ inputs.model }}" in token
-            and "A-Za-z0-9._:/-" in token
+            and model_validation_behaves(token)
         ),
         "comments only when a summary exists": (
             "if: needs.summarize.outputs.summary != ''" in comment_job
