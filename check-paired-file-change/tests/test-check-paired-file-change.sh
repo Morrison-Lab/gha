@@ -59,7 +59,7 @@ begin_case() {
   stdout_file="$work_dir/stdout.txt"
   mkdir -p "$repo_dir"
   git -C "$repo_dir" init -q -b main
-  git -C "$repo_dir" config user.email "test@example.invalid"
+  git -C "$repo_dir" config user.email "test@example.invalid"  # phi-allow
   git -C "$repo_dir" config user.name "Test"
   git -C "$repo_dir" config commit.gpgsign false
   echo base > "$repo_dir/macros.qmd"

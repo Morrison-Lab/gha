@@ -5550,8 +5550,9 @@ jobs:
           set -euo pipefail
           printf 'selftest\n' > selftest-trigger.txt
           git add selftest-trigger.txt
-          git -c user.name=selftest -c user.email=selftest@example.invalid \
-            commit -q -m 'selftest trigger'
+          git config user.name selftest
+          git config user.email selftest@example.invalid  # phi-allow
+          git commit -q -m 'selftest trigger'
 
       - name: Check the unpaired change, expecting a failure
         id: paired-expected-failure

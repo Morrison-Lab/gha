@@ -13,19 +13,22 @@ Nothing in the check knows that pair; the paths are the caller's.
 
 ## What it compares
 
-**The files the pull request changes.** The check diffs `HEAD^1...HEAD`
-on a `pull_request` run, where the checkout is GitHub's merge ref and
-`HEAD^1` is the base tip it was built on.
+**The files the pull request changes.**
+The check diffs `HEAD^1...HEAD` on a `pull_request` run,
+where the checkout is GitHub's merge ref
+and `HEAD^1` is the base tip it was built on.
 On any other event there is no base, and the check skips with a notice.
 A renamed file counts at both its old and its new path.
 
-**Matching is git's own.** Both path inputs are git pathspecs, comma- or
-newline-separated, passed to `git diff --name-only`.
+**Matching is git's own.**
+Both path inputs are git pathspecs, comma- or newline-separated,
+passed to `git diff --name-only`.
 A bare `*` also crosses `/`; use `:(glob)` magic for `**`.
 
-**The skip label is read live.** The label is read from the API at the moment
-of the check, because the event payload's labels are frozen at the triggering
-event and miss any label applied later.
+**The skip label is read live.**
+The label is read from the API at the moment of the check,
+because the event payload's labels are frozen at the triggering event
+and miss any label applied later.
 The read happens only when the check would otherwise fail, and an API error
 fails the check rather than reading as "no labels".
 An empty `skip-label` never matches.

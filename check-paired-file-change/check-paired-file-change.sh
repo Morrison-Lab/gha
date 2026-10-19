@@ -53,11 +53,7 @@ if [ "${#required_specs[@]}" -eq 0 ]; then
   exit 1
 fi
 
-changed_matching() {
-  git diff --name-only "$base_ref...HEAD" -- "$@"
-}
-
-if ! triggered="$(changed_matching "${trigger_specs[@]}")"; then
+if ! triggered="$(git diff --name-only "$base_ref...HEAD" -- "${trigger_specs[@]}")"; then
   echo "::error::check-paired-file-change: could not diff '$base_ref...HEAD'. Check out with fetch-depth: 0."
   exit 1
 fi
@@ -67,7 +63,7 @@ if [ -z "$triggered" ]; then
   exit 0
 fi
 
-required="$(changed_matching "${required_specs[@]}")"
+required="$(git diff --name-only "$base_ref...HEAD" -- "${required_specs[@]}")"
 if [ -n "$required" ]; then
   echo "Changed files matching trigger-paths are paired with a change to:"
   printf '  %s\n' "$required"
