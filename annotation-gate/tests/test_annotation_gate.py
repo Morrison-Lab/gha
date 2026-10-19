@@ -9,6 +9,8 @@ import annotation_gate as g  # noqa: E402
 DEFAULT = [
     r"The ubuntu-latest label will migrate to",
     r"Node\.js \d+ is deprecated\. The following actions target Node",
+    r"^Canceling since a higher priority waiting request for",
+    r"not posting a stale review",
 ]
 
 
@@ -33,6 +35,21 @@ def test_runner_migration_notice_is_allowed():
 def test_node_deprecation_is_allowed():
     msg = "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced"
     assert not g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_superseded_review_cancellation_is_allowed():
+    msg = "Canceling since a higher priority waiting request for claude-review-348 exists"
+    assert not g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_stale_review_skip_is_allowed():
+    msg = "PR head moved (aaa -> bbb); not posting a stale review."
+    assert not g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_cancellation_pattern_is_anchored_to_the_message_start():
+    msg = "Warning: Canceling since a higher priority waiting request for x was ignored"
+    assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def test_allow_match_is_case_insensitive_search():
