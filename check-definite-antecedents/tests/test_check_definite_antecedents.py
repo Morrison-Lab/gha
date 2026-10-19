@@ -77,7 +77,7 @@ def _git(cwd, *args):
 
 def test_diff_scope_flags_only_added_lines(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.org")
+    _git(tmp_path, "config", "user.email", "t@example.org")  # phi-allow
     _git(tmp_path, "config", "user.name", "t")
     old = tmp_path / "old.qmd"
     old.write_text("::: {#exr-a}\nThe old labels.\n:::\n")
