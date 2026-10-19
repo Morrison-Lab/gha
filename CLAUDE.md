@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-dependency-graph`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
 
@@ -429,6 +429,10 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   and suggests `\namef{...}`.
   It copies `check-local-macros`'s diff model and Markdown masking rather than importing them (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default).
   The known f forms are read from `macros-file` (`latex-macros/macros.qmd` by default), and a missing file skips with a warning, because without it no f form is known;
+  `check-write-idiom/` (Python, stdlib only, gha#1121, from psw#297) flags a line a PR adds in a `.qmd` or `.md` file that opens, after an optional list marker and label such as `(a)`, with `Write` followed by `the`, `a` or `an`,
+  because "Write ..." hides whether to derive, express, state or give.
+  It copies `check-fform-paren`'s diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default), and its env vars use the `CWI_` prefix.
+  `Write $...$ for ...` (notation) and `Write down` pass, as do fences, spans, comments and front matter;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
   per assessment source and checks it against the source.
   The writer (`make_student_qmd.py`) and the checker
@@ -1890,6 +1894,15 @@ CI runs it in the `fform-paren` job in `_selftest.yml`, followed by real
 Five mutations were confirmed to turn a named case red: matching nothing,
 dropping the f-form condition, dropping the moved-line exemption, never
 opening a code fence, and treating a missing macros file as readable.
+
+`check-write-idiom/tests/test_check_write_idiom.py` is a pytest suite over
+the flagged forms (list markers, labels, the three phrases), the unflagged ones
+(notation, `Write down`, mid-line use), the skips (fences, spans, comments, front
+matter, the `allow` comment), the diff scoping with moved lines, `main()`'s warn
+and fail modes, and the defaults the script, `action.yml` and the reusable
+workflow must agree on.
+CI runs it in the `write-idiom` job in `_selftest.yml`, followed by real
+`uses: ./check-write-idiom` calls over a staged page.
 
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and
