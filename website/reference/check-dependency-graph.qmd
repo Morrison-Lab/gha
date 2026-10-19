@@ -2,22 +2,24 @@
 title: "check-dependency-graph.yml"
 ---
 
-Run the self-test of a notes repository's vendored `build_dependency_graph.py`,
+Run the self-test of a notes repository's vendored
+`build_dependency_graph.py`,
 then build the graph of its definition and result divs and fail on a cycle.
 
-The script comes from the [`build-dependency-graph`](https://github.com/Morrison-Lab/gha/tree/main/build-dependency-graph)
-action.
-Notes repositories vendor it under `tools/` so that a local render can run it as a
-`pre-render` step.
-Nothing else runs the vendored copy's self-test, so a change to the script in one repository
+The script comes from the `build-dependency-graph` action.
+Notes repositories vendor it under `tools/`
+so that a local render can run it as a `pre-render` step.
+Nothing else runs the vendored copy's self-test,
+so a change to the script in one repository
 can break it without any check going red.
 
 ## What it does
 
 1. Runs `<script-dir>/tests/test_build_dependency_graph.py`.
-2. Runs `<script-dir>/build_dependency_graph.py` on the pages, writing the JSON to the
-   runner's temporary directory.
-   With `fail-on-cycle` it exits non-zero when a definition or result div
+2. Runs `<script-dir>/build_dependency_graph.py` on the pages,
+   writing the JSON to the runner's temporary directory.
+   With `fail-on-cycle` it exits non-zero
+   when a definition or result div
    depends on itself through other divs.
 
 Forward references are printed and never fail the job.
