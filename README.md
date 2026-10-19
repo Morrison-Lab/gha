@@ -81,6 +81,7 @@ not reference `@main` from consumers.
 | `annotation-gate.yml` | Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job | `levels`, `allow-patterns`, `job-name` |
 | `annotation-gate-run.yml` | Gate a finished run from a `workflow_run` workflow and post the result as an `annotation-gate` check run, for repositories whose checks are spread over many workflow files | `run-id`, `head-sha`, `run-attempt`, `levels`, `allow-patterns` |
 | `check-fform-paren.yml` | Diff-scoped, warn-only check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where an f form `\namef{...}` is defined in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
+| `check-write-idiom.yml` | Diff-scoped, warn-only check that flags a line opening with `Write the`, `Write a` or `Write an` (after an optional list marker and label), because "Write ..." hides whether to derive, express, state or give | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-changed-files.yml` | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope` | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
@@ -136,7 +137,7 @@ that need to write must have the **caller** grant it on the calling job:
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
@@ -674,7 +675,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -822,7 +823,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
