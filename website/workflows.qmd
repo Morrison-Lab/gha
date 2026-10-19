@@ -120,7 +120,8 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-one-div-per-subfile.yml`, `check-term-links.yml`, `check-paired-file-change.yml`,
 `annotation-gate.yml`,
 `annotation-gate-run.yml`,
-`check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
+`check-local-macros.yml`, `check-fform-paren.yml`, `check-write-idiom.yml`,
+`check-dependency-graph.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
 `student-qmd.yml`, `update-quarto-extensions.yml`, and
