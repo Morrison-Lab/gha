@@ -1,0 +1,9 @@
+# Fixture
+
+::: {#lem-one}
+One uses @lem-two.
+:::
+
+::: {#lem-two}
+Two uses @lem-one.
+:::

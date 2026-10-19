@@ -6473,3 +6473,36 @@ jobs:
           set -euo pipefail
           test -f _ci-dg/out/dependency-graph.js
           python3 -c "import json,sys; g=json.load(open('_ci-dg/out/dependency-graph.json')); assert g['edges']==[['ci/page#thm-b','ci/page#def-a']], g['edges']"
+
+  # check-dependency-graph.yml is a reusable workflow, so call it through its
+  # local path. The fixture under build-dependency-graph/tests/fixture/ok has
+  # three divs and one edge, so the call exercises the parser as well as the
+  # input wiring (script-dir, pages-dir, site).
+  check-dependency-graph:
+    uses: ./.github/workflows/check-dependency-graph.yml
+    with:
+      script-dir: build-dependency-graph
+      pages-dir: build-dependency-graph/tests/fixture/ok
+      site: fx
+
+  # A reusable-workflow call cannot be asserted to fail, so the cycle case runs
+  # the builder directly: its fixture holds two definitions that use each
+  # other, which --fail must reject and name in the output.
+  check-dependency-graph-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The builder rejects a cycle
+        shell: bash
+        run: |
+          set +e
+          out=$(python3 build-dependency-graph/build_dependency_graph.py --pages build-dependency-graph/tests/fixture/cycle --site fx --out "${RUNNER_TEMP}/cycle.json" --fail 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$out"
+          test "$status" -eq 1
+          grep -q '^cycle: fx/page#lem-one <-> fx/page#lem-two$' <<< "$out"
