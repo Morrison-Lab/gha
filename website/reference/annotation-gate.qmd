@@ -46,6 +46,11 @@ It takes three more inputs for the `workflow_run` mode described at the end:
   request for ..." and the stale-review skip "PR head moved ...; not posting a
   stale review".
   Both describe a run that was meant to stop, and the newer push gets its own review.
+- The preview's "Skipping element-level diff highlighting" notice.
+  It says a page has more elements than the highlighter compares (500),
+  so the preview shows that page without change highlights.
+  A pull request that touches a large chapter always emits it,
+  and no edit to the pull request removes it.
 
 ## Scope
 
