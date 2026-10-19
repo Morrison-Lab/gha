@@ -14,8 +14,8 @@ from typing import Optional, Tuple
 # tests/ -> scripts/ -> workflows/ -> .github/ -> repo root
 REPO_ROOT = Path(__file__).resolve().parents[4]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "summary.yml"
-COMPATIBLE_ACTION = (
-    "actions/ai-inference@a7805884c80886efc241e94a5351df715968a0ad # v2"
+ACTION = (
+    "anthropics/claude-code-action@374f254f5efaf968abfe15d399fd90972e8138b9"
 )
 
 
@@ -49,39 +49,57 @@ def mutate_step(text: str, name: str, old: str, new: str) -> Optional[str]:
 
 def check(workflow: Path) -> int:
     text = workflow.read_text(encoding="utf-8")
-    inference = step(text, "Run AI inference")
-    unavailable = step(text, "Report unavailable inference")
-    comment = step(text, "Comment with AI summary")
+    token = step(text, "Check for the Claude token")
+    claude = step(text, "Run Claude summary")
+    extract = step(text, "Extract the summary")
+    unavailable = step(text, "Log an unavailable summary")
+    comment = step(text, "Comment with the summary")
+    summarize_job, _, comment_job = text.partition("\n  comment:\n")
     checks = {
-        "finds all summary steps": all((inference, unavailable, comment)),
-        "names the inference step": re.search(
-            r"^\s+id: inference$", inference, re.M
+        "finds all summary steps": all(
+            (token, claude, extract, unavailable, comment)
+        ),
+        "names the Claude step": re.search(
+            r"^\s+id: claude$", claude, re.M
         ) is not None,
-        "pins the tested endpoint-compatible action SHA": (
-            COMPATIBLE_ACTION in inference
+        "pins the claude-code-action SHA": ACTION in claude,
+        "passes the subscription token, not an API key": (
+            "claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+            in claude
+            and "anthropic_api_key" not in text
         ),
-        "passes the endpoint input": re.search(
-            r"^\s+endpoint: \$\{\{ inputs\.endpoint", inference, re.M
-        ) is not None,
-        "passes the model input": re.search(
-            r"^\s+model: \$\{\{ inputs\.model", inference, re.M
-        ) is not None,
-        "passes the complete API token fallback": (
-            "token: ${{ secrets.API_KEY || secrets.OPENAI_API_KEY || "
-            "github.token }}" in inference
+        "forwards the job token to skip the App-token exchange": (
+            "github_token: ${{ github.token }}" in claude
         ),
-        "allows inference failure": "continue-on-error: true" in inference,
-        "reports inference failure": (
-            "steps.inference.outcome == 'failure'" in unavailable
-            and "::warning::Issue summary inference is unavailable" in unavailable
+        "allows the model only the Read tool": (
+            '--allowedTools "Read"' in claude
+            and "Bash" not in claude
         ),
-        "reports an empty successful response": (
-            "steps.inference.outcome == 'success'" in unavailable
-            and "steps.inference.outputs.response == ''" in unavailable
+        "allows Claude failure": "continue-on-error: true" in claude,
+        "skips without the token": (
+            "if: steps.token.outputs.available == 'true'" in claude
         ),
-        "comments only after successful inference": (
-            "if: steps.inference.outcome == 'success' && "
-            "steps.inference.outputs.response != ''" in comment
+        "keeps the model job read-only": (
+            "contents: read" in summarize_job
+            and "issues: write" not in summarize_job
+            and "id-token" not in text
+        ),
+        "gives only the comment job issues: write": (
+            "issues: write" in comment_job
+        ),
+        "never emits an annotation": (
+            "::warning" not in text and "::notice" not in text
+            and "::error" not in text
+        ),
+        "logs a skip to the job summary": (
+            'GITHUB_STEP_SUMMARY' in token
+            and 'GITHUB_STEP_SUMMARY' in unavailable
+        ),
+        "extracts the result with a delimited output": (
+            '"summary<<$delimiter"' in extract
+        ),
+        "comments only when a summary exists": (
+            "if: needs.summarize.outputs.summary != ''" in comment_job
         ),
     }
 
@@ -99,65 +117,86 @@ def run_self_test(workflow: Path) -> int:
     """Prove each load-bearing contract fails when removed."""
     baseline = workflow.read_text(encoding="utf-8")
     mutations = {
-        "inference id removed": ("Run AI inference", "        id: inference\n", ""),
-        "compatible action removed": (
-            "Run AI inference",
-            COMPATIBLE_ACTION,
-            "actions/ai-inference@bad",
+        "claude id removed": ("Run Claude summary", "        id: claude\n", ""),
+        "action SHA removed": (
+            "Run Claude summary",
+            ACTION,
+            "anthropics/claude-code-action@main",
         ),
-        "endpoint removed": (
-            "Run AI inference",
-            "          endpoint:",
-            "          removed-endpoint:",
+        "oauth token removed": (
+            "Run Claude summary",
+            "claude_code_oauth_token:",
+            "removed_token:",
         ),
-        "model removed": (
-            "Run AI inference",
-            "          model:",
-            "          removed-model:",
+        "API key added": (
+            "Run Claude summary",
+            "          classify_inline_comments:",
+            "          anthropic_api_key: x\n          classify_inline_comments:",
         ),
-        "token fallback removed": (
-            "Run AI inference",
-            "secrets.API_KEY || secrets.OPENAI_API_KEY || github.token",
-            "secrets.API_KEY",
+        "job token override removed": (
+            "Run Claude summary",
+            "github_token: ${{ github.token }}",
+            "github_token: x",
+        ),
+        "tool allowlist widened": (
+            "Run Claude summary",
+            '--allowedTools "Read"',
+            '--allowedTools "Read,Bash"',
         ),
         "failure tolerance removed": (
-            "Run AI inference",
+            "Run Claude summary",
             "        continue-on-error: true\n",
             "",
         ),
-        "warning step removed": (
-            "Report unavailable inference",
-            step(baseline, "Report unavailable inference"),
+        "token guard removed": (
+            "Run Claude summary",
+            "        if: steps.token.outputs.available == 'true'\n",
             "",
         ),
-        "warning guard removed": (
-            "Report unavailable inference",
-            "steps.inference.outcome == 'failure'",
-            "false",
+        "annotation added": (
+            "Log an unavailable summary",
+            'echo "Issue summary skipped,',
+            'echo "::warning::Issue summary skipped,',
         ),
-        "empty response warning removed": (
-            "Report unavailable inference",
-            "steps.inference.outputs.response == ''",
-            "false",
+        "step summary removed": (
+            "Check for the Claude token",
+            '>> "$GITHUB_STEP_SUMMARY"',
+            "",
         ),
-        "success guard removed": (
-            "Comment with AI summary",
-            "        if: steps.inference.outcome == 'success' && ",
-            "        if: ",
+        "multiline delimiter removed": (
+            "Extract the summary",
+            '"summary<<$delimiter"',
+            '"summary=x"',
         ),
-        "empty response guard removed": (
-            "Comment with AI summary",
-            "steps.inference.outputs.response != ''",
-            "true",
+    }
+    job_mutations = {
+        "write grant on the model job": (
+            "    permissions:\n      contents: read\n",
+            "    permissions:\n      contents: read\n      issues: write\n",
+        ),
+        "comment permission removed": (
+            "    permissions:\n      issues: write\n",
+            "    permissions:\n      contents: read\n",
+        ),
+        "comment guard removed from the job": (
+            "    if: needs.summarize.outputs.summary != ''\n",
+            "",
         ),
     }
 
     failures = 0
     with tempfile.TemporaryDirectory() as temporary_dir:
         path = Path(temporary_dir) / "summary.yml"
-        for label, (name, old, new) in mutations.items():
-            mutated = mutate_step(baseline, name, old, new)
-            if mutated is None:
+        cases = {
+            label: mutate_step(baseline, name, old, new)
+            for label, (name, old, new) in mutations.items()
+        }
+        for label, (old, new) in job_mutations.items():
+            cases[label] = (
+                baseline.replace(old, new, 1) if old in baseline else None
+            )
+        for label, mutated in cases.items():
+            if mutated is None or mutated == baseline:
                 print(
                     f"::error::self-test '{label}' anchor not found",
                     file=sys.stderr,

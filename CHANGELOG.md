@@ -13,6 +13,16 @@ below with migration steps.
 
 ### Changed
 
+- **`summary` runs Claude instead of GitHub Models** (#1133). GitHub retired
+  the Models endpoint, so `summary.yml@v1` failed on every opened issue.
+  The workflow now uses `claude-code-action` with the `CLAUDE_CODE_OAUTH_TOKEN`
+  subscription secret (no pay-per-use API key), in a read-only model job and a
+  separate comment job. The `endpoint` input is gone; `model` is optional. A
+  caller without the secret gets a skipped run noted in the job summary, not an
+  annotation. **Migration:** pin `summary.yml` to the next tag and add
+  `secrets: inherit`; `models: read` is no longer needed. The `@v1` and `@v2`
+  tags keep the retired version.
+
 - **`claude-code-review` holds PRs to the SERG lab manual, opt-outable via a
   `lab-manual` input** (#170, #171). The reusable review prompt evaluates a PR
   against the [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) --
