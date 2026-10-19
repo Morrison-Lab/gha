@@ -1,0 +1,81 @@
+---
+title: "check-write-idiom.yml"
+---
+
+Diff-scoped, warn-only check that flags a line opening with
+`Write the`, `Write a` or `Write an`.
+In an exercise, "Write ..." means derive, express, state or give,
+and the instruction should name the action literally
+("Derive an expression for", "Express", "State", "Give").
+This is [gha#1121](https://github.com/Morrison-Lab/gha/issues/1121),
+from psw#297.
+
+The check flags a line a pull request adds, in `.qmd` and `.md` files,
+that begins, after optional whitespace,
+an optional list marker (`-`, `*`, `1.`, `1)`)
+and an optional label such as `(a)` or `a)`,
+with `Write` followed by `the`, `a` or `an` (`Write` is case-sensitive).
+
+The check does not flag:
+
+- `Write $...$ for ...`, which is notation;
+- `Write down`;
+- `Write` anywhere but at the start of the line;
+- a code fence or code span, an HTML comment, or YAML front matter;
+- a line carrying, or following, `<!-- check-write-idiom: allow -->`.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing uses are not reflagged on every unrelated edit.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+
+Every run prints how many lines and files it examined.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `false` | Fail the workflow when a vague `Write ...` line is found. Warn-only by default. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-write-idiom.yml in your repo.
+name: Check "Write ..." instructions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-write-idiom.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # block instead of warn (defaults to false)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-write-idiom.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-write-idiom.yml)
+for the full caller stub.

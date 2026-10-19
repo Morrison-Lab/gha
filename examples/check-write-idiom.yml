@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-write-idiom.yml in your repo.
+# Diff-scoped check: flags a line a PR adds that opens with `Write the`, `Write a` or
+# `Write an` (after an optional list marker and label), since "Write ..." hides whether
+# to derive, express, state or give.
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check "Write ..." instructions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-write-idiom.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # block instead of warn (defaults to false)
+    #   whole-tree: true                        # scan every line, not just a PR's additions

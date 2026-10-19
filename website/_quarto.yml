@@ -76,6 +76,7 @@ website:
           - reference/annotation-gate.qmd
           - reference/check-local-macros.qmd
           - reference/check-fform-paren.qmd
+          - reference/check-write-idiom.qmd
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd
           - reference/lint-changed-files.qmd
