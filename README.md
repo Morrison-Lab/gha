@@ -617,6 +617,13 @@ a local build workflow and still use `preview-deploy.yml` and
 `cleanup-pr-previews.yml` by producing the three-file `pr-preview-site` artifact
 (`site/`, `meta/pr-number.txt`, and `meta/action.txt`).
 
+## Dependency graphs (`build-dependency-graph`)
+
+`build-dependency-graph` is a composite action with no reusable workflow, like `preview/` and `open-sync-pr/`.
+Callers use it as a step, `Morrison-Lab/gha/build-dependency-graph@v3`.
+It builds the prerequisite graph of a Quarto notes site's definition and result divs and ships the script that draws each div's graph.
+See [`build-dependency-graph/README.md`](build-dependency-graph/README.md).
+
 ## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 
 Three workflows keep a repo current with content that lives elsewhere, without

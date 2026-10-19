@@ -31,6 +31,7 @@ updates:
       - "/check-literal-math-letters"
       - "/check-wikipedia-further-reading"
       - "/check-one-div-per-subfile"
+      - "/build-dependency-graph"
       - "/check-term-links"
       - "/check-local-macros"
       - "/check-links"
