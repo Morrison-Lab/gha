@@ -1,13 +1,13 @@
 # Fixture
 
-::: {#def-alpha}
-Alpha is a term.
+::: {#lem-alpha}
+Alpha is a result.
 :::
 
-::: {#def-beta}
-Beta is a term.
+::: {#lem-beta}
+Beta is a result.
 :::
 
 ::: {#thm-gamma}
-A result that uses @def-alpha.
+A result that uses @lem-alpha.
 :::

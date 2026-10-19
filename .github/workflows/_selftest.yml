@@ -6340,4 +6340,4 @@ jobs:
           set -e
           printf '%s\n' "$out"
           test "$status" -eq 1
-          grep -q '^cycle: fx/page#def-one <-> fx/page#def-two$' <<< "$out"
+          grep -q '^cycle: fx/page#lem-one <-> fx/page#lem-two$' <<< "$out"

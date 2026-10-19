@@ -1,9 +1,9 @@
 # Fixture
 
-::: {#def-one}
-One uses @def-two.
+::: {#lem-one}
+One uses @lem-two.
 :::
 
-::: {#def-two}
-Two uses @def-one.
+::: {#lem-two}
+Two uses @lem-one.
 :::
