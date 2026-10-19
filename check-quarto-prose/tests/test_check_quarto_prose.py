@@ -383,6 +383,14 @@ def test_curly_apostrophe_matches(tmp_path: Path) -> None:
 # -------------------------------------------------------------------- allow
 
 
+def test_prediction_rule_is_flagged_except_where_allowed() -> None:
+    text = (
+        "The prediction rule predicts.\n"
+        "Also called a *prediction rule*. <!-- prose-allow: prediction rule -->\n"
+    )
+    assert rules(scan(text)) == [(cqp.RULE_IDIOM, 1)]
+
+
 def test_allow_comment_on_the_same_line_exempts_that_phrase_only() -> None:
     text = "A rule of thumb and a deep dive <!-- prose-allow: rule of thumb -->\n"
     found = scan(text)

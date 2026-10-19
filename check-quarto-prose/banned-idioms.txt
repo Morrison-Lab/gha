@@ -122,3 +122,5 @@ pans out
 panned out
 panning out
 a bit of a
+prediction rule
+prediction rules
