@@ -12,6 +12,7 @@ DEFAULT = [
     r"^Canceling since a higher priority waiting request for",
     r"not posting a stale review",
     r"^PR edits workflow files; restored",
+    r"^Skipping element-level diff highlighting: \d+ old / \d+ new candidate elements exceed the \d+-element cap",
 ]
 
 
@@ -59,6 +60,11 @@ def test_workflow_edit_restore_notice_is_allowed():
 def test_workflow_edit_restore_pattern_is_anchored_to_the_message_start():
     msg = "Warning: PR edits workflow files; restored something else"
     assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_diff_highlight_cap_notice_is_allowed():
+    msg = "Skipping element-level diff highlighting: 581 old / 603 new candidate elements exceed the 500-element cap"
+    assert not g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def test_cancellation_pattern_is_anchored_to_the_message_start():
