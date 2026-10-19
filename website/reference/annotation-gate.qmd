@@ -46,6 +46,10 @@ It takes three more inputs for the `workflow_run` mode described at the end:
   request for ..." and the stale-review skip "PR head moved ...; not posting a
   stale review".
   Both describe a run that was meant to stop, and the newer push gets its own review.
+- The notice the review workflow emits on a PR that edits workflow files:
+  "PR edits workflow files; restored .github/workflows/ from the default
+  branch ...".
+  It reports the safe behavior of gha#598, so it is not a defect in the PR.
 
 ## Scope
 
