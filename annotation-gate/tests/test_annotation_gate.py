@@ -11,6 +11,7 @@ DEFAULT = [
     r"Node\.js \d+ is deprecated\. The following actions target Node",
     r"^Canceling since a higher priority waiting request for",
     r"not posting a stale review",
+    r"^Skipping element-level diff highlighting: \d+ old / \d+ new candidate elements exceed the \d+-element cap",
 ]
 
 
@@ -45,6 +46,11 @@ def test_superseded_review_cancellation_is_allowed():
 def test_stale_review_skip_is_allowed():
     msg = "PR head moved (aaa -> bbb); not posting a stale review."
     assert not g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_diff_highlight_cap_notice_is_allowed():
+    msg = "Skipping element-level diff highlighting: 581 old / 603 new candidate elements exceed the 500-element cap"
+    assert not g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def test_cancellation_pattern_is_anchored_to_the_message_start():
