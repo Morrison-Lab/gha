@@ -136,7 +136,7 @@ that need to write must have the **caller** grant it on the calling job:
   `models: read`, `contents: read`.
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
-  `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
+  `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
