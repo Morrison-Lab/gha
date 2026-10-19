@@ -1,12 +1,17 @@
-/* Prerequisite and postrequisite graphs of definitions and results.
+/* Prerequisite and postrequisite graph of each definition and result.
    Reads dependency-graph.json (tools/build_dependency_graph.py): an edge [A, B]
    means A uses B, so B is a prerequisite of A.  No library: plain SVG.
-   - Under every #def-/#thm-/#lem-/#prp-/#cor- div, a folded "Dependencies" graph
-     of its prerequisites (left) and postrequisites (right), DEPTH levels each way.
-   - In any element with id "dependency-graph-page", the whole page's graph. */
+   Under every #def-/#thm-/#lem-/#prp-/#cor- div, a foldable block (folded by
+   default) holds one graph focused on that div.  It reads top to bottom:
+   prerequisites above, the div in the middle, postrequisites below, DEPTH
+   levels each way, with arrows pointing from what is used to what uses it. */
 (function () {
   "use strict";
-  var DEPTH = 2, NS = "http://www.w3.org/2000/svg", W = 190, H = 34, GX = 60, GY = 12;
+  var DEPTH = 2, PER_ROW = 4, NS = "http://www.w3.org/2000/svg";
+  var W = 200, H = 34, GX = 16, GY = 36;
+  /* The div colors of the notes (custom-callout in _quarto-website.yml); a theorem shares a lemma's blue. */
+  var COLOR = { def: "#1B5E20", thm: "#1565C0", lem: "#1565C0", cor: "#00838F", prp: "#827717" };
+  var NAME = { def: "Definition", thm: "Theorem", lem: "Lemma", cor: "Corollary", prp: "Proposition" };
   var script = document.currentScript;
   var base = script ? script.src.replace(/[^/]*$/, "") : "";
   var page = location.pathname.split("/").pop().replace(/\.html$/, "");
@@ -22,39 +27,47 @@
     if (n.site !== g.site) return "https://morrison-lab.github.io/" + n.site + "/" + n.page + ".html#" + n.div;
     return (n.page === page ? "" : n.page + ".html") + "#" + n.div;
   }
-  function clip(s) { return s.length > 28 ? s.slice(0, 27) + "\u2026" : s; }
+  function clip(s) { return s.length > 30 ? s.slice(0, 29) + "…" : s; }
 
-  /* Draw `levels` (array of arrays of nodes) with `edges` ([prereq, dependent] key pairs). */
+  /* Draw `levels` (top to bottom; arrays of nodes) with `edges` ([prereq, dependent] key pairs).
+     A level wider than PER_ROW wraps onto further rows. */
   function draw(levels, edges, focus, g) {
-    var rows = Math.max.apply(null, levels.map(function (l) { return l.length; }).concat(1));
-    var w = levels.length * (W + GX) - GX, h = rows * (H + GY) - GY;
+    var rows = [];
+    levels.forEach(function (l) {
+      for (var i = 0; i < l.length; i += PER_ROW) rows.push(l.slice(i, i + PER_ROW));
+    });
+    var cols = Math.max.apply(null, rows.map(function (r) { return r.length; }));
+    var w = cols * (W + GX) - GX, h = rows.length * (H + GY) - GY;
     var uid = "dg-arrow-" + (draw.n = (draw.n || 0) + 1);
-    var svg = el("svg", { viewBox: "0 0 " + w + " " + h, width: Math.min(w, 1400), role: "img",
-      "aria-label": "Prerequisite graph" }), pos = {};
+    var svg = el("svg", { viewBox: "0 0 " + w + " " + h, width: w, role: "img",
+      "aria-label": "Prerequisites above, postrequisites below" }), pos = {};
     var defs = el("defs", {}, svg);
     var mk = el("marker", { id: uid, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 6,
       markerHeight: 6, orient: "auto-start-reverse" }, defs);
     el("path", { d: "M0 0L10 5L0 10z", fill: "#888" }, mk);
-    levels.forEach(function (l, i) {
-      var off = (h - (l.length * (H + GY) - GY)) / 2;
-      l.forEach(function (n, j) { pos[n.id] = { x: i * (W + GX), y: off + j * (H + GY) }; });
+    rows.forEach(function (r, i) {
+      var off = (w - (r.length * (W + GX) - GX)) / 2;
+      r.forEach(function (n, j) { pos[n.id] = { x: off + j * (W + GX), y: i * (H + GY) }; });
     });
     edges.forEach(function (e) {
       var a = pos[e[0]], b = pos[e[1]];
       if (!a || !b) return;
-      el("path", { d: "M" + (a.x + W) + " " + (a.y + H / 2) + "C" + (a.x + W + GX / 2) + " " + (a.y + H / 2) + " " +
-        (b.x - GX / 2) + " " + (b.y + H / 2) + " " + b.x + " " + (b.y + H / 2),
+      var x1 = a.x + W / 2, y1 = a.y + H, x2 = b.x + W / 2, y2 = b.y, my = (y1 + y2) / 2;
+      el("path", { d: "M" + x1 + " " + y1 + "C" + x1 + " " + my + " " + x2 + " " + my + " " + x2 + " " + y2,
         fill: "none", stroke: "#888", "stroke-width": 1.2, "marker-end": "url(#" + uid + ")" }, svg);
     });
-    levels.forEach(function (l) {
-      l.forEach(function (n) {
+    rows.forEach(function (r) {
+      r.forEach(function (n) {
         var p = pos[n.id];
         var a = el("a", { href: href(n, g) }, svg);
-        var r = el("rect", { x: p.x, y: p.y, width: W, height: H, rx: 6, fill: n.id === focus ? "#ffe9a8" :
-          n.external ? "#eef" : "#f4f4f4", stroke: "#666", "stroke-width": n.id === focus ? 2 : 1 }, a);
-        el("title", {}, r).textContent = n.kind + ": " + n.title;
-        var t = el("text", { x: p.x + 8, y: p.y + H / 2 + 4, "font-size": 12, fill: "#111" }, a);
-        t.textContent = n.kind + ": " + clip(n.title);
+        var attrs = { x: p.x, y: p.y, width: W, height: H, rx: 6, fill: COLOR[n.kind] || "#555",
+          stroke: n.id === focus ? "#000" : "#fff", "stroke-width": n.id === focus ? 3 : 1 };
+        if (n.external) attrs["stroke-dasharray"] = "4 2";
+        var rect = el("rect", attrs, a);
+        el("title", {}, rect).textContent = (NAME[n.kind] || n.kind) + ": " + n.title +
+          (n.external ? " (another site)" : "");
+        var t = el("text", { x: p.x + 8, y: p.y + H / 2 + 4, "font-size": 12, fill: "#fff" }, a);
+        t.textContent = clip(n.title);
       });
     });
     return svg;
@@ -92,6 +105,22 @@
       sum.textContent = "Dependencies (" + (Object.keys(pre).length - 1) + " prerequisites, " +
         (Object.keys(post).length - 1) + " postrequisites, up to " + DEPTH + " levels)";
       det.appendChild(sum);
+      var legend = document.createElement("p");
+      legend.style.cssText = "font-size:0.85em;margin:0.4em 0";
+      var kinds = {};
+      levels.forEach(function (l) { l.forEach(function (x) { kinds[x.kind] = 1; }); });
+      Object.keys(NAME).filter(function (c) { return kinds[c]; }).forEach(function (c) {
+        var sw = document.createElement("span");
+        sw.style.cssText = "display:inline-block;width:0.9em;height:0.9em;border-radius:3px;margin:0 0.3em 0 0.9em;" +
+          "vertical-align:-0.1em;background:" + COLOR[c];
+        legend.appendChild(sw);
+        legend.appendChild(document.createTextNode(NAME[c]));
+      });
+      var note = document.createElement("span");
+      note.style.cssText = "display:block;margin-top:0.2em";
+      note.textContent = "Arrows point from what is used to what uses it. A dashed box is on another site.";
+      legend.appendChild(note);
+      det.appendChild(legend);
       var drawn = false;
       det.addEventListener("toggle", function () {
         if (det.open && !drawn) { drawn = true; var s = document.createElement("div"); s.style.overflowX = "auto";
@@ -99,32 +128,6 @@
       });
       host.appendChild(det);
     });
-  }
-
-  function wholePage(g, nodes, uses) {
-    var host = document.getElementById("dependency-graph-page");
-    if (!host) return;
-    var mine = Object.keys(nodes).filter(function (k) { return nodes[k].site === g.site && nodes[k].page === page; });
-    if (!mine.length) return;
-    var level = {};
-    function lv(k, seen) {
-      if (k in level) return level[k];
-      if (seen[k]) return 0;
-      seen[k] = 1;
-      var m = 0;
-      (uses[k] || []).forEach(function (p) { if (nodes[p].site === g.site && nodes[p].page === page) m = Math.max(m, lv(p, seen) + 1); });
-      return (level[k] = m);
-    }
-    mine.forEach(function (k) { lv(k, {}); });
-    var levels = [];
-    mine.forEach(function (k) { (levels[level[k]] = levels[level[k]] || []).push(nodes[k]); });
-    var ids = {};
-    mine.forEach(function (k) { ids[k] = 1; });
-    var edges = g.edges.filter(function (e) { return ids[e[0]] && ids[e[1]]; }).map(function (e) { return [e[1], e[0]]; });
-    var s = document.createElement("div");
-    s.style.overflow = "auto";
-    s.appendChild(draw(levels.filter(Boolean), edges, null, g));
-    host.appendChild(s);
   }
 
   fetch(base + "dependency-graph.json").then(function (r) { return r.json(); }).then(function (g) {
@@ -135,6 +138,5 @@
       (usedBy[e[1]] = usedBy[e[1]] || []).push(e[0]);
     });
     perDiv(g, nodes, uses, usedBy);
-    wholePage(g, nodes, uses);
   }).catch(function () { /* the graph is an extra; a missing file leaves the page as it was */ });
 })();

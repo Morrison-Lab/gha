@@ -21,8 +21,8 @@ Lean `leanblueprint` and KnowTeX build the same kind of graph from hand-written 
 
 3. Add `- text: '<script src="dependency-graph.js" defer></script>'` to the HTML format's `include-after-body` list.
 
-4. Optional: an element with id `dependency-graph-page` shows the whole page's graph.
-
-Every definition and result div then ends with a folded "Dependencies" graph, two levels each way.
+Every definition and result div then ends with a "Dependencies" block, folded by default.
+It holds one graph focused on that div, read top to bottom: prerequisites above, postrequisites below, two levels each way.
+Each box takes the color of its div type, matching the notes' div colors.
 The script prints cycles and forward references.
 A forward reference is a div that uses one defined later on its page.
