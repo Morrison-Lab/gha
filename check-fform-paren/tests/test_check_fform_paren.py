@@ -30,34 +30,42 @@ MACROS = (
     "\\providecommand{\\fitprocf}[1]{\\fitproc\\paren{#1}}\n"
     "\\newcommand{\\Ef}[1]{\\E\\paren{#1}}\n"
     "\\providecommand{\\fitproc}{f}\n"
+    "\\providecommand{\\E}[1]{\\Ep\\sb{#1}}\n"
     "\\def\\Expf{\\E}\n"
+    "\\providecommand{\\logf}[1]{\\logt\\cb{#1}}\n"
+    "\\providecommand{\\suminf}[1]{\\sumin \\paren{#1}}\n"
     "\\def\\Efx{\\E}\n"
     "```\n"
 )
 
 
-def found(text: str, fforms=frozenset({"fitprocf"})):
+PAREN = {"fitprocf": "paren"}
+
+
+def found(text: str, fforms=None):
     """{line number: name} for a document given as one string."""
-    hits, _ = fp.scan_file(text.split("\n"), set(fforms))
+    hits, _ = fp.scan_file(text.split("\n"), fforms or PAREN)
     return {h.line: h.name for h in hits}
 
 
 # -- the macros file ---------------------------------------------------------
 
-def test_fform_names_read_provide_new_command_and_def(tmp_path):
+def test_fform_delimiters_read_provide_new_command_and_def(tmp_path):
     macros = tmp_path / "macros.qmd"
     macros.write_text(MACROS)
-    assert fp.fform_names(str(macros)) == {"fitprocf", "Ef", "Expf"}
+    assert fp.fform_delimiters(str(macros)) == {
+        "fitprocf": "paren", "Ef": "paren", "Expf": "sb",
+        "logf": "cb", "suminf": "paren"}
 
 
 def test_alias_operator_then_delimiter_is_flagged():
-    hits, _ = fp.scan_file([r"Use $\Exp\sb{X}$ here."], {"Expf"})
+    hits, _ = fp.scan_file([r"Use $\Exp\sb{X}$ here."], {"Expf": "sb"})
     assert [(h.name, h.delimiter) for h in hits] == [("Exp", "sb")]
     assert "\\Exp\\sb{...} -> \\Expf{...}" in fp.format_message(hits[0])
 
 
-def test_fform_names_missing_file_is_none(tmp_path):
-    assert fp.fform_names(str(tmp_path / "nope.qmd")) is None
+def test_fform_delimiters_missing_file_is_none(tmp_path):
+    assert fp.fform_delimiters(str(tmp_path / "nope.qmd")) is None
 
 
 # -- findings ----------------------------------------------------------------
@@ -84,7 +92,7 @@ def test_name_and_paren_separated_by_space_passes():
 
 
 def test_each_use_on_a_line_is_found():
-    hits, _ = fp.scan_file([r"$\fitproc\paren{a} + \fitproc\paren{b}$"], {"fitprocf"})
+    hits, _ = fp.scan_file([r"$\fitproc\paren{a} + \fitproc\paren{b}$"], PAREN)
     assert [h.name for h in hits] == ["fitproc", "fitproc"]
 
 
@@ -92,7 +100,7 @@ def test_each_use_on_a_line_is_found():
     "delim", ["paren", "sb", "cb", "set", "abs", "norm", "angb"])
 def test_each_delimiter_is_flagged_and_named_in_the_message(delim):
     text = "Fit $\\fitproc\\" + delim + "{x}$ here."
-    hits, _ = fp.scan_file([text], {"fitprocf"})
+    hits, _ = fp.scan_file([text], {"fitprocf": delim})
     assert [(h.name, h.delimiter) for h in hits] == [("fitproc", delim)]
     msg = fp.format_message(hits[0])
     assert "\\fitproc\\" + delim + "{...} -> \\fitprocf{...}" in msg
@@ -177,7 +185,7 @@ def _run(monkeypatch, tmp_path, base, **kw):
     return fp.run_check(
         base, kw.get("globs", fp.DEFAULT_GLOBS.split()),
         fp.compile_globs(kw.get("ignores", [])),
-        kw.get("fforms", {"fitprocf"}), kw.get("whole_tree", False))
+        kw.get("fforms", PAREN), kw.get("whole_tree", False))
 
 
 def test_added_line_is_flagged_in_diff_mode(tmp_path, monkeypatch):
@@ -313,3 +321,25 @@ def test_defaults_agree_across_action_workflow_and_script():
     assert fp._DEFAULT_FAIL is False
     assert "default: 'false'" in action
     assert re.search(r"fail:\n(?:.*\n)*?\s+default: false", workflow)
+
+
+# -- the delimiter must match the f form's -----------------------------------
+
+def test_other_delimiter_than_the_f_forms_is_not_flagged():
+    forms = {"logf": "cb", "suminf": "paren", "fitprocf": "paren"}
+    for text in (r"$\log\abs{x}$", r"$\log\paren{x}$",
+                 r"$\sumin\sb{x}$", r"$\sumin\norm{x}$"):
+        hits, _ = fp.scan_file([text], forms)
+        assert hits == [], text
+
+
+def test_matching_delimiter_is_flagged():
+    forms = {"logf": "cb", "suminf": "paren"}
+    hits, _ = fp.scan_file([r"$\log\cb{x} + \sumin\paren{y}$"], forms)
+    assert [(h.name, h.delimiter) for h in hits] == [
+        ("log", "cb"), ("sumin", "paren")]
+
+
+def test_unreadable_delimiter_is_never_suggested():
+    hits, _ = fp.scan_file([r"$\foo\paren{x}$"], {"foof": None})
+    assert hits == []
