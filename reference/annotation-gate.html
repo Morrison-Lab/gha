@@ -86,9 +86,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-f6e81f4864cb6d8b696b855696ff1c11.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-86a62c4a56120b95dfa8e5b77e93b73a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-f6e81f4864cb6d8b696b855696ff1c11.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0ae3eca5c39517f65c2c89b9f3c98d4d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-f670e416f161c64d0aea07f0635b51b5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-0ae3eca5c39517f65c2c89b9f3c98d4d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -946,6 +946,7 @@ cookieconsent.run({
 <li>The forced-Node deprecation warning, until the action pins are bumped. It reads “Node.js N is deprecated” and then “The following actions target Node”.</li>
 <li>The two annotations the review workflow emits when a newer push supersedes a review: the concurrency group’s “Canceling since a higher priority waiting request for …” and the stale-review skip “PR head moved …; not posting a stale review”. Both describe a run that was meant to stop, and the newer push gets its own review.</li>
 <li>The notice the review workflow emits on a PR that edits workflow files: “PR edits workflow files; restored .github/workflows/ from the default branch …”. It reports the safe behavior of gha#598, so it is not a defect in the PR.</li>
+<li>The failure annotation <code>require-clean-verdict</code> emits when a review finishes with findings: “Claude review verdict is not clean (verdict: …)”. <code>require-clean-verdict</code> already fails its own job, and in <code>workflow_run</code> mode each gated run posts a distinct <code>annotation-gate</code> check run that a later re-review on the same commit cannot clear.</li>
 <li>The preview’s “Skipping element-level diff highlighting” notice. It says a page has more elements than the highlighter compares (500), so the preview shows that page without change highlights. A pull request that touches a large chapter always emits it, and no edit to the pull request removes it.</li>
 </ul>
 </section>
