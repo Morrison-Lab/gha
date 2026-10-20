@@ -50,6 +50,10 @@ It takes three more inputs for the `workflow_run` mode described at the end:
   "PR edits workflow files; restored .github/workflows/ from the default
   branch ...".
   It reports the safe behavior of gha#598, so it is not a defect in the PR.
+- The failure annotation `require-clean-verdict` emits when a review finishes with findings:
+  "Claude review verdict is not clean (verdict: ...)".
+  `require-clean-verdict` already fails its own job,
+  and in `workflow_run` mode each gated run posts a distinct `annotation-gate` check run that a later re-review on the same commit cannot clear.
 - The preview's "Skipping element-level diff highlighting" notice.
   It says a page has more elements than the highlighter compares (500),
   so the preview shows that page without change highlights.
