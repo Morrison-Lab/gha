@@ -12,10 +12,13 @@ This implements
 The check flags two things on a line a pull request adds:
 
 - **A citation of an own bibliography entry.**
-  An entry is own when its `url`, `doi`, `howpublished` or `note` contains one of the config's `urls`,
-  when its `author` or `editor` contains one of `authors`, or when its key is in `keys`.
+  An entry is own when its `url`, `doi`, `howpublished` or `note`
+  contains one of the config's `urls`,
+  when its `author` or `editor` contains one of `authors`,
+  or when its key is in `keys`.
   A key in `allow-keys` is never flagged:
-  the group's published paper or software, cited as the original publication or as a tool used.
+  the group's published paper or software,
+  cited as the original publication or as a tool used.
   Both `[@key]` and a bare `@key` count.
 - **A credit phrase beside an own site or name.**
   A credit phrase is "adapted from", "based on", "borrowed from", "derived from",
@@ -23,9 +26,11 @@ The check flags two things on a line a pull request adds:
   An own site or name is any entry of `urls` or `names`.
   Both must sit in the same paragraph or in the same `Source` div.
 
-The check does not flag a link or a mention on its own ("for further reading, see the sds notes"),
+The check does not flag a link or a mention on its own
+("for further reading, see the sds notes"),
 a credit to a person outside the group, a citation of an entry that is not own,
-a line matching an `allow-patterns` regular expression, a cross-reference, a code fence or a chunk option.
+a line matching an `allow-patterns` regular expression,
+a cross-reference, a code fence or a chunk option.
 
 ## The config file
 
@@ -52,14 +57,16 @@ With no config file the check skips with a warning.
 ## Scope
 
 Only findings on a line a pull request adds are reported.
-An added line whose exact text was also deleted in the same diff counts as moved rather than new.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
 With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.
 Set `whole-tree: true` to scan every tracked file in full on purpose.
 Every run prints how many lines, files and paragraphs it examined,
 and how many bibliography entries are the group's own.
 
-The check warns by default, because a credit phrase beside an own name is sometimes right.
+The check warns by default,
+because a credit phrase beside an own name is sometimes right.
 
 ## Inputs
 

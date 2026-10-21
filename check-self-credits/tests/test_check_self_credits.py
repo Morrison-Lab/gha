@@ -197,7 +197,7 @@ def test_allow_pattern_line_skipped(cfg, own):
 
 
 def test_email_is_not_a_citation(cfg, own):
-    assert flagged("Write to me@forcedown.org.", cfg, own) == []
+    assert flagged("Write to me@forcedown.org.", cfg, own) == []  # phi-allow
 
 
 # -- Diff scoping ------------------------------------------------------------
@@ -218,7 +218,7 @@ def _git(cwd, *args):
 
 def _repo(tmp_path):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
+    _git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow
     _git(tmp_path, "config", "user.name", "t")
     (tmp_path / "references.bib").write_text(BIB)
     (tmp_path / "a.qmd").write_text("Old credit [@forcedown].\nText.\n")
