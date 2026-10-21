@@ -1,0 +1,65 @@
+name: Check self-credits (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      config:
+        description: >-
+          Path, in the calling repository, of the YAML file that lists the
+          group's own urls, names, authors, keys, allow-keys, allow-patterns
+          and bib-globs. With no file the check skips with a warning.
+        type: string
+        default: '.github/own-works.yml'
+      whole-tree:
+        description: >-
+          Scan every tracked file the globs match, in full, instead of only the
+          lines a pull request adds. Use it to measure a corpus.
+        type: boolean
+        default: false
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to check (recursive
+          by default).
+        type: string
+        default: '*.qmd *.md'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: >-
+          Fail the workflow when an added line credits the group's own work
+          (else non-blocking). Defaults to false.
+        type: boolean
+        default: false
+
+jobs:
+  check-self-credits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check self-credits
+        uses: Morrison-Lab/gha/check-self-credits@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          config: ${{ inputs.config }}
+          whole-tree: ${{ inputs.whole-tree }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base
+          # tip it was built on (the payload's base.sha can lag, gha#1007).
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
