@@ -957,6 +957,7 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
 <p>Only findings on a line a pull request adds are reported. An added line whose exact text was also deleted in the same diff counts as moved rather than new. With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to scan every tracked file in full on purpose. Every run prints how many lines, files and paragraphs it examined, and how many bibliography entries are the group’s own.</p>
 <p>The check warns by default, because a credit phrase beside an own name is sometimes right.</p>
+<p>A credit counts only if its own line is added. A PR that adds the “adapted from” line next to an unchanged own-site line produces no finding, which fits a check scoped to added lines.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
