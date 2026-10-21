@@ -1,0 +1,26 @@
+# Copy to .github/workflows/check-self-credits.yml in your repo, and list the
+# group's own sites, names, authors and works in .github/own-works.yml
+# (see website/reference/check-self-credits.qmd for the format).
+# Diff-scoped check: flags a formal credit to the group's own work on lines a PR
+# adds, either a citation of an own bibliography entry or a credit phrase
+# ("adapted from", a Source: line or div) beside an own site or name. Links for
+# further reading are never flagged. Warns by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check self-credits
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-self-credits.yml@v3
+    # with:
+    #   config: '.github/own-works.yml'        # the lists of own works
+    #   globs: '*.qmd *.md'                    # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every line, not just a PR's additions

@@ -225,9 +225,9 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `cleanup-pr-previews`, `student-qmd`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`,
 `update-quarto-extensions`, and `update-snapshots`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `update-snapshots`).
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
 ### Layout
 
@@ -411,6 +411,12 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   `check-redundant-citations/` (Python, stdlib only, gha#1105) bundles the composite action, script, and pytest suite
   for flagging a source cited twice, with the same locator, in one div or passage;
   it takes the same diff model and is warn-only by default (`fail: false`), because the same key twice is sometimes right;
+  `check-self-credits/` (Python, stdlib only, gha#1076) bundles the composite action, script, and pytest suite
+  for flagging a formal credit to the group's own work: a citation of a bibliography entry the consumer marks as own,
+  or a credit phrase ("adapted from", a `Source:` line or div) in the same paragraph as an own site or name;
+  the consumer lists its own `urls`, `names`, `authors`, `keys` and `allow-keys` in `.github/own-works.yml`,
+  so credits to outside people never match and a link for further reading is never flagged;
+  it takes the same diff model and is warn-only by default (`fail: false`);
   `check-one-div-per-subfile/` (Python, stdlib only, gha#1092) bundles the composite action, script, and pytest suite
   for flagging a `_subfiles/_*.qmd` file that holds more than one top-level fenced div when a PR adds a line to it.
   It takes the same diff model, but a touched file is judged whole, because a div opens far above the line that changed,
@@ -429,6 +435,10 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   and suggests `\namef{...}`.
   It copies `check-local-macros`'s diff model and Markdown masking rather than importing them (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default).
   The known f forms are read from `macros-file` (`latex-macros/macros.qmd` by default), and a missing file skips with a warning, because without it no f form is known;
+  `check-write-idiom/` (Python, stdlib only, gha#1121, from psw#297) flags a line a PR adds in a `.qmd` or `.md` file that opens, after an optional list marker and label such as `(a)`, with `Write` followed by `the`, `a` or `an`,
+  because "Write ..." hides whether to derive, express, state or give.
+  It copies `check-fform-paren`'s diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default), and its env vars use the `CWI_` prefix.
+  `Write $...$ for ...` (notation) and `Write down` pass, as do fences, spans, comments and front matter;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
   per assessment source and checks it against the source.
   The writer (`make_student_qmd.py`) and the checker
@@ -461,7 +471,7 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews` and `upd
   since Quarto 1.10.18 compares the whole value as one name
   (measured: `when-profile="assign,solution"` shows under no profile)
   and a list-valued attribute can never match;
-  `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
+  `preview/`, `quarto-publish/`, `open-sync-pr/`, `build-dependency-graph/` (gha#1125), and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
 - `.github/workflows/` -- the `workflow_call` reusable workflows that wrap the
@@ -1890,6 +1900,15 @@ CI runs it in the `fform-paren` job in `_selftest.yml`, followed by real
 Five mutations were confirmed to turn a named case red: matching nothing,
 dropping the f-form condition, dropping the moved-line exemption, never
 opening a code fence, and treating a missing macros file as readable.
+
+`check-write-idiom/tests/test_check_write_idiom.py` is a pytest suite over
+the flagged forms (list markers, labels, the three phrases), the unflagged ones
+(notation, `Write down`, mid-line use), the skips (fences, spans, comments, front
+matter, the `allow` comment), the diff scoping with moved lines, `main()`'s warn
+and fail modes, and the defaults the script, `action.yml` and the reusable
+workflow must agree on.
+CI runs it in the `write-idiom` job in `_selftest.yml`, followed by real
+`uses: ./check-write-idiom` calls over a staged page.
 
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and

@@ -1,7 +1,7 @@
 # Copy to .github/workflows/summary.yml in your repo.
-# NOTE: GitHub Models (the default endpoint) is in scheduled retirement brownout (gha#617).
-# Provide a custom `endpoint` / `model` and API_KEY secret, or prefer `claude.yml` for richer issue engagement.
-# The calling job must grant issues:write + models:read.
+# Posts a Claude summary comment on each newly opened issue.
+# Needs the CLAUDE_CODE_OAUTH_TOKEN secret; without it the run is skipped with a notice.
+# The calling job must grant issues:write + contents:read.
 name: Summarize new issues
 
 on:
@@ -12,11 +12,8 @@ jobs:
   summary:
     permissions:
       issues: write
-      models: read
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1
-    # secrets:
-    #   API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v3
+    secrets: inherit
     # with:
-    #   endpoint: http://localhost:11434/v1
-    #   model: openai/gpt-4o-mini
+    #   model: claude-haiku-5-5

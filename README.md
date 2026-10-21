@@ -75,20 +75,24 @@ not reference `@main` from consumers.
 | `check-literal-math-letters.yml` | Diff-scoped, warn-only check that flags literal Latin and Greek letters in math (a bare `y`, `\theta`) where a semantic macro from Morrison-Lab/macros belongs | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-wikipedia-further-reading.yml` | Diff-scoped, blocking check that flags a Wikipedia citation or link in a Further reading list item (Wikipedia pages are citations only) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-redundant-citations.yml` | Diff-scoped, warn-only check that flags a source cited twice, with the same locator, in one div or passage (cite a source once per div) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| `check-self-credits.yml` | Diff-scoped, warn-only check that flags a formal credit to the group's own work (a citation of an own bibliography entry, or a credit phrase beside an own site or name) | `config`, `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-one-div-per-subfile.yml` | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile, solutions in their own `_sol` file) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-definite-antecedents.yml` | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-local-macros.yml` | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
+| `check-paired-file-change.yml` | Fail a PR that changes a file matching `trigger-paths` without also changing a file matching `required-paths`, unless the PR carries the skip label (read live from the API) | `trigger-paths`, `required-paths`, `skip-label`, `message` |
 | `check-term-links.yml` | Diff-scoped, blocking check that flags a defined technical term whose first use in a div or paragraph is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus's own `#def-` divs and links | `globs`, `paths-ignore`, `terms-file`, `allow-file`, `fail`, `whole-tree` |
 | `annotation-gate.yml` | Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job | `levels`, `allow-patterns`, `job-name` |
 | `annotation-gate-run.yml` | Gate a finished run from a `workflow_run` workflow and post the result as an `annotation-gate` check run, for repositories whose checks are spread over many workflow files | `run-id`, `head-sha`, `run-attempt`, `levels`, `allow-patterns` |
 | `check-fform-paren.yml` | Diff-scoped, warn-only check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where an f form `\namef{...}` is defined in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
+| `check-dependency-graph.yml` | Run the self-test of a notes repo's vendored `build_dependency_graph.py`, then build its definition and result graph and fail on a cycle | `script-dir`, `pages-dir`, `site`, `fail-on-cycle` |
+| `check-write-idiom.yml` | Diff-scoped, warn-only check that flags a line opening with `Write the`, `Write a` or `Write an` (after an optional list marker and label), because "Write ..." hides whether to derive, express, state or give | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-changed-files.yml` | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope` | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-workflows.yml` | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail` |
 | `spellcheck.yml` | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto` |
 | `check-typos.yml` | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail` |
-| `summary.yml` | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`) | `endpoint`, `model` |
+| `summary.yml` | One-paragraph Claude summary comment on newly opened issues, using the `CLAUDE_CODE_OAUTH_TOKEN` subscription secret (skips with a job-summary note when it is absent) | `model` |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`, `examples-coverage`, `min-coverage` |
 | `check-extra.yml` | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness` |
@@ -132,12 +136,12 @@ that need to write must have the **caller** grant it on the calling job:
 - `report-failure` (files or updates the issue tracking a failing workflow) →
   grant `issues: write` on the reporting job only; the job it watches keeps
   its own permissions.
-- `summary` (comments on issues, calls the models API) → grant `issues: write`,
-  `models: read`, `contents: read`.
+- `summary` (comments on issues, runs Claude through `claude-code-action`) → grant `issues: write`,
+  `contents: read`; pass `secrets: inherit` for `CLAUDE_CODE_OAUTH_TOKEN`.
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
-  `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
+  `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
@@ -616,6 +620,13 @@ a local build workflow and still use `preview-deploy.yml` and
 `cleanup-pr-previews.yml` by producing the three-file `pr-preview-site` artifact
 (`site/`, `meta/pr-number.txt`, and `meta/action.txt`).
 
+## Dependency graphs (`build-dependency-graph`)
+
+`build-dependency-graph` is a composite action with no reusable workflow, like `preview/` and `open-sync-pr/`.
+Callers use it as a step, `Morrison-Lab/gha/build-dependency-graph@v3`.
+It builds the prerequisite graph of a Quarto notes site's definition and result divs and ships the script that draws each div's graph.
+See [`build-dependency-graph/README.md`](build-dependency-graph/README.md).
+
 ## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 
 Three workflows keep a repo current with content that lives elsewhere, without
@@ -675,7 +686,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -686,9 +697,9 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml` and
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
 `update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine
 
@@ -727,7 +738,7 @@ well after the freeze -- see
 `opencode-code-review.yml` postdates the freeze as well
 (added in [gha#586](https://github.com/Morrison-Lab/gha/issues/586)); pin to
 `@v2`.
-`summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+`bump-submodule.yml` and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
 but later gained the configurable `no-changelog-label` input at
@@ -795,12 +806,6 @@ change what runs -- which matters here because jobs like the preview deploy run
 with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.github/dependabot.yml)
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing.
-One action is deliberately exempt: `actions/ai-inference` is pinned to `@v2`
-and ignores major updates,
-because v3 removed the configurable `endpoint` transport `summary.yml` uses
-and switched to a Copilot-CLI-only runner interface.
-The v2 pin is permanently retained to preserve custom OpenAI-compatible
-endpoint support ([gha#835](https://github.com/Morrison-Lab/gha/issues/835)).
 When adding a new third-party action, pin it the same way.
 
 First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
@@ -823,7 +828,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -834,7 +839,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`student-qmd.yml`, `update-quarto-extensions.yml`, and
+`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 

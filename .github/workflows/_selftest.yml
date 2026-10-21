@@ -1647,6 +1647,36 @@ jobs:
         uses: ./check-redundant-citations
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-self-credits is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-self-credits@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the rules, both scopes and the action's defaults; the composite
+  # call proves action.yml runs end to end (this repository has no
+  # own-works.yml, so it skips with a warning).
+  self-credits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-self-credits unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-self-credits/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-self-credits
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # check-one-div-per-subfile is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-one-div-per-subfile@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
@@ -2156,6 +2186,109 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-fform-paren || true
           rm -rf _ci-fform-paren
+  # check-write-idiom is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-write-idiom@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the scanner and both scopes; the composite calls below prove
+  # action.yml wires each input through to the script.
+  write-idiom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-write-idiom unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-write-idiom/tests/ -v
+      # Stage a page that opens a line with "Write the", then assert that the
+      # blocking call really fails.
+      - name: Stage a page using a vague Write
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-write-idiom
+          echo '(a) Write the likelihood.' > _ci-write-idiom/page.qmd
+          git add -f _ci-write-idiom/page.qmd
+      # Warn-only is the default: the same page must not fail the job.
+      - name: Check the staged page, warn-only by default
+        uses: ./check-write-idiom
+        with:
+          whole-tree: 'true'
+          globs: '_ci-write-idiom/*.qmd'
+      - name: Check the staged page, expecting a failure
+        id: write-idiom-expected-failure
+        continue-on-error: true
+        uses: ./check-write-idiom
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-write-idiom/*.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.write-idiom-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-write-idiom to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-write-idiom failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the call must fail. Were base-ref dropped, it would skip and pass.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: write-idiom-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-write-idiom
+        with:
+          fail: 'true'
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.write-idiom-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (warning, exit 0).
+      - name: Check again with no base, expecting a skip
+        uses: ./check-write-idiom
+        with:
+          fail: 'true'
+          base-ref: ''
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-write-idiom
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-write-idiom/*.qmd'
+          paths-ignore: '_ci-write-idiom'
+      - name: Check again with globs excluding the page
+        uses: ./check-write-idiom
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-write-idiom || true
+          rm -rf _ci-write-idiom
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.
@@ -5550,6 +5683,68 @@ jobs:
         shell: bash
         run: bash check-junk-files/tests/test-check-junk-files.sh
 
+  # check-paired-file-change is brand new, so (like check-junk-files above) it
+  # does not exist at the released tag its reusable workflow's internal `uses:`
+  # step resolves against yet. Exercise the local composite directly.
+  # The offline suite calls the script, so it cannot see whether action.yml
+  # wires its inputs through; these calls can. A throwaway commit on top of the
+  # checkout gives `HEAD^1` a diff to read, whatever the triggering event was.
+  paired-file-change:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run check-paired-file-change tests
+        shell: bash
+        run: bash check-paired-file-change/tests/test-check-paired-file-change.sh
+
+      - name: Commit a trigger file with no pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'selftest\n' > selftest-trigger.txt
+          git add selftest-trigger.txt
+          git config user.name selftest
+          git config user.email selftest@example.invalid  # phi-allow
+          git commit -q -m 'selftest trigger'
+
+      - name: Check the unpaired change, expecting a failure
+        id: paired-expected-failure
+        continue-on-error: true
+        uses: ./check-paired-file-change
+        with:
+          trigger-paths: selftest-trigger.txt
+          required-paths: selftest-required.txt
+          skip-label: ''
+          base-ref: HEAD^1
+
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.paired-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-paired-file-change to fail on an unpaired change, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-paired-file-change failed on an unpaired change, as expected."
+
+      # And that required-paths reaches the script: the same commit, paired.
+      - name: Check again with the pair present in required-paths
+        uses: ./check-paired-file-change
+        with:
+          trigger-paths: selftest-trigger.txt
+          required-paths: selftest-required.txt, selftest-trigger.txt
+          skip-label: ''
+          base-ref: HEAD^1
+
   # check-typos is brand new, so (like check-junk-files above) it does not
   # exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-typos@v3` step resolves against yet.
@@ -6302,3 +6497,69 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest annotation-gate/tests/ -v
+
+  # build-dependency-graph is composite-only and brand new, so exercise the
+  # local composite. The unit tests cover the parser; the composite call
+  # proves action.yml wires root, site and out-dir through. The fixture is
+  # generated at runtime.
+  build-dependency-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run the build-dependency-graph unit tests
+        run: python3 build-dependency-graph/tests/test_build_dependency_graph.py
+      - name: Generate a fixture site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-dg/chapters
+          printf '%s\n' '::: {#def-a}' 'A term.' ':::' '' '::: {#thm-b}' 'Uses @def-a.' ':::' > _ci-dg/chapters/page.qmd
+      - name: Build the graph
+        uses: ./build-dependency-graph
+        with:
+          root: _ci-dg
+          site: ci
+          out-dir: out
+      - name: Assert the graph and script were written
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f _ci-dg/out/dependency-graph.js
+          python3 -c "import json,sys; g=json.load(open('_ci-dg/out/dependency-graph.json')); assert g['edges']==[['ci/page#thm-b','ci/page#def-a']], g['edges']"
+
+  # check-dependency-graph.yml is a reusable workflow, so call it through its
+  # local path. The fixture under build-dependency-graph/tests/fixture/ok has
+  # three divs and one edge, so the call exercises the parser as well as the
+  # input wiring (script-dir, pages-dir, site).
+  check-dependency-graph:
+    uses: ./.github/workflows/check-dependency-graph.yml
+    with:
+      script-dir: build-dependency-graph
+      pages-dir: build-dependency-graph/tests/fixture/ok
+      site: fx
+
+  # A reusable-workflow call cannot be asserted to fail, so the cycle case runs
+  # the builder directly: its fixture holds two definitions that use each
+  # other, which --fail must reject and name in the output.
+  check-dependency-graph-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The builder rejects a cycle
+        shell: bash
+        run: |
+          set +e
+          out=$(python3 build-dependency-graph/build_dependency_graph.py --pages build-dependency-graph/tests/fixture/cycle --site fx --out "${RUNNER_TEMP}/cycle.json" --fail 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$out"
+          test "$status" -eq 1
+          grep -q '^cycle: fx/page#lem-one <-> fx/page#lem-two$' <<< "$out"

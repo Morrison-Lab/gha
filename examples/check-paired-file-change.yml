@@ -1,0 +1,20 @@
+# Copy to .github/workflows/check-paired-file-change.yml in your repo.
+name: Check Paired File Change
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-paired-file-change.yml@v3
+    with:
+      # Fail when a file matching trigger-paths changes without a file
+      # matching required-paths. Both are git pathspecs.
+      trigger-paths: 'macros.qmd'
+      required-paths: 'notation-choices.qmd'
+      # Label that waives the pairing; '' disables the escape hatch.
+      # skip-label: 'no-notation-change'
+      # What to update, shown in the failure annotation.
+      # message: 'Update notation-choices.qmd to match the macro change.'

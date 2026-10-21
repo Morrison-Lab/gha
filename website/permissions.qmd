@@ -11,12 +11,13 @@ already include the right `permissions:` blocks; copy them as-is.
 ## Per-workflow grants
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
-  `check-code-similarity`, `check-duplicate-roxygen`,
+  `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`,
   `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-informal-definitions`, `check-junk-files`,
   `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`,
-  `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`,
-  `check-local-macros`, `check-fform-paren`, `check-math-definitions`,
+  `check-self-credits`,
+  `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`,
+  `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`,
@@ -35,8 +36,7 @@ already include the right `permissions:` blocks; copy them as-is.
   markers around it.
 - `check-links` opens an issue on `main` failures, so grant `issues: write`,
   `pull-requests: read`, `contents: read`.
-- `summary` comments on issues and calls the models API, so grant
-  `issues: write`, `models: read`, `contents: read`.
+- `summary` comments on issues, so grant `issues: write`, `contents: read`.
 - `update-snapshots` pushes the snapshot-update commit back to the branch, so
   grant `contents: write`.
 - `quarto-publish` deploys to the `gh-pages` branch, so grant `contents: write`,

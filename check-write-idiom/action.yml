@@ -1,0 +1,62 @@
+name: Check "Write ..." instructions
+description: >-
+  Diff-scoped check that flags a line opening with `Write the`, `Write a` or
+  `Write an` (after an optional list marker and label such as `(a)`), in
+  `.qmd` and `.md` files. "Write ..." means derive, express, state or give;
+  name the action literally (psw#297). Does not flag `Write $...$ for ...`
+  (notation) or `Write down`. Skips code fences and spans, HTML comments and
+  front matter. Scoped to lines a diff adds (an added line whose exact text
+  was also deleted in the same diff counts as moved). Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every use the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a line opening with a vague `Write ...` is found
+      (else non-blocking). Defaults to 'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check "Write ..." instructions
+      shell: bash
+      env:
+        CWI_BASE_REF: ${{ inputs.base-ref }}
+        CWI_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CWI_GLOBS: ${{ inputs.globs }}
+        CWI_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CWI_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-write-idiom.py"

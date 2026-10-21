@@ -18,16 +18,19 @@ inputs:
   default-allow:
     description: >-
       Newline-separated regexes allowed for every caller: messages GitHub or a
-      third-party action emits that no repository can silence, and the three
+      third-party action emits that no repository can silence, and the four
       the review workflow emits by design (a newer push supersedes a review,
-      and a PR edits workflow files).
+      a PR edits workflow files, and `require-clean-verdict` fails on a
+      non-clean verdict).
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
       ^Process completed with exit code \d+
       ^Canceling since a higher priority waiting request for
+      ^The operation was canceled\.$
       not posting a stale review
       ^PR edits workflow files; restored
+      ^Claude review verdict is not clean \(verdict: .+\)\.$
       ^Skipping element-level diff highlighting: \d+ old / \d+ new candidate elements exceed the \d+-element cap
   job-name:
     description: >-

@@ -1,0 +1,62 @@
+name: Check paired file change
+description: >-
+  Fail a pull request that changes a file matching trigger-paths without also
+  changing a file matching required-paths, unless the PR carries the skip
+  label. Both path sets are git pathspecs, matched against the files
+  changed relative to the PR base. The skip label is read live from the API,
+  not from the stale event payload.
+inputs:
+  trigger-paths:
+    description: >-
+      Comma- or newline-separated git pathspecs. A changed file matching any
+      of them requires a change matching `required-paths`. Use `:(glob)`
+      magic for `**`. Required: an empty set is an error rather than a green
+      check that examined nothing.
+    required: true
+  required-paths:
+    description: >-
+      Comma- or newline-separated git pathspecs. At least one changed file
+      must match one of them whenever a changed file matches `trigger-paths`.
+      Required, for the same reason.
+    required: true
+  skip-label:
+    description: >-
+      PR label that waives the pairing, matched case-insensitively against
+      the labels as they are now. An empty string disables the escape hatch
+      (an empty string never matches a real label).
+    default: 'no-notation-change'
+  message:
+    description: >-
+      Text shown in the failure annotation, saying what to update.
+    default: 'A file matching trigger-paths changed without a change to a file matching required-paths. Update the paired file in the same pull request.'
+  base-ref:
+    description: >-
+      Ref to diff `base-ref...HEAD` against. On a pull_request run the
+      checkout is GitHub's merge ref, so pass `HEAD^1`. Empty skips the
+      check with a notice (a push run has no PR base). The checkout needs
+      the base in history (`fetch-depth: 0`).
+    default: ''
+  pr-number:
+    description: >-
+      Pull request number, for the live skip-label read. Empty skips the
+      label read.
+    default: ''
+  github-token:
+    description: >-
+      Token for the live label read (needs the pull-requests read permission).
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Check for the paired file change
+      shell: bash
+      env:
+        PFC_TRIGGER_PATHS: ${{ inputs.trigger-paths }}
+        PFC_REQUIRED_PATHS: ${{ inputs.required-paths }}
+        PFC_SKIP_LABEL: ${{ inputs.skip-label }}
+        PFC_MESSAGE: ${{ inputs.message }}
+        PFC_BASE_REF: ${{ inputs.base-ref }}
+        PFC_PR_NUMBER: ${{ inputs.pr-number }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: bash "$GITHUB_ACTION_PATH/check-paired-file-change.sh"
