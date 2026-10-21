@@ -21,10 +21,15 @@ The check flags two things on a line a pull request adds:
   cited as the original publication or as a tool used.
   Both `[@key]` and a bare `@key` count.
 - **A credit phrase beside an own site or name.**
-  A credit phrase is "adapted from", "based on", "borrowed from", "derived from",
-  "reproduced from" and the like, a `Source:` line, or a div titled `Source`.
+  A credit phrase is "adapted from", "borrowed from", "reproduced from",
+  "reprinted from", "with permission from", "courtesy of" or "credit to",
+  a `Source:` line (also in bold, emphasis or a list item),
+  or a div titled `Source` (or classed `.source`).
   An own site or name is any entry of `urls` or `names`.
-  Both must sit in the same paragraph or in the same `Source` div.
+  The own site or name must sit in the same sentence as the credit phrase,
+  on the same `Source:` line, or anywhere inside the `Source` div.
+  A paragraph ends at a blank line, a heading or a list item.
+  Front matter, inline code and code fences are skipped.
 
 The check does not flag a link or a mention on its own
 ("for further reading, see the sds notes"),
@@ -68,9 +73,15 @@ and how many bibliography entries are the group's own.
 The check warns by default,
 because a credit phrase beside an own name is sometimes right.
 
-A credit counts only if its own line is added.
+A credit counts only if the line that names the own work is added.
 A PR that adds the "adapted from" line next to an unchanged own-site line
 produces no finding, which fits a check scoped to added lines.
+The same holds when the phrase and the mention sit on two lines
+and only the first is added.
+
+A repository link such as `github.com/Morrison-Lab/sds` is matched through
+`urls`, not `names`, so list the full URL there.
+An HTML comment is scanned like prose.
 
 ## Inputs
 

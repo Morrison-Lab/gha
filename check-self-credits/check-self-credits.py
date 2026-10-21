@@ -18,14 +18,15 @@ What is flagged, in ``.qmd``/``.md`` files, on a line a diff adds:
   group's published paper or software, cited as the original publication or as
   a tool used). A cited key is a bracketed ``[@key]`` or a bare ``@key``.
 - **A credit phrase beside an own site or name.** A credit phrase is
-  "adapted from", "based on", "borrowed from", "derived from", "reproduced
-  from" and the like, or a ``Source:`` line, or a div titled ``Source``. An own
-  site or name is any entry of the config's ``urls`` or ``names``. Both must
-  sit in the same paragraph or in the same ``Source`` div.
+  "adapted from", "borrowed from", "reproduced from", "reprinted from", "with
+  permission from", "courtesy of" or "credit to", or a ``Source:`` line, or a
+  div titled ``Source``. An own site or name is any entry of the config's
+  ``urls`` or ``names``. It must sit in the same sentence as the phrase, on the
+  same ``Source:`` line, or anywhere inside the ``Source`` div.
 
 What is not flagged: a link or a mention on its own ("for further reading, see
-the sds notes"), a citation of an entry that is not own, code fences and
-chunk options.
+the sds notes"), a citation of an entry that is not own, front matter, inline
+code, code fences and chunk options.
 
 Configuration file (``RC_CONFIG``, default ``.github/own-works.yml``), a
 restricted YAML of top-level lists, each as ``key:`` followed by ``- item``
@@ -174,6 +175,7 @@ def load_config(path: str) -> Optional[Config]:
 # -- Bibliography ------------------------------------------------------------
 
 ENTRY_RE = re.compile(r"@([A-Za-z]+)\s*\{\s*([^,\s{}]+)\s*,")
+SKIP_RE = re.compile(r"@(?:comment|string|preamble)\s*\{", re.IGNORECASE)
 FIELD_RE = re.compile(r"([A-Za-z][\w-]*)\s*=\s*")
 
 
@@ -203,21 +205,30 @@ def _balanced(text: str, start: int) -> Tuple[str, int]:
 def parse_bib(text: str) -> Dict[str, Dict[str, str]]:
     """``{key: {field: value}}`` for each entry of a BibTeX file."""
     entries: Dict[str, Dict[str, str]] = {}
-    for m in ENTRY_RE.finditer(text):
+    pos = 0
+    while True:
+        m = ENTRY_RE.search(text, pos)
+        skip = SKIP_RE.search(text, pos)
+        if skip and (m is None or skip.start() < m.start()):
+            pos = max(_balanced(text, skip.end() - 1)[1], skip.end())
+            continue
+        if not m:
+            break
+        opening = text.index("{", m.start())
+        inner, end = _balanced(text, opening)
+        pos = max(end, m.end())
         if m.group(1).lower() in ("comment", "string", "preamble"):
             continue
+        body = text[m.end():max(end - 1, m.end())]
         fields: Dict[str, str] = {}
-        pos = m.end()
-        depth_end = _balanced("{" + text[pos:], 0)[1]  # entry body end
-        body = text[pos:pos + max(depth_end - 1, 0)]
         i = 0
         while i < len(body):
             f = FIELD_RE.search(body, i)
             if not f:
                 break
-            value, end = _balanced(body, f.end())
+            value, stop = _balanced(body, f.end())
             fields[f.group(1).lower()] = " ".join(value.split())
-            i = max(end, f.end())
+            i = max(stop, f.end())
         entries[m.group(2)] = fields
     return entries
 
@@ -242,14 +253,20 @@ FENCE_RE = re.compile(r"^[ \t>]*(`{3,}|~{3,})(.*)$")
 DIV_OPEN_RE = re.compile(r"^\s{0,3}(:{3,})\s*(\S.*)?$")
 CITE_RE = re.compile(r"(?<![\w])@([A-Za-z_][\w:.\-]*\w|[A-Za-z_])")
 CREDIT_RE = re.compile(
-    r"\b(?:adapted|based|borrowed|derived|reproduced|reprinted|taken|"
-    r"modified|drawn)\s+(?:\w+\s+)?(?:from|on)\b|"
-    r"\bwith\s+permission\s+from\b|\bcourtesy\s+of\b|\bcredit(?:s|ed)?\s+(?:to|goes)\b",
+    r"\b(?:adapted|borrowed|reproduced|reprinted)\s+(?:\w+\s+)?from\b|"
+    r"\bwith\s+permission\s+from\b|\bcourtesy\s+of\b|"
+    r"\bcredit(?:s|ed)?\s+(?:to|goes)\b",
     re.IGNORECASE,
 )
-SOURCE_LINE_RE = re.compile(r"^\s*(?:>\s*)?Source:", re.IGNORECASE)
-SOURCE_DIV_RE = re.compile(r"(?:title\s*=\s*[\"']?Source|\.source\b)",
-                           re.IGNORECASE)
+SOURCE_LINE_RE = re.compile(
+    r"^\s*(?:>\s*)?(?:[-*+]\s+)?[*_]*Source[*_]*:", re.IGNORECASE)
+SOURCE_DIV_RE = re.compile(
+    r"^\s*Source\s*$|\.source\b|title\s*=\s*(?:\"Source\"|'Source')",
+    re.IGNORECASE)
+ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])[ \t]+")
+HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s")
+INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\[(\"'])")
 
 
 class Finding(NamedTuple):
@@ -293,19 +310,58 @@ def scan_file(lines: List[str], cfg: Config, own: Set[str]
             return
         examined += 1
         in_source = any(is_src for _c, is_src in divs)
-        credit = in_source or any(
-            CREDIT_RE.search(t) or SOURCE_LINE_RE.match(t) for _n, t in para)
-        if credit:
-            for n, t in para:
+        text = "\n".join(t for _n, t in para)
+        starts, pos = [], 0
+        for _n, t in para:
+            starts.append(pos)
+            pos += len(t) + 1
+
+        def line_at(offset: int) -> int:
+            idx = 0
+            for k, st in enumerate(starts):
+                if st <= offset:
+                    idx = k
+            return para[idx][0]
+
+        if in_source:
+            spans = [(0, len(text))]
+        else:
+            spans = []
+            prev = 0
+            for sep in SENTENCE_END_RE.finditer(text):
+                spans.append((prev, sep.start()))
+                prev = sep.end()
+            spans.append((prev, len(text)))
+        reported = set()
+        for a, b in spans:
+            sentence = text[a:b]
+            if not (in_source or CREDIT_RE.search(sentence)):
+                continue
+            for rx in names:
+                for hit in rx.finditer(sentence):
+                    ln = line_at(a + hit.start())
+                    if ln not in reported:
+                        reported.add(ln)
+                        findings.append(Finding(
+                            ln, "credit",
+                            f"credits the group's own work ('{hit.group(0)}')"))
+        for n, t in para:
+            if SOURCE_LINE_RE.match(t) and n not in reported:
                 mention = _own_mention(t, names)
                 if mention:
+                    reported.add(n)
                     findings.append(Finding(
                         n, "credit",
                         f"credits the group's own work ('{mention}')"))
         para.clear()
 
+    front = bool(lines) and lines[0].strip() == "---"
     for idx, raw in enumerate(lines):
         n = idx + 1
+        if front:
+            if idx > 0 and raw.strip() in ("---", "..."):
+                front = False
+            continue
         m = FENCE_RE.match(raw)
         if fence is not None:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
@@ -328,11 +384,14 @@ def scan_file(lines: List[str], cfg: Config, own: Set[str]
             continue
         if raw.lstrip().startswith("#|"):
             continue
-        if not raw.strip():
+        if not raw.strip() or HEADING_RE.match(raw):
             flush()
             continue
         if any(rx.search(raw) for rx in cfg.allow_patterns):
             continue
+        if ITEM_RE.match(raw):
+            flush()
+        raw = INLINE_CODE_RE.sub(lambda mm: " " * len(mm.group(0)), raw)
         for c in CITE_RE.finditer(raw):
             key = c.group(1)
             if key.startswith(XREF_PREFIXES) or key not in own:

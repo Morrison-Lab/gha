@@ -133,7 +133,7 @@ def test_adapted_from_beside_own_site(cfg, own):
 
 
 def test_credit_phrase_and_name_in_one_paragraph(cfg, own):
-    text = "This example is based on\nthe UCD-SERG lab manual.\n"
+    text = "This example is adapted from\nthe UCD-SERG lab manual.\n"
     assert flagged(text, cfg, own) == [(2, "credit")]
 
 
@@ -198,6 +198,56 @@ def test_allow_pattern_line_skipped(cfg, own):
 
 def test_email_is_not_a_citation(cfg, own):
     assert flagged("Write to me@forcedown.org.", cfg, own) == []  # phi-allow
+
+
+def test_ordinary_based_on_prose_is_not_a_credit(cfg, own):
+    text = ("The method is based on gradient descent.\n"
+            "For more see [sds](https://morrison-lab.github.io/sds/).\n")
+    assert flagged(text, cfg, own) == []
+
+
+def test_credit_to_outsider_then_own_link_in_next_sentence(cfg, own):
+    text = "Adapted from Smith (2020).\nSee also the UCD-SERG lab manual.\n"
+    assert flagged(text, cfg, own) == []
+
+
+def test_list_items_are_separate_paragraphs(cfg, own):
+    text = "- Adapted from Smith (2020)\n- Further reading: UCD-SERG lab manual\n"
+    assert flagged(text, cfg, own) == []
+
+
+def test_front_matter_is_skipped(cfg, own):
+    text = ("---\ndescription: Adapted from Lee\n"
+            "site: https://morrison-lab.github.io/\n---\nBody.\n")
+    assert flagged(text, cfg, own) == []
+
+
+def test_bold_and_listed_source_lines_are_credits(cfg, own):
+    for line in ("**Source:** UCD-SERG lab manual",
+                 "- Source: UCD-SERG lab manual",
+                 "*Source:* UCD-SERG lab manual"):
+        assert flagged(line, cfg, own) == [(1, "credit")], line
+
+
+def test_source_code_div_is_not_a_source_div(cfg, own):
+    text = ('::: {.callout-note title="Source code"}\n'
+            "See the UCD-SERG lab manual.\n:::\n")
+    assert flagged(text, cfg, own) == []
+
+
+def test_bare_source_div_is_a_source_div(cfg, own):
+    text = "::: Source\nUCD-SERG lab manual.\n:::\n"
+    assert flagged(text, cfg, own) == [(2, "credit")]
+
+
+def test_inline_code_is_not_scanned(cfg, own):
+    assert flagged("Write `[@forcedown]` to cite it.", cfg, own) == []
+
+
+def test_bib_comment_body_creates_no_entry():
+    bib = ("@comment{@article{ghost, author={Morrison, Ezra}}}\n"
+           "@book{real, title={T}}\n")
+    assert set(sc.parse_bib(bib)) == {"real"}
 
 
 # -- Diff scoping ------------------------------------------------------------
