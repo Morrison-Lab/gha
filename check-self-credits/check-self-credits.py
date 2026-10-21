@@ -116,7 +116,7 @@ def _unquote(item: str) -> str:
     item = item.strip()
     if len(item) >= 2 and item[0] == item[-1] and item[0] in "\"'":
         return item[1:-1]
-    return item
+    return "" if item in ("~", "null", "Null", "NULL") else item
 
 
 def parse_lists(text: str) -> Dict[str, List[str]]:
@@ -146,7 +146,7 @@ def parse_lists(text: str) -> Dict[str, List[str]]:
 
 def load_config(path: str) -> Optional[Config]:
     try:
-        with open(path, encoding="utf-8") as handle:
+        with open(path, encoding="utf-8-sig") as handle:
             lists = parse_lists(handle.read())
     except OSError:
         return None
@@ -205,6 +205,7 @@ def _balanced(text: str, start: int) -> Tuple[str, int]:
 def parse_bib(text: str) -> Dict[str, Dict[str, str]]:
     """``{key: {field: value}}`` for each entry of a BibTeX file."""
     entries: Dict[str, Dict[str, str]] = {}
+    text = re.sub(r"(?m)^[ \t]*%.*$", "", text)  # BibTeX comment lines
     pos = 0
     while True:
         m = ENTRY_RE.search(text, pos)
@@ -251,7 +252,7 @@ def own_keys(entries: Dict[str, Dict[str, str]], cfg: Config) -> Set[str]:
 
 FENCE_RE = re.compile(r"^[ \t>]*(`{3,}|~{3,})(.*)$")
 DIV_OPEN_RE = re.compile(r"^\s{0,3}(:{3,})\s*(\S.*)?$")
-CITE_RE = re.compile(r"(?<![\w])@([A-Za-z_][\w:.\-]*\w|[A-Za-z_])")
+CITE_RE = re.compile(r"(?<![\w/#=&?.\-])@([A-Za-z_][\w:.\-]*\w|[A-Za-z_])")
 CREDIT_RE = re.compile(
     r"\b(?:adapted|borrowed|reproduced|reprinted)\s+(?:\w+\s+)?from\b|"
     r"\bwith\s+permission\s+from\b|\bcourtesy\s+of\b|"
@@ -261,12 +262,28 @@ CREDIT_RE = re.compile(
 SOURCE_LINE_RE = re.compile(
     r"^\s*(?:>\s*)?(?:[-*+]\s+)?[*_]*Source[*_]*:", re.IGNORECASE)
 SOURCE_DIV_RE = re.compile(
-    r"^\s*Source\s*$|\.source\b|title\s*=\s*(?:\"Source\"|'Source')",
+    r"^\s*Source\s*$|\.source(?![\w-])|title\s*=\s*(?:\"Source\"|'Source')",
     re.IGNORECASE)
 ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])[ \t]+")
 HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s")
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
-SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\[(\"'])")
+SENTENCE_END_RE = re.compile(r"(?<=[.!?])[)\]\"'*_]*\s+(?=\S)")
+ABBREVIATION_RE = re.compile(
+    r"(?:\b[A-Z]|\b(?:al|Dr|Prof|Mr|Mrs|Ms|vs|etc|cf|Fig|Eq|No|Vol|pp?)"
+    r"|\be\.g|\bi\.e)\.$")
+
+
+def sentence_spans(text: str) -> List[Tuple[int, int]]:
+    """``(start, end)`` of each sentence, not splitting at an abbreviation."""
+    spans, prev = [], 0
+    for sep in SENTENCE_END_RE.finditer(text):
+        before = text[prev:sep.start()]
+        if ABBREVIATION_RE.search(before.rstrip(")]\"'*_")):
+            continue
+        spans.append((prev, sep.start()))
+        prev = sep.end()
+    spans.append((prev, len(text)))
+    return spans
 
 
 class Finding(NamedTuple):
@@ -278,7 +295,8 @@ class Finding(NamedTuple):
 def _name_regexes(cfg: Config) -> List["re.Pattern[str]"]:
     out = []
     for name in cfg.names:
-        out.append(re.compile(r"(?<![\w/])" + re.escape(name) + r"(?![\w])",
+        body = re.escape(name).replace(r"\ ", r"\s+")
+        out.append(re.compile(r"(?<![\w/])" + body + r"(?![\w])",
                               re.IGNORECASE))
     for url in cfg.urls:
         out.append(re.compile(re.escape(url), re.IGNORECASE))
@@ -326,25 +344,26 @@ def scan_file(lines: List[str], cfg: Config, own: Set[str]
         if in_source:
             spans = [(0, len(text))]
         else:
-            spans = []
-            prev = 0
-            for sep in SENTENCE_END_RE.finditer(text):
-                spans.append((prev, sep.start()))
-                prev = sep.end()
-            spans.append((prev, len(text)))
+            spans = sentence_spans(text)
         reported = set()
         for a, b in spans:
             sentence = text[a:b]
-            if not (in_source or CREDIT_RE.search(sentence)):
+            phrase = None if in_source else CREDIT_RE.search(sentence)
+            if not (in_source or phrase):
                 continue
-            for rx in names:
-                for hit in rx.finditer(sentence):
-                    ln = line_at(a + hit.start())
-                    if ln not in reported:
-                        reported.add(ln)
-                        findings.append(Finding(
-                            ln, "credit",
-                            f"credits the group's own work ('{hit.group(0)}')"))
+            hits = [h for rx in names for h in rx.finditer(sentence)]
+            own_hit = hits[0].group(0) if hits else ""
+            if hits and phrase:
+                # Report the phrase's line too, so a newly added credit
+                # phrase beside an unchanged own-site line is still seen.
+                hits.append(phrase)
+            for hit in sorted(hits, key=lambda h: h.start()):
+                ln = line_at(a + hit.start())
+                if ln not in reported:
+                    reported.add(ln)
+                    findings.append(Finding(
+                        ln, "credit",
+                        f"credits the group's own work ('{own_hit}')"))
         for n, t in para:
             if SOURCE_LINE_RE.match(t) and n not in reported:
                 mention = _own_mention(t, names)

@@ -134,7 +134,12 @@ def test_adapted_from_beside_own_site(cfg, own):
 
 def test_credit_phrase_and_name_in_one_paragraph(cfg, own):
     text = "This example is adapted from\nthe UCD-SERG lab manual.\n"
-    assert flagged(text, cfg, own) == [(2, "credit")]
+    assert flagged(text, cfg, own) == [(1, "credit"), (2, "credit")]
+
+
+def test_hard_wrapped_name_is_matched(cfg, own):
+    text = "Adapted from the UCD-SERG lab\nmanual.\n"
+    assert flagged(text, cfg, own) == [(1, "credit")]
 
 
 def test_source_line_naming_own_site(cfg, own):
@@ -248,6 +253,49 @@ def test_bib_comment_body_creates_no_entry():
     bib = ("@comment{@article{ghost, author={Morrison, Ezra}}}\n"
            "@book{real, title={T}}\n")
     assert set(sc.parse_bib(bib)) == {"real"}
+
+
+@pytest.mark.parametrize("text", [
+    "Adapted from Smith.\n**See also** Morrison-Lab/sds.\n",
+    "Adapted from Smith.\n2 more notes at Morrison-Lab/sds.\n",
+    "(Adapted from Smith.) See Morrison-Lab/sds.\n",
+    "*Adapted from Smith.* See Morrison-Lab/sds.\n",
+    'He wrote "adapted from Smith." Visit Morrison-Lab/sds.\n',
+])
+def test_sentence_boundaries_before_punctuation_and_symbols(text, cfg, own):
+    assert flagged(text, cfg, own) == []
+
+
+@pytest.mark.parametrize("text", [
+    "Adapted from E. Morrison's notes at Morrison-Lab/sds.\n",
+    "Adapted from Smith et al. (2020) and Morrison-Lab/sds.\n",
+])
+def test_abbreviations_do_not_split_a_credit_sentence(text, cfg, own):
+    assert flagged(text, cfg, own) != []
+
+
+def test_phrase_line_is_reported_beside_name_line(cfg, own):
+    text = "Adapted from\nMorrison-Lab/sds.\n"
+    assert flagged(text, cfg, own) == [(1, "credit"), (2, "credit")]
+
+
+def test_source_code_class_is_not_a_source_div(cfg, own):
+    text = "::: {.source-code}\nSee Morrison-Lab/sds.\n:::\n"
+    assert flagged(text, cfg, own) == []
+
+
+def test_at_sign_in_url_is_not_a_citation(cfg, own):
+    assert flagged("See https://x.org/@forcedown/p today.", cfg, own) == []
+
+
+def test_bibtex_comment_line_creates_no_entry():
+    bib = "% @article{ghost, url={morrison-lab.github.io}}\n@book{real, title={T}}\n"
+    assert set(sc.parse_bib(bib)) == {"real"}
+
+
+def test_null_list_items_are_dropped():
+    lists = sc.parse_lists("urls: ~\nkeys: [null, real]\n")
+    assert lists["urls"] == [""] and lists["keys"] == ["", "real"]
 
 
 # -- Diff scoping ------------------------------------------------------------
