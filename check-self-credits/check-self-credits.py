@@ -535,7 +535,7 @@ def main() -> int:
     if cfg is None:
         print(f"::warning::Skipping the self-credits check: no config file "
               f"at '{config_path}'. List the group's own sites, names and "
-              f"works there (see check-self-credits/README in gha).")
+              f"works there (see website/reference/check-self-credits.qmd in gha).")
         return 0
 
     report = run_check(base_ref, globs, ignores, whole_tree, cfg)

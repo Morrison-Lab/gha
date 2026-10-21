@@ -68,6 +68,10 @@ and how many bibliography entries are the group's own.
 The check warns by default,
 because a credit phrase beside an own name is sometimes right.
 
+A credit counts only if its own line is added.
+A PR that adds the "adapted from" line next to an unchanged own-site line
+produces no finding, which fits a check scoped to added lines.
+
 ## Inputs
 
 | Input          | Type    | Default                  | Description |
