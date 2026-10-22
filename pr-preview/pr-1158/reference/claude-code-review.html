@@ -1016,7 +1016,7 @@ cookieconsent.run({
 <td><code>check-latex-macros</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Review the math a PR adds or changes against the lab’s semantic macros (<code>Morrison-Lab/macros</code>): a symbol that has a macro must use it, with no literal letters, raw operators, raw exponentials, hat forms or deprecated aliases. On by default; silent on a diff with no math. The checks read definitions only from a locally checked-out submodule (the repo’s pinned version is authoritative), so set <code>checkout-submodules: true</code> too. Set <code>false</code> to switch it off.</td>
+<td>Review the math a PR adds or changes against the lab’s semantic macros (<code>Morrison-Lab/macros</code>): a symbol that has a macro must use it, with no literal letters, raw operators, raw exponentials, hat forms or deprecated aliases. On by default; the reviewer skips the check on a diff with no math, but the guidance is still in the prompt. The checks read definitions only from a locally checked-out submodule (the repo’s pinned version is authoritative), so set <code>checkout-submodules: true</code> too. Set <code>false</code> to switch it off.</td>
 </tr>
 <tr class="even">
 <td><code>report-cost</code></td>
