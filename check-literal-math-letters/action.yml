@@ -45,6 +45,20 @@ inputs:
       Fail the action when a literal letter is found (else non-blocking).
       Defaults to 'false' (warning annotations only).
     default: 'false'
+  mode:
+    description: >-
+      `all` (the default) flags every standalone Latin letter and Greek
+      command. `known` flags only a letter or Greek command that has a
+      semantic macro (`y`, `Y`, `x`, `X`, `n`, `L`, `e`, `\theta`, `\beta`,
+      `\varepsilon`, `\mu`), so index letters such as `k` and `p` pass.
+    default: 'all'
+  deprecated-files:
+    description: >-
+      Space-separated paths of tab-separated interpretation files (for
+      example `latex-macros/interpretations.tsv`). A row whose description
+      says `deprecated, use \x` marks that macro as deprecated, and a use of
+      it on an added line is flagged in either mode. Empty skips the rule.
+    default: ''
 runs:
   using: composite
   steps:
@@ -61,4 +75,6 @@ runs:
         LML_GLOBS: ${{ inputs.globs }}
         LML_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         LML_FAIL: ${{ inputs.fail }}
+        LML_MODE: ${{ inputs.mode }}
+        LML_DEPRECATED_FILES: ${{ inputs.deprecated-files }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-literal-math-letters.py"

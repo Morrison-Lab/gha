@@ -132,6 +132,7 @@ LATIN_SUGGESTIONS = {
     "X": r"\Predvar if this is the random predictor variable",
     "n": r"\nobs if this is the number of observations",
     "L": r"\loss if this is the loss function",
+    "e": r"\euler (or \e{...} for a power) if this is Euler's number",
 }
 GREEK_SUGGESTIONS = {
     "theta": r"\param if this is a generic parameter",
@@ -152,6 +153,17 @@ UNICODE_GREEK = {
     "\u03c2": "varsigma", "\u03f0": "varkappa", "\u03f1": "varrho",
     "\u03d6": "varpi",
 }
+
+# Precise mode (gha#1159): flag only a Latin or Greek letter that has a
+# suggestion above, not every single letter, so index letters such as `k` and
+# `p` pass. Off by default; set by LML_MODE=known.
+KNOWN_ONLY = False
+
+# Macros the library marks "deprecated, use \x" in interpretations.tsv:
+# name (no backslash) -> replacement (with backslash). Loaded from
+# LML_DEPRECATED_FILES; a use of one is flagged in either mode.
+DEPRECATED: Dict[str, str] = {}
+DEPRECATED_RE = re.compile(r"deprecated,\s*use\s+(\\[A-Za-z]+)")
 
 GENERIC_ADVICE = (
     "use the semantic macro for this quantity (see interpretations.tsv in "
@@ -288,6 +300,9 @@ def scan_math(text: str) -> List[str]:
                 i += 2  # `\,` `\\` `\{` and the like
                 continue
             if name in GREEK_COMMANDS:
+                if not KNOWN_ONLY or name in GREEK_SUGGESTIONS:
+                    tokens.append("\\" + name)
+            elif name in DEPRECATED:
                 tokens.append("\\" + name)
             if name in SKIP_ARG_COMMANDS:
                 if j < n and text[j] == "*":
@@ -304,15 +319,38 @@ def scan_math(text: str) -> List[str]:
             j = i
             while j < n and text[j].isascii() and text[j].isalpha():
                 j += 1
-            if j - i == 1:
+            if j - i == 1 and (not KNOWN_ONLY or c in LATIN_SUGGESTIONS):
                 tokens.append(c)
             i = j
         elif c in UNICODE_GREEK:
-            tokens.append("\\" + UNICODE_GREEK[c])
+            if not KNOWN_ONLY or UNICODE_GREEK[c] in GREEK_SUGGESTIONS:
+                tokens.append("\\" + UNICODE_GREEK[c])
             i += 1
         else:
             i += 1
     return tokens
+
+
+def load_deprecated(path: str) -> Dict[str, str]:
+    """Deprecated macro names from a tab-separated interpretations file.
+
+    A row reads ``\\name<TAB>description``; a description containing
+    ``deprecated, use \\other`` marks ``name`` as deprecated in favor of
+    ``\\other``. A missing file is reported and yields no rules, so the rest
+    of the check still runs.
+    """
+    found: Dict[str, str] = {}
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            for row in handle:
+                name, _, description = row.partition("\t")
+                match = DEPRECATED_RE.search(description)
+                if name.startswith("\\") and match:
+                    found[name[1:].strip()] = match.group(1)
+    except OSError:
+        print(f"::warning::Could not read the deprecated-macro file '{path}'; "
+              f"skipping the deprecated-alias rule.")
+    return found
 
 
 def _inline_spans(prose: str) -> List[str]:
@@ -454,6 +492,8 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
 # -- Messages ----------------------------------------------------------------
 
 def _describe(token: str) -> str:
+    if token.startswith("\\") and token[1:] in DEPRECATED:
+        return f"{token} is deprecated -> {DEPRECATED[token[1:]]}"
     if token.startswith("\\"):
         suggestion = GREEK_SUGGESTIONS.get(token[1:])
     else:
@@ -468,7 +508,8 @@ def format_message(tokens: Tuple[str, ...]) -> str:
             seen.append(token)
     shown = "; ".join(_describe(t) for t in seen[:8])
     more = f"; and {len(seen) - 8} more" if len(seen) > 8 else ""
-    return f"Literal letter(s) in math: {shown}{more}. Fix: {GENERIC_ADVICE}"
+    return (f"Literal letter(s) or deprecated macro(s) in math: {shown}{more}. "
+            f"Fix: {GENERIC_ADVICE}")
 
 
 # -- Git plumbing ------------------------------------------------------------
@@ -639,6 +680,15 @@ def main() -> int:
     ignores = compile_ignores(_split_list(os.environ.get("LML_PATHS_IGNORE", "")))
     fail = _env_flag("LML_FAIL", _DEFAULT_FAIL)
     whole_tree = _env_flag("LML_WHOLE_TREE", False)
+
+    global KNOWN_ONLY
+    mode = os.environ.get("LML_MODE", "all").strip().lower() or "all"
+    if mode not in ("all", "known"):
+        print(f"::error::LML_MODE must be 'all' or 'known', not '{mode}'.")
+        return 2
+    KNOWN_ONLY = mode == "known"
+    for path in os.environ.get("LML_DEPRECATED_FILES", "").split():
+        DEPRECATED.update(load_deprecated(path))
 
     report = run_check(base_ref, globs, ignores, whole_tree)
 
