@@ -1847,7 +1847,7 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'website/reference/*.qmd'
+          globs: 'LICENSE'
       - name: Remove the staged sheet
         if: always()
         shell: bash
