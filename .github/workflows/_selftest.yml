@@ -6017,7 +6017,7 @@ jobs:
           set -euo pipefail
           out=$(python3 -u check-quarto-prose/check-quarto-prose.py)
           printf '%s\n' "$out"
-          printf '%s\n' "$out" | grep -q '^::warning::Skipping the prose check'
+          printf '%s\n' "$out" | grep -q '^Skipping the prose check'
           if printf '%s\n' "$out" | grep -q '^::error'; then
             echo '::error::The skipped run reported findings.'
             exit 1
