@@ -80,6 +80,7 @@ Every run prints how many lines, files and f forms it examined.
 | `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
 | `submodules`     | string  | `'true'` | Passed to `actions/checkout`, so the `latex-macros` submodule is available. |
+| `submodule-paths` | string  | `''`     | Whitespace-separated submodule paths to initialize instead of `submodules`, for a repository with a private submodule beside the public one this check needs. |
 | `fail`           | boolean | `false` | Fail the workflow when a `\name\paren{...}` with an f form is found. Warn-only by default. |
 | `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string  | `'3.x'` | Python version to set up. |
