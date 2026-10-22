@@ -72,6 +72,11 @@ def test_sentence_starting_with_a_word_and_period_is_not_a_part():
     assert flagged(exercise("Ask.\n\nA fitted model is used.\nA second sentence.")) == []
 
 
+def test_capital_initial_and_words_are_not_parts():
+    body = "Ask.\n\nI. Newton wrote it.\nV. Hugo too.\nmild. Civil."
+    assert flagged(exercise(body)) == []
+
+
 # -- inline parts ------------------------------------------------------------
 
 def test_inline_parts_are_flagged():

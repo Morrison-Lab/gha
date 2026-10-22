@@ -81,10 +81,13 @@ INLINE_MATH_RE = re.compile(r"(?<!\\)\$[^$\n]+?(?<!\\)\$")
 
 _EMPH = r"(?:\*\*|__|\*|_)?"
 _LABEL = r"(?:[A-Za-z]|[ivxlcdmIVXLCDM]{2,}|\d{1,2})"
+# Outside parentheses only a lowercase letter or a number marks a part, so
+# "I. Newton" and "mild." at a line start are prose.
+_BARE_LABEL = r"(?:[a-z]|\d{1,2})"
 # A part marker opening a line: "(a) ", "a. ", "a) ", "1. ", bare or bolded.
 MARKER_RE = re.compile(
     r"^[ \t]*(?:>\s*)*" + _EMPH
-    + r"(?:\((?P<paren>" + _LABEL + r")\)|(?P<dot>" + _LABEL + r")(?P<end>[.)]))"
+    + r"(?:\((?P<paren>" + _LABEL + r")\)|(?P<dot>" + _BARE_LABEL + r")(?P<end>[.)]))"
     + _EMPH + r"(?:\s+|$)\S?"
 )
 # Running text: "(a) ... (b)", "(i) ... (ii)", "(1) ... (2)" on one passage.
