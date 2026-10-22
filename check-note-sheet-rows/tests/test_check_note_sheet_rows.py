@@ -95,7 +95,7 @@ def _git(repo, *args):
 
 def _repo(tmp_path, before: str, after: str):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
+    _git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow: synthetic
     _git(tmp_path, "config", "user.name", "t")
     sheet = tmp_path / "x-note-sheet.qmd"
     sheet.write_text(before, encoding="utf-8")
