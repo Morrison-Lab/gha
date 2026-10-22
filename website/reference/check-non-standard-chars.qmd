@@ -12,6 +12,7 @@ when it finds any, reporting each `file:line:col` so you can fix it.
 | ---------------- | ------ | ------------------ | --------------------------------------------------------------- |
 | `python-version` | string | `'3.x'`            | Python version to set up.                                       |
 | `extensions`     | string | `'.qmd, .R, .md'`  | Comma- or space-separated list of file extensions to check.     |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -28,6 +29,8 @@ on:
 jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-non-standard-chars.yml@v2
+    # with:
+    #   runs-on: private-runner  # self-hosted runner label (private repositories only)
 ```
 
 See

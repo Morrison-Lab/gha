@@ -32,6 +32,7 @@ Forward references are printed and never fail the job.
 | `pages-dir`     | string  | `chapters` | Directory under the repository root holding the pages (`.` when pages sit at the root). |
 | `site`          | string  | the repository name | This site's name in cross-site node keys. |
 | `fail-on-cycle` | boolean | `true`  | Fail the job when the graph has a cycle (else warn only). |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -49,6 +50,7 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-dependency-graph.yml@v3
     # with:
     #   pages-dir: .
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See `check-dependency-graph.yml` in

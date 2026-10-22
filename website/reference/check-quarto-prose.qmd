@@ -149,6 +149,7 @@ may be reported.
 | `idioms-file` | string | `''` | Phrase list replacing the bundled one, relative to the repository root. |
 | `allow-file` | string | `''` | `path-glob: phrase` exemptions, relative to the repository root. |
 | `fail` | boolean | `true` | Fail the job on a finding (else warn only). |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 The composite action takes the same inputs, with `fail` as a string.
 
@@ -172,6 +173,7 @@ jobs:
     #   idioms-file: '.github/idioms.txt'
     #   allow-file: '.github/prose-allow.txt'
     #   fail: false
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See `check-quarto-prose.yml` in
