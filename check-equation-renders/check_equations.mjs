@@ -118,6 +118,7 @@ async function checkPage(browser, baseUrl, relPath) {
         break;
       } catch (err) {
         if (attempt >= PAGE_LOAD_ATTEMPTS) throw err;
+        console.warn(`check-equation-renders: retrying ${relPath} after: ${err.message.split('\n')[0]}`);
       }
     }
 
