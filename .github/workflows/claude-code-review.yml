@@ -140,7 +140,7 @@ on:
           macro must use it, with no literal letters, raw operators, raw
           exponentials, hat forms or deprecated aliases. On by default,
           because the lab's rule is that every notes repo follows it; the
-          guidance says nothing about a diff that has no math. The checks
+          guidance tells the reviewer to skip a diff that has no math. The checks
           read definitions only from a locally checked-out submodule (the
           repo's own pinned version is authoritative, so the reviewer is
           told not to fetch the upstream macros repo instead): set
@@ -1011,8 +1011,9 @@ jobs:
       # Compose the LaTeX-macro review guidance, gated on the
       # `check-latex-macros` input, mirroring the lab-manual step above.
       # Empty when a caller opts out (on by default since the lab's rule
-      # covers every notes repo; the guidance itself is silent on a diff with
-      # no math). Interpolated into the prompt (via run-claude-review-attempt)
+      # covers every notes repo; the guidance tells the reviewer to skip the
+      # check on a diff with no math, but its text is always in the prompt).
+      # Interpolated into the prompt (via run-claude-review-attempt)
       # as `steps.latexmacros.outputs.guidance`.
       - name: Compose LaTeX-macro review guidance
         id: latexmacros
@@ -1028,8 +1029,9 @@ jobs:
           {
           printf '%s\n' "guidance<<$DELIM"
           cat <<'GUIDANCE'
-          **Check the math against the lab's semantic macros.** The lab's
-          rule (Morrison-Lab/ai-config `use-math-macros`) is that every math
+          **Check the math against the lab's semantic macros.** If the diff
+          adds or changes no math, skip this check and say nothing about
+          macros. Otherwise, the lab's rule (Morrison-Lab/ai-config `use-math-macros`) is that every math
           symbol that fits a semantic category is written with its macro from
           [Morrison-Lab/macros](https://github.com/Morrison-Lab/macros),
           never as a literal letter or raw LaTeX. A review that skips this
@@ -1044,8 +1046,7 @@ jobs:
           `macros.qmd`, and `interpretations.tsv` if present, which says what
           each macro means. Read definitions only from the local checkout;
           the repo's pinned version is authoritative, so do not fetch the
-          upstream macros repo. If the diff adds or changes no math, say
-          nothing about macros. If it does and you cannot find the macros
+          upstream macros repo. If you cannot find the macros
           (the submodule is empty or absent), say so once and report the
           macro check as not done, rather than guessing at definitions.
 

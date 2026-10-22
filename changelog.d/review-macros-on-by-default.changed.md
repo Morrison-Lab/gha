@@ -5,7 +5,7 @@
   and other raw operators, hat forms where a semantic macro exists, deprecated
   aliases, a hand-typed `\paren` around an `f` form, and macros defined outside
   `Morrison-Lab/macros`.
-  It stays silent on a diff with no math.
+  The reviewer skips the check on a diff with no math, though the guidance text is always in the prompt.
   Agents kept writing literal math because this guidance was off by default and
   no notes repo's caller turned it on
   ([Morrison-Lab/ai-config#4673](https://github.com/Morrison-Lab/ai-config/issues/4673)).
