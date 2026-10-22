@@ -340,15 +340,24 @@ def test_empty_or_unresolvable_base_ref_skips(repo, base_ref):
     assert report.findings == []
 
 
-def test_skip_prints_a_warning_and_exits_zero(repo, monkeypatch, capsys):
+def test_skip_without_base_prints_a_plain_line_and_exits_zero(repo, monkeypatch, capsys):
     (repo / "a.qmd").write_text("$y$\n")
     _commit(repo, "base")
     monkeypatch.setenv("LML_BASE_REF", "")
     monkeypatch.setenv("LML_FAIL", "true")
     assert lml.main() == 0
     out = capsys.readouterr().out
-    assert "::warning::Skipping" in out
+    assert "Skipping" in out
+    assert "::warning::" not in out
     assert "No literal letters" not in out
+
+
+def test_skip_on_unresolvable_base_prints_a_warning(repo, monkeypatch, capsys):
+    (repo / "a.qmd").write_text("$y$\n")
+    _commit(repo, "base")
+    monkeypatch.setenv("LML_BASE_REF", "no-such-ref")
+    assert lml.main() == 0
+    assert "::warning::Skipping" in capsys.readouterr().out
 
 
 def test_whole_tree_flags_existing_letters(repo):

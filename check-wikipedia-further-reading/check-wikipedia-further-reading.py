@@ -392,8 +392,10 @@ def main() -> int:
 
     if report.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
+        # With no base-ref (a push run) the skip is expected, so it is not an annotation.
+        level = "::warning::" if base_ref else ""
         print(
-            f"::warning::Skipping the wikipedia-further-reading check for this "
+            f"{level}Skipping the wikipedia-further-reading check for this "
             f"run ({reason}; not falling back to a whole-tree scan, which "
             f"would reflag every entry the corpus already carries)."
         )

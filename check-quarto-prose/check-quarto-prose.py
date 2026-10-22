@@ -856,8 +856,10 @@ def main() -> int:
             if base_ref
             else "no base-ref given"
         )
+        # With no base-ref (a push run) the skip is expected, so it is not an annotation.
+        level = "::warning::" if base_ref else ""
         print(
-            "::warning::Skipping the prose check for this run "
+            f"{level}Skipping the prose check for this run "
             f"({reason}; not falling back to a whole-tree scan, which would "
             "reflag prose the corpus already carries)."
         )
