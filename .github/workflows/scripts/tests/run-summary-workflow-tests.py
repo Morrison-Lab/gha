@@ -16,7 +16,7 @@ from typing import Optional, Tuple
 REPO_ROOT = Path(__file__).resolve().parents[4]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "summary.yml"
 ACTION = (
-    "anthropics/claude-code-action@374f254f5efaf968abfe15d399fd90972e8138b9"
+    "anthropics/claude-code-action@6b6870e649b5ff408753befeaee5fc7989d4e6a9"
 )
 
 
