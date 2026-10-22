@@ -5,7 +5,7 @@
   ([#1156](https://github.com/Morrison-Lab/gha/issues/1156)).
   It flags two or more list items in one marker style
   (`(a)`/`(b)`, `a.`, `(i)`, `1.`, bare or bolded)
-  and inline "(a) ... (b)" parts.
+  and inline "(a) first, (b) second" parts.
   Math, code, comments and bullet lists do not count.
   `<!-- multipart-ok: reason -->` exempts an exercise, such as a single-choice question.
   Like `check-one-div-per-subfile` it scopes to touched exercises, so existing ones are never reflagged.

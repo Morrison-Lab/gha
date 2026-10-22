@@ -15,7 +15,7 @@ The check reports an exercise that holds either:
 - two or more list items in the same marker style,
   such as `(a)`/`(b)`, `a.`/`b.`, `(i)`/`(ii)` or `1.`/`2.`,
   bare or bolded;
-- inline parts in running text, such as "(a) ... (b)".
+- inline parts in running text, such as "(a) first, (b) second".
 
 A pull request is checked when it adds a line inside the exercise,
 so a one-line fix to an old multi-part exercise is reported too.

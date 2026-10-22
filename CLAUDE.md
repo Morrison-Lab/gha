@@ -418,7 +418,7 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
   so credits to outside people never match and a link for further reading is never flagged;
   it takes the same diff model and is warn-only by default (`fail: false`);
   `check-multipart-exercises/` (Python, stdlib only, gha#1156) bundles the composite action, script, and pytest suite
-  for failing a PR that adds or revises an `exr-` div holding more than one part (list items in one marker style, or inline "(a) ... (b)");
+  for failing a PR that adds or revises an `exr-` div holding more than one part (list items in one marker style, or inline "(a) first, (b) second");
   it takes the same diff model, but a touched exercise is judged whole and it blocks by default (`fail: true`);
   `check-one-div-per-subfile/` (Python, stdlib only, gha#1092) bundles the composite action, script, and pytest suite
   for flagging a `_subfiles/_*.qmd` file that holds more than one top-level fenced div when a PR adds a line to it.
