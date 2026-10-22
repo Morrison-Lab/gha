@@ -129,6 +129,9 @@ def scan_rows(lines: List[str]) -> List[Finding]:
         cells = split_cells(raw)
         if cells is None:
             continue
+        following = split_cells(lines[idx + 1]) if idx + 1 < len(lines) else None
+        if following and all(SEPARATOR_CELL_RE.match(c) for c in following):
+            continue  # a header row names the columns, not a concept
         reasons = row_reasons(cells)
         if reasons:
             found.append(Finding(idx + 1, "; ".join(reasons)))
