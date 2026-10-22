@@ -55,6 +55,7 @@ const MIME_TYPES = {
 
 const MATHJAX_TIMEOUT_MS = 15_000;
 const PAGE_LOAD_TIMEOUT_MS = 30_000;
+const PAGE_LOAD_ATTEMPTS = 2;
 const CONCURRENCY = 4;
 
 function parseArgs(argv) {
@@ -104,10 +105,22 @@ function startStaticServer(siteDir) {
 async function checkPage(browser, baseUrl, relPath) {
   const page = await browser.newPage();
   try {
-    await page.goto(`${baseUrl}/${relPath}`, {
-      waitUntil: 'networkidle',
-      timeout: PAGE_LOAD_TIMEOUT_MS,
-    });
+    // `load`, not `networkidle`: a large page or a slow CDN request can keep
+    // the network busy past the timeout, which fails the crawl for a reason
+    // that has nothing to do with the equations. The MathJax wait below is
+    // what the check actually needs. One retry absorbs a transient stall.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await page.goto(`${baseUrl}/${relPath}`, {
+          waitUntil: 'load',
+          timeout: PAGE_LOAD_TIMEOUT_MS,
+        });
+        break;
+      } catch (err) {
+        if (attempt >= PAGE_LOAD_ATTEMPTS) throw err;
+        console.warn(`check-equation-renders: retrying ${relPath} after: ${err.message.split('\n')[0]}`);
+      }
+    }
 
     const referencesMathJax = await page.evaluate(() =>
       Array.from(document.scripts).some((s) => /mathjax/i.test(s.src))
