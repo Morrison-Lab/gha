@@ -2,7 +2,8 @@
 # Diff-scoped, warn-only heuristic: flags a div (or a file with no div) whose first
 # sentence starts with an unlinked The, These, Those, This or That, so nothing
 # earlier in the div can be the antecedent. Warn-only by default.
-# Only contents:read is needed (the default), so no permissions block is required.
+# Only contents:read is needed, and the caller job states it: zizmor's
+# excessive-permissions audit fails a caller job with no permissions block.
 name: Check definite antecedents
 
 on:
@@ -14,6 +15,8 @@ on:
 
 jobs:
   check:
+    permissions:
+      contents: read
     uses: Morrison-Lab/gha/.github/workflows/check-definite-antecedents.yml@v3
     # with:
     #   globs: '*.qmd'                        # pathspecs to check (recursive)
