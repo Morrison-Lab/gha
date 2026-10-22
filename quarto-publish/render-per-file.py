@@ -17,27 +17,23 @@ import subprocess
 import sys
 
 
-def inspect(target, cwd):
-    result = subprocess.run(
-        ["quarto", "inspect", target],
-        cwd=cwd, capture_output=True, text=True, check=False,
-    )
-    if result.returncode != 0:
-        sys.stderr.write(result.stdout + result.stderr)
-        raise SystemExit(f"quarto inspect {target} failed")
-    return json.loads(result.stdout)
-
-
 def main(argv):
     if len(argv) < 4:
         raise SystemExit(__doc__)
     project, output_dir, wanted = argv[1], argv[2], argv[3:]
-    inputs = inspect(".", project)["files"]["input"]
+    # check=True: a failed `quarto inspect` stops the run with its stderr shown.
+    inputs = json.loads(subprocess.run(
+        ["quarto", "inspect", "."], cwd=project,
+        capture_output=True, text=True, check=True,
+    ).stdout)["files"]["input"]
     failures = []
     rendered = 0
     for path in sorted(inputs):
         rel = os.path.relpath(path, project)
-        have = set(inspect(rel, project).get("formats", {}))
+        have = set(json.loads(subprocess.run(
+            ["quarto", "inspect", rel], cwd=project,
+            capture_output=True, text=True, check=True,
+        ).stdout).get("formats", {}))
         for fmt in wanted:
             if fmt not in have:
                 continue
