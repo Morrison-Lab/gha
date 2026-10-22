@@ -3,6 +3,13 @@ name: Check Dependency Graph (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
       script-dir:
         description: >-
           Directory holding the vendored `build_dependency_graph.py`, with its
@@ -28,7 +35,7 @@ on:
 
 jobs:
   check-dependency-graph:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
     permissions:
       contents: read
