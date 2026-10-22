@@ -31,6 +31,29 @@ on:
         type: boolean
         default: false
 
+      mode:
+        description: >-
+          `all` flags every standalone letter; `known` flags only a letter
+          or Greek command that has a semantic macro (see the action's
+          description). Defaults to `all`.
+        type: string
+        default: 'all'
+      deprecated-files:
+        description: >-
+          Space-separated paths of interpretation files whose rows mark a
+          macro `deprecated, use \x` (for example
+          `latex-macros/interpretations.tsv`). A use of one is flagged. Needs
+          the file checked out (see submodules). Empty skips the rule.
+        type: string
+        default: ''
+      submodules:
+        description: >-
+          Passed to actions/checkout as its submodules input ('true',
+          'recursive' or 'false'), so a macros submodule is available for
+          `deprecated-files`.
+        type: string
+        default: 'false'
+
 jobs:
   check-literal-math-letters:
     runs-on: ubuntu-latest
@@ -43,6 +66,7 @@ jobs:
         with:
           # Full history so PR runs can diff added lines against the base.
           fetch-depth: 0
+          submodules: ${{ inputs.submodules }}
 
       - name: Check literal letters in math
         uses: Morrison-Lab/gha/check-literal-math-letters@v3
@@ -52,6 +76,8 @@ jobs:
           globs: ${{ inputs.globs }}
           paths-ignore: ${{ inputs.paths-ignore }}
           fail: ${{ inputs.fail }}
+          mode: ${{ inputs.mode }}
+          deprecated-files: ${{ inputs.deprecated-files }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there is no base to diff against, so the check is skipped.
           # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip

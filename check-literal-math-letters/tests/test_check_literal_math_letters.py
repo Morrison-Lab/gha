@@ -459,3 +459,59 @@ def test_environment_end_is_an_exact_match():
 def test_variant_greek_characters_are_flagged():
     for ch in "\u03d5\u03f5\u03d1\u03c2":
         assert flagged("$" + ch + "$\n") != {}
+
+
+# -- precise mode and deprecated aliases (gha#1159) --------------------------
+
+@pytest.fixture
+def known_mode(monkeypatch):
+    monkeypatch.setattr(lml, "KNOWN_ONLY", True)
+
+
+def test_precise_mode_flags_only_letters_that_have_a_macro(known_mode):
+    assert lml.scan_math("y_i + k_j + x_p") == ["y", "x"]
+
+
+def test_precise_mode_flags_the_named_greek_commands_only(known_mode):
+    assert lml.scan_math(r"\theta + \alpha + \varepsilon + \Gamma") == [
+        r"\theta", r"\varepsilon"]
+
+
+def test_precise_mode_flags_a_literal_greek_character_with_a_macro(known_mode):
+    assert lml.scan_math("\u03b8 + \u03b1") == [r"\theta"]
+
+
+def test_default_mode_still_flags_every_letter():
+    assert lml.scan_math("y_i + k_j") == ["y", "i", "k", "j"]
+
+
+def test_raw_euler_number_is_flagged_with_the_macro_to_use(known_mode):
+    assert lml.scan_math(r"e^{-x}") == ["e", "x"]
+    assert r"\euler" in lml.format_message(("e",))
+
+
+def test_deprecated_macro_is_flagged_in_either_mode(monkeypatch):
+    monkeypatch.setitem(lml.DEPRECATED, "truemeanfn", r"\truemean")
+    assert lml.scan_math(r"\truemeanfn + \truemean") == [r"\truemeanfn"]
+    monkeypatch.setattr(lml, "KNOWN_ONLY", True)
+    assert lml.scan_math(r"\truemeanfn + \truemean") == [r"\truemeanfn"]
+
+
+def test_deprecated_macro_message_names_the_replacement(monkeypatch):
+    monkeypatch.setitem(lml.DEPRECATED, "truemeanfn", r"\truemean")
+    assert "deprecated -> \\truemean" in lml.format_message((r"\truemeanfn",))
+
+
+def test_load_deprecated_reads_the_use_instruction(tmp_path):
+    tsv = tmp_path / "interpretations.tsv"
+    tsv.write_text(
+        "\\truemeanfn\ttrue mean function; deprecated, use \\truemean\n"
+        "\\truemean\ttrue mean function; replaces the deprecated \\truemeanfn\n"
+        "\\other\tplain description\n"
+    )
+    assert lml.load_deprecated(str(tsv)) == {"truemeanfn": r"\truemean"}
+
+
+def test_load_deprecated_missing_file_yields_no_rules(tmp_path, capsys):
+    assert lml.load_deprecated(str(tmp_path / "absent.tsv")) == {}
+    assert "Could not read" in capsys.readouterr().out
