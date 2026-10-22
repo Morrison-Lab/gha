@@ -1,0 +1,57 @@
+name: Check multi-part exercises
+description: >-
+  Diff-scoped check that flags an exercise div (id `exr-...`) holding more
+  than one part: two or more lettered, roman or numbered list items, or inline
+  "(a) ... (b)" parts, when the diff adds a line inside it. Every multi-part
+  exercise is split into separate divs (Ezra, 2026-10-22). Math, code,
+  comments and bullet lists do not count; `<!-- multipart-ok: reason -->`
+  exempts an exercise. Fails by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only exercises with a line added since this
+      ref are checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Diff mode needs the base commit in history (checkout with fetch-depth:
+      0); when the diff can't be computed, or no base-ref is given on a push
+      run, the check is skipped rather than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only
+      touched exercises. Use it to measure a corpus; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check (recursive by
+      default).
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an exercise holds more than one part. Defaults to
+      'true'; 'false' gives warning annotations only.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check multi-part exercises
+      shell: bash
+      env:
+        MPE_BASE_REF: ${{ inputs.base-ref }}
+        MPE_WHOLE_TREE: ${{ inputs.whole-tree }}
+        MPE_GLOBS: ${{ inputs.globs }}
+        MPE_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        MPE_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-multipart-exercises.py"
