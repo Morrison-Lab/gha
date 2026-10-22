@@ -31,6 +31,7 @@ def reasons(text: str):
     "| [Design matrix](linear-regression.qmd#def-design-matrix) | $\\design(\\mx)$ |",
     "| Assume | $\\stprod{\\design(\\mx)}$ invertible |",
     "| [$k$-fold cross-validation](big-ideas.qmd#def-cross-validation) | $\\frac{1}{k} \\sum_j \\text{MSE}_j$ |",
+    "| Sample MSE, matrix form | $\\frac{1}{n} \\norm{\\vy}$ |",
     "| | |",
     "| --- | --- |",
     "| Product | $(a \\times b)(b \\times c)$ is $a \\times c$ |",

@@ -20,9 +20,9 @@ match (default ``*note-sheet*.qmd``). It flags a row when:
 - a cell outside the first holds two or more math spans joined only by a
   comma, a semicolon or "and" (two definitions in one cell).
 
-These are heuristics, so the check is warn-only by default: a label such as
-``Sample MSE, matrix form`` names a variant and is reported too. Rewrite the
-label, or split the row. Rows with a link in the label keep the link text.
+A label that ends in ``, ... form``, ``version`` or ``case`` (``Sample MSE,
+matrix form``) names one concept in a second form, in a row of its own, and is
+not flagged. These are heuristics, so the check is warn-only by default.
 
 Diff-scoped like ``check-one-div-per-subfile``: only rows added since
 ``NSR_BASE_REF`` are reported (an added line whose exact text was also deleted
@@ -65,6 +65,9 @@ MATH_RE = re.compile(r"(?<!\\)\$(?:[^$\\]|\\.)+\$")
 LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 JOIN_RE = re.compile(r"^\s*(?:,|;|and|,\s*and)\s*$", re.IGNORECASE)
 LABEL_JOIN_RE = re.compile(r",|\band\b", re.IGNORECASE)
+# ``Sample MSE, matrix form`` names one concept in a second form, in a row of
+# its own, as the lds note sheet does; it is not two concepts.
+VARIANT_RE = re.compile(r",\s*[\w -]*\b(?:form|version|case)\s*$", re.IGNORECASE)
 
 
 class Finding(NamedTuple):
@@ -97,7 +100,8 @@ def row_reasons(cells: List[str]) -> List[str]:
     label = LINK_RE.sub(r"\1", cells[0])
     if MATH_RE.search(label) and not LINK_RE.search(cells[0]):
         reasons.append("the label holds notation")
-    if len(cells) > 1 and LABEL_JOIN_RE.search(MATH_RE.sub("", label)):
+    plain = MATH_RE.sub("", label)
+    if len(cells) > 1 and LABEL_JOIN_RE.search(plain) and not VARIANT_RE.search(plain):
         reasons.append("the label joins two concepts")
     for cell in cells[1:]:
         spans = list(MATH_RE.finditer(cell))

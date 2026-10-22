@@ -144,7 +144,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`,
-  `check-new-line-breaks`, `check-news`,
+  `check-new-line-breaks`, `check-news`, `check-note-sheet-rows`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
   `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-prose`, `check-quarto-website`,
   `check-r-package`, `check-repo-hygiene`, `check-secrets`, `check-source-overlap`,
