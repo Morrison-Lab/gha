@@ -1015,8 +1015,8 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>check-latex-macros</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Check PR diffs for LaTeX math simplifiable via an existing macro from the <code>d-morrison/macros</code> submodule, and for nontrivial expressions repeated 3+ times that are candidates for a new one. Off by default. The macro checks read definitions only from a locally checked-out submodule (the repo’s pinned version is authoritative), so this only finds real macro definitions when the repo vendors the <code>d-morrison/macros</code> submodule <strong>and</strong> <code>checkout-submodules: true</code> is also set.</td>
+<td><code>true</code></td>
+<td>Review the math a PR adds or changes against the lab’s semantic macros (<code>Morrison-Lab/macros</code>): a symbol that has a macro must use it, with no literal letters, raw operators, raw exponentials, hat forms or deprecated aliases. On by default; the reviewer skips the check on a diff with no math, but the guidance is still in the prompt. The checks read definitions only from a locally checked-out submodule (the repo’s pinned version is authoritative), so set <code>checkout-submodules: true</code> too. Set <code>false</code> to switch it off.</td>
 </tr>
 <tr class="even">
 <td><code>report-cost</code></td>
@@ -1278,7 +1278,7 @@ cookieconsent.run({
 <span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   reference-repos: 'Morrison-Lab/gha'  # check out reference repos into .reference-repos/ for the reviewer</span></span>
 <span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
 <span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-latex-macros: false   # on by default: review math against Morrison-Lab/macros; needs checkout-submodules: true</span></span>
 <span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #   report-cost: false          # suppress the dollar-cost comment (default true)</span></span>
 <span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: claude-opus-4-8      # override the reviewer's model (default: claude-code-action's own default)</span></span>
 <span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)</span></span>
