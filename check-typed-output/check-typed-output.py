@@ -550,8 +550,10 @@ def main() -> int:
     result = run(globs, ignores, patterns, diff_scoped, base_ref)
     if result.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
+        # With no base-ref (a push run) the skip is expected, so it is not an annotation.
+        level = "::warning::" if base_ref else ""
         print(
-            f"::warning::Skipping the typed-output check for this run "
+            f"{level}Skipping the typed-output check for this run "
             f"({reason}; diff-scoped mode does not fall back to a whole-tree "
             f"scan, which would report pre-existing occurrences)."
         )

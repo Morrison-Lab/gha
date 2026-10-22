@@ -272,6 +272,17 @@ def test_main_without_base_skips_even_when_failing(tmp_path, monkeypatch, capsys
     git("add", "-A")
     _main_env(monkeypatch, repo, CWI_FAIL="true", CWI_BASE_REF="")
     assert wi.main() == 0
+    out = capsys.readouterr().out
+    assert out.startswith("Skipping the write-idiom check")
+    assert "::warning::" not in out
+
+
+def test_main_with_unresolvable_base_warns(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("Write the x.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CWI_FAIL="true", CWI_BASE_REF="no-such-ref")
+    assert wi.main() == 0
     assert capsys.readouterr().out.startswith(
         "::warning::Skipping the write-idiom check")
 
