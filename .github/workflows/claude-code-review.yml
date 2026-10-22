@@ -2216,6 +2216,37 @@ jobs:
           fi
           echo "Claude review completed and was posted."
 
+  # On a quota skip, the lab's fallback is a separate-agent review posted as a
+  # PR comment. This job reports whether a clean one is recorded for the
+  # CURRENT head, from a repository owner, member or collaborator, so
+  # `require-clean-verdict` can accept it (gha#1163). It is a job of its own,
+  # not a step of `require-clean-verdict`, because widening an existing job's
+  # permissions fails callers at parse time (audit_callee_permissions.py),
+  # while a new job within the union callers already grant does not.
+  # It runs only on a quota skip and reads the comments when it runs, so
+  # re-running the workflow after posting the fallback review picks it up.
+  find-fallback-verdict:
+    needs: [claude-review]
+    if: >-
+      always() &&
+      needs.claude-review.result == 'success' &&
+      fromJSON(needs.claude-review.outputs.quota_exhausted || 'false')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: read
+    outputs:
+      found: ${{ steps.fallback.outputs.found }}
+      url: ${{ steps.fallback.outputs.url }}
+    steps:
+      - name: Look for a recorded fallback verdict
+        id: fallback
+        uses: Morrison-Lab/gha/.github/actions/find-fallback-verdict@v3
+        with:
+          repository: ${{ github.repository }}
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
   # Gate job: sibling of require-review. Requires that the review completed, was
   # posted for the current PR head, and produced an affirmatively clean verdict
   # ("Ready for merge" / "Clean" / "Approved"). Fails (red) if the verdict was
@@ -2239,7 +2270,7 @@ jobs:
   # branch protection / ruleset required-checks to enforce server-side merge
   # blocking against unaddressed findings (gha#767).
   require-clean-verdict:
-    needs: [claude-review, post-review]
+    needs: [claude-review, post-review, find-fallback-verdict]
     if: >-
       always() &&
       needs.claude-review.result != 'skipped' &&
@@ -2256,13 +2287,19 @@ jobs:
         env:
           QUOTA_EXHAUSTED: ${{ needs.claude-review.outputs.quota_exhausted }}
           SELF_MOD: ${{ needs.claude-review.outputs.self_mod }}
+          FALLBACK_FOUND: ${{ needs.find-fallback-verdict.outputs.found }}
+          FALLBACK_URL: ${{ needs.find-fallback-verdict.outputs.url }}
         run: |
           if [[ "${{ needs.claude-review.result }}" != "success" ]]; then
             echo "::error::Claude review job did not succeed (result: ${{ needs.claude-review.result }})."
             exit 1
           fi
           if [[ "$QUOTA_EXHAUSTED" == "true" ]]; then
-            echo "::error::No review ran on this head: the Claude API quota was exhausted, so there is no verdict to attest. Re-run the review once quota is available (gha#1019)."
+            if [[ "$FALLBACK_FOUND" == "true" ]]; then
+              echo "The Claude API quota was exhausted; a clean fallback review of this head is recorded at ${FALLBACK_URL} (gha#1163)."
+              exit 0
+            fi
+            echo "::error::No review ran on this head: the Claude API quota was exhausted, and no clean fallback review of this head is recorded. Re-run the review once quota is available, or post a separate-agent review that names this head's sha (gha#1019, gha#1163)."
             exit 1
           fi
           if [[ "$SELF_MOD" == "true" ]]; then
