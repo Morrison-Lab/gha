@@ -1,0 +1,50 @@
+---
+title: "check-multipart-exercises.yml"
+---
+
+Diff-scoped check that fails a pull request which adds or revises
+an exercise holding more than one part.
+The lab's rule (Ezra, 2026-10-22) is to split every multi-part exercise
+into separate divs, each with its own solution.
+This implements
+[gha#1156](https://github.com/Morrison-Lab/gha/issues/1156).
+
+An exercise is a fenced div whose id starts with `exr-`.
+The check reports an exercise that holds either:
+
+- two or more list items in the same marker style,
+  such as `(a)`/`(b)`, `a.`/`b.`, `(i)`/`(ii)` or `1.`/`2.`,
+  bare or bolded;
+- inline parts in running text, such as "(a) ... (b)".
+
+A pull request is checked when it adds a line inside the exercise,
+so a one-line fix to an old multi-part exercise is reported too.
+The finding sits on the line of the second part.
+
+The check does not count:
+
+- anything inside a code fence, an HTML comment or a display-math block;
+- inline math, so `$f(a)$` is not a part;
+- bullet lists, which `Let:` and `Assume:` lists use;
+- an exercise that holds the comment `<!-- multipart-ok: reason -->`,
+  for example the options of a single-choice question.
+
+An exercise the pull request does not touch is never reported.
+With no base to diff against, the check skips
+instead of scanning the whole tree.
+It fails by default; `fail: false` gives warning annotations only.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `true` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Scan every exercise, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+
+## Usage
+
+Copy `examples/check-multipart-exercises.yml` to
+`.github/workflows/check-multipart-exercises.yml`.

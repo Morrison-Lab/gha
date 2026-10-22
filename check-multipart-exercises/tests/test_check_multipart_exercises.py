@@ -149,7 +149,7 @@ def git(cwd, *args):
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     git(tmp_path, "init", "-q", "-b", "main")
-    git(tmp_path, "config", "user.email", "t@example.com")
+    git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow: synthetic test address
     git(tmp_path, "config", "user.name", "t")
     monkeypatch.chdir(tmp_path)
     return tmp_path
