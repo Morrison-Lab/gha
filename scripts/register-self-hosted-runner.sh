@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# check-one-function-per-file: allow-multiple
 # Register one self-hosted GitHub Actions runner for an organization, on a
 # Linux machine (a lab-managed host, or WSL), as the current user with no sudo.
 #
