@@ -47,9 +47,15 @@ def own_prose(body):
     kept = []
     fence = None
     previous_blank = True
+    indented_code = False
     for line in body.replace("\r", "").split("\n"):
         opener = FENCE.match(line)
-        if fence:
+        indented = line.startswith(("    ", "\t"))
+        if indented_code and not (indented or not line.strip()):
+            indented_code = False
+        if indented_code:
+            pass
+        elif fence:
             closes = (
                 opener
                 and opener.group(1)[0] == fence[0]
@@ -60,8 +66,8 @@ def own_prose(body):
                 fence = None
         elif opener:
             fence = opener.group(1)
-        elif line.startswith(("    ", "\t")) and previous_blank:
-            pass
+        elif indented and previous_blank:
+            indented_code = True
         elif not QUOTE.match(line):
             kept.append(line)
         previous_blank = not line.strip()

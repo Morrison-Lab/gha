@@ -191,15 +191,19 @@ to enforce that only PRs with an affirmatively clean AI review verdict
 
 ### Fallback review on a quota skip
 
-When the API quota is exhausted, `require-clean-verdict` goes green only if a clean separate-agent review of the current head is recorded as a PR comment.
+When the API quota is exhausted, `require-clean-verdict` goes green
+only if a clean separate-agent review of the current head is recorded
+as a PR comment.
 A comment counts when all of these hold:
 
 - Its author is an owner, member or collaborator.
-  The PR author's own comment counts, because the lab's agent sessions post under the account holder's login.
+  The PR author's own comment counts, because the lab's agent sessions
+  post under the account holder's login.
 - It carries the agent-authorship marker.
 - It names the full head sha on a `Reviewed-Commit:` line.
 - The marker and that line sit in the comment's own prose.
-  Text inside a code fence, a blockquote or an indented code block is ignored, so quoting a review does not record one.
+  Text inside a code fence, a blockquote or an indented code block
+  is ignored, so quoting a review does not record one.
 - The classifier reads its verdict as clean.
 
 The newest such comment decides, and a push retires it

@@ -120,6 +120,16 @@ CASES = [
         False,
     ),
     (
+        "a marker on the second line of an indented code block does not count",
+        [comment(f"{CLEAN}\n\nReviewed-Commit: {HEAD}\n\nQuoted:\n\n    first\n    {MARKER}")],
+        False,
+    ),
+    (
+        "prose after an indented code block counts again",
+        [comment(f"Quoted:\n\n    first\n    second\n\n{review()}")],
+        True,
+    ),
+    (
         "a marker inside a code fence does not count",
         [comment(f"{CLEAN}\n\nReviewed-Commit: {HEAD}\n\n```\n{MARKER}\n```")],
         False,
