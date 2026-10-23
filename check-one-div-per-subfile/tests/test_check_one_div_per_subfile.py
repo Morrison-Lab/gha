@@ -75,6 +75,7 @@ def test_proof_or_solution_stays_with_its_claim(head):
 @pytest.mark.parametrize("head", [
     "::: proofreading", "::: {.solutions-list}", "::: {#prfx-a}",
     "::: {#solid-a}", "::: notes",
+    '::: {#exm-a title="a sol"}', "::: {#exm-a title='a proof'}",
 ])
 def test_lookalike_div_still_counts(head):
     doc = "::: {#thm-a}\nClaim.\n:::\n\n" + head + "\nx\n:::\n"

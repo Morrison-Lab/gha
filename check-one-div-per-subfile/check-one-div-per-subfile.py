@@ -100,6 +100,10 @@ ATTACHED_RE = re.compile(
 )
 
 
+# A quoted attribute value (``title="a sol"``) is not a class or an id.
+QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
+
+
 class Div(NamedTuple):
     line: int
     attrs: str
@@ -172,7 +176,7 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
         attrs = dm.group(2)
         if attrs:
             if (depth == 0 and not SOURCE_ID_RE.search(attrs)
-                    and not ATTACHED_RE.search(attrs)):
+                    and not ATTACHED_RE.search(QUOTED_RE.sub('""', attrs))):
                 found.append(Div(idx + 1, attrs))
             depth += 1
         elif depth > 0:
