@@ -260,6 +260,29 @@ runs:
       with:
         bypass-cache: never
 
+    # setup-r writes ~/.Rprofile with two repositories: RSPM (Posit Public
+    # Package Manager, which serves compiled Linux binaries) and CRAN
+    # (cran.rstudio.com, source only). An lds preview resolved every package
+    # to a CRAN source tarball and built 207 of them, 31 minutes of a
+    # 45-minute run (gha#1174). Leaving only RSPM stops pak from resolving a
+    # source tarball. Skipped when RSPM is unset, e.g. use-public-rspm off.
+    - name: Prefer Posit Package Manager binaries
+      if: >-
+        github.event.action != 'closed' && runner.os == 'Linux' &&
+        inputs.use-renv != 'true' && inputs.r-packages != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -z "${RSPM:-}" ]; then
+          echo "::notice::RSPM is unset, so R keeps its default repositories."
+          exit 0
+        fi
+        printf '%s\n' 'options(repos = c(CRAN = Sys.getenv("RSPM")))' >> "$HOME/.Rprofile"
+
+    # `cache: always` saves the package library even when the job fails or is
+    # cancelled. The default (`true`) saves only on success, and a preview
+    # cancelled at its time limit never saved, so the next run reinstalled
+    # everything (gha#1174).
     - name: Install R dependencies
       if: github.event.action != 'closed' && inputs.use-renv != 'true' && inputs.r-packages != ''
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
@@ -267,6 +290,7 @@ runs:
         GITHUB_PAT: ${{ github.token }}
       with:
         packages: ${{ inputs.r-packages }}
+        cache: always
 
     - name: Install local package
       if: github.event.action != 'closed' && inputs.install-package == 'true'
