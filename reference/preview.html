@@ -1027,132 +1027,138 @@ cookieconsent.run({
 <td>Julia version to install, in <code>setup-julia</code>’s <code>version</code> syntax. Only used when <code>setup-julia</code> is true. <code>@v3</code> and later.</td>
 </tr>
 <tr class="even">
+<td><code>preinstalled-toolchain</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs <code>r-packages</code> with pak into the runner’s user library. With an empty <code>r-packages</code> nothing is installed. The runner must already have R with the pak and tinytex packages, Quarto, TinyTeX, Julia and (if needed) Chrome; <code>tinytex</code> is then ignored for the install. renv, the JuliaCall setup and the freeze cache still run.</td>
+</tr>
+<tr class="odd">
 <td><code>submodules</code></td>
 <td>string</td>
 <td><code>'recursive'</code></td>
 <td>Passed to <code>actions/checkout</code> <code>submodules</code> (<code>'recursive'</code>, <code>'true'</code>, or <code>'false'</code>).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>render-profile</code></td>
 <td>string</td>
 <td><code>'website'</code></td>
 <td>Quarto <code>--profile</code> to render with.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>output-dir</code></td>
 <td>string</td>
 <td><code>'_site'</code></td>
 <td>Directory the rendered site is written to, relative to <code>path</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>formats</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Space-separated list of formats to render (e.g.&nbsp;<code>'html docx pdf revealjs'</code>). When empty (default), renders HTML plus any formats requested via PR labels (<code>preview:docx</code>, <code>preview:pdf</code>, <code>preview:revealjs</code>). Set to <code>'default'</code> to run a single bare <code>quarto render</code> letting <code>_quarto.yml</code> decide formats (unlike <code>quarto-publish</code> where empty string defaults to bare render).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>skip-docx</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to an explicit <code>formats</code> list only: <code>formats: default</code> is a bare render, and <code>quarto render --to</code> takes one format. A PR labelled <code>preview:docx</code> opts back in, and so does <code>docx-tracked-changes: true</code>, which needs the Word files. Set to <code>false</code> to render docx as before.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>skip-formats</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Space-separated formats (for example <code>pdf docx</code>) to leave out of the PR preview, including under <code>formats: default</code>, where <code>skip-docx</code> cannot apply. A PR labelled <code>preview:&lt;format&gt;</code> keeps that format, and <code>docx-tracked-changes: true</code> keeps docx. Slide decks are untouched unless named. Empty removes nothing; the publish build is unaffected.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>extra-preview-labels</code></td>
 <td>string</td>
 <td><code>'[]'</code></td>
 <td>JSON array string of additional PR label names that trigger a preview re-render on add or remove (e.g.&nbsp;<code>'["preview:tracked-changes"]'</code>), beyond the built-in set (<code>clear freezer</code>, <code>preview:pdf</code>, <code>preview:docx</code>, <code>preview:revealjs</code>).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>fail-on-render-warning</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Fail the build if Quarto emits any render warnings (<code>WARN</code> in the render log).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>forbid-log-patterns</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Newline-separated fixed string patterns that fail the build if found in the render log (e.g.&nbsp;missing listing files).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>timezone</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>IANA time zone (e.g.&nbsp;<code>America/Los_Angeles</code>) exported as <code>TZ</code> for the render and later steps, so <code>date: last-modified</code> stamps are not in UTC. Empty leaves the runner’s time zone unchanged. A value containing a newline or <code>=</code> is rejected.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>timeout-minutes</code></td>
 <td>number</td>
 <td><code>45</code></td>
 <td>Timeout, in minutes, for the render (<code>build</code> job). The default is the hang ceiling, not a budget; raise it for a site whose full render (every page in every format) takes longer. A caller cannot set <code>timeout-minutes</code> on a job that uses <code>uses:</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>detect-changed-chapters</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Compare this run’s render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by <code>changed-chapters-banner</code> and <code>highlight-changes</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>changed-chapters-banner</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Add a banner to the preview home page naming the chapters that differ from the published render.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>highlight-changes</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Highlight added and modified text in the rendered HTML chapters that differ from the published render.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>changed-chapters-glob</code></td>
 <td>string</td>
 <td><code>'chapters/*.html'</code></td>
 <td>Glob, relative to the rendered site root, selecting the files the comparison treats as chapters.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>deployed-branch</code></td>
 <td>string</td>
 <td><code>'gh-pages'</code></td>
 <td>Branch holding the published render to compare against.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>deployed-subdir</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Path prefix, within the deployed branch, at which the published site root lives. Defaults to the branch root.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>changed-chapters-normalize-patterns</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>max-elements-for-pairwise</code></td>
 <td>string</td>
 <td><code>'500'</code></td>
 <td>Maximum candidate elements per page for pairwise SequenceMatcher diffing; exceeding this skips element-level diffing to prevent quadratic runtime.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>banner-index</code></td>
 <td>string</td>
 <td><code>'index.html'</code></td>
 <td>Home page the banner is inserted into, relative to the rendered site root.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>docx-tracked-changes</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Generate Word DOCX documents with tracked changes against the published version on the deployed branch.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>docx-tracked-changes-glob</code></td>
 <td>string</td>
 <td><code>'chapters/*.docx'</code></td>
@@ -1258,31 +1264,32 @@ cookieconsent.run({
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-chrome: true                 # needed for revealjs / screenshots</span></span>
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   tinytex: false                     # install TinyTeX unconditionally (default: label-gated)</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-julia: true                  # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)</span></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   julia-version: '1'</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   submodules: recursive</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs                   # render to a dir other than _site</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'html docx pdf'           # space-separated list, or 'default' for bare render</span></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   skip-docx: false                   # render docx in PR previews too (default true skips it)</span></span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   skip-formats: 'pdf docx'           # leave these formats out of PR previews, even under formats: default</span></span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-preview-labels: '["preview:tracked-changes"]' # JSON array string of additional labels that trigger preview rebuilds</span></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timezone: America/Los_Angeles     # export TZ for the render (e.g. for date: last-modified)</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 90                # raise the 45-minute render cap for a site that renders slowly</span></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-banner: true      # and list them on the preview home page</span></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   highlight-changes: true            # and highlight modified/added text in rendered chapters</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-glob: 'chapters/*.html'</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-branch: gh-pages</span></span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix</span></span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-elements-for-pairwise: '500'   # cap candidate elements to avoid quadratic diffing</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render</span></span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes-glob: 'chapters/*.docx'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preinstalled-toolchain: true       # self-hosted runner with R, Quarto, TinyTeX, Julia installed</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   julia-version: '1'</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   submodules: recursive</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs                   # render to a dir other than _site</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'html docx pdf'           # space-separated list, or 'default' for bare render</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   skip-docx: false                   # render docx in PR previews too (default true skips it)</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   skip-formats: 'pdf docx'           # leave these formats out of PR previews, even under formats: default</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-preview-labels: '["preview:tracked-changes"]' # JSON array string of additional labels that trigger preview rebuilds</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timezone: America/Los_Angeles     # export TZ for the render (e.g. for date: last-modified)</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 90                # raise the 45-minute render cap for a site that renders slowly</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-banner: true      # and list them on the preview home page</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   highlight-changes: true            # and highlight modified/added text in rendered chapters</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-glob: 'chapters/*.html'</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-branch: gh-pages</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-elements-for-pairwise: '500'   # cap candidate elements to avoid quadratic diffing</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes-glob: 'chapters/*.docx'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml"><code>examples/preview.yml</code></a> for the full caller stub.</p>
 </section>
 <section id="partial-adoption-for-bespoke-builds" class="level2">
