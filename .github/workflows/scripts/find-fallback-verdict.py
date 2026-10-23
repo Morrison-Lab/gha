@@ -10,11 +10,16 @@ such a comment exists for the CURRENT head and states a clean verdict.
 
 A comment counts only when all of these hold:
   - its author_association is OWNER, MEMBER or COLLABORATOR, so it has the
-    standing of someone who can already merge;
+    standing of someone who can already merge. The PR author's own comment
+    counts: the lab's agent sessions post under the account holder's login,
+    so excluding the author would reject the real fallback review;
   - it carries the agent-authorship marker, so a human note is not mistaken
     for a review;
   - it names the full 40-character head sha in a "Reviewed-Commit:" (or
     "Reviewed commit:") line, so a push retires it with no extra logic;
+  - the marker and the sha line sit in the comment's own prose, not in a
+    fenced code block, a blockquote or an indented code block, so quoting
+    another review does not count as posting one;
   - the classifier reads its verdict as clean.
 
 Prints found=true|false and url=<comment html_url> to stdout, and to
@@ -33,10 +38,40 @@ MARKER = "not written by a human"
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+QUOTE = re.compile(r"^ {0,3}>")
+
+
+def own_prose(body):
+    """Return the body without fenced, blockquoted or indented-code lines."""
+    kept = []
+    fence = None
+    previous_blank = True
+    for line in body.replace("\r", "").split("\n"):
+        opener = FENCE.match(line)
+        if fence:
+            closes = (
+                opener
+                and opener.group(1)[0] == fence[0]
+                and len(opener.group(1)) >= len(fence)
+                and not line.strip().strip(fence[0])
+            )
+            if closes:
+                fence = None
+        elif opener:
+            fence = opener.group(1)
+        elif line.startswith(("    ", "\t")) and previous_blank:
+            pass
+        elif not QUOTE.match(line):
+            kept.append(line)
+        previous_blank = not line.strip()
+    return "\n".join(kept)
+
+
 def reviewed_commits(body):
-    """Return the lower-cased shas named on Reviewed-Commit lines."""
-    pattern = r"(?im)^\s*Reviewed[- ]commit:\s*`?([0-9a-f]{7,40})`?\s*$"
-    return [m.group(1).lower() for m in re.finditer(pattern, body)]
+    """Return the lower-cased shas named on Reviewed-Commit lines in the comment's own prose."""
+    pattern = r"(?im)^ {0,3}Reviewed[- ]commit:\s*`?([0-9a-f]{7,40})`?\s*$"
+    return [m.group(1).lower() for m in re.finditer(pattern, own_prose(body))]
 
 
 def is_clean(body, head_sha, classifier):
@@ -67,7 +102,7 @@ def find(comments, head_sha, classifier):
         body = comment.get("body") or ""
         if comment.get("author_association") not in TRUSTED_ASSOCIATIONS:
             continue
-        if MARKER not in body.lower():
+        if MARKER not in own_prose(body).lower():
             continue
         if head_sha not in reviewed_commits(body):
             continue
