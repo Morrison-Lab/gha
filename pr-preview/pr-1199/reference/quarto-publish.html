@@ -1023,7 +1023,7 @@ cookieconsent.run({
 <td><code>preinstalled-toolchain</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs <code>r-packages</code> with pak into the runner’s user library. renv, the JuliaCall setup and the freeze cache still run.</td>
+<td>The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs <code>r-packages</code> with pak into the runner’s user library. The runner must already have R with the pak and tinytex packages, Quarto, TinyTeX, Julia and (if needed) Chrome; <code>tinytex</code> is then ignored for the install. renv, the JuliaCall setup and the freeze cache still run.</td>
 </tr>
 <tr class="even">
 <td><code>apt-packages</code></td>
