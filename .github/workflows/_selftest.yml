@@ -421,6 +421,7 @@ jobs:
         run: |
           python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py
+          python3 .github/workflows/scripts/tests/run-render-per-file-tests.py
 
   cleanup-pr-previews-workflow-tests:
     runs-on: ubuntu-latest

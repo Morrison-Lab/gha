@@ -40,6 +40,7 @@ EXPECTED_COMPOSITE_INPUTS = (
     "output-dir",
     "render-profile",
     "formats",
+    "per-file-formats",
     "freeze-cache",
     "deno-v8-options",
     "fail-on-render-warning",

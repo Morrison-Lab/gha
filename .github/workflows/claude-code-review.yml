@@ -135,18 +135,20 @@ on:
         default: true
       check-latex-macros:
         description: >-
-          Check PR diffs for LaTeX math that could be simplified using an
-          existing macro from the d-morrison/macros submodule, and for
-          nontrivial math expressions (more than ~5 constituent parts)
-          repeated 3+ times with no existing macro — a candidate for a new
-          one. Off by default. The macro checks read definitions only from
-          a locally checked-out submodule (the repo's own pinned version
-          is authoritative, so the reviewer is told not to fetch the
-          upstream macros repo instead): set checkout-submodules: true
-          too, or this only ever reports that it found no macro
-          definitions to check against.
+          Review the math a PR adds or changes against the lab's semantic
+          macros (Morrison-Lab/macros): every symbol that has a semantic
+          macro must use it, with no literal letters, raw operators, raw
+          exponentials, hat forms or deprecated aliases. On by default,
+          because the lab's rule is that every notes repo follows it; the
+          guidance tells the reviewer to skip a diff that has no math. The checks
+          read definitions only from a locally checked-out submodule (the
+          repo's own pinned version is authoritative, so the reviewer is
+          told not to fetch the upstream macros repo instead): set
+          checkout-submodules: true too, or the reviewer can only report
+          that it found no macro definitions to check against. Set false
+          to switch the guidance off.
         type: boolean
-        default: false
+        default: true
       report-cost:
         description: >-
           Post a follow-up PR comment with the review's dollar cost
@@ -1008,9 +1010,10 @@ jobs:
 
       # Compose the LaTeX-macro review guidance, gated on the
       # `check-latex-macros` input, mirroring the lab-manual step above.
-      # Empty when a caller opts out (the default — most consumers have no
-      # LaTeX math), so the reviewer isn't handed instructions irrelevant to
-      # its diff. Interpolated into the prompt (via run-claude-review-attempt)
+      # Empty when a caller opts out (on by default since the lab's rule
+      # covers every notes repo; the guidance tells the reviewer to skip the
+      # check on a diff with no math, but its text is always in the prompt).
+      # Interpolated into the prompt (via run-claude-review-attempt)
       # as `steps.latexmacros.outputs.guidance`.
       - name: Compose LaTeX-macro review guidance
         id: latexmacros
@@ -1026,46 +1029,63 @@ jobs:
           {
           printf '%s\n' "guidance<<$DELIM"
           cat <<'GUIDANCE'
-          **Check for LaTeX macro opportunities.** This repository may vendor
-          the shared [d-morrison/macros](https://github.com/d-morrison/macros)
-          submodule (a `macros.qmd` of `\def`/`\providecommand`/`\renewcommand`
-          definitions). First locate it: look for a submodule entry in
-          `.gitmodules` referencing `d-morrison/macros`, or a
-          `{{< include .../macros.qmd >}}` / `\input{macros}` reference in a
-          changed file — the vendored path varies by repo (`macros/`,
-          `latex-macros/`, `vignettes/macros/`, `inst/analyses/macros/` are
-          all attested, so don't assume one). Read the local `macros.qmd` if
-          you find it.
+          **Check the math against the lab's semantic macros.** If the diff
+          adds or changes no math, skip this check and say nothing about
+          macros. Otherwise, the lab's rule (Morrison-Lab/ai-config `use-math-macros`) is that every math
+          symbol that fits a semantic category is written with its macro from
+          [Morrison-Lab/macros](https://github.com/Morrison-Lab/macros),
+          never as a literal letter or raw LaTeX. A review that skips this
+          check is incomplete.
 
-          Read macro definitions only from the local checkout — the repo's
-          pinned submodule version is the authoritative one, so don't fetch
-          the upstream macros repo from the web even though fetch tools are
-          available. If you can't find a macros submodule or its
-          `macros.qmd`, say so once in your review (e.g. "no
-          d-morrison/macros submodule found — skipping the macro checks")
-          and skip both checks below rather than guessing at definitions
-          you can't read.
+          First locate the macros. Look for a submodule entry in
+          `.gitmodules` referencing `Morrison-Lab/macros` (or its older name
+          `d-morrison/macros`), or a `{{< include .../macros.qmd >}}` /
+          `\input{macros}` reference in a changed file; the path varies by
+          repo (`latex-macros/`, `macros/`, `vignettes/macros/` and
+          `inst/analyses/macros/` are all attested). Read the local
+          `macros.qmd`, and `interpretations.tsv` if present, which says what
+          each macro means. Read definitions only from the local checkout;
+          the repo's pinned version is authoritative, so do not fetch the
+          upstream macros repo. If you cannot find the macros
+          (the submodule is empty or absent), say so once and report the
+          macro check as not done, rather than guessing at definitions.
 
-          When you do have `macros.qmd`, check the LaTeX math **added or
-          changed in this PR's diff** for two things:
+          For every line of math the diff adds or changes, flag each of these
+          as a finding, and name the macro to use:
 
-          1. **Simplification opportunities.** Does any added/changed math
-             expression duplicate the expansion of a macro already defined in
-             `macros.qmd` (allowing for equivalent spacing or argument
-             order)? If so, show the current raw form and the macro-using
-             replacement.
-          2. **New-macro candidates.** Within the diff, is there a nontrivial
-             math expression (rough heuristic: more than ~5 constituent
-             parts — commands, braces, sub/superscripts) that recurs 3 or
-             more times with no existing macro covering it? If so, suggest a
-             macro name (follow `macros.qmd`'s naming conventions — e.g. an
-             `h` prefix for a hat/estimator, an `f` suffix for "applied to an
-             argument", a `v` prefix for a vector; see the macros repo's
-             `CONTRIBUTING.md` for the full convention) and a
-             `\providecommand` definition.
+          1. **A literal letter for a symbol that has a macro.** Outcome,
+             predictor, parameter, coefficient, error, loss and the like each
+             have a macro (`\outvar`, `\predvar`, `\param`, `\prederr` and so
+             on). A bare `y`, `x`, `f`, `\theta` or `\varepsilon` is a finding
+             unless the passage is about the notation itself.
+          2. **Raw operators and constants.** Raw `e^{...}` where `\euler` or
+             `\e{...}` exists, `\exp`, `\mathbb{E}`, `\mathbb{R}`, `^\top`,
+             `^{-1}`, `\sum_{i=1}^{n}`, `\frac{\partial ...}`, `\left` and
+             `\right` or `\big` sizing, and a squared quantity such as a
+             squared error written `(...)^2` where a macro names it.
+          3. **A formula that spells out a quantity the library names.** Check
+             each expression against the macro definitions, not only against
+             the macros the author already used: a loss, a residual or a
+             prediction error must use its macro.
+          4. **A hat or tilde on a symbol that has a semantic form.** Use the
+             semantic macro (for example `\ecoef`, not `\hcoef` or `\hat{...}`).
+          5. **A deprecated alias.** If `macros.qmd` or `interpretations.tsv`
+             marks a macro as an alias or deprecated, use the canonical one.
+          6. **A hand-typed `\paren` or `\left(` around a macro's argument**
+             when the macro has an `f` form (`\namef{...}`).
+          7. **A macro defined in the repo itself** (`\newcommand`, `\def` and
+             the like) instead of in Morrison-Lab/macros.
 
-          Post these as ordinary review findings — suggestions the author can
-          accept, rebut, or defer, like any other finding.
+          If a symbol has no macro, say so and suggest adding one to
+          Morrison-Lab/macros first (named by the library's conventions: an
+          `h` prefix for an estimate, an `f` suffix for a call form, a `v`
+          prefix for a vector), rather than accepting the literal. A
+          nontrivial expression (more than about five parts) that recurs
+          three or more times in the diff with no macro is also a candidate
+          for a new macro.
+
+          Post these as ordinary review findings the author can accept,
+          rebut, or defer.
           GUIDANCE
           printf '%s\n' "$DELIM"
           } >> "$GITHUB_OUTPUT"
