@@ -2,8 +2,10 @@
 title: "check-pr-size.yml"
 ---
 
-Diff-scoped, blocking check that fails a pull request changing more than 10 files or 300 lines.
-Every PR should be as small and focused as it can be while completely solving its stated task.
+Diff-scoped, blocking check that fails a pull request
+changing more than 10 files or 300 lines.
+Every PR should be as small and focused as it can be
+while completely solving its stated task.
 A sweep goes out as minimal batches, one PR per batch of one concern.
 This implements
 [gha#1188](https://github.com/Morrison-Lab/gha/issues/1188).
@@ -14,7 +16,8 @@ A rename counts as one file.
 A binary file counts as one file and no lines.
 
 These paths are not counted, since nobody writes them by hand:
-lockfiles, `renv.lock`, `_freeze/`, `docs/`, images, PDFs, CSV and R data files, and minified scripts.
+lockfiles, `renv.lock`, `_freeze/`, `docs/`, images, PDFs,
+CSV and R data files, and minified scripts.
 Add more with `paths-ignore`.
 
 ## Inputs
@@ -26,6 +29,7 @@ Add more with `paths-ignore`.
 | `paths-ignore` | none | Extra paths not counted (`*`, `?`, `**`) |
 | `exempt-label` | `size-exempt` | Label that lifts the cap, read live through the API |
 | `fail` | `true` | Block instead of warn |
+| `python-version` | `3.x` | Python used to run the check |
 
 ## Scope
 
@@ -36,4 +40,5 @@ so adding the exemption label re-runs the check.
 
 ## Example
 
-See [`examples/check-pr-size.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-pr-size.yml).
+See
+[`examples/check-pr-size.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-pr-size.yml).
