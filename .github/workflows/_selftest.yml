@@ -1807,6 +1807,8 @@ jobs:
         uses: ./check-note-sheet-rows
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          # The reference page for this check is named like a note sheet but is prose.
+          paths-ignore: 'website/**'
       # This repo has no note sheet, so stage one with a merged row and assert
       # that the blocking call really fails.
       - name: Stage a note sheet with a merged row
@@ -1837,18 +1839,19 @@ jobs:
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
+          paths-ignore: 'website/**'
       - name: Check again with the sheet exempted through paths-ignore
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
           fail: 'true'
-          paths-ignore: '_ci-note-sheet'
+          paths-ignore: '_ci-note-sheet, website/**'
       - name: Check again with globs excluding the sheet
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'LICENSE'
+          globs: '*.note-sheet-selftest-nomatch'
       - name: Remove the staged sheet
         if: always()
         shell: bash
