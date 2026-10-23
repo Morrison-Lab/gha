@@ -5083,7 +5083,7 @@
     "href": "reference/check-exm-figures.html",
     "title": "check-exm-figures.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags an example div (#exm-) with no figure. The lab’s rule (Ezra, 2026-10-23) is that nearly every example gets a figure of its data, model or results. This implements gha#1193.\nA figure is any of these inside the example div:\nA justified exception carries a reason: an HTML comment &lt;!-- no-figure: reason --&gt; inside the div exempts it. A comment with no reason does not. Use paths-ignore to exempt whole paths. The check does not count a div inside a code fence, an HTML comment or a blockquote, or the divs an include shortcode may pull in at render time.",
+    "text": "Diff-scoped, blocking check that flags an example div (#exm-) with no figure. The lab’s rule (Ezra, 2026-10-23) is that nearly every example gets a figure of its data, model or results. This implements gha#1193.\nA figure is any of these inside the example div:\nA justified exception carries a reason: an HTML comment &lt;!-- no-figure: reason --&gt; inside the div exempts it. A comment with no reason does not. Use paths-ignore to exempt whole paths. The check does not count a div inside a code fence, an HTML comment or a blockquote, or the divs an include shortcode may pull in at render time.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -5107,7 +5107,7 @@
     "href": "reference/check-exm-figures.html#inputs",
     "title": "check-exm-figures.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\nfalse\nFail the workflow when an example has no figure. The default gives warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\n'ubuntu-latest'\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when an example has no figure. Set false for warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\n'ubuntu-latest'\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -5131,7 +5131,7 @@
     "href": "reference/check-exm-figures.html#example",
     "title": "check-exm-figures.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-exm-figures.yml in your repo.\n# Diff-scoped check: flags an example div (#exm-) with no figure when a PR\n# adds a line to it. Add a figure, or &lt;!-- no-figure: reason --&gt; in the div.\n# Warn-only by default.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check example figures\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-exm-figures.yml@v3\n    # with:\n    #   globs: '*.qmd'                        # pathspecs to check (recursive)\n    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths\n    #   fail: true                             # block instead of warn (defaults to false)\n    #   whole-tree: true                       # scan every file, not just a PR's additions\nSee examples/check-exm-figures.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/check-exm-figures.yml in your repo.\n# Diff-scoped check: flags an example div (#exm-) with no figure when a PR\n# adds a line to it. Add a figure, or &lt;!-- no-figure: reason --&gt; in the div.\n# Blocking by default.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check example figures\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-exm-figures.yml@v3\n    # with:\n    #   globs: '*.qmd'                        # pathspecs to check (recursive)\n    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths\n    #   fail: true                             # set false to warn only (defaults to true)\n    #   whole-tree: true                       # scan every file, not just a PR's additions\nSee examples/check-exm-figures.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
