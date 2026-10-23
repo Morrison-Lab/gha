@@ -98,6 +98,16 @@ on:
           the Word files. Set to false to render docx as before.
         type: boolean
         default: true
+      skip-formats:
+        description: >-
+          Space-separated formats (for example 'pdf docx') to leave out of the
+          PR preview, including under `formats: default`, where `skip-docx`
+          cannot apply. A PR labelled `preview:<format>` keeps that format, and
+          `docx-tracked-changes: true` keeps docx. Slide decks are untouched
+          unless named. Empty (default) removes nothing; the publish build is
+          unaffected.
+        type: string
+        default: ''
       extra-preview-labels:
         description: >-
           JSON array string of additional PR label names that trigger a preview
@@ -266,6 +276,7 @@ jobs:
           output-dir: ${{ inputs.output-dir }}
           formats: ${{ inputs.formats }}
           skip-docx: ${{ inputs.skip-docx }}
+          skip-formats: ${{ inputs.skip-formats }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
