@@ -1851,7 +1851,7 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'LICENSE'
+          globs: '*.note-sheet-selftest-nomatch'
       - name: Remove the staged sheet
         if: always()
         shell: bash
