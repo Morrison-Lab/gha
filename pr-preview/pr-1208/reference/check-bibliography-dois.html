@@ -974,7 +974,7 @@ cookieconsent.run({
 <td><code>preinstalled-toolchain</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>The runner already provides R with pak and has no sudo, as a self-hosted runner does. Skips the R setup steps.</td>
+<td>The runner already provides R with pak and has no sudo, as a self-hosted runner does. Skips the R setup steps, so <code>install-quarto</code> has no effect.</td>
 </tr>
 <tr class="odd">
 <td><code>runs-on</code></td>
@@ -1008,7 +1008,8 @@ cookieconsent.run({
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   exclude-keys: vapnik1998   # BibTeX keys without DOIs to skip</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: false</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   no-metadata-check: false</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preinstalled-toolchain: true           # runner has R with pak and no sudo</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner               # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-bibliography-dois.yml"><code>examples/check-bibliography-dois.yml</code></a> for the full caller stub.</p>
 
 
