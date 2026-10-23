@@ -1807,6 +1807,8 @@ jobs:
         uses: ./check-note-sheet-rows
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          # The reference page for this check is named like a note sheet but is prose.
+          paths-ignore: 'website/**'
       # This repo has no note sheet, so stage one with a merged row and assert
       # that the blocking call really fails.
       - name: Stage a note sheet with a merged row
