@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Leave slow formats out of a pull request's preview render.
 
 PDF handouts and Word files dominate a large site's preview time. Quarto
