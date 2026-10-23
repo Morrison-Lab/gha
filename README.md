@@ -111,7 +111,7 @@ not reference `@main` from consumers.
 | `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file`, `opencode-review-workflow-file`, `watch-timeout` |
 | `small-model-agent.yml` | Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (`wai#39`, `ai-config#1292`) | `pr-number`, `endpoint-url`, `model`, `max-iterations`, `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `run-gates`, `dry-run`, `extra-secret-names` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
-| `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
+| `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `per-file-formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
 | `report-failure.yml` | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `submodules`, `render-profile`, `output-dir`, `formats`, `skip-docx`, `extra-preview-labels`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `detect-changed-chapters`, `changed-chapters-banner`, `highlight-changes`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `max-elements-for-pairwise`, `banner-index`, `docx-tracked-changes`, `docx-tracked-changes-glob` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | `pages-base-url`, `pages-base-path` |
@@ -619,6 +619,27 @@ Repos with bespoke build pipelines or custom post-render steps can maintain
 a local build workflow and still use `preview-deploy.yml` and
 `cleanup-pr-previews.yml` by producing the three-file `pr-preview-site` artifact
 (`site/`, `meta/pr-number.txt`, and `meta/action.txt`).
+
+## Large PDF passes (`quarto-publish` `per-file-formats`)
+
+Decision (2026-10-22, [gha#1170](https://github.com/Morrison-Lab/gha/issues/1170)):
+a format that exhausts Quarto's Deno heap is rendered one file at a time, in a fresh process per file.
+The `mds` publish ([run 39843335598](https://github.com/Morrison-Lab/mds/actions/runs/39843335598)) died at a 12 GB heap in the single-process PDF pass.
+Raising `deno-v8-options` only moves the cap on a 16 GB runner, and `formats` still runs one process over every page.
+
+A caller lists its other formats in `formats` and the large one in `per-file-formats`:
+
+```yaml
+with:
+  formats: 'html revealjs docx'
+  per-file-formats: pdf
+```
+
+Why not a per-format whole-project pass for the large format:
+without `--no-clean` it deletes the other formats' outputs.
+A single-file render inside the project adds its output and touches nothing else.
+`quarto-publish/render-per-file.py` finds the files with `quarto inspect`, skips a file that does not declare the format, and fails the run if any file fails or no file matches.
+Leaving `formats` empty renders every format in the normal pass, PDF included, so the large format is rendered twice.
 
 ## Dependency graphs (`build-dependency-graph`)
 
