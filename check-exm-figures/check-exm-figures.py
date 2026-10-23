@@ -33,7 +33,7 @@ git helpers this script imports rather than copies:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``EXF_WHOLE_TREE=true`` scans
   every tracked file, which measures how many examples lack a figure.
-- **Warn-only by default** (``EXF_FAIL`` defaults to false).
+- **Blocking by default** (``EXF_FAIL`` defaults to true; all annotations fail CI).
 - **The search space is reported**: files, lines, examples and examples with
   a figure or an exemption.
 
@@ -42,7 +42,7 @@ Configuration (environment variables, set by the composite action):
                     skip the check.
   EXF_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   EXF_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  EXF_FAIL          "true" => exit 1 on a finding; default "false".
+  EXF_FAIL          "false" => warn only; default "true".
   EXF_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
@@ -73,7 +73,7 @@ def _load_sibling(name: str):
 ods = _load_sibling("check-one-div-per-subfile")
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 
 ADVICE = (
     "add a figure of the example's data, model or results, or add "

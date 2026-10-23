@@ -1,5 +1,5 @@
 - `check-exm-figures`:
-  add a diff-scoped, warn-only composite action and reusable workflow that flags an
+  add a diff-scoped, blocking composite action and reusable workflow that flags an
   example div (`#exm-`) with no figure when a pull request adds a line to it
   ([#1193](https://github.com/Morrison-Lab/gha/issues/1193)).
   A figure is an image, a `fig-` labelled chunk or div, an `@fig-` reference

@@ -1835,11 +1835,23 @@ jobs:
             echo "::error::expected check-exm-figures to fail on a staged example, got outcome='$OUTCOME'"
             exit 1
           fi
-      # The default is warn-only, so the same finding must pass.
+      # The default is blocking, so the same finding must fail with no fail input.
       - name: Check the staged example with the default fail
+        id: exm-default-failure
+        continue-on-error: true
         uses: ./check-exm-figures
         with:
           whole-tree: 'true'
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.exm-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
       - name: Check again diff-scoped against HEAD, expecting a failure
         id: exm-diff-expected-failure
         continue-on-error: true

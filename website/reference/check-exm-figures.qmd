@@ -2,7 +2,7 @@
 title: "check-exm-figures.yml"
 ---
 
-Diff-scoped, warn-only check that flags an example div (`#exm-`)
+Diff-scoped, blocking check that flags an example div (`#exm-`)
 with no figure.
 The lab's rule (Ezra, 2026-10-23) is that nearly every example
 gets a figure of its data, model or results.
@@ -45,7 +45,7 @@ Every run prints how many lines, files and examples it examined.
 | -------------- | ------- | ------------- | ----------- |
 | `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`         | boolean | `false`       | Fail the workflow when an example has no figure. The default gives warning annotations only. |
+| `fail`         | boolean | `true`        | Fail the workflow when an example has no figure. Set `false` for warning annotations only. |
 | `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string | `'3.x'`      | Python version to set up. |
 | `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
@@ -60,7 +60,7 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 # Copy to .github/workflows/check-exm-figures.yml in your repo.
 # Diff-scoped check: flags an example div (#exm-) with no figure when a PR
 # adds a line to it. Add a figure, or <!-- no-figure: reason --> in the div.
-# Warn-only by default.
+# Blocking by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check example figures
 
@@ -77,7 +77,7 @@ jobs:
     # with:
     #   globs: '*.qmd'                        # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
-    #   fail: true                             # block instead of warn (defaults to false)
+    #   fail: true                             # set false to warn only (defaults to true)
     #   whole-tree: true                       # scan every file, not just a PR's additions
 ```
 

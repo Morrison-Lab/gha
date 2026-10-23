@@ -7,7 +7,7 @@ description: >-
   `_fig` subfile; an `<!-- no-figure: reason -->` comment in the div is a
   justified exception. Scoped to lines a diff adds (an added line whose
   exact text was also deleted in the same diff counts as moved).
-  Warn-only by default.
+  Blocking by default.
 inputs:
   python-version:
     description: Python version to set up.
@@ -42,8 +42,8 @@ inputs:
   fail:
     description: >-
       Fail the action when an example div has no figure (else
-      non-blocking). Defaults to 'false' (warning annotations only).
-    default: 'false'
+      non-blocking). Defaults to 'true'.
+    default: 'true'
 runs:
   using: composite
   steps:

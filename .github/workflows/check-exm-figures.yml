@@ -34,9 +34,9 @@ on:
       fail:
         description: >-
           Fail the workflow when an example div has no figure
-          (else non-blocking). Defaults to false (warning annotations only).
+          (else non-blocking). Defaults to true.
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-exm-figures:
