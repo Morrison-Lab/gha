@@ -41,6 +41,7 @@ done
 gh auth status > /dev/null
 
 start_runner() {
+  RUNNER_DIR="$RUNNER_DIR" bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh"
   cd "$RUNNER_DIR"
   # The listener's command line holds the physical path.
   physical_dir=$(pwd -P)
