@@ -12,6 +12,14 @@ name: Quarto Publish (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for every job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it. A self-hosted runner without root
+          cannot run steps that call apt or sudo, such as `apt-packages`.
+        type: string
+        default: ubuntu-latest
       path:
         description: Path (in the caller repo) to the Quarto project to render (the dir with _quarto.yml).
         type: string
@@ -151,7 +159,7 @@ jobs:
   # deploy job below declares it, even when deploy is false). Only the deploy
   # job actually uses the write token.
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -216,7 +224,7 @@ jobs:
   deploy:
     needs: build
     if: inputs.deploy
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 45
     # Serialize deploys to gh-pages so main-site publishes, PR previews, and
     # preview cleanups queue rather than race or clobber each other's commits.

@@ -13,6 +13,14 @@ name: Quarto Preview Build (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for every job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it. A self-hosted runner without root
+          cannot run steps that call apt or sudo, such as `apt-packages`.
+        type: string
+        default: ubuntu-latest
       path:
         description: >-
           Path (relative to the caller repo root) to the Quarto project to
@@ -212,7 +220,7 @@ jobs:
       (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
       (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name))
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # Cancel an in-progress preview build when a newer commit on the same ref
     # supersedes it. Without cancel-in-progress the default is false, so a fresh

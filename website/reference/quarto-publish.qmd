@@ -11,6 +11,7 @@ skip the deploy.
 
 | Input                      | Type    | Default                                           | Description                                                                                                                                       |
 | -------------------------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runs-on`                  | string  | `'ubuntu-latest'`            | Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo. |
 | `path`                     | string  | `'.'`                                             | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`).                                                       |
 | `setup-r`                  | boolean | `false`                                           | Install R and project R dependencies before rendering (for R/knitr Quarto projects).                                                              |
 | `r-packages`               | string  | `(long; see workflow file)`                       | r-lib/actions package specs installed when `setup-r` is true and `use-renv` is false. Defaults to `any::knitr` and `any::rmarkdown`.              |
