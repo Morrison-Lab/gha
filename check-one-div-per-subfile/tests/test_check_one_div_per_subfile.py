@@ -58,9 +58,34 @@ def test_one_div_is_fine():
     assert extra_lines("::: {#exr-a}\nAsk.\n:::\n") == []
 
 
-def test_exercise_and_solution_are_two_divs():
+def test_exercise_and_solution_share_a_file():
     doc = "::: {#exr-a}\nAsk.\n:::\n\n::: {#sol-a}\nAnswer.\n:::\n"
+    assert extra_lines(doc) == []
+
+
+@pytest.mark.parametrize("head", [
+    "::: proof", "::: {.proof}", "::: {#prf-a}", "::: sol", "::: {.sol}",
+    "::: solution", "::: {.solution #x}",
+])
+def test_proof_or_solution_stays_with_its_claim(head):
+    doc = "::: {#thm-a}\nClaim.\n:::\n\n" + head + "\nWhy.\n:::\n"
+    assert extra_lines(doc) == []
+
+
+@pytest.mark.parametrize("head", [
+    "::: proofreading", "::: {.solutions-list}", "::: {#prfx-a}",
+    "::: {#solid-a}", "::: notes",
+    '::: {#exm-a title="a sol"}', "::: {#exm-a title='a proof'}",
+])
+def test_lookalike_div_still_counts(head):
+    doc = "::: {#thm-a}\nClaim.\n:::\n\n" + head + "\nx\n:::\n"
     assert extra_lines(doc) == [5]
+
+
+def test_second_claim_after_a_proof_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n::: proof\nP.\n:::\n"
+           "::: {#thm-b}\nB.\n:::\n")
+    assert extra_lines(doc) == [7]
 
 
 def test_nested_div_does_not_count():
@@ -95,7 +120,7 @@ def test_longer_fence_holding_shorter_one():
 
 
 def test_bare_class_div_counts():
-    doc = "::: solution\nx\n:::\n::: notes\ny\n:::\n"
+    doc = "::: example\nx\n:::\n::: notes\ny\n:::\n"
     assert extra_lines(doc) == [4]
 
 
@@ -124,7 +149,7 @@ def repo(tmp_path, monkeypatch):
     return tmp_path
 
 
-TWO = "::: {#exr-a}\nAsk.\n:::\n\n::: {#sol-a}\nAnswer.\n:::\n"
+TWO = "::: {#exr-a}\nAsk.\n:::\n\n::: {#exm-a}\nExample.\n:::\n"
 
 
 def _write(repo, name, text, stage=True):
@@ -167,7 +192,7 @@ def test_touching_a_multi_div_subfile_flags_it(repo):
 
 def test_moved_lines_alone_do_not_flag(repo):
     _commit(repo, "_subfiles/_old.qmd", TWO)
-    swapped = "::: {#sol-a}\nAnswer.\n:::\n\n::: {#exr-a}\nAsk.\n:::\n"
+    swapped = "::: {#exm-a}\nExample.\n:::\n\n::: {#exr-a}\nAsk.\n:::\n"
     _write(repo, "_subfiles/_old.qmd", swapped)
     assert _run("HEAD").findings == []
 
@@ -237,7 +262,7 @@ def test_main_exit_codes(repo, monkeypatch):
 # -- adversarial inputs ------------------------------------------------------
 
 def test_crlf_line_endings_count_the_same():
-    doc = "::: {#exr-a}\r\nAsk.\r\n:::\r\n\r\n::: {#sol-a}\r\nAns.\r\n:::\r\n"
+    doc = "::: {#exr-a}\r\nAsk.\r\n:::\r\n\r\n::: {#exm-a}\r\nAns.\r\n:::\r\n"
     assert extra_lines(doc) == [5]
 
 

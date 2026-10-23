@@ -85,6 +85,17 @@ inputs:
       `preview:docx` opts back in, and so does `docx-tracked-changes: true`,
       which needs the Word files. Set to 'false' to render docx as before.
     default: 'true'
+  skip-formats:
+    description: >-
+      Space-separated formats (for example 'pdf docx') to leave out of the
+      preview, which `skip-docx` cannot do for `formats: default`. Before the
+      render, `preview/skip-formats.py` removes those formats' entries from the
+      project's `_quarto*.yml` files and every page's front matter in the
+      working copy, so a bare `quarto render` still builds every other format,
+      slide decks included. A PR labelled `preview:<format>` keeps that format,
+      and `docx-tracked-changes: true` keeps docx. Empty (default) removes
+      nothing. The publish build is unaffected.
+    default: ''
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
     default: 'false'
@@ -440,6 +451,17 @@ runs:
         esac
         echo "TZ=$TIMEZONE" >> "$GITHUB_ENV"
 
+    - name: Leave skipped formats out of the preview
+      if: github.event.action != 'closed' && inputs.skip-formats != ''
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      env:
+        SKIP_FORMATS: ${{ inputs.skip-formats }}
+        # The tracked-changes step compares rendered Word files (gha#1059).
+        KEEP_FORMATS: ${{ inputs.docx-tracked-changes == 'true' && 'docx' || '' }}
+        PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+      run: python3 "$GITHUB_ACTION_PATH/skip-formats.py"
+
     - name: Render Quarto site
       if: github.event.action != 'closed'
       shell: bash
@@ -651,8 +673,13 @@ runs:
         echo "contents of $PROJECT_PATH:"
         ls "$PROJECT_PATH"
 
+    # `always()` so a render that fails, or is cancelled by the time limit or
+    # a newer push, still saves the pages it finished. Quarto writes a page's
+    # freeze file only after that page has executed, so the directory holds
+    # whole pages, and `freeze: auto` re-checks each against its source file
+    # (gha#1184).
     - name: Save Quarto freeze
-      if: github.event.action != 'closed'
+      if: always() && github.event.action != 'closed'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze
