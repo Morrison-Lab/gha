@@ -42,6 +42,7 @@ input tables and a copy-paste example.
 | [`check-redundant-citations.yml`](reference/check-redundant-citations.qmd) | Diff-scoped, warn-only check that flags a source cited twice, with the same locator, in one div or passage (cite a source once per div) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-self-credits.yml`](reference/check-self-credits.qmd) | Diff-scoped, warn-only check that flags a formal credit to the group's own work (a citation of an own bibliography entry, or a credit phrase beside an own site or name) | `config`, `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-one-div-per-subfile.yml`](reference/check-one-div-per-subfile.qmd) | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile, solutions in their own `_sol` file) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-pr-size.yml`](reference/check-pr-size.qmd) | Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines; a sweep goes out as minimal batches | `max-files`, `max-lines`, `paths-ignore`, `exempt-label`, `fail` |
 | [`check-note-sheet-rows.yml`](reference/check-note-sheet-rows.qmd) | Diff-scoped, warn-only check that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-definite-antecedents.yml`](reference/check-definite-antecedents.qmd) | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-local-macros.yml`](reference/check-local-macros.qmd) | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
@@ -129,7 +130,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
-`check-one-div-per-subfile.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
+`check-one-div-per-subfile.yml`, `check-pr-size.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
 `check-term-links.yml`, `check-paired-file-change.yml`,
 `annotation-gate.yml`,
 `annotation-gate-run.yml`,

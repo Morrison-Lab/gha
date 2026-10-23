@@ -1,0 +1,39 @@
+---
+title: "check-pr-size.yml"
+---
+
+Diff-scoped, blocking check that fails a pull request changing more than 10 files or 300 lines.
+Every PR should be as small and focused as it can be while completely solving its stated task.
+A sweep goes out as minimal batches, one PR per batch of one concern.
+This implements
+[gha#1188](https://github.com/Morrison-Lab/gha/issues/1188).
+
+The check counts the files a PR changes and the lines it adds plus deletes,
+measured from the merge base to `HEAD`.
+A rename counts as one file.
+A binary file counts as one file and no lines.
+
+These paths are not counted, since nobody writes them by hand:
+lockfiles, `renv.lock`, `_freeze/`, `docs/`, images, PDFs, CSV and R data files, and minified scripts.
+Add more with `paths-ignore`.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `max-files` | `10` | Most files a PR may change |
+| `max-lines` | `300` | Most added plus deleted lines |
+| `paths-ignore` | none | Extra paths not counted (`*`, `?`, `**`) |
+| `exempt-label` | `size-exempt` | Label that lifts the cap, read live through the API |
+| `fail` | `true` | Block instead of warn |
+
+## Scope
+
+With no base to diff against, or when the diff cannot be computed,
+the check skips with a warning instead of measuring the whole tree.
+The caller stub triggers on `labeled` and `unlabeled`,
+so adding the exemption label re-runs the check.
+
+## Example
+
+See [`examples/check-pr-size.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-pr-size.yml).
