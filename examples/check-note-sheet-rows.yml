@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-note-sheet-rows.yml in your repo.
+# Diff-scoped check: flags a note-sheet table row that holds more than one
+# concept (notation in a label, a label joining two concepts, two formulas in
+# one cell) when a PR adds it. Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check note-sheet rows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-note-sheet-rows.yml@v3
+    # with:
+    #   globs: '*note-sheet*.qmd'   # pathspecs to check (recursive)
+    #   paths-ignore: ''            # skip known-noisy paths
+    #   fail: true                  # block instead of warn (defaults to false)
+    #   whole-tree: true            # scan every note sheet, not just a PR's additions

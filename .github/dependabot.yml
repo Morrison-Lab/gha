@@ -30,6 +30,7 @@ updates:
       - "/check-wikipedia-further-reading"
       - "/check-self-credits"
       - "/check-one-div-per-subfile"
+      - "/check-note-sheet-rows"
       - "/check-definite-antecedents"
       - "/build-dependency-graph"
       - "/check-term-links"

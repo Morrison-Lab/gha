@@ -1,0 +1,55 @@
+name: Check note-sheet rows
+description: >-
+  Diff-scoped check that flags a note-sheet table row that holds more than one
+  concept: notation inside a label, a label joining two concepts with a comma
+  or "and", or two formulas in one cell. A note sheet gives each concept its own
+  row (Ezra, 2026-10-22). Scoped to lines a diff adds (an added line whose exact
+  text was also deleted in the same diff counts as moved). Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only rows added since this ref are checked.
+      Needs the base commit in history (checkout with fetch-depth: 0). When the
+      diff can't be computed, the check is skipped with a warning rather than
+      falling back to a whole-tree scan.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      rows added since base-ref. Use it to measure a corpus.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*note-sheet*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a row is flagged (else non-blocking). Defaults to
+      'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check note-sheet rows
+      shell: bash
+      env:
+        NSR_BASE_REF: ${{ inputs.base-ref }}
+        NSR_WHOLE_TREE: ${{ inputs.whole-tree }}
+        NSR_GLOBS: ${{ inputs.globs }}
+        NSR_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        NSR_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-note-sheet-rows.py"
