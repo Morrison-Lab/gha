@@ -51,8 +51,9 @@ unless `whole-tree` asks for that.
 - `globs`: space-separated git pathspecs of tracked files to check
   (default `*note-sheet*.qmd`).
 - `paths-ignore`: comma- or newline-separated glob patterns to skip.
-- `fail`: fail the workflow on a finding
-  (default `false`; it governs only the one-concept rules, which then warn; the prose rules always fail).
+- `fail`: fail the workflow on a one-concept finding
+  (default `false`, warning annotations only).
+  The prose rules always fail, whatever `fail` says.
 - `whole-tree`: scan every matching file in full (default `false`).
 - `python-version`: Python version to set up (default `3.x`).
 

@@ -419,7 +419,8 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
   it takes the same diff model and is warn-only by default (`fail: false`);
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
   for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
-  It takes the same diff model as `check-one-div-per-subfile/`; the one-concept rules are warn-only by default (`fail: false`).
+  It takes the same diff model as `check-one-div-per-subfile/`.
+  The one-concept rules are warn-only by default (`fail: false`).
   Two prose rules always fail, whatever `fail` says (gha#1201): a sentence label or words outside math in a formula cell, and any paragraph outside a table, an inline list included.
   They are the one deterministic exception to the warn-only default, because the lab's note-sheet rule is no prose and only tables or bullets for lists (Ezra, 2026-10-23);
   a label ending in `, ... form`, `version` or `case` names one concept in a second form and is allowed;
