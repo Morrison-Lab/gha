@@ -865,6 +865,9 @@ jobs:
       - name: Run check-bibliography-dois R unit tests
         shell: bash
         run: Rscript check-bibliography-dois/tests/test-check-bibliography-dois.R
+      - name: Check the preinstalled-toolchain package list matches
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-check-bibliography-dois-package-list-tests.sh
       - name: Run check-bibliography-dois offline test runner
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-check-bibliography-dois-tests.py

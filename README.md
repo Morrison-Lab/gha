@@ -44,7 +44,7 @@ not reference `@main` from consumers.
 | Workflow | Purpose | Key inputs |
 |---|---|---|
 | `check-ai-tells.yml` | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers | `paths`, `paths-ignore`, `base-ref`, `threshold`, `ignore-tells`, `fail` |
-| `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
+| `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check`, `preinstalled-toolchain` |
 | `check-formatting.yml` | Fail when any `.R`/`.r` file would be rewritten by Air, Posit's R formatter (Rust; no R session). Check-only | `version`, `path` |
 | `check-code-similarity.yml` | Flag code highly similar to a caller-supplied corpus of prior submissions, using JPlag. Computed entirely on the runner --- nothing is uploaded. Warns rather than fails by default, since shared skeleton code and common idioms raise similarity legitimately | `corpus-path`, `language`, `threshold`, `fail`, `base-code-path` |
 | `check-duplicate-roxygen.yml` | Check for duplicate roxygen parameter documentation across R code files and recommend consolidation using `@inheritParams` and/or `@inheritDotParams` | `path`, `paths-ignore`, `extensions`, `min-desc-length`, `base-ref`, `fail`, `python-version` |
