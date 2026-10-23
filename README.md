@@ -78,6 +78,7 @@ not reference `@main` from consumers.
 | `check-self-credits.yml` | Diff-scoped, warn-only check that flags a formal credit to the group's own work (a citation of an own bibliography entry, or a credit phrase beside an own site or name) | `config`, `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-one-div-per-subfile.yml` | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile, solutions in their own `_sol` file) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-pr-size.yml` | Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines (added plus deleted); a sweep goes out as minimal batches, generated and lock paths are not counted, and the `size-exempt` label lifts the cap ([#1188](https://github.com/Morrison-Lab/gha/issues/1188)). | `max-files`, `max-lines`, `paths-ignore`, `exempt-label`, `fail` |
+| `check-pr-concerns.yml` | Diff-scoped, blocking check that fails a PR changing both content paths and infrastructure paths; content and infrastructure go in separate PRs, and the `mixed-ok` label lifts it ([#1188](https://github.com/Morrison-Lab/gha/issues/1188)). | `content-paths`, `infra-paths`, `paths-ignore`, `exempt-label`, `fail` |
 | `check-note-sheet-rows.yml` | Diff-scoped, warn-only check that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-definite-antecedents.yml` | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-local-macros.yml` | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
@@ -152,7 +153,7 @@ that need to write must have the **caller** grant it on the calling job:
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-pr-size`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-pr-size`, `check-pr-concerns`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`, `check-note-sheet-rows`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
@@ -720,7 +721,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-pr-size.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-pr-size.yml`, `check-pr-concerns.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -862,7 +863,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-pr-size.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-pr-size.yml`, `check-pr-concerns.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
