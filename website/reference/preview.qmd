@@ -14,6 +14,7 @@ turn it off for a pure-markdown site.
 
 | Input | Type | Default | Description |
 |---|---|---|---|
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo, such as `apt-packages`. |
 | `path` | string | `'.'` | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`). Defaults to the repo root; set it for a subdirectory site (matches `quarto-publish`'s `path`). |
 | `r-version` | string | `'4.6.0'` | R version to install with `r-lib/actions/setup-r`. |
 | `apt-packages` | string | `(long; see workflow file)` | System apt packages to install before R/Quarto setup, space-separated. Defaults to the shared renv stack plus build helpers; set to an empty string to skip the apt step. |
