@@ -2404,7 +2404,7 @@
     "href": "reference/check-note-sheet-rows.html",
     "title": "check-note-sheet-rows.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags a note-sheet table row holding more than one concept. The lab’s rule (Ezra, 2026-10-22) is that a note sheet gives each concept its own row: one formula and one short label, with no prose. This implements gha#1164.\nThe check reads pipe tables (| label | formula |) in the files globs matches, by default *note-sheet*.qmd. It reports a row the pull request adds when:\nA label that ends in , ... form, version or case, such as Sample MSE, matrix form, names one concept in a second form, in a row of its own. It is not flagged. Header rows and rows inside code fences are ignored.\nThe check is diff-scoped: an added line whose exact text was also deleted in the same diff counts as moved. With no base ref, or when the diff cannot be computed, it skips with a warning instead of scanning the whole tree, unless whole-tree asks for that.",
+    "text": "Diff-scoped check that flags a note-sheet table row holding more than one concept. The lab’s rule (Ezra, 2026-10-22) is that a note sheet gives each concept its own row: one formula and one short label, with no prose. This implements gha#1164.\nThe check reads pipe tables (| label | formula |) in the files globs matches, by default *note-sheet*.qmd. It reports a row the pull request adds when:\nA label that ends in , ... form, version or case, such as Sample MSE, matrix form, names one concept in a second form, in a row of its own. It is not flagged. Header rows and rows inside code fences are ignored.\nTwo prose rules are errors whatever fail says, because they are deterministic (gha#1201):\nThe check is diff-scoped: an added line whose exact text was also deleted in the same diff counts as moved. With no base ref, or when the diff cannot be computed, it skips with a warning instead of scanning the whole tree, unless whole-tree asks for that.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2416,7 +2416,7 @@
     "href": "reference/check-note-sheet-rows.html#inputs",
     "title": "check-note-sheet-rows.yml",
     "section": "Inputs",
-    "text": "Inputs\n\nglobs: space-separated git pathspecs of tracked files to check (default *note-sheet*.qmd).\npaths-ignore: comma- or newline-separated glob patterns to skip.\nfail: fail the workflow on a finding (default false, warning annotations only).\nwhole-tree: scan every matching file in full (default false).\npython-version: Python version to set up (default 3.x).\n\nThe prose rule is PSW’s “Give each concept in a note sheet its own row”.",
+    "text": "Inputs\n\nglobs: space-separated git pathspecs of tracked files to check (default *note-sheet*.qmd).\npaths-ignore: comma- or newline-separated glob patterns to skip.\nfail: fail the workflow on a one-concept finding (default false, warning annotations only). The prose rules always fail, whatever fail says.\nwhole-tree: scan every matching file in full (default false).\npython-version: Python version to set up (default 3.x).\n\nThe prose rule is PSW’s “Give each concept in a note sheet its own row”.",
     "crumbs": [
       "Overview",
       "Reference",
