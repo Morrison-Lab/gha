@@ -3511,7 +3511,7 @@
     "href": "reference/check-pr-size.html#inputs",
     "title": "check-pr-size.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nmax-files\n10\nMost files a PR may change\n\n\nmax-lines\n300\nMost added plus deleted lines\n\n\npaths-ignore\nnone\nExtra paths not counted (*, ?, **)\n\n\nexempt-label\nsize-exempt\nLabel that lifts the cap, read live through the API\n\n\nfail\ntrue\nBlock instead of warn",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nmax-files\n10\nMost files a PR may change\n\n\nmax-lines\n300\nMost added plus deleted lines\n\n\npaths-ignore\nnone\nExtra paths not counted (*, ?, **)\n\n\nexempt-label\nsize-exempt\nLabel that lifts the cap, read live through the API\n\n\nfail\ntrue\nBlock instead of warn\n\n\npython-version\n3.x\nPython used to run the check",
     "crumbs": [
       "Overview",
       "Reference",
@@ -3787,7 +3787,7 @@
     "href": "reference/check-pr-concerns.html#inputs",
     "title": "check-pr-concerns.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\ncontent-paths\nbuilt-in\nGlobs for content (*, ?, **); replaces the defaults\n\n\ninfra-paths\nbuilt-in\nGlobs for infrastructure; replaces the defaults\n\n\npaths-ignore\nnone\nExtra paths counted as neither\n\n\nexempt-label\nmixed-ok\nLabel that lifts the check, read live through the API\n\n\nfail\ntrue\nBlock instead of warn",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\ncontent-paths\nbuilt-in\nGlobs for content (*, ?, **); replaces the defaults\n\n\ninfra-paths\nbuilt-in\nGlobs for infrastructure; replaces the defaults\n\n\npaths-ignore\nnone\nExtra paths counted as neither\n\n\nexempt-label\nmixed-ok\nLabel that lifts the check, read live through the API\n\n\nfail\ntrue\nBlock instead of warn\n\n\npython-version\n3.x\nPython used to run the check",
     "crumbs": [
       "Overview",
       "Reference",
