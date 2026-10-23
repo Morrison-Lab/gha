@@ -61,6 +61,11 @@ def pruner():
 
 
 @pytest.fixture(scope="session")
+def format_skipper():
+    return _load("gha_skip_formats", "skip-formats.py")
+
+
+@pytest.fixture(scope="session")
 def docx_generator():
     return _load("gha_create_docx_tracked_changes", "create-docx-tracked-changes.py")
 

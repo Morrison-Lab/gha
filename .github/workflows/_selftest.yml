@@ -1714,7 +1714,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _ci-one-div/_subfiles
-          printf '%s\n' '::: {#exr-a}' 'Ask.' ':::' '' '::: {#sol-a}' 'Answer.' ':::' > _ci-one-div/_subfiles/_page.qmd
+          printf '%s\n' '::: {#exm-a}' 'One.' ':::' '' '::: {#exm-b}' 'Two.' ':::' > _ci-one-div/_subfiles/_page.qmd
           git add -f _ci-one-div/_subfiles/_page.qmd
       - name: Check the staged subfile, expecting a failure
         id: one-div-expected-failure
