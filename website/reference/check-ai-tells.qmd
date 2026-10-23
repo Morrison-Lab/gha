@@ -19,6 +19,7 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-ai-tells.yml@v2
     with:
       fail: false
+      # runs-on: private-runner  # self-hosted runner label (private repositories only)
 ```
 
 ## Inputs
@@ -31,3 +32,4 @@ jobs:
 | `threshold` | Maximum allowed tell density (tells per 1,000 words) before failing when `fail: true`. | `10` |
 | `ignore-tells` | Comma- or space-separated list of tell names to ignore (e.g. `robust, landscape`). | `''` |
 | `fail` | Whether to fail the workflow if tell density exceeds threshold. | `false` |
+| `runs-on` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). | `ubuntu-latest` |

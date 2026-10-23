@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-multipart-exercises`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-multipart-exercises`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -420,6 +420,10 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
   `check-multipart-exercises/` (Python, stdlib only, gha#1156) bundles the composite action, script, and pytest suite
   for failing a PR that adds or revises an `exr-` div holding more than one part (list items in one marker style, or inline "(a) first, (b) second");
   it takes the same diff model, but a touched exercise is judged whole and it blocks by default (`fail: true`);
+  `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
+  for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
+  It takes the same diff model as `check-one-div-per-subfile/` and is warn-only by default (`fail: false`);
+  a label ending in `, ... form`, `version` or `case` names one concept in a second form and is allowed;
   `check-one-div-per-subfile/` (Python, stdlib only, gha#1092) bundles the composite action, script, and pytest suite
   for flagging a `_subfiles/_*.qmd` file that holds more than one top-level fenced div when a PR adds a line to it.
   It takes the same diff model, but a touched file is judged whole, because a div opens far above the line that changed,

@@ -38,6 +38,7 @@ on the deploy, so it needs no `gh-pages` write access and no live preview URL.
 | Input  | Type    | Default | Description                                                  |
 | ------ | ------- | ------- | ------------------------------------------------------------ |
 | `fail` | boolean | `true`  | Fail the workflow run when equation render errors are found. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -72,6 +73,7 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v2
     # with:
     #   fail: false   # report equation render errors without failing the run
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

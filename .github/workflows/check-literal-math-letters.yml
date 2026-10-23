@@ -3,6 +3,13 @@ name: Check literal letters in math (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
       python-version:
         description: Python version to set up.
         type: string
@@ -56,7 +63,7 @@ on:
 
 jobs:
   check-literal-math-letters:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 20
     permissions:
       contents: read

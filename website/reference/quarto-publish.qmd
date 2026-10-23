@@ -26,6 +26,7 @@ skip the deploy.
 | `formats`                  | string  | `''`                                              | Whitespace- or newline-separated Quarto output formats to render individually in order to prevent V8 out-of-memory errors on large sites.         |
 | `per-file-formats`         | string  | `''`                                              | Whitespace- or newline-separated formats (e.g. `pdf`) to render one file at a time, each in its own process, after the normal render. Prevents Deno heap exhaustion on a large PDF pass; list the other formats in `formats`. |
 | `freeze-cache`             | boolean | `false`                                           | Restore and save Quarto `_freeze` directory via `actions/cache` keyed on `renv.lock` and commit SHA. After the restore, frozen results of pages whose file, included subfiles or named data files changed since the cached commit are removed. The saved cache also seeds PR previews. |
+| `freeze-cache-save-on-failure` | boolean | `false`                                       | Also save `_freeze` when the render fails, so a re-run resumes from the pages already executed. Only used when `freeze-cache` is true. A run killed outright, by a timeout or a lost runner, may not get to save. |
 | `deno-v8-options`          | string  | `'--max-old-space-size=12288,--max-heap-size=12288'` | Options passed to Deno V8 via `QUARTO_DENO_V8_OPTIONS` to raise the heap limit for large site renders.                                           |
 | `fail-on-render-warning`   | boolean | `false`                                           | Fail the build if Quarto emits any render warnings (`WARN` in the render log).                                                                   |
 | `forbid-log-patterns`      | string  | `''`                                              | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files).                              |
@@ -115,6 +116,7 @@ jobs:
     #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
     #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)
     #   freeze-cache: true      # cache Quarto _freeze across runs
+    #   freeze-cache-save-on-failure: true  # keep it when the render fails
     #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
     #   fail-on-render-warning: true # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log

@@ -329,3 +329,35 @@ def test_timezone_step_exports_tz_and_rejects_unsafe_values(composite, value, ex
     else:
         assert result.returncode == 0, result.stderr
         assert env_file.read_text() == exported
+
+
+BINARY_STEP = "Prefer Posit Package Manager binaries"
+INSTALL_STEP = "Install R dependencies"
+
+
+def test_r_package_binaries_are_preferred_between_setup_r_and_the_install(steps):
+    # setup-r writes ~/.Rprofile, and the install resolves with whatever it holds.
+    setup_r = [i for i, s in enumerate(steps) if "r-lib/actions/setup-r@" in s.get("uses", "")]
+    assert setup_r
+    assert max(setup_r) < index_of(steps, BINARY_STEP) < index_of(steps, INSTALL_STEP)
+    step = step_named(steps, BINARY_STEP)
+    assert "${{" not in step["run"]
+    assert "closed" in step["if"]
+
+
+def test_r_package_cache_is_saved_even_when_the_job_fails(steps):
+    # Saving only on success meant a build cancelled at its time limit never
+    # cached its packages (gha#1174).
+    assert step_named(steps, INSTALL_STEP)["with"]["cache"] == "always"
+
+
+def test_the_binary_step_makes_posit_the_only_repository_and_guards_on_rspm(steps):
+    step = step_named(steps, BINARY_STEP)
+    assert 'options(repos = c(CRAN = Sys.getenv("RSPM")))' in step["run"]
+    assert 'if [ -z "${RSPM:-}" ]' in step["run"]
+    assert ">> \"$HOME/.Rprofile\"" in step["run"]
+    install = step_named(steps, INSTALL_STEP)
+    assert "runner.os == 'Linux'" in step["if"]
+    # Same gating as the install it prepares, so a renv or no-package caller is untouched.
+    for clause in ("inputs.use-renv != 'true'", "inputs.r-packages != ''"):
+        assert clause in step["if"] and clause in install["if"]

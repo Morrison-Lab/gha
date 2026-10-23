@@ -12,6 +12,7 @@ CrossRef metadata.
 | `install-quarto`    | boolean | `false` | Install Quarto when setting up R dependencies. |
 | `no-metadata-check` | boolean | `false` | Skip the CrossRef metadata comparison.         |
 | `exclude-keys`      | string  | `''`    | Space- or comma-separated BibTeX keys to skip. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -37,6 +38,7 @@ jobs:
     #   exclude-keys: vapnik1998   # BibTeX keys without DOIs to skip
     #   install-quarto: false
     #   no-metadata-check: false
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See

@@ -1780,6 +1780,81 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-one-div || true
           rm -rf _ci-one-div
+  # check-note-sheet-rows is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-note-sheet-rows@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly.
+  note-sheet-rows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-note-sheet-rows unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-note-sheet-rows/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-note-sheet-rows
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no note sheet, so stage one with a merged row and assert
+      # that the blocking call really fails.
+      - name: Stage a note sheet with a merged row
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-note-sheet
+          printf '%s\n' '| | |' '| --- | --- |' '| Dot product, sample mean | $x$ |' > _ci-note-sheet/note-sheet.qmd
+          git add -f _ci-note-sheet/note-sheet.qmd
+      - name: Check the staged sheet, expecting a failure
+        id: note-sheet-expected-failure
+        continue-on-error: true
+        uses: ./check-note-sheet-rows
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.note-sheet-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-note-sheet-rows to fail on a staged sheet, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check the staged sheet with the default fail
+        uses: ./check-note-sheet-rows
+        with:
+          whole-tree: 'true'
+      - name: Check again with the sheet exempted through paths-ignore
+        uses: ./check-note-sheet-rows
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-note-sheet'
+      - name: Check again with globs excluding the sheet
+        uses: ./check-note-sheet-rows
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'LICENSE'
+      - name: Remove the staged sheet
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-note-sheet || true
+          rm -rf _ci-note-sheet
   # check-multipart-exercises is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-multipart-exercises@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.

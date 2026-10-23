@@ -90,6 +90,13 @@ inputs:
       Restore and save Quarto _freeze directory via actions/cache keyed on
       renv.lock and commit SHA.
     default: 'false'
+  freeze-cache-save-on-failure:
+    description: >-
+      Also save the _freeze directory when the render step fails, so a re-run
+      resumes from the pages that already executed. Only used when
+      freeze-cache is true. A run killed outright (a timeout or a lost runner)
+      may not get to save.
+    default: 'false'
   deno-v8-options:
     description: >-
       Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap
@@ -367,7 +374,9 @@ runs:
         fi
 
     - name: Save Quarto freeze
-      if: inputs.freeze-cache == 'true'
+      if: >-
+        always() && inputs.freeze-cache == 'true' &&
+        (success() || inputs.freeze-cache-save-on-failure == 'true')
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze

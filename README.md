@@ -78,6 +78,7 @@ not reference `@main` from consumers.
 | `check-self-credits.yml` | Diff-scoped, warn-only check that flags a formal credit to the group's own work (a citation of an own bibliography entry, or a credit phrase beside an own site or name) | `config`, `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-one-div-per-subfile.yml` | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile, solutions in their own `_sol` file) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-multipart-exercises.yml` | Diff-scoped check that fails when a PR adds or revises an exercise div (`#exr-`) holding more than one part (lettered, roman or numbered items, or inline `(a) first, (b) second`); split each part into its own div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| `check-note-sheet-rows.yml` | Diff-scoped, warn-only check that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-definite-antecedents.yml` | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-local-macros.yml` | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
 | `check-paired-file-change.yml` | Fail a PR that changes a file matching `trigger-paths` without also changing a file matching `required-paths`, unless the PR carries the skip label (read live from the API) | `trigger-paths`, `required-paths`, `skip-label`, `message` |
@@ -112,7 +113,7 @@ not reference `@main` from consumers.
 | `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file`, `opencode-review-workflow-file`, `watch-timeout` |
 | `small-model-agent.yml` | Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (`wai#39`, `ai-config#1292`) | `pr-number`, `endpoint-url`, `model`, `max-iterations`, `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `run-gates`, `dry-run`, `extra-secret-names` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
-| `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `per-file-formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
+| `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `per-file-formats`, `freeze-cache`, `freeze-cache-save-on-failure`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
 | `report-failure.yml` | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `submodules`, `render-profile`, `output-dir`, `formats`, `skip-docx`, `extra-preview-labels`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `detect-changed-chapters`, `changed-chapters-banner`, `highlight-changes`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `max-elements-for-pairwise`, `banner-index`, `docx-tracked-changes`, `docx-tracked-changes-glob` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | `pages-base-url`, `pages-base-path` |
@@ -125,6 +126,15 @@ not reference `@main` from consumers.
 | `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes -- keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
 | `bump-dev-version.yml` | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in -- so PRs never need to touch `Version:` themselves | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run`, `pr-labels` |
 | `version-check.yml` | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's -- pairs with `bump-dev-version.yml` | `description-path`, `no-version-increment-label`, `bump-branch` |
+
+**Choosing the runner.**
+Every `check-*` and `lint-*` workflow that takes no secrets
+accepts a `runs-on` input (default `ubuntu-latest`),
+so a private repository can run it on a self-hosted runner
+while GitHub-hosted minutes are unavailable.
+Never point a public repository at a self-hosted runner,
+because a pull request from a fork can run arbitrary code on it
+([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).
 
 ## Permissions
 
@@ -144,7 +154,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-multipart-exercises`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`,
-  `check-new-line-breaks`, `check-news`,
+  `check-new-line-breaks`, `check-news`, `check-note-sheet-rows`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
   `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-prose`, `check-quarto-website`,
   `check-r-package`, `check-repo-hygiene`, `check-secrets`, `check-source-overlap`,
@@ -614,6 +624,8 @@ page whose own file, included subfiles, or named data files changed since the
 cached render (`preview/prune-stale-freeze.py`), so `clear freezer` is no
 longer needed when only a subfile changed; `quarto-publish.yml` does the same
 when `freeze-cache` is on.
+With `freeze-cache-save-on-failure: true`, a failed render still saves the
+cache, so a re-run resumes from the pages that already executed.
 A publish with `freeze-cache: true` also seeds new PRs' previews, which fall
 back to the default branch's latest cache.
 Repos with bespoke build pipelines or custom post-render steps can maintain
@@ -708,7 +720,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-multipart-exercises.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-multipart-exercises.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -850,7 +862,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-multipart-exercises.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-multipart-exercises.yml`, `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,

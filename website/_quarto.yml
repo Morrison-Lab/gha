@@ -74,6 +74,7 @@ website:
           - reference/check-self-credits.qmd
           - reference/check-one-div-per-subfile.qmd
           - reference/check-multipart-exercises.qmd
+          - reference/check-note-sheet-rows.qmd
           - reference/check-definite-antecedents.qmd
           - reference/check-paired-file-change.qmd
           - reference/check-term-links.qmd
