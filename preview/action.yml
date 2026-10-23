@@ -58,12 +58,13 @@ inputs:
     default: 'false'
   preinstalled-toolchain:
     description: >-
-      The runner already provides R, Quarto, TinyTeX, Julia and Chrome-free
-      rendering, and has no sudo, as a self-hosted runner does. When 'true',
-      skip the steps that install them (Quarto, R, apt packages, Chrome,
-      Julia and its cache) and install `r-packages` with pak into the
-      runner's user library. R dependencies from renv, the JuliaCall setup,
-      TinyTeX packages and the freeze cache still run.
+      The runner already provides R (with the pak and tinytex packages),
+      Quarto, TinyTeX, Julia and, if needed, Chrome, and has no sudo, as a
+      self-hosted runner does. When 'true', skip the steps that install them
+      (apt packages, Chrome, Quarto, R, Julia and its cache), ignore `tinytex`
+      for the install, and install `r-packages` with pak into the runner's
+      user library. renv, the JuliaCall setup, TinyTeX packages and the
+      freeze cache still run.
     default: 'false'
   julia-version:
     description: Julia version to install (setup-julia's `version` syntax). Only used when setup-julia is true.

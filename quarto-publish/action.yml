@@ -99,11 +99,13 @@ inputs:
     default: 'false'
   preinstalled-toolchain:
     description: >-
-      The runner already provides R, Quarto, TinyTeX and Julia and has no
-      sudo (a self-hosted runner). When 'true', skip the steps that install
-      them (apt packages, Chrome, Quarto, R, Julia and its cache) and install
-      `r-packages` with pak into the runner's user library. renv, the JuliaCall
-      setup and the freeze cache still run.
+      The runner already provides R (with the pak and tinytex packages),
+      Quarto, TinyTeX, Julia and, if needed, Chrome, and has no sudo, as a
+      self-hosted runner does. When 'true', skip the steps that install them
+      (apt packages, Chrome, Quarto, R, Julia and its cache), ignore `tinytex`
+      for the install, and install `r-packages` with pak into the runner's
+      user library. renv, the JuliaCall setup, TinyTeX packages and the
+      freeze cache still run.
     default: 'false'
   deno-v8-options:
     description: >-
