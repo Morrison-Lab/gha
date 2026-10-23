@@ -606,8 +606,20 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-self-credits.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-self-credits.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-one-div-per-subfile.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-one-div-per-subfile.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-definite-antecedents.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-definite-antecedents.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1033,6 +1045,24 @@ cookieconsent.run({
 <td>string</td>
 <td><code>'3.x'</code></td>
 <td>Python version to set up.</td>
+</tr>
+<tr class="even">
+<td><code>mode</code></td>
+<td>string</td>
+<td><code>'all'</code></td>
+<td><code>all</code> flags every standalone letter. <code>known</code> flags only a letter or Greek command that has a semantic macro (<code>y</code>, <code>Y</code>, <code>x</code>, <code>X</code>, <code>n</code>, <code>L</code>, <code>e</code>, <code>\theta</code>, <code>\beta</code>, <code>\varepsilon</code>, <code>\mu</code>), so index letters pass.</td>
+</tr>
+<tr class="odd">
+<td><code>deprecated-files</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Space-separated interpretation files (for example <code>latex-macros/interpretations.tsv</code>). A row saying <code>deprecated, use \x</code> marks that macro deprecated, and a use on an added line is flagged.</td>
+</tr>
+<tr class="even">
+<td><code>submodules</code></td>
+<td>string</td>
+<td><code>'false'</code></td>
+<td>Passed to <code>actions/checkout</code>, so a macros submodule is available for <code>deprecated-files</code>.</td>
 </tr>
 </tbody>
 </table>
