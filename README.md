@@ -127,7 +127,8 @@ not reference `@main` from consumers.
 | `version-check.yml` | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's -- pairs with `bump-dev-version.yml` | `description-path`, `no-version-increment-label`, `bump-branch` |
 
 **Choosing the runner.**
-Every `check-*` and `lint-*` workflow that takes no secrets
+Every `check-*` and `lint-*` workflow that takes no secrets,
+plus `check-secrets.yml`, `cleanup-pr-previews.yml` and `annotation-gate-run.yml`,
 accepts a `runs-on` input (default `ubuntu-latest`),
 so a private repository can run it on a self-hosted runner
 while GitHub-hosted minutes are unavailable.
