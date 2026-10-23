@@ -960,150 +960,156 @@ cookieconsent.run({
 </thead>
 <tbody>
 <tr class="odd">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo.</td>
+</tr>
+<tr class="even">
 <td><code>path</code></td>
 <td>string</td>
 <td><code>'.'</code></td>
 <td>Path in the caller repo to the Quarto project to render (the directory with <code>_quarto.yml</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>setup-r</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install R and project R dependencies before rendering (for R/knitr Quarto projects).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>r-packages</code></td>
 <td>string</td>
 <td><code>(long; see workflow file)</code></td>
 <td>r-lib/actions package specs installed when <code>setup-r</code> is true and <code>use-renv</code> is false. Defaults to <code>any::knitr</code> and <code>any::rmarkdown</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>use-renv</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Restore R dependencies with renv instead of <code>r-packages</code> (requires <code>setup-r</code>).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>install-package</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Run <code>R CMD INSTALL &lt;path&gt;</code> before rendering so package functions are available (requires <code>setup-r</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>setup-chrome</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install Chrome via <code>browser-actions/setup-chrome</code> before rendering (needed for revealjs/screenshots/mermaid).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>tinytex</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install TinyTeX (needed to render PDF outputs).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>setup-julia</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install Julia (<code>julia-actions/setup-julia</code>) before rendering, for pages that execute <code>{julia}</code> chunks; under knitr these run through the R package JuliaCall, so add <code>any::JuliaCall</code> to <code>r-packages</code> (with <code>setup-r</code>). The Julia depot is cached between runs via <code>julia-actions/cache</code>. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and <code>R_LD_LIBRARY_PATH</code> is set to R’s own <code>lib</code> directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. <code>@v3</code> and later.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>julia-version</code></td>
 <td>string</td>
 <td><code>'1'</code></td>
 <td>Julia version to install, in <code>setup-julia</code>’s <code>version</code> syntax. Only used when <code>setup-julia</code> is true. <code>@v3</code> and later.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>apt-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Extra apt packages to install before rendering (space-separated).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>output-dir</code></td>
 <td>string</td>
 <td><code>'_site'</code></td>
 <td>Directory the rendered site is written to, relative to <code>path</code>; forwarded to <code>quarto render --output-dir</code> and overrides any <code>_quarto.yml</code> setting.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>render-profile</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Quarto <code>--profile</code> to render with (e.g.&nbsp;<code>'website'</code>). Empty to omit.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>formats</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Whitespace- or newline-separated Quarto output formats to render individually in order to prevent V8 out-of-memory errors on large sites.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>per-file-formats</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Whitespace- or newline-separated formats (e.g.&nbsp;<code>pdf</code>) to render one file at a time, each in its own process, after the normal render. Prevents Deno heap exhaustion on a large PDF pass; list the other formats in <code>formats</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>freeze-cache</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Restore and save Quarto <code>_freeze</code> directory via <code>actions/cache</code> keyed on <code>renv.lock</code> and commit SHA. After the restore, frozen results of pages whose file, included subfiles or named data files changed since the cached commit are removed. The saved cache also seeds PR previews.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>freeze-cache-save-on-failure</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Also save <code>_freeze</code> when the render fails, so a re-run resumes from the pages already executed. Only used when <code>freeze-cache</code> is true. A run killed outright, by a timeout or a lost runner, may not get to save.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>deno-v8-options</code></td>
 <td>string</td>
 <td><code>'--max-old-space-size=12288,--max-heap-size=12288'</code></td>
 <td>Options passed to Deno V8 via <code>QUARTO_DENO_V8_OPTIONS</code> to raise the heap limit for large site renders.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>fail-on-render-warning</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Fail the build if Quarto emits any render warnings (<code>WARN</code> in the render log).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>forbid-log-patterns</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Newline-separated fixed string patterns that fail the build if found in the render log (e.g.&nbsp;missing listing files).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>timezone</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>IANA time zone (e.g.&nbsp;<code>America/Los_Angeles</code>) exported as <code>TZ</code> for the render and later steps, so <code>date: last-modified</code> stamps are not in UTC. Empty leaves the runner’s time zone unchanged. A value containing a newline or <code>=</code> is rejected.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>timeout-minutes</code></td>
 <td>number</td>
 <td><code>45</code></td>
 <td>Timeout, in minutes, for the render (<code>build</code> job). The default is the hang ceiling, not a budget; raise it for a site whose full render (every page in every format) takes longer. A caller cannot set <code>timeout-minutes</code> on a job that uses <code>uses:</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>checkout-submodules</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Initialize the caller’s git submodules before rendering.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>pre-render-artifact</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>pre-render-artifact-path</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Directory in the caller repo to extract <code>pre-render-artifact</code> into. Defaults to the workspace root.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>deploy</code></td>
 <td>boolean</td>
 <td><code>true</code></td>

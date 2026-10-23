@@ -960,12 +960,18 @@ cookieconsent.run({
 </thead>
 <tbody>
 <tr class="odd">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo, such as <code>apt-packages</code>.</td>
+</tr>
+<tr class="even">
 <td><code>pages-base-url</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Custom Pages base URL (e.g.&nbsp;<code>'org.github.io'</code> or a custom domain) to override automatic URL guessing by <code>pr-preview-action</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>pages-base-path</code></td>
 <td>string</td>
 <td><code>''</code></td>
