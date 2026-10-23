@@ -4,7 +4,7 @@ description: >-
   concept: notation inside a label, a label joining two concepts with a comma
   or "and", or two formulas in one cell. A note sheet gives each concept its own
   row (Ezra, 2026-10-22). Scoped to lines a diff adds (an added line whose exact
-  text was also deleted in the same diff counts as moved). Warn-only by default.
+  text was also deleted in the same diff counts as moved). The one-concept rules are warn-only by default; the prose rules always fail.
 inputs:
   python-version:
     description: Python version to set up.
@@ -33,7 +33,7 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action when a row is flagged (else non-blocking). Defaults to
+      Fail the action on a one-concept finding (else non-blocking; prose findings always fail). Defaults to
       'false' (warning annotations only).
     default: 'false'
 runs:

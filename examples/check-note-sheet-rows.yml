@@ -1,7 +1,7 @@
 # Copy to .github/workflows/check-note-sheet-rows.yml in your repo.
 # Diff-scoped check: flags a note-sheet table row that holds more than one
 # concept (notation in a label, a label joining two concepts, two formulas in
-# one cell) when a PR adds it. Warn-only by default.
+# one cell) when a PR adds it. The one-concept rules are warn-only by default; the prose rules always fail.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check note-sheet rows
 

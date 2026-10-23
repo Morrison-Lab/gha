@@ -22,7 +22,7 @@ match (default ``*note-sheet*.qmd``). It flags a row when:
 
 A label that ends in ``, ... form``, ``version`` or ``case`` (``Sample MSE,
 matrix form``) names one concept in a second form, in a row of its own, and is
-not flagged. These are heuristics, so the check is warn-only by default.
+not flagged. These are heuristics, so these rules are warn-only by default.
 
 Two prose rules are deterministic, so they are errors whatever ``NSR_FAIL``
 says (Ezra, 2026-10-23; gha#1201): a row's label is a sentence (ends in
@@ -91,7 +91,7 @@ LABEL_MAX_WORDS = 6
 BOLD_LABEL_RE = re.compile(r"^\*\*[^*]+\*\*$")
 LINK_ONLY_RE = re.compile(r"^\[[^\]]*\]\([^)]*\)$")
 BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
-SKIP_LINE_RE = re.compile(r"^\s*(?:#|:::|: |<!--|\{\{<)")
+SKIP_LINE_RE = re.compile(r"^\s*(?:#|:::|: |<|>|!\[|\{\{<)")
 WORD_RE = re.compile(r"[A-Za-z]")
 
 
@@ -167,6 +167,7 @@ def scan_rows(lines: List[str]) -> List[Finding]:
     """Findings for every table row outside code fences."""
     fence: Optional[Tuple[str, int]] = None
     found: List[Finding] = []
+    in_comment = in_item = False
     body_from = 0
     if lines and lines[0].strip() == "---":
         body_from = next((i + 1 for i in range(1, len(lines))
@@ -183,12 +184,25 @@ def scan_rows(lines: List[str]) -> List[Finding]:
         if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = (m.group(1)[0], len(m.group(1)))
             continue
+        if in_comment:
+            in_comment = "-->" not in raw
+            continue
+        if "<!--" in raw and "-->" not in raw.split("<!--", 1)[1]:
+            in_comment = True
+            continue
         cells = split_cells(raw)
         if cells is None:
+            if not raw.strip():
+                in_item = False
+                continue
+            if in_item and raw[:1] in (" ", "\t") and not BULLET_RE.match(raw):
+                continue  # a wrapped bullet continues on an indented line
+            in_item = bool(BULLET_RE.match(raw))
             reason = paragraph_reason(raw)
             if reason:
                 found.append(Finding(idx + 1, reason, True))
             continue
+        in_item = False
         following = split_cells(lines[idx + 1]) if idx + 1 < len(lines) else None
         if following and all(SEPARATOR_CELL_RE.match(c) for c in following):
             continue  # a header row names the columns, not a concept

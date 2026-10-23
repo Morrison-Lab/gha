@@ -117,6 +117,32 @@ def test_structure_lines_pass():
     assert hard_reasons(text) == []
 
 
+def test_wrapped_bullet_continuation_passes():
+    assert hard_reasons("- $x$\n  continues here\n- $y$") == []
+
+
+def test_indented_line_after_a_paragraph_still_fails():
+    assert hard_reasons("Some prose.\n  more prose") != []
+
+
+def test_multiline_html_comment_passes():
+    assert hard_reasons("<!-- a long\nnote that spans\nlines -->\n| A | $x$ |") == []
+
+
+@pytest.mark.parametrize("line", [
+    "![Alt text](figure.png)",
+    "> A quoted line",
+    "<div class=\"x\">",
+])
+def test_images_quotes_and_raw_html_pass(line):
+    assert hard_reasons(line) == []
+
+
+def test_link_text_in_a_formula_cell_counts_as_words():
+    assert hard_reasons("| Mean | [definition](x.qmd) |") == [
+        "a formula cell holds prose"]
+
+
 def test_bullet_with_two_formulas_fails():
     assert hard_reasons("- $x$, $y$") == ["a bullet holds two formulas"]
 
@@ -140,7 +166,7 @@ def test_code_fence_rows_ignored():
 
 
 def test_line_numbers():
-    found = nsr.scan_rows(["## Intro","| Dot product, sample mean | $x$ |"])
+    found = nsr.scan_rows(["## Intro", "| Dot product, sample mean | $x$ |"])
     assert [f.line for f in found] == [2]
 
 

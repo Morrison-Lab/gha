@@ -2,7 +2,7 @@
 title: "check-note-sheet-rows.yml"
 ---
 
-Diff-scoped, warn-only check that flags a note-sheet table row
+Diff-scoped check that flags a note-sheet table row
 holding more than one concept.
 The lab's rule (Ezra, 2026-10-22) is that a note sheet
 gives each concept its own row:
@@ -33,7 +33,9 @@ because they are deterministic
   or a cell after the label has words outside math;
 - a line outside a table is a paragraph, an inline list included.
   Headings, bold-only labels, link-only lines, div fences, table captions,
-  bullets and the YAML front matter are allowed.
+  bullets (with their indented continuation lines), images, blockquotes,
+  raw HTML, HTML comments and the YAML front matter are allowed.
+  Link text in a formula cell counts as words.
   Every list is a table or bullets, as on the
   [rme exam formula sheet](https://morrison-lab.github.io/rme/chapters/exam-formula-sheet.html).
 
@@ -50,7 +52,7 @@ unless `whole-tree` asks for that.
   (default `*note-sheet*.qmd`).
 - `paths-ignore`: comma- or newline-separated glob patterns to skip.
 - `fail`: fail the workflow on a finding
-  (default `false`, warning annotations only).
+  (default `false`; it governs only the one-concept rules, which then warn; the prose rules always fail).
 - `whole-tree`: scan every matching file in full (default `false`).
 - `python-version`: Python version to set up (default `3.x`).
 
