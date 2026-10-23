@@ -56,6 +56,15 @@ inputs:
       libunwind rather than the system one, which segfaults on any Julia
       exception.
     default: 'false'
+  preinstalled-toolchain:
+    description: >-
+      The runner already provides R, Quarto, TinyTeX, Julia and Chrome-free
+      rendering, and has no sudo, as a self-hosted runner does. When 'true',
+      skip the steps that install them (Quarto, R, apt packages, Chrome,
+      Julia and its cache) and install `r-packages` with pak into the
+      runner's user library. R dependencies from renv, the JuliaCall setup,
+      TinyTeX packages and the freeze cache still run.
+    default: 'false'
   julia-version:
     description: Julia version to install (setup-julia's `version` syntax). Only used when setup-julia is true.
     default: '1'
@@ -214,7 +223,7 @@ runs:
         echo "$PREVIEW_ACTION" > _preview_upload/meta/action.txt
 
     - name: Set up Quarto
-      if: github.event.action != 'closed'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
         GH_TOKEN: ${{ github.token }}
@@ -225,14 +234,14 @@ runs:
         tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
 
     - name: Set up R
-      if: github.event.action != 'closed'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         r-version: ${{ inputs.r-version }}
         use-public-rspm: true
 
     - name: Install system dependencies
-      if: github.event.action != 'closed' && inputs.apt-packages != ''
+      if: github.event.action != 'closed' && inputs.apt-packages != '' && inputs.preinstalled-toolchain != 'true'
       shell: bash
       env:
         APT_PACKAGES: ${{ inputs.apt-packages }}
@@ -243,7 +252,7 @@ runs:
         sudo apt-get install -y $APT_PACKAGES
 
     - name: Setup Chrome
-      if: github.event.action != 'closed' && inputs.setup-chrome == 'true'
+      if: github.event.action != 'closed' && inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
 
     - name: Restore R dependencies (renv)
@@ -269,7 +278,8 @@ runs:
     - name: Prefer Posit Package Manager binaries
       if: >-
         github.event.action != 'closed' && runner.os == 'Linux' &&
-        inputs.use-renv != 'true' && inputs.r-packages != ''
+        inputs.use-renv != 'true' && inputs.r-packages != '' &&
+        inputs.preinstalled-toolchain != 'true'
       shell: bash
       run: |
         set -euo pipefail
@@ -284,13 +294,28 @@ runs:
     # cancelled at its time limit never saved, so the next run reinstalled
     # everything (gha#1174).
     - name: Install R dependencies
-      if: github.event.action != 'closed' && inputs.use-renv != 'true' && inputs.r-packages != ''
+      if: github.event.action != 'closed' && inputs.use-renv != 'true' && inputs.r-packages != '' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
       with:
         packages: ${{ inputs.r-packages }}
         cache: always
+
+    # With a preinstalled toolchain the runner's own R and user library are
+    # used: setup-r-dependencies would ask for sudo to install system
+    # requirements, so install the packages with pak into the user library.
+    - name: Install R dependencies (preinstalled R)
+      if: >-
+        github.event.action != 'closed' && inputs.use-renv != 'true' &&
+        inputs.r-packages != '' && inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      env:
+        GITHUB_PAT: ${{ github.token }}
+        R_PACKAGES: ${{ inputs.r-packages }}
+      run: |
+        set -euo pipefail
+        Rscript -e 'pkgs <- Sys.getenv("R_PACKAGES"); pkgs <- trimws(strsplit(pkgs, "[[:space:],]+")[[1]]); pkgs <- pkgs[nzchar(pkgs)]; pak::pkg_install(pkgs)'
 
     - name: Install local package
       if: github.event.action != 'closed' && inputs.install-package == 'true'
@@ -300,7 +325,7 @@ runs:
       run: R CMD INSTALL "$PROJECT_PATH"
 
     - name: Set up Julia
-      if: github.event.action != 'closed' && inputs.setup-julia == 'true'
+      if: github.event.action != 'closed' && inputs.setup-julia == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
       with:
         version: ${{ inputs.julia-version }}
@@ -315,7 +340,7 @@ runs:
     # it off loses nothing. GitHub's own cache eviction still bounds the old
     # entries.
     - name: Cache Julia packages
-      if: github.event.action != 'closed' && inputs.setup-julia == 'true'
+      if: github.event.action != 'closed' && inputs.setup-julia == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: julia-actions/cache@9353db09a0f2bbbdec6f41791918c75d37391b36 # v3.5.0
       with:
         # Save only when the job succeeds. The action saves on failure and
