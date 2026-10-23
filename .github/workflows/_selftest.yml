@@ -6673,7 +6673,7 @@ jobs:
           mkdir -p _ci-pr-size
           for i in $(seq 1 12); do echo "line $i" > "_ci-pr-size/f$i.txt"; done
           git add -f _ci-pr-size
-          git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "sweep fixture"
+          git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "sweep fixture" # phi-allow
       - name: Check the sweep, expecting a failure
         id: pr-size-expected-failure
         continue-on-error: true
