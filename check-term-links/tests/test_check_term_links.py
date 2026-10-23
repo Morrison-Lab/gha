@@ -262,3 +262,35 @@ def test_cli_allow_file_and_terms_file(repo):
 def test_cli_paths_ignore(repo):
     res = run_cli(repo, WHOLE_TREE="true", FAIL="true", PATHS_IGNORE="old.qmd, new.qmd")
     assert res.returncode == 0
+
+
+def test_cli_moved_line_is_not_new(repo):
+    # Splitting a file moves lines; a first use the base already carried is not reflagged.
+    git(repo, "mv", "old.qmd", "moved.qmd")
+    git(repo, "commit", "-q", "-am", "move")
+    res = run_cli(repo, BASE_REF="main", FAIL="true")
+    assert "moved.qmd" not in res.stdout and "new.qmd:3" in res.stdout
+
+
+def test_cli_edited_line_with_the_same_first_use_is_still_flagged(repo):
+    (repo / "old.qmd").write_text("::: {#exm-o}\n\nThe risk was here, and still is.\n\n:::\n")
+    git(repo, "commit", "-q", "-am", "edit")
+    res = run_cli(repo, BASE_REF="main", FAIL="true")
+    assert "old.qmd:3" in res.stdout
+
+
+def test_parse_added_lines_ignores_body_lines_that_look_like_headers(tmp_path):
+    diff = (
+        "diff --git a/a.qmd b/a.qmd\n--- a/a.qmd\n+++ b/a.qmd\n"
+        "@@ -1,0 +2,2 @@\n++ not a header\n+++ b/also not a header\n"
+    )
+    assert ctl.parse_added_lines(diff, tmp_path) == {tmp_path / "a.qmd": {2, 3}}
+
+
+def test_parse_added_lines_drops_lines_the_diff_also_deletes(tmp_path):
+    diff = (
+        "--- a/a.qmd\n+++ b/a.qmd\n@@ -3,1 +0,0 @@\n-The risk was here.\n"
+        "--- a/b.qmd\n+++ b/b.qmd\n@@ -0,0 +1,2 @@\n+The risk was here.\n+A new line.\n"
+    )
+    out = ctl.parse_added_lines(diff, tmp_path)
+    assert out[tmp_path / "b.qmd"] == {2}
