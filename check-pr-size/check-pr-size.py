@@ -65,7 +65,7 @@ def is_ignored(path, regexes):
 
 
 def parse_numstat(text):
-    """Return [(path, changed_lines)] from `git diff --numstat -z` output."""
+    """Return [(path, changed_lines)] from `git diff --numstat` output."""
     rows = []
     for line in text.splitlines():
         parts = line.split("\t", 2)
@@ -98,7 +98,7 @@ def read_int(name, default):
     raw = os.environ.get(name, "").strip()
     if not raw:
         return default
-    if not raw.isdigit() or int(raw) < 1:
+    if not re.fullmatch(r"[0-9]+", raw) or int(raw) < 1:
         print(f"::error::{name} must be a positive integer, got {raw!r}")
         sys.exit(2)
     return int(raw)
