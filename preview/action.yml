@@ -651,8 +651,13 @@ runs:
         echo "contents of $PROJECT_PATH:"
         ls "$PROJECT_PATH"
 
+    # `always()` so a render that fails, or is cancelled by the time limit or
+    # a newer push, still saves the pages it finished. Quarto writes a page's
+    # freeze file only after that page has executed, so the directory holds
+    # whole pages, and `freeze: auto` re-checks each against its source file
+    # (gha#1184).
     - name: Save Quarto freeze
-      if: github.event.action != 'closed'
+      if: always() && github.event.action != 'closed'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze
