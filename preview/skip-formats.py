@@ -97,6 +97,8 @@ def strip_formats(text: str, names: set[str]) -> tuple[str, list[str]]:
                 k = m
             else:
                 kept.append(line)
+                if not _is_blank_or_comment(line):
+                    entries += 1  # a list item or other form is kept, so keep its key
                 k += 1
         if entries:
             out.append(lines[i])
@@ -155,10 +157,10 @@ def main() -> int:
         os.utime(path, (st.st_atime, st.st_mtime))
         changed.append(str(path))
     listed = " and ".join(sorted(names))
-    if not changed:
+    if changed:
+        print(f"skip_formats: removed {listed} from {len(changed)} files")
+    else:
         print(f"skip_formats: found no {listed} format to remove")
-        return 0
-    print(f"skip_formats: removed {listed} from {len(changed)} files")
     # A one-line `format: pdf` or `format: [html, pdf]` is not handled; say so
     # instead of rendering the format silently.
     for path in project_files(root):
@@ -166,7 +168,7 @@ def main() -> int:
         if path.suffix == ".qmd":
             text = split_front_matter(text)[0]
         for line in text.splitlines():
-            if INLINE_FORMAT.match(line) and any(re.search(rf"\b{n}\b", line) for n in names):
+            if INLINE_FORMAT.match(line) and any(re.search(rf"\b{re.escape(n)}\b", line) for n in names):
                 print(
                     f"skip_formats: {path} still has an inline format entry: {line.strip()}",
                     file=sys.stderr,

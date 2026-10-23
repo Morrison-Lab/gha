@@ -150,3 +150,17 @@ def test_an_inline_format_entry_is_reported_not_silently_kept(run, tmp_path, cap
     write(tmp_path, "page.qmd", "---\ntitle: T\nformat: pdf\n---\nBody\n")
     run()
     assert "format: pdf" in capsys.readouterr().err
+
+
+def test_inline_entry_is_reported_even_when_nothing_else_changes(run, tmp_path, capsys):
+    write(tmp_path, "page.qmd", "---\ntitle: T\nformat: pdf\n---\nBody\n")
+    run()
+    assert "format: pdf" in capsys.readouterr().err
+
+
+def test_a_list_form_format_block_is_kept_beside_a_mapping_block(run, tmp_path):
+    write(tmp_path, "_quarto.yml", "format:\n  - html\n  - pdf\n")
+    write(tmp_path, "_quarto-website.yml", PROJECT)
+    run()
+    assert read(tmp_path, "_quarto.yml") == "format:\n  - html\n  - pdf\n"
+    assert "pdf:" not in read(tmp_path, "_quarto-website.yml")
