@@ -618,6 +618,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-note-sheet-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-note-sheet-rows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-definite-antecedents.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-definite-antecedents.yml</span></a>
   </div>
@@ -1001,24 +1007,30 @@ cookieconsent.run({
 <td>Passed to <code>actions/checkout</code>, so the <code>latex-macros</code> submodule is available.</td>
 </tr>
 <tr class="odd">
+<td><code>submodule-paths</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Whitespace-separated submodule paths to initialize instead of <code>submodules</code>, for a repository with a private submodule beside the public one this check needs.</td>
+</tr>
+<tr class="even">
 <td><code>fail</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Fail the workflow when a <code>\name\paren{...}</code> with an f form is found. Warn-only by default.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>whole-tree</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Scan every tracked file in full instead of only a PR’s added lines.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>python-version</code></td>
 <td>string</td>
 <td><code>'3.x'</code></td>
 <td>Python version to set up.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td><code>'ubuntu-latest'</code></td>
