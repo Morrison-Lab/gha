@@ -70,6 +70,13 @@ on:
           r-packages). See the composite's input for details.
         type: boolean
         default: false
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R, Quarto, TinyTeX and Julia and has no
+          sudo (a self-hosted runner). Skip the steps that install them and
+          install `r-packages` with pak. See the composite's input.
+        type: boolean
+        default: false
       julia-version:
         description: Julia version to install. Only used when setup-julia is true.
         type: string
@@ -270,6 +277,7 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
           julia-version: ${{ inputs.julia-version }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
