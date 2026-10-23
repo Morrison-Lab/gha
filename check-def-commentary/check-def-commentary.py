@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 r"""
 Flag commentary written inside a ``#def-`` div.
 

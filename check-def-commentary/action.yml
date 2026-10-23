@@ -4,9 +4,8 @@ description: >-
   sentence opening "It is not", "This is not", "Note that", "Unlike", "Do not
   confuse" and similar phrases. A definition div holds the definition, its
   notation and its display equation only; commentary goes in a `#rem-` div
-  right after it (Ezra, 2026-10-23, sds#444 review). Scoped to lines a diff
-  adds. Blocking by default. Escape hatch: `<!-- check-def-commentary: allow -->`
-  on the line.
+  right after it. Scoped to lines a diff adds. Blocking by default. Escape
+  hatch: `<!-- check-def-commentary: allow -->` on the line.
 inputs:
   python-version:
     description: Python version to set up.
