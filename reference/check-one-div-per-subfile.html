@@ -955,12 +955,6 @@ cookieconsent.run({
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 26%">
-<col style="width: 13%">
-<col style="width: 39%">
-<col style="width: 20%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -1000,6 +994,12 @@ cookieconsent.run({
 <td><code>'3.x'</code></td>
 <td>Python version to set up.</td>
 </tr>
+<tr class="even">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -1030,7 +1030,8 @@ cookieconsent.run({
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*_subfiles/*.qmd'              # pathspecs to check (recursive)</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block instead of warn (defaults to false)</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   whole-tree: true                       # scan every subfile, not just a PR's additions</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   whole-tree: true                       # scan every subfile, not just a PR's additions</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-one-div-per-subfile.yml"><code>examples/check-one-div-per-subfile.yml</code></a> for the full caller stub.</p>
 
 

@@ -915,12 +915,6 @@ cookieconsent.run({
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 16%">
-<col style="width: 23%">
-<col style="width: 26%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -959,6 +953,12 @@ cookieconsent.run({
 <td>string</td>
 <td><code>'3.x'</code></td>
 <td>Python version to set up.</td>
+</tr>
+<tr class="even">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</td>
 </tr>
 </tbody>
 </table>
