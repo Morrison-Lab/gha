@@ -68,6 +68,7 @@ Every run prints how many lines, subfiles and divs it examined.
 | `fail`         | boolean | `false`               | Fail the workflow when a subfile holds more than one top-level div. The default gives warning annotations only. |
 | `whole-tree`   | boolean | `false`               | Scan every tracked subfile in full instead of only a PR's added lines. |
 | `python-version` | string | `'3.x'`              | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -98,6 +99,7 @@ jobs:
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
     #   fail: true                             # block instead of warn (defaults to false)
     #   whole-tree: true                       # scan every subfile, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See

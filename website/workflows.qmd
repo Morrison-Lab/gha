@@ -90,6 +90,15 @@ input tables and a copy-paste example.
 | [`bump-dev-version.yml`](reference/bump-dev-version.qmd)                  | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in                                                                                                        | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run`                                                                                                             |
 | [`version-check.yml`](reference/version-check.qmd)                        | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's                                                                                                                                                            | `description-path`, `no-version-increment-label`, `bump-branch`                                                                                                                     |
 
+**Choosing the runner.**
+Every `check-*` and `lint-*` workflow that takes no secrets
+accepts a `runs-on` input (default `ubuntu-latest`),
+so a private repository can run it on a self-hosted runner
+while GitHub-hosted minutes are unavailable.
+Never point a public repository at a self-hosted runner,
+because a pull request from a fork can run arbitrary code on it
+([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).
+
 ## Versioning {#versioning}
 
 `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`

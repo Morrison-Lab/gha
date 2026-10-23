@@ -58,6 +58,7 @@ so run the check on pull requests to see a branch's merges before they are squas
 | `min-length`     | string  | `'20'`         | Minimum length, in characters after whitespace normalisation, for an added line to be checked; inclusive. Shorter lines (fences, list markers, closing `:::`) recur everywhere and are skipped. |
 | `similarity`     | string  | `'0.6'`        | Word-level similarity, 0 to 1, at or above which a line in the merge's copy of the same file that is new in the merge counts as a rewording of a missing line. `'1'` reports every line whose exact text is gone. |
 | `fail`           | boolean | `false`        | Fail the workflow when a merge dropped content; otherwise warn only. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -90,6 +91,7 @@ jobs:
     #   min-length: 30                        # skip lines shorter than this
     #   similarity: 1                         # report reworded lines too
     #   fail: true                            # block instead of warn
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See

@@ -51,6 +51,7 @@ Set `clause-breaks: false` to check sentences only.
 | `fail`           | boolean | `true`  | Fail the workflow when a violation is found; otherwise non-blocking.                    |
 | `clause-breaks`  | boolean | `true`  | Also flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set `false` to check sentences only. |
 | `clause-min-length` | string | `'80'` | Minimum line length before `clause-breaks` applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when `clause-breaks` is `false`. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -84,6 +85,7 @@ jobs:
     #   clause-breaks: false                   # sentences only; skip the
     #                                          # semicolon clause check (on by default)
     #   clause-min-length: 100                 # raise the clause check's length gate
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See

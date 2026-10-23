@@ -52,6 +52,7 @@ existed is treated as pre-existing drift, same as an untouched file.
 | `paths-ignore` | string | `''` | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
 | `base-ref` | string | `''` | Git ref/SHA to diff against. Only added lines, plus filename typos on paths the three-dot diff added or renamed. Empty uses `HEAD^1`, the base tip GitHub built the merge ref on, on `pull_request` runs and skips on push. Pass `all` to scan the whole tracked tree. |
 | `fail` | boolean | `true` | Fail the workflow when a typo is found; otherwise non-blocking. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -88,6 +89,7 @@ jobs:
     #   config: '_typos.toml'                  # explicit config; empty auto-discovers
     #   fail: false                            # warn-only instead of blocking (defaults to true)
     #   base-ref: all                          # whole-tree scan instead of the PR diff
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See `check-typos.yml` in

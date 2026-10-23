@@ -41,6 +41,7 @@ Must be triggered by `pull_request` (the changed-line set comes from the PR).
 | `extra-packages`     | string  | `''`    | Extra R packages to install (space- or comma-separated; passed to `setup-r-dependencies`, or installed from CRAN under `use-renv: true`). `gh` and `lintr` are always installed. |
 | `install-package`    | boolean | `true`  | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Set `false` for a repo that is not an installable R package. |
 | `fail`               | boolean | `true`  | Fail the workflow when a lint is found on a changed line (rather than warn only).                                                                                 |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -69,6 +70,7 @@ jobs:
     #   extra-packages: ''      # extra R deps (gh + lintr always installed)
     #   install-package: false  # skip R CMD INSTALL for a non-package repo
     #   fail: false             # warn instead of failing on lints
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

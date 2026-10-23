@@ -125,6 +125,15 @@ not reference `@main` from consumers.
 | `bump-dev-version.yml` | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in -- so PRs never need to touch `Version:` themselves | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run`, `pr-labels` |
 | `version-check.yml` | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's -- pairs with `bump-dev-version.yml` | `description-path`, `no-version-increment-label`, `bump-branch` |
 
+**Choosing the runner.**
+Every `check-*` and `lint-*` workflow that takes no secrets
+accepts a `runs-on` input (default `ubuntu-latest`),
+so a private repository can run it on a self-hosted runner
+while GitHub-hosted minutes are unavailable.
+Never point a public repository at a self-hosted runner,
+because a pull request from a fork can run arbitrary code on it
+([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).
+
 ## Permissions
 
 A called reusable workflow cannot hold more `GITHUB_TOKEN` permissions than the

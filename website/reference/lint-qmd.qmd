@@ -20,6 +20,7 @@ rule for them.
 | `paths-ignore` | string | `''` | Comma/newline-separated glob patterns (relative paths) to skip. Supports `*`, `?`, and recursive `**`. |
 | `fail` | boolean | `true` | Fail the workflow when markdownlint reports an error. |
 | `max-line-length` | string | `'80'` | Maximum prose line length (MD013). Applied on top of the resolved config. Set `0` to disable the line-length check. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -50,6 +51,7 @@ jobs:
     #   paths-ignore: 'docs/'               # skip generated output directories
     #   fail: false                         # warn instead of failing on errors
     #   max-line-length: '100'              # override the default 80-char ceiling
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

@@ -21,6 +21,7 @@ are worth running.
 | `python-version`       | string  | `'3.x'`                                                               | Python version to set up (for installing zizmor via pip).                                                         |
 | `pedantic`             | boolean | `false`                                                               | Run zizmor with `--pedantic` (also emit code-smell findings, not just security issues).                           |
 | `fail`                 | boolean | `true`                                                                | Fail the workflow when either tool reports a finding.                                                             |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Outputs
 
@@ -70,6 +71,7 @@ jobs:
     #   fail: false                     # warn instead of failing on findings --
     #                                   # useful while working through a
     #                                   # pre-existing backlog
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

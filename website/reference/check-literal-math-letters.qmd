@@ -121,6 +121,7 @@ so an allow-list for indices would remove little of the volume.
 | `mode` | string | `'all'` | `all` flags every standalone letter. `known` flags only a letter or Greek command that has a semantic macro (`y`, `Y`, `x`, `X`, `n`, `L`, `e`, `\theta`, `\beta`, `\varepsilon`, `\mu`), so index letters pass. |
 | `deprecated-files` | string | `''` | Space-separated interpretation files (for example `latex-macros/interpretations.tsv`). A row saying `deprecated, use \x` marks that macro deprecated, and a use on an added line is flagged. |
 | `submodules` | string | `'false'` | Passed to `actions/checkout`, so a macros submodule is available for `deprecated-files`. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -152,6 +153,7 @@ jobs:
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
     #   fail: true                             # block instead of warn (defaults to false)
     #   whole-tree: true                       # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See

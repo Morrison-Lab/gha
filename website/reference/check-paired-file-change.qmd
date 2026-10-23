@@ -41,6 +41,7 @@ An empty `skip-label` never matches.
 | `required-paths` | string | required | Comma- or newline-separated git pathspecs. At least one changed file must match one of them whenever a changed file matches `trigger-paths`. |
 | `skip-label` | string | `'no-notation-change'` | PR label that waives the pairing, matched case-insensitively. Set to an empty string to disable the escape hatch. |
 | `message` | string | see the workflow | Text shown in the failure annotation, saying what to update. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 An empty `trigger-paths` or `required-paths` is an error, not a pass.
 
@@ -65,6 +66,7 @@ jobs:
       required-paths: 'notation-choices.qmd'
       # skip-label: 'no-notation-change'
       # message: 'Update notation-choices.qmd to match the macro change.'
+      # runs-on: private-runner  # self-hosted runner label (private repositories only)
 ```
 
 See `check-paired-file-change.yml` in

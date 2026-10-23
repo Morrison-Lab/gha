@@ -66,6 +66,7 @@ this check does not install.
 | `check-random-order` | boolean | `true` | Run testthat with `shuffle = TRUE` and a logged seed. |
 | `check-readme` | boolean | `true` | Render `README.Rmd` with warnings as errors. |
 | `check-readme-freshness` | boolean | `true` | When the README job runs, fail if `README.md` is modified or untracked after the render. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
 exist at that tag.
@@ -98,6 +99,7 @@ jobs:
     #   check-random-order: true
     #   check-readme: true
     #   check-readme-freshness: true
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See `check-extra.yml` in

@@ -15,6 +15,7 @@ auto-filed issue when links break on `main`.
 | `create-issue-on-main` | boolean | `true`                    | File an issue when links break on the `main` branch.                                  |
 | `skip-label`           | string  | `'links checked by hand'` | PR label that skips the link check.                                                   |
 | `fail-on-any-5xx`      | boolean | `false`                   | Fail on every 5xx server error, not only on one on a line the PR adds.                |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 A 404, a network error, or a timeout fails the check wherever the link is.
 A 5xx server error is usually a host that is briefly down rather than a dead link,
@@ -67,6 +68,7 @@ jobs:
     #   create-issue-on-main: true
     #   skip-label: 'links checked by hand'
     #   fail-on-any-5xx: true            # fail on every 5xx, not only on PR-added lines (@v3)
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See
