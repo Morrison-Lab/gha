@@ -1,0 +1,41 @@
+name: Check definition title synonyms
+description: >-
+  Diff-scoped check that flags the title of a `#def-` div that lists synonyms
+  with parentheses or "also called" instead of a comma list with the primary
+  term first, when the diff adds the title line (Ezra, 2026-10-23;
+  Morrison-Lab/psw#338). Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only added lines are checked. Needs the base
+      commit in history (fetch-depth: 0). Without it the check is skipped.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked matching file in full; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  fail:
+    description: Fail the action on a finding (else warnings only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check definition title synonyms
+      shell: bash
+      env:
+        DTS_BASE_REF: ${{ inputs.base-ref }}
+        DTS_WHOLE_TREE: ${{ inputs.whole-tree }}
+        DTS_GLOBS: ${{ inputs.globs }}
+        DTS_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-def-title-synonyms.py"
