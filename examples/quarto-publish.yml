@@ -58,6 +58,7 @@ jobs:
     #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)
     #   render-profile: website # Quarto --profile to render with
     #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
+    #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)
     #   freeze-cache: true      # cache Quarto _freeze across runs
     #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
     #   fail-on-render-warning: true # fail if Quarto emits WARN in render log
