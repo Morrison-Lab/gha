@@ -1855,6 +1855,78 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-note-sheet || true
           rm -rf _ci-note-sheet
+  # check-multipart-exercises is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-multipart-exercises@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  multipart-exercises:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-multipart-exercises unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-multipart-exercises/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-multipart-exercises
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no exercises, so stage one with two parts and assert
+      # that the blocking default really fails.
+      - name: Stage a two-part exercise
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-multipart
+          printf '%s\n' '::: {#exr-a}' 'Ask.' '' '(a) One.' '(b) Two.' ':::' > _ci-multipart/page.qmd
+          git add -f _ci-multipart/page.qmd
+      - name: Check the staged exercise, expecting a failure
+        id: multipart-expected-failure
+        continue-on-error: true
+        uses: ./check-multipart-exercises
+        with:
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.multipart-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-multipart-exercises to fail on a staged two-part exercise, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with fail off, expecting a pass
+        uses: ./check-multipart-exercises
+        with:
+          whole-tree: 'true'
+          fail: 'false'
+      - name: Check again with the exercise exempted through paths-ignore
+        uses: ./check-multipart-exercises
+        with:
+          whole-tree: 'true'
+          paths-ignore: '_ci-multipart'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-multipart-exercises
+        with:
+          base-ref: ''
+      - name: Remove the staged exercise
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-multipart || true
+          rm -rf _ci-multipart
   # check-definite-antecedents is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-definite-antecedents@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
