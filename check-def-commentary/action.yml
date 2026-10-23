@@ -1,0 +1,56 @@
+name: Check definition divs for commentary
+description: >-
+  Diff-scoped check that flags commentary written inside a `#def-` div: a
+  sentence opening "It is not", "This is not", "Note that", "Unlike", "Do not
+  confuse" and similar phrases. A definition div holds the definition, its
+  notation and its display equation only; commentary goes in a `#rem-` div
+  right after it (Ezra, 2026-10-23, sds#444 review). Scoped to lines a diff
+  adds. Blocking by default. Escape hatch: `<!-- check-def-commentary: allow -->`
+  on the line.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Needs the base commit in history (checkout with fetch-depth: 0); when
+      the diff can't be computed the check is skipped with a warning rather
+      than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when commentary is found in a definition div (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check definition divs for commentary
+      shell: bash
+      env:
+        DCM_BASE_REF: ${{ inputs.base-ref }}
+        DCM_WHOLE_TREE: ${{ inputs.whole-tree }}
+        DCM_GLOBS: ${{ inputs.globs }}
+        DCM_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        DCM_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-def-commentary.py"
