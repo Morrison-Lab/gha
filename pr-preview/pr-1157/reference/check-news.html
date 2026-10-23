@@ -624,6 +624,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-note-sheet-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-note-sheet-rows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-definite-antecedents.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-definite-antecedents.yml</span></a>
   </div>
@@ -943,12 +949,6 @@ cookieconsent.run({
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -969,6 +969,12 @@ cookieconsent.run({
 <td>string</td>
 <td><code>'no-changelog'</code></td>
 <td>PR label that skips this workflow’s own changelog check. Set to an empty string to disable this workflow’s escape hatch. The wrapped <code>UCD-SERG/changelog-check-action</code> separately, unconditionally recognizes its own hardcoded <code>no changelog</code> (space) label - not controlled by this input.</td>
+</tr>
+<tr class="odd">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</td>
 </tr>
 </tbody>
 </table>
@@ -993,7 +999,8 @@ cookieconsent.run({
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-news.yml@v2</span></span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changelog: NEWS.md</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   no-changelog-label: no-changelog</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   no-changelog-label: no-changelog</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-news.yml"><code>examples/check-news.yml</code></a> for the full caller stub.</p>
 
 

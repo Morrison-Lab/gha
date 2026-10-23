@@ -37,7 +37,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../reference/check-paired-file-change.html" rel="next">
-<link href="../reference/check-multipart-exercises.html" rel="prev">
+<link href="../reference/check-note-sheet-rows.html" rel="prev">
 <script src="../site_libs/cookie-consent/cookie-consent.js"></script>
 <link href="../site_libs/cookie-consent/cookie-consent.css" rel="stylesheet">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
@@ -589,6 +589,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-note-sheet-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-note-sheet-rows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-definite-antecedents.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-definite-antecedents.yml</span></a>
   </div>
@@ -921,12 +927,6 @@ cookieconsent.run({
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 16%">
-<col style="width: 23%">
-<col style="width: 26%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -965,6 +965,12 @@ cookieconsent.run({
 <td>string</td>
 <td><code>'3.x'</code></td>
 <td>Python version to set up.</td>
+</tr>
+<tr class="even">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</td>
 </tr>
 </tbody>
 </table>
@@ -1396,8 +1402,8 @@ cookieconsent.run({
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/check-multipart-exercises.html" class="pagination-link" aria-label="check-multipart-exercises.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-multipart-exercises.yml</span>
+      <a href="../reference/check-note-sheet-rows.html" class="pagination-link" aria-label="check-note-sheet-rows.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-note-sheet-rows.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
