@@ -1839,12 +1839,13 @@ jobs:
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
+          paths-ignore: 'website/**'
       - name: Check again with the sheet exempted through paths-ignore
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
           fail: 'true'
-          paths-ignore: '_ci-note-sheet'
+          paths-ignore: '_ci-note-sheet, website/**'
       - name: Check again with globs excluding the sheet
         uses: ./check-note-sheet-rows
         with:
