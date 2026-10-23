@@ -121,6 +121,7 @@ jobs:
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   tinytex: false                     # install TinyTeX unconditionally (default: label-gated)
     #   setup-julia: true                  # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)
+    #   preinstalled-toolchain: true       # self-hosted runner with R, Quarto, TinyTeX, Julia installed
     #   julia-version: '1'
     #   submodules: recursive
     #   render-profile: website
