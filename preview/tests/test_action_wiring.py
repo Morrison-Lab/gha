@@ -349,3 +349,15 @@ def test_r_package_cache_is_saved_even_when_the_job_fails(steps):
     # Saving only on success meant a build cancelled at its time limit never
     # cached its packages (gha#1174).
     assert step_named(steps, INSTALL_STEP)["with"]["cache"] == "always"
+
+
+def test_the_binary_step_makes_posit_the_only_repository_and_guards_on_rspm(steps):
+    step = step_named(steps, BINARY_STEP)
+    assert 'options(repos = c(CRAN = Sys.getenv("RSPM")))' in step["run"]
+    assert 'if [ -z "${RSPM:-}" ]' in step["run"]
+    assert ">> \"$HOME/.Rprofile\"" in step["run"]
+    install = step_named(steps, INSTALL_STEP)
+    assert "runner.os == 'Linux'" in step["if"]
+    # Same gating as the install it prepares, so a renv or no-package caller is untouched.
+    for clause in ("inputs.use-renv != 'true'", "inputs.r-packages != ''"):
+        assert clause in step["if"] and clause in install["if"]
