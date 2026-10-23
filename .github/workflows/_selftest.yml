@@ -6642,3 +6642,17 @@ jobs:
           printf '%s\n' "$out"
           test "$status" -eq 1
           grep -q '^cycle: fx/page#lem-one <-> fx/page#lem-two$' <<< "$out"
+
+  # Offline tests for scripts/seed-runner-python-toolcache.sh (gha#1205).
+  seed-runner-python-toolcache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run seed-runner-python-toolcache tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-seed-runner-python-toolcache-tests.sh
