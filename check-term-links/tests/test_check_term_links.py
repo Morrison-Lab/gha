@@ -266,8 +266,11 @@ def test_cli_paths_ignore(repo):
 
 def test_cli_moved_line_is_not_new(repo):
     # Splitting a file moves lines; a first use the base already carried is not reflagged.
-    git(repo, "mv", "old.qmd", "moved.qmd")
-    git(repo, "commit", "-q", "-am", "move")
+    text = (repo / "old.qmd").read_text()
+    (repo / "moved.qmd").write_text(text)
+    (repo / "old.qmd").write_text("Nothing left here.\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "move")
     res = run_cli(repo, BASE_REF="main", FAIL="true")
     assert "moved.qmd" not in res.stdout and "new.qmd:3" in res.stdout
 
