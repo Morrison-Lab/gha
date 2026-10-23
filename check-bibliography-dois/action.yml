@@ -14,15 +14,33 @@ inputs:
     description: >-
       Space/comma-separated BibTeX keys to skip (e.g. older books without DOIs).
     default: ''
+  preinstalled-toolchain:
+    description: >-
+      The runner already provides R (with the pak package) and has no sudo,
+      as a self-hosted runner does. When 'true', skip setup-r and
+      setup-r-dependencies, and install the check's R packages with pak into
+      the runner's user library.
+    default: 'false'
 runs:
   using: composite
   steps:
     - name: Set up R
+      if: inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         use-public-rspm: true
 
+    - name: Install R packages (preinstalled R)
+      if: inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      env:
+        GITHUB_PAT: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        Rscript -e 'pak::pkg_install(c("bib2df", "httr", "jsonlite", "stringr"))'
+
     - name: Set up R dependencies
+      if: inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
