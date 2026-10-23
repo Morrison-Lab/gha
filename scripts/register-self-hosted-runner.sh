@@ -26,6 +26,8 @@
 # RUNNER_INSTANCES=<n> (default 1) sets up n runners, so n jobs run at once on
 # the host. Instance 1 uses RUNNER_DIR and RUNNER_NAME as above; instance k > 1
 # uses "<RUNNER_DIR>-k" and "<RUNNER_NAME>-k", with the same labels and group.
+# The default RUNNER_DIR is "~/actions-runner-private-<host>"; an existing runner
+# in the old default, "~/actions-runner-private", with this host's name is kept.
 # Each is a separate runner, with its own directory, work folder and process.
 # Raising n later adds the new instances and leaves the existing ones alone.
 #
@@ -36,8 +38,15 @@
 set -euo pipefail
 
 ORG="${ORG:?set ORG to the organization name}"
-RUNNER_DIR="$(realpath -m "${RUNNER_DIR:-$HOME/actions-runner-private}")"
 RUNNER_NAME="${RUNNER_NAME:-private-$(hostname -s)}"
+# The default directory carries the host name, so two hosts that share a home
+# directory (NFS) do not share a runner. A runner an earlier version of this
+# script configured in the old default directory keeps working there.
+if [ -z "${RUNNER_DIR:-}" ] && [ -f "$HOME/actions-runner-private/.runner" ] &&
+  [ "$(jq -r .agentName "$HOME/actions-runner-private/.runner")" = "$RUNNER_NAME" ]; then
+  RUNNER_DIR="$HOME/actions-runner-private"
+fi
+RUNNER_DIR="$(realpath -m "${RUNNER_DIR:-$HOME/actions-runner-private-$(hostname -s)}")"
 RUNNER_LABELS="${RUNNER_LABELS:-private-runner,$(hostname -s)}"
 RUNNER_GROUP="${RUNNER_GROUP:-private-runners}"
 
