@@ -25,6 +25,14 @@ inputs:
 runs:
   using: composite
   steps:
+    # r-lib/actions/setup-r installs `devscripts` with its recommended packages,
+    # about 150 extra Perl packages. On a slow Ubuntu mirror that took 18 minutes
+    # and hit the job's 20-minute limit (gha#1197). Nothing here needs them.
+    - name: Skip recommended apt packages
+      if: runner.os == 'Linux'
+      shell: bash
+      run: echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99-no-install-recommends
+
     - name: Set up R
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
