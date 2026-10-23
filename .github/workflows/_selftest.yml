@@ -6639,3 +6639,78 @@ jobs:
           printf '%s\n' "$out"
           test "$status" -eq 1
           grep -q '^cycle: fx/page#lem-one <-> fx/page#lem-two$' <<< "$out"
+
+  # check-pr-size is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-pr-size@v3` does not resolve until the tag
+  # slides past the merge. Exercise the local composite directly.
+  pr-size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-pr-size unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-pr-size/tests/ -v
+      # This PR is itself a new check plus its docs, so measure a throwaway
+      # commit of 12 small files instead of the PR: the cap must fail it.
+      - name: Commit a 12-file sweep on a scratch branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git switch -q -c ci-pr-size-sweep
+          mkdir -p _ci-pr-size
+          for i in $(seq 1 12); do echo "line $i" > "_ci-pr-size/f$i.txt"; done
+          git add -f _ci-pr-size
+          git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "sweep fixture" # phi-allow
+      - name: Check the sweep, expecting a failure
+        id: pr-size-expected-failure
+        continue-on-error: true
+        uses: ./check-pr-size
+        with:
+          base-ref: HEAD^1
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.pr-size-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-pr-size to fail on a 12-file sweep, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with the exemption label, expecting a pass
+        uses: ./check-pr-size
+        with:
+          base-ref: HEAD^1
+          exempt: 'true'
+      - name: Check again with a raised cap, expecting a pass
+        uses: ./check-pr-size
+        with:
+          base-ref: HEAD^1
+          max-files: '12'
+      - name: Check again with the sweep exempted through paths-ignore
+        uses: ./check-pr-size
+        with:
+          base-ref: HEAD^1
+          paths-ignore: '_ci-pr-size/**'
+      - name: Check again with fail off, expecting a pass
+        uses: ./check-pr-size
+        with:
+          base-ref: HEAD^1
+          fail: 'false'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-pr-size
+        with:
+          base-ref: ''
