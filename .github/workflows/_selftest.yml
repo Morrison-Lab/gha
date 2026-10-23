@@ -1780,6 +1780,108 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-one-div || true
           rm -rf _ci-one-div
+  # check-exm-figures is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-exm-figures@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the figure rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  exm-figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-exm-figures unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-exm-figures/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-exm-figures
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no example divs, so stage one with no figure and assert
+      # that the blocking call really fails.
+      - name: Stage an example div with no figure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-exm
+          printf '%s\n' '::: {#exm-a}' 'Compute the mean.' ':::' > _ci-exm/page.qmd
+          git add -f _ci-exm/page.qmd
+      - name: Check the staged example, expecting a failure
+        id: exm-expected-failure
+        continue-on-error: true
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.exm-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-exm-figures to fail on a staged example, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is warn-only, so the same finding must pass.
+      - name: Check the staged example with the default fail
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: exm-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-exm-figures
+        with:
+          base-ref: HEAD
+          fail: 'true'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.exm-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged example, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-exm-figures
+        with:
+          base-ref: ''
+          fail: 'true'
+      # Each of these must pass over the same staged subfile, so each proves
+      # its input reached the script.
+      - name: Check again with the example exempted through paths-ignore
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-exm'
+      - name: Check again with globs excluding the example
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged example
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-exm || true
+          rm -rf _ci-exm
   # check-note-sheet-rows is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-note-sheet-rows@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly.
