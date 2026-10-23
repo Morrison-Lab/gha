@@ -6686,3 +6686,17 @@ jobs:
       - name: Run seed-runner-python-toolcache tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-seed-runner-python-toolcache-tests.sh
+
+  # Offline tests for scripts/register-self-hosted-runner.sh (gha#1212).
+  register-self-hosted-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run register-self-hosted-runner tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-register-self-hosted-runner-tests.sh

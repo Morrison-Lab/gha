@@ -31,8 +31,13 @@
 # Each is a separate runner, with its own directory, work folder and process.
 # Raising n later adds the new instances and leaves the existing ones alone.
 #
+# RUNNER_WORK_DIRECTORY (default /var/tmp/gha-work/<runner name>) is the local
+# folder the runner checks out into; see the comment where it is set.
+#
 # The runner process is started with nohup and does not survive a reboot:
-# run this script again after one.
+# run this script again after one, or run it once with INSTALL_REBOOT_CRON=1 to
+# add an @reboot crontab line that does so (one line, replaced on a rerun).
+# DRY_RUN_CONFIG=1 prints the names and directories a run would use and exits.
 # If a runner with the same name is already registered, configuration fails:
 # remove the old one in the organization's runner settings first.
 set -euo pipefail
@@ -49,6 +54,29 @@ fi
 RUNNER_DIR="$(realpath -m "${RUNNER_DIR:-$HOME/actions-runner-private-$(hostname -s)}")"
 RUNNER_LABELS="${RUNNER_LABELS:-private-runner,$(hostname -s)}"
 RUNNER_GROUP="${RUNNER_GROUP:-private-runners}"
+# The work folder (checkouts, renders) is on local disk, not in RUNNER_DIR:
+# RUNNER_DIR is on the NFS home, where a shallow clone took 10 s against 0.6 s
+# locally and creating 5000 files 8 s against 0.1 s (cf463-02, 2026-10-23).
+# /var/tmp, not /tmp, because /tmp is cleared at boot. It takes effect when a
+# runner is configured; an already-configured runner keeps its work folder.
+RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY:-/var/tmp/gha-work/$RUNNER_NAME}"
+
+# With INSTALL_REBOOT_CRON=1, put one @reboot line in the user's crontab that
+# runs this script again with the same ORG and RUNNER_INSTANCES, so the
+# runners come back after a reboot (an already-configured runner is only
+# started). The line is tagged, so running this again replaces it instead of
+# adding a second. Other crontab lines are left alone.
+install_reboot_cron() {
+  [ "${INSTALL_REBOOT_CRON:-}" = 1 ] || return 0
+  local tag="# gha-self-hosted-runners ${ORG}"
+  local script line current
+  script=$(realpath "${BASH_SOURCE[0]}")
+  line="@reboot ORG=${ORG} RUNNER_INSTANCES=${RUNNER_INSTANCES} bash ${script} ${tag}"
+  # `crontab -l` fails when there is no crontab yet; that is an empty one.
+  current=$(crontab -l 2> /dev/null || true)
+  { grep -vF "$tag" <<< "$current" || true; echo "$line"; } | crontab -
+  echo "Installed the @reboot crontab line (${tag})."
+}
 
 RUNNER_INSTANCES="${RUNNER_INSTANCES:-1}"
 case "$RUNNER_INSTANCES" in
@@ -58,11 +86,22 @@ if [ "$RUNNER_INSTANCES" -gt 1 ]; then
   # Run this script once per instance, so each keeps the single-runner flow.
   for ((k = 1; k <= RUNNER_INSTANCES; k++)); do
     if [ "$k" -eq 1 ]; then
-      RUNNER_INSTANCES=1 bash "${BASH_SOURCE[0]}"
+      INSTALL_REBOOT_CRON=0 RUNNER_INSTANCES=1 bash "${BASH_SOURCE[0]}"
     else
-      RUNNER_INSTANCES=1 RUNNER_DIR="${RUNNER_DIR}-${k}" RUNNER_NAME="${RUNNER_NAME}-${k}" bash "${BASH_SOURCE[0]}"
+      INSTALL_REBOOT_CRON=0 RUNNER_INSTANCES=1 RUNNER_DIR="${RUNNER_DIR}-${k}" \
+        RUNNER_NAME="${RUNNER_NAME}-${k}" \
+        RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY}-${k}" bash "${BASH_SOURCE[0]}"
     fi
   done
+  install_reboot_cron
+  exit 0
+fi
+
+# DRY_RUN_CONFIG=1 prints what this run would use and touches nothing else
+# (with INSTALL_REBOOT_CRON=1 it still writes the crontab line).
+if [ "${DRY_RUN_CONFIG:-}" = 1 ]; then
+  echo "runner name=${RUNNER_NAME} dir=${RUNNER_DIR} work=${RUNNER_WORK_DIRECTORY}"
+  install_reboot_cron
   exit 0
 fi
 
@@ -114,6 +153,7 @@ if [ -f "$RUNNER_DIR/.runner" ]; then
   fi
   refuse_unless_private "$group"
   start_runner
+  install_reboot_cron
   exit 0
 fi
 
@@ -166,7 +206,9 @@ ACTIONS_RUNNER_INPUT_TOKEN="$token" ./config.sh --unattended \
   --url "https://github.com/${ORG}" \
   --name "$RUNNER_NAME" \
   --labels "$RUNNER_LABELS" \
-  --runnergroup "$RUNNER_GROUP"
+  --runnergroup "$RUNNER_GROUP" \
+  --work "$RUNNER_WORK_DIRECTORY"
 unset token
 
 start_runner
+install_reboot_cron
