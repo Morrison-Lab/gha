@@ -11,9 +11,10 @@ This implements
 
 A title is the first heading line inside a `#def-` div, or its `title=` attribute.
 The check reports a title on a line the pull request adds
-when it holds a parenthesis, "also called", "also known as", "a.k.a.", "aka" or "or simply".
+when it holds a parenthesis, "also called", "also known as",
+"a.k.a.", "aka" or "or simply".
 Math (`$...$`) and a parenthetical that contains math are ignored,
-so "Almost everywhere ($f = g$ a.e.)" passes.
+so "Almost everywhere ($\measure$-a.e.)" passes.
 
 An untouched title is never reflagged.
 With no base ref the check skips instead of scanning the whole tree;
