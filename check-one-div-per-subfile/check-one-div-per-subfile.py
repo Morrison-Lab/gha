@@ -4,14 +4,15 @@ r"""
 Flag a subfile that holds more than one top-level div.
 
 The lab's rule (Ezra, 2026-10-18; Morrison-Lab/gha#1092): new and revised
-content gets one div per subfile, a solution in its own ``_sol`` file
-included. A subfile that is not otherwise touched keeps its present layout.
+content gets one div per subfile. One exception (Ezra, 2026-10-23): a proof
+may share a file with its claim, and a solution with its exercise. A subfile
+that is not otherwise touched keeps its present layout.
 
 What is flagged: a subfile, that is, a ``.qmd`` file whose name starts with
 ``_`` and which sits under a ``_subfiles`` directory, that has more than one
 top-level fenced div, when the diff adds at least one line to it. A touched
-subfile counts as revised, so a one-line fix to a file that still holds an
-exercise and its solution is reported too. The finding sits on the opening
+subfile counts as revised, so a one-line fix to a file that still holds two
+claims is reported too. The finding sits on the opening
 line of the second top-level div.
 
 What is not counted:
@@ -19,6 +20,9 @@ What is not counted:
 - a div nested inside another div (only top-level divs count);
 - a top-level div whose id starts with ``rem-source-`` (a source remark that
   belongs right after the item it credits);
+- a top-level proof or solution div (class ``proof``, ``sol`` or
+  ``solution``, or an id starting ``prf-`` or ``sol-``), which stays with the
+  claim or exercise it belongs to;
 - fences inside code blocks (a backtick opener whose info string holds a
   backtick is not a fence; any indentation is accepted, for fences inside
   list items);
@@ -79,8 +83,8 @@ _DEFAULT_FAIL = False
 
 ADVICE = (
     "give each div its own subfile named _<stem>_<type>.qmd "
-    "(_def, _exr, _sol, _thm, _exm, _fig, _rem) and include each from the "
-    "chapter"
+    "(_def, _exr, _thm, _exm, _fig, _rem; a proof stays with its claim and "
+    "a solution with its exercise) and include each from the chapter"
 )
 
 # -- Parsing -----------------------------------------------------------------
@@ -88,6 +92,12 @@ ADVICE = (
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 SOURCE_ID_RE = re.compile(r"#rem-source-")
+# A proof stays with its claim, and a solution with its exercise (Ezra,
+# 2026-10-23): a bare class (``::: proof``), a ``.class`` or a ``#prf-``/
+# ``#sol-`` id. Matched on a whole word, so ``.proofreading`` does not count.
+ATTACHED_RE = re.compile(
+    r"(?:^|[\s{])\.?(?:proof|sol|solution)(?=[\s}.#]|$)|#(?:prf|sol)-"
+)
 
 
 class Div(NamedTuple):
@@ -161,7 +171,8 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
             continue
         attrs = dm.group(2)
         if attrs:
-            if depth == 0 and not SOURCE_ID_RE.search(attrs):
+            if (depth == 0 and not SOURCE_ID_RE.search(attrs)
+                    and not ATTACHED_RE.search(attrs)):
                 found.append(Div(idx + 1, attrs))
             depth += 1
         elif depth > 0:
