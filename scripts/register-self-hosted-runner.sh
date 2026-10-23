@@ -23,6 +23,12 @@
 # refuses to use an existing group whose visibility is `all`, or that admits
 # public repositories.
 #
+# RUNNER_INSTANCES=<n> (default 1) sets up n runners, so n jobs run at once on
+# the host. Instance 1 uses RUNNER_DIR and RUNNER_NAME as above; instance k > 1
+# uses "<RUNNER_DIR>-k" and "<RUNNER_NAME>-k", with the same labels and group.
+# Each is a separate runner, with its own directory, work folder and process.
+# Raising n later adds the new instances and leaves the existing ones alone.
+#
 # The runner process is started with nohup and does not survive a reboot:
 # run this script again after one.
 # If a runner with the same name is already registered, configuration fails:
@@ -34,6 +40,22 @@ RUNNER_DIR="$(realpath -m "${RUNNER_DIR:-$HOME/actions-runner-private}")"
 RUNNER_NAME="${RUNNER_NAME:-private-$(hostname -s)}"
 RUNNER_LABELS="${RUNNER_LABELS:-private-runner,$(hostname -s)}"
 RUNNER_GROUP="${RUNNER_GROUP:-private-runners}"
+
+RUNNER_INSTANCES="${RUNNER_INSTANCES:-1}"
+case "$RUNNER_INSTANCES" in
+  '' | *[!0-9]* | 0) echo "RUNNER_INSTANCES must be a positive integer." >&2; exit 1 ;;
+esac
+if [ "$RUNNER_INSTANCES" -gt 1 ]; then
+  # Run this script once per instance, so each keeps the single-runner flow.
+  for ((k = 1; k <= RUNNER_INSTANCES; k++)); do
+    if [ "$k" -eq 1 ]; then
+      RUNNER_INSTANCES=1 bash "${BASH_SOURCE[0]}"
+    else
+      RUNNER_INSTANCES=1 RUNNER_DIR="${RUNNER_DIR}-${k}" RUNNER_NAME="${RUNNER_NAME}-${k}" bash "${BASH_SOURCE[0]}"
+    fi
+  done
+  exit 0
+fi
 
 for tool in gh jq; do
   command -v "$tool" > /dev/null || { echo "$tool is not installed" >&2; exit 1; }
