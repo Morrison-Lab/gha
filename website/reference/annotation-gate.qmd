@@ -98,7 +98,7 @@ jobs:
       head-sha: ${{ github.event.workflow_run.head_sha }}
 ```
 
-It takes the same `levels` and `allow-patterns` inputs.
+It takes the same `levels` and `allow-patterns` inputs, plus a `runs-on` input (default `ubuntu-latest`) for a private repository that runs it on a self-hosted runner.
 Grant `checks: write`; the job posts one check run per gated run.
 
 Each gated run posts its own check run named `annotation-gate`.
