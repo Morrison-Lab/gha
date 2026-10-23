@@ -1,0 +1,39 @@
+---
+title: "check-pr-concerns.yml"
+---
+
+Diff-scoped, blocking check that fails a pull request changing both content and infrastructure.
+Content and infrastructure go in separate PRs.
+Whether a PR has exactly one concern cannot be decided mechanically,
+so this checks the part that can be: a PR with at least one content file and at least one infrastructure file has two concerns.
+This implements part of
+[gha#1188](https://github.com/Morrison-Lab/gha/issues/1188).
+
+Content paths by default are `chapters/**`, `**/_subfiles/**`, `**/*.qmd` and `**/*.Rmd`.
+Infrastructure paths by default are `.github/**`, `tools/**`, `scripts/**`, `hooks/**`, `filters/**`, `.claude/**` and `_quarto*.yml`.
+A path in both lists counts as infrastructure.
+Lockfiles, `_freeze/`, `docs/` and `changelog.d/` count as neither.
+
+Do not use it in a repository whose pages document its own infrastructure, such as gha itself:
+every PR there touches both.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `content-paths` | built-in | Globs for content (`*`, `?`, `**`); replaces the defaults |
+| `infra-paths` | built-in | Globs for infrastructure; replaces the defaults |
+| `paths-ignore` | none | Extra paths counted as neither |
+| `exempt-label` | `mixed-ok` | Label that lifts the check, read live through the API |
+| `fail` | `true` | Block instead of warn |
+
+## Scope
+
+With no base to diff against, or when the diff cannot be computed,
+the check skips with a warning instead of examining the whole tree.
+The caller stub triggers on `labeled` and `unlabeled`,
+so adding the exemption label re-runs the check.
+
+## Example
+
+See [`examples/check-pr-concerns.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-pr-concerns.yml).

@@ -6714,3 +6714,80 @@ jobs:
         uses: ./check-pr-size
         with:
           base-ref: ''
+
+  # check-pr-concerns is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-pr-concerns@v3` does not resolve until the tag
+  # slides past the merge. Exercise the local composite directly.
+  pr-concerns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-pr-concerns unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-pr-concerns/tests/ -v
+      # This PR is itself infrastructure plus docs, so examine a throwaway
+      # commit of one content file and one infrastructure file instead of the
+      # PR: the mix must fail.
+      - name: Commit a content-plus-infrastructure change on a scratch branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git switch -q -c ci-pr-concerns-mix
+          mkdir -p chapters tools
+          echo "line" > chapters/_ci-concerns.qmd
+          echo "line" > tools/_ci-concerns.sh
+          git add -f chapters/_ci-concerns.qmd tools/_ci-concerns.sh
+          git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "mix fixture"
+      - name: Check the mix, expecting a failure
+        id: pr-concerns-expected-failure
+        continue-on-error: true
+        uses: ./check-pr-concerns
+        with:
+          base-ref: HEAD^1
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.pr-concerns-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-pr-concerns to fail on a content-plus-infrastructure change, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with the exemption label, expecting a pass
+        uses: ./check-pr-concerns
+        with:
+          base-ref: HEAD^1
+          exempt: 'true'
+      - name: Check again with custom infra paths, expecting a pass
+        uses: ./check-pr-concerns
+        with:
+          base-ref: HEAD^1
+          infra-paths: 'ops/**'
+      - name: Check again with the infrastructure file ignored, expecting a pass
+        uses: ./check-pr-concerns
+        with:
+          base-ref: HEAD^1
+          paths-ignore: 'tools/_ci-concerns.sh'
+      - name: Check again with fail off, expecting a pass
+        uses: ./check-pr-concerns
+        with:
+          base-ref: HEAD^1
+          fail: 'false'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-pr-concerns
+        with:
+          base-ref: ''
