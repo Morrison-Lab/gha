@@ -19,7 +19,8 @@ inputs:
       The runner already provides R (with the pak package) and has no sudo,
       as a self-hosted runner does. When 'true', skip setup-r and
       setup-r-dependencies, and install the check's R packages with pak into
-      the runner's user library.
+      the runner's user library (the first writable entry of `.libPaths()`).
+      `install-quarto` has no effect in this mode.
     default: 'false'
 runs:
   using: composite
