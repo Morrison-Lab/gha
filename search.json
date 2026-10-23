@@ -640,7 +640,7 @@
     "href": "reference/check-bibliography-dois.html#inputs",
     "title": "check-bibliography-dois.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nno-metadata-check\nboolean\nfalse\nSkip the CrossRef metadata comparison.\n\n\nexclude-keys\nstring\n''\nSpace- or comma-separated BibTeX keys to skip.\n\n\nruns-on\nstring\n'ubuntu-latest'\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nno-metadata-check\nboolean\nfalse\nSkip the CrossRef metadata comparison.\n\n\nexclude-keys\nstring\n''\nSpace- or comma-separated BibTeX keys to skip.\n\n\npreinstalled-toolchain\nboolean\nfalse\nThe runner already provides R with pak and has no sudo, as a self-hosted runner does. Skips the R setup steps, so install-quarto has no effect.\n\n\nruns-on\nstring\n'ubuntu-latest'\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -664,7 +664,7 @@
     "href": "reference/check-bibliography-dois.html#example",
     "title": "check-bibliography-dois.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-bibliography-dois.yml in your repo.\nname: Check Bibliography DOIs\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\n    # with:\n    #   exclude-keys: vapnik1998   # BibTeX keys without DOIs to skip\n    #   install-quarto: false\n    #   no-metadata-check: false\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-bibliography-dois.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/check-bibliography-dois.yml in your repo.\nname: Check Bibliography DOIs\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\n    # with:\n    #   exclude-keys: vapnik1998   # BibTeX keys without DOIs to skip\n    #   install-quarto: false\n    #   no-metadata-check: false\n    #   preinstalled-toolchain: true           # runner has R with pak and no sudo\n    #   runs-on: private-runner               # self-hosted runner label (private repositories only)\nSee examples/check-bibliography-dois.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
