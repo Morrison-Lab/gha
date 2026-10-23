@@ -3,4 +3,4 @@
   the `d-morrison/macros` submodule), the reviewer also flags PR-diff LaTeX
   math that could be simplified using an existing macro, and nontrivial math
   expressions repeated 3+ times that are candidates for a new one. Off by
-  default (#203).
+  default (#203); later changed to on by default.
