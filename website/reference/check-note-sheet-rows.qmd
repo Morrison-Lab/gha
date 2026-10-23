@@ -1,0 +1,46 @@
+---
+title: "check-note-sheet-rows.yml"
+---
+
+Diff-scoped, warn-only check that flags a note-sheet table row
+holding more than one concept.
+The lab's rule (Ezra, 2026-10-22) is that a note sheet
+gives each concept its own row:
+one formula and one short label, with no prose.
+This implements
+[gha#1164](https://github.com/Morrison-Lab/gha/issues/1164).
+
+The check reads pipe tables (`| label | formula |`)
+in the files `globs` matches, by default `*note-sheet*.qmd`.
+It reports a row the pull request adds when:
+
+- the label holds notation,
+  unless the label is a link to the term's definition;
+- the label joins two concepts with a comma or "and";
+- one cell holds two formulas joined by a comma, a semicolon or "and".
+
+A label that ends in `, ... form`, `version` or `case`,
+such as `Sample MSE, matrix form`,
+names one concept in a second form, in a row of its own.
+It is not flagged.
+Header rows and rows inside code fences are ignored.
+
+The check is diff-scoped:
+an added line whose exact text was also deleted
+in the same diff counts as moved.
+With no base ref, or when the diff cannot be computed,
+it skips with a warning instead of scanning the whole tree,
+unless `whole-tree` asks for that.
+
+## Inputs
+
+- `globs`: space-separated git pathspecs of tracked files to check
+  (default `*note-sheet*.qmd`).
+- `paths-ignore`: comma- or newline-separated glob patterns to skip.
+- `fail`: fail the workflow on a finding
+  (default `false`, warning annotations only).
+- `whole-tree`: scan every matching file in full (default `false`).
+- `python-version`: Python version to set up (default `3.x`).
+
+The prose rule is PSW's
+"Give each concept in a note sheet its own row".

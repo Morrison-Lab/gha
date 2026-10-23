@@ -94,6 +94,10 @@ on:
         description: Restore and save Quarto _freeze directory via actions/cache keyed on renv.lock and commit SHA.
         type: boolean
         default: false
+      freeze-cache-save-on-failure:
+        description: Also save the _freeze directory when the render fails, so a re-run resumes from the pages already executed. Only used when freeze-cache is true.
+        type: boolean
+        default: false
       deno-v8-options:
         description: Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap cap for large site renders.
         type: string
@@ -202,6 +206,7 @@ jobs:
           formats: ${{ inputs.formats }}
           per-file-formats: ${{ inputs.per-file-formats }}
           freeze-cache: ${{ inputs.freeze-cache }}
+          freeze-cache-save-on-failure: ${{ inputs.freeze-cache-save-on-failure }}
           deno-v8-options: ${{ inputs.deno-v8-options }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
