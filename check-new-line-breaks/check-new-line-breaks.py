@@ -1003,8 +1003,10 @@ def main() -> int:
 
     if skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
+        # With no base-ref (a push run) the skip is expected, so it is not an annotation.
+        level = "::warning::" if base_ref else ""
         print(
-            f"::warning::Skipping the new-line-breaks check for this run "
+            f"{level}Skipping the new-line-breaks check for this run "
             f"({reason}; not falling back to a whole-tree scan, which would "
             f"reflag pre-existing long lines)."
         )

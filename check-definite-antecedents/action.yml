@@ -1,0 +1,60 @@
+name: Check definite antecedents
+description: >-
+  Diff-scoped, warn-only heuristic that flags a div (or a file with no div)
+  whose first sentence starts with The, These, Those, This or That and holds
+  no link or cross-reference: nothing earlier in the div can be the
+  antecedent of that definite phrase, so it should name or link it
+  (Ezra, 2026-10-19; psw#291). Scoped to lines a diff adds.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every subfile the corpus already carries.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a div opens with an unlinked definite phrase (else
+      non-blocking). Defaults to 'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check definite antecedents
+      shell: bash
+      env:
+        ODA_BASE_REF: ${{ inputs.base-ref }}
+        ODA_WHOLE_TREE: ${{ inputs.whole-tree }}
+        ODA_GLOBS: ${{ inputs.globs }}
+        ODA_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        ODA_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-definite-antecedents.py"

@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -411,6 +411,12 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
   `check-redundant-citations/` (Python, stdlib only, gha#1105) bundles the composite action, script, and pytest suite
   for flagging a source cited twice, with the same locator, in one div or passage;
   it takes the same diff model and is warn-only by default (`fail: false`), because the same key twice is sometimes right;
+  `check-self-credits/` (Python, stdlib only, gha#1076) bundles the composite action, script, and pytest suite
+  for flagging a formal credit to the group's own work: a citation of a bibliography entry the consumer marks as own,
+  or a credit phrase ("adapted from", a `Source:` line or div) in the same paragraph as an own site or name;
+  the consumer lists its own `urls`, `names`, `authors`, `keys` and `allow-keys` in `.github/own-works.yml`,
+  so credits to outside people never match and a link for further reading is never flagged;
+  it takes the same diff model and is warn-only by default (`fail: false`);
   `check-one-div-per-subfile/` (Python, stdlib only, gha#1092) bundles the composite action, script, and pytest suite
   for flagging a `_subfiles/_*.qmd` file that holds more than one top-level fenced div when a PR adds a line to it.
   It takes the same diff model, but a touched file is judged whole, because a div opens far above the line that changed,

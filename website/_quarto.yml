@@ -71,7 +71,9 @@ website:
           - reference/check-literal-math-letters.qmd
           - reference/check-wikipedia-further-reading.qmd
           - reference/check-redundant-citations.qmd
+          - reference/check-self-credits.qmd
           - reference/check-one-div-per-subfile.qmd
+          - reference/check-definite-antecedents.qmd
           - reference/check-paired-file-change.qmd
           - reference/check-term-links.qmd
           - reference/annotation-gate.qmd

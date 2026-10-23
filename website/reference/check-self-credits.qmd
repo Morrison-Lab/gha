@@ -1,0 +1,104 @@
+---
+title: "check-self-credits.yml"
+---
+
+Diff-scoped, warn-only check that flags a formal credit to the group's own work.
+The lab's rule (Ezra, 2026-10-16) is that a link to another of our sites is fine,
+but we do not formally acknowledge content borrowed from ourselves
+the way we acknowledge content adapted from others.
+This implements
+[gha#1076](https://github.com/Morrison-Lab/gha/issues/1076).
+
+The check flags two things on a line a pull request adds:
+
+- **A citation of an own bibliography entry.**
+  An entry is own when its `url`, `doi`, `howpublished` or `note`
+  contains one of the config's `urls`,
+  when its `author` or `editor` contains one of `authors`,
+  or when its key is in `keys`.
+  A key in `allow-keys` is never flagged:
+  the group's published paper or software,
+  cited as the original publication or as a tool used.
+  Both `[@key]` and a bare `@key` count.
+- **A credit phrase beside an own site or name.**
+  A credit phrase is "adapted from", "borrowed from", "reproduced from",
+  "reprinted from", "with permission from", "courtesy of" or "credit to",
+  a `Source:` line (also in bold, emphasis or a list item),
+  or a div titled `Source` (or classed `.source`).
+  An own site or name is any entry of `urls` or `names`.
+  The own site or name must sit in the same sentence as the credit phrase,
+  on the same `Source:` line, or anywhere inside the `Source` div.
+  A paragraph ends at a blank line, a heading or a list item.
+  Front matter, inline code and code fences are skipped.
+
+The check does not flag a link or a mention on its own
+("for further reading, see the sds notes"),
+a credit to a person outside the group, a citation of an entry that is not own,
+a line matching an `allow-patterns` regular expression,
+a cross-reference, a code fence or a chunk option.
+
+## The config file
+
+The lists of own works belong to the consumer repository,
+in a restricted YAML file of top-level lists (default `.github/own-works.yml`):
+
+```yaml
+urls:            # substrings of a URL, DOI or note that mark a bib entry as own
+  - morrison-lab.github.io
+  - ucd-serg.github.io/lab-manual
+names:           # words or phrases that name an own site or work in prose
+  - Morrison-Lab/sds
+  - UCD-SERG lab manual
+authors:         # substrings of a bib author or editor that mark an entry as own
+  - Morrison, Ezra
+keys: []         # bib keys that are own whatever their fields say
+allow-keys: []   # bib keys never flagged (published paper or software)
+allow-patterns: []   # regexes; a matching line is never flagged
+bib-globs: ['*.bib'] # git pathspecs of the bibliography files
+```
+
+With no config file the check skips with a warning.
+
+## Scope
+
+Only findings on a line a pull request adds are reported.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+Every run prints how many lines, files and paragraphs it examined,
+and how many bibliography entries are the group's own.
+
+The check warns by default,
+because a credit phrase beside an own name is sometimes right.
+
+A credit is reported on the line that names the own work
+and on the line that holds the credit phrase,
+so a PR that adds either line is checked.
+An abbreviation such as "E." or "et al." does not end a sentence.
+
+A repository link such as `github.com/Morrison-Lab/sds` is matched through
+`urls`, not `names`, so list the full URL there.
+An HTML comment is scanned like prose.
+
+## Inputs
+
+| Input          | Type    | Default                  | Description |
+| -------------- | ------- | ------------------------ | ----------- |
+| `config`       | string  | `'.github/own-works.yml'` | Path, in the calling repository, of the YAML file that lists the group's own works. |
+| `globs`        | string  | `'*.qmd *.md'`           | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`                     | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`                  | Fail the workflow when an added line credits the group's own work. The default only annotates. |
+| `whole-tree`   | boolean | `false`                  | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`                 | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+See
+[`examples/check-self-credits.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-self-credits.yml)
+for the full caller stub.

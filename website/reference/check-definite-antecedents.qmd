@@ -1,0 +1,60 @@
+---
+title: "check-definite-antecedents.yml"
+---
+
+Diff-scoped, warn-only heuristic that flags a div
+whose first sentence opens with a definite phrase and no link.
+The lab's rule (Ezra, 2026-10-19) is that a definite noun phrase
+needs a clear antecedent,
+linked to where it is introduced unless that is in the same div or passage.
+This implements the check for
+[psw#291](https://github.com/Morrison-Lab/psw/issues/291).
+
+A grammar-aware check is out of reach, so the check covers the clearest case.
+The first sentence of a div's body (or of a file with no div)
+starts with "The", "These", "Those", "This" or "That",
+and holds no Markdown link, no `@` cross-reference and no `include` shortcode.
+Nothing earlier in that div can be the antecedent,
+so the reader has none unless a link supplies one.
+The finding sits on that line.
+
+The check does not count:
+
+- code fences, HTML comments, YAML headers and headings;
+- a first sentence that defines a bolded term, that is, one where "The" is followed
+  by a term wrapped in double asterisks;
+- a first sentence with a link, a cross-reference or an `include` shortcode.
+
+A definition that starts "The covariance function must be ..."
+is reported although it may be fine,
+which is why the check never fails by default.
+
+## Scope
+
+Only a first sentence on a line a pull request adds is reported.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+Every run prints how many lines, files and divs it examined.
+
+## Inputs
+
+| Input          | Type    | Default    | Description |
+| -------------- | ------- | ---------- | ----------- |
+| `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`    | Fail the workflow when a div opens with an unlinked definite phrase. The default gives warning annotations only. |
+| `whole-tree`   | boolean | `false`    | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`   | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+See
+[`examples/check-definite-antecedents.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-definite-antecedents.yml)
+for the caller stub.

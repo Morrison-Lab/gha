@@ -75,7 +75,9 @@ not reference `@main` from consumers.
 | `check-literal-math-letters.yml` | Diff-scoped, warn-only check that flags literal Latin and Greek letters in math (a bare `y`, `\theta`) where a semantic macro from Morrison-Lab/macros belongs | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-wikipedia-further-reading.yml` | Diff-scoped, blocking check that flags a Wikipedia citation or link in a Further reading list item (Wikipedia pages are citations only) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-redundant-citations.yml` | Diff-scoped, warn-only check that flags a source cited twice, with the same locator, in one div or passage (cite a source once per div) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| `check-self-credits.yml` | Diff-scoped, warn-only check that flags a formal credit to the group's own work (a citation of an own bibliography entry, or a credit phrase beside an own site or name) | `config`, `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-one-div-per-subfile.yml` | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile, solutions in their own `_sol` file) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| `check-definite-antecedents.yml` | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-local-macros.yml` | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
 | `check-paired-file-change.yml` | Fail a PR that changes a file matching `trigger-paths` without also changing a file matching `required-paths`, unless the PR carries the skip label (read live from the API) | `trigger-paths`, `required-paths`, `skip-label`, `message` |
 | `check-term-links.yml` | Diff-scoped, blocking check that flags a defined technical term whose first use in a div or paragraph is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus's own `#def-` divs and links | `globs`, `paths-ignore`, `terms-file`, `allow-file`, `fail`, `whole-tree` |
@@ -109,7 +111,7 @@ not reference `@main` from consumers.
 | `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file`, `opencode-review-workflow-file`, `watch-timeout` |
 | `small-model-agent.yml` | Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (`wai#39`, `ai-config#1292`) | `pr-number`, `endpoint-url`, `model`, `max-iterations`, `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `run-gates`, `dry-run`, `extra-secret-names` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
-| `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `freeze-cache`, `freeze-cache-save-on-failure`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
+| `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `per-file-formats`, `freeze-cache`, `freeze-cache-save-on-failure`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
 | `report-failure.yml` | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `submodules`, `render-profile`, `output-dir`, `formats`, `skip-docx`, `extra-preview-labels`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `detect-changed-chapters`, `changed-chapters-banner`, `highlight-changes`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `max-elements-for-pairwise`, `banner-index`, `docx-tracked-changes`, `docx-tracked-changes-glob` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | `pages-base-url`, `pages-base-path` |
@@ -139,7 +141,7 @@ that need to write must have the **caller** grant it on the calling job:
 
 - <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-one-div-per-subfile`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
@@ -620,6 +622,27 @@ a local build workflow and still use `preview-deploy.yml` and
 `cleanup-pr-previews.yml` by producing the three-file `pr-preview-site` artifact
 (`site/`, `meta/pr-number.txt`, and `meta/action.txt`).
 
+## Large PDF passes (`quarto-publish` `per-file-formats`)
+
+Decision (2026-10-22, [gha#1170](https://github.com/Morrison-Lab/gha/issues/1170)):
+a format that exhausts Quarto's Deno heap is rendered one file at a time, in a fresh process per file.
+The `mds` publish ([run 39843335598](https://github.com/Morrison-Lab/mds/actions/runs/39843335598)) died at a 12 GB heap in the single-process PDF pass.
+Raising `deno-v8-options` only moves the cap on a 16 GB runner, and `formats` still runs one process over every page.
+
+A caller lists its other formats in `formats` and the large one in `per-file-formats`:
+
+```yaml
+with:
+  formats: 'html revealjs docx'
+  per-file-formats: pdf
+```
+
+Why not a per-format whole-project pass for the large format:
+without `--no-clean` it deletes the other formats' outputs.
+A single-file render inside the project adds its output and touches nothing else.
+`quarto-publish/render-per-file.py` finds the files with `quarto inspect`, skips a file that does not declare the format, and fails the run if any file fails or no file matches.
+Leaving `formats` empty renders every format in the normal pass, PDF included, so the large format is rendered twice.
+
 ## Dependency graphs (`build-dependency-graph`)
 
 `build-dependency-graph` is a composite action with no reusable workflow, like `preview/` and `open-sync-pr/`.
@@ -686,7 +709,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
@@ -828,7 +851,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-one-div-per-subfile.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
+`check-informal-definitions.yml`, `check-literal-math-letters.yml`, `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`, `check-one-div-per-subfile.yml`, `check-definite-antecedents.yml`, `check-term-links.yml`, `check-paired-file-change.yml`, `annotation-gate.yml`, `annotation-gate-run.yml`, `check-local-macros.yml`, `check-fform-paren.yml`, `check-dependency-graph.yml`, `check-write-idiom.yml`,
 `check-math-definitions.yml`,
 `check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,

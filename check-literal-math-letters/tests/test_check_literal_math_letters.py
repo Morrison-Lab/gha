@@ -340,15 +340,24 @@ def test_empty_or_unresolvable_base_ref_skips(repo, base_ref):
     assert report.findings == []
 
 
-def test_skip_prints_a_warning_and_exits_zero(repo, monkeypatch, capsys):
+def test_skip_without_base_prints_a_plain_line_and_exits_zero(repo, monkeypatch, capsys):
     (repo / "a.qmd").write_text("$y$\n")
     _commit(repo, "base")
     monkeypatch.setenv("LML_BASE_REF", "")
     monkeypatch.setenv("LML_FAIL", "true")
     assert lml.main() == 0
     out = capsys.readouterr().out
-    assert "::warning::Skipping" in out
+    assert "Skipping" in out
+    assert "::warning::" not in out
     assert "No literal letters" not in out
+
+
+def test_skip_on_unresolvable_base_prints_a_warning(repo, monkeypatch, capsys):
+    (repo / "a.qmd").write_text("$y$\n")
+    _commit(repo, "base")
+    monkeypatch.setenv("LML_BASE_REF", "no-such-ref")
+    assert lml.main() == 0
+    assert "::warning::Skipping" in capsys.readouterr().out
 
 
 def test_whole_tree_flags_existing_letters(repo):
@@ -450,3 +459,59 @@ def test_environment_end_is_an_exact_match():
 def test_variant_greek_characters_are_flagged():
     for ch in "\u03d5\u03f5\u03d1\u03c2":
         assert flagged("$" + ch + "$\n") != {}
+
+
+# -- precise mode and deprecated aliases (gha#1159) --------------------------
+
+@pytest.fixture
+def known_mode(monkeypatch):
+    monkeypatch.setattr(lml, "KNOWN_ONLY", True)
+
+
+def test_precise_mode_flags_only_letters_that_have_a_macro(known_mode):
+    assert lml.scan_math("y_i + k_j + x_p") == ["y", "x"]
+
+
+def test_precise_mode_flags_the_named_greek_commands_only(known_mode):
+    assert lml.scan_math(r"\theta + \alpha + \varepsilon + \Gamma") == [
+        r"\theta", r"\varepsilon"]
+
+
+def test_precise_mode_flags_a_literal_greek_character_with_a_macro(known_mode):
+    assert lml.scan_math("\u03b8 + \u03b1") == [r"\theta"]
+
+
+def test_default_mode_still_flags_every_letter():
+    assert lml.scan_math("y_i + k_j") == ["y", "i", "k", "j"]
+
+
+def test_raw_euler_number_is_flagged_with_the_macro_to_use(known_mode):
+    assert lml.scan_math(r"e^{-x}") == ["e", "x"]
+    assert r"\euler" in lml.format_message(("e",))
+
+
+def test_deprecated_macro_is_flagged_in_either_mode(monkeypatch):
+    monkeypatch.setitem(lml.DEPRECATED, "truemeanfn", r"\truemean")
+    assert lml.scan_math(r"\truemeanfn + \truemean") == [r"\truemeanfn"]
+    monkeypatch.setattr(lml, "KNOWN_ONLY", True)
+    assert lml.scan_math(r"\truemeanfn + \truemean") == [r"\truemeanfn"]
+
+
+def test_deprecated_macro_message_names_the_replacement(monkeypatch):
+    monkeypatch.setitem(lml.DEPRECATED, "truemeanfn", r"\truemean")
+    assert "deprecated -> \\truemean" in lml.format_message((r"\truemeanfn",))
+
+
+def test_load_deprecated_reads_the_use_instruction(tmp_path):
+    tsv = tmp_path / "interpretations.tsv"
+    tsv.write_text(
+        "\\truemeanfn\ttrue mean function; deprecated, use \\truemean\n"
+        "\\truemean\ttrue mean function; replaces the deprecated \\truemeanfn\n"
+        "\\other\tplain description\n"
+    )
+    assert lml.load_deprecated(str(tsv)) == {"truemeanfn": r"\truemean"}
+
+
+def test_load_deprecated_missing_file_yields_no_rules(tmp_path, capsys):
+    assert lml.load_deprecated(str(tmp_path / "absent.tsv")) == {}
+    assert "Could not read" in capsys.readouterr().out

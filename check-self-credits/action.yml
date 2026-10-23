@@ -1,0 +1,69 @@
+name: Check self-credits
+description: >-
+  Diff-scoped check that flags a formal credit to the group's own work in
+  Markdown and Quarto files (Ezra, 2026-10-16; gha#1076): a citation of a
+  bibliography entry that is the group's own, or a credit phrase ("adapted
+  from", a `Source:` line or div) beside the name or URL of one of the group's
+  sites. The lists of own sites, names, authors and works come from a YAML
+  file in the consumer repository, so credits to people outside the group never
+  match. Links for further reading are never flagged. Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  config:
+    description: >-
+      Path, in the consumer repository, of the YAML file that lists the group's
+      own `urls`, `names`, `authors`, `keys`, `allow-keys`, `allow-patterns`
+      and `bib-globs`. With no file the check skips with a warning.
+    default: '.github/own-works.yml'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on. Diff mode needs the base commit
+      in history (checkout with fetch-depth: 0); when the diff can't be
+      computed, the check is skipped with a warning rather than falling back
+      to a whole-tree scan, which would reflag every credit the corpus already
+      carries.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an added line credits the group's own work (else
+      non-blocking). Defaults to 'false': a credit phrase beside an own name
+      is sometimes right, so the first version only annotates.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check self-credits
+      shell: bash
+      env:
+        RC_CONFIG: ${{ inputs.config }}
+        RC_BASE_REF: ${{ inputs.base-ref }}
+        RC_WHOLE_TREE: ${{ inputs.whole-tree }}
+        RC_GLOBS: ${{ inputs.globs }}
+        RC_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        RC_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-self-credits.py"

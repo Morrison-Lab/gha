@@ -76,6 +76,15 @@ inputs:
       each format in its own process passing --no-clean to subsequent formats,
       preventing V8 heap exhaustion on large multi-format sites.
     default: ''
+  per-file-formats:
+    description: >-
+      Whitespace- or newline-separated Quarto output formats (e.g. "pdf") to
+      render one file at a time, each file in its own `quarto render FILE --to
+      FORMAT` process, after the normal render. One process over a large
+      project grows until Deno hits its heap cap; a fresh process per file
+      keeps memory flat. List the other formats in `formats` so the normal
+      pass does not render these formats too.
+    default: ''
   freeze-cache:
     description: >-
       Restore and save Quarto _freeze directory via actions/cache keyed on
@@ -298,6 +307,8 @@ runs:
         OUTPUT_DIR: ${{ inputs.output-dir }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
         FORMATS: ${{ inputs.formats }}
+        PER_FILE_FORMATS: ${{ inputs.per-file-formats }}
+        PER_FILE_SCRIPT: ${{ github.action_path }}/render-per-file.py
         FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
         SETUP_JULIA: ${{ inputs.setup-julia }}
@@ -335,6 +346,12 @@ runs:
               quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
             fi
           done
+        fi
+
+        if [ -n "${PER_FILE_FORMATS:-}" ]; then
+          # Word-split on purpose: the formats are whitespace-separated.
+          # shellcheck disable=SC2086
+          QUARTO_PROFILE="${RENDER_PROFILE:-}" python3 "$PER_FILE_SCRIPT" "$PROJECT_PATH" "$OUTPUT_DIR" $PER_FILE_FORMATS 2>&1 | tee -a "$LOG_FILE"
         fi
 
         if [ "$FAIL_ON_WARN" = "true" ]; then
