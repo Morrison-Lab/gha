@@ -6750,7 +6750,7 @@ jobs:
           echo "line" > chapters/_ci-concerns.qmd
           echo "line" > tools/_ci-concerns.sh
           git add -f chapters/_ci-concerns.qmd tools/_ci-concerns.sh
-          git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "mix fixture"
+          git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "mix fixture" # phi-allow
       - name: Check the mix, expecting a failure
         id: pr-concerns-expected-failure
         continue-on-error: true
