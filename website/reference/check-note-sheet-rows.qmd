@@ -25,6 +25,18 @@ names one concept in a second form, in a row of its own.
 It is not flagged.
 Header rows and rows inside code fences are ignored.
 
+Two prose rules are errors whatever `fail` says,
+because they are deterministic
+([gha#1201](https://github.com/Morrison-Lab/gha/issues/1201)):
+
+- a row's label is a sentence (it ends in `.`, `!` or `?`, or runs past six words),
+  or a cell after the label has words outside math;
+- a line outside a table is a paragraph, an inline list included.
+  Headings, bold-only labels, link-only lines, div fences, table captions,
+  bullets and the YAML front matter are allowed.
+  Every list is a table or bullets, as on the
+  [rme exam formula sheet](https://morrison-lab.github.io/rme/chapters/exam-formula-sheet.html).
+
 The check is diff-scoped:
 an added line whose exact text was also deleted
 in the same diff counts as moved.
