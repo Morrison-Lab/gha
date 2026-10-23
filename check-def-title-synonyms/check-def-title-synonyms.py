@@ -45,11 +45,12 @@ BAD_RE = re.compile(r"[()]|\balso (?:called|known as)\b|\ba\.k\.a\.|\baka\b|\bor
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 
-MATH_PAREN_RE = re.compile(r"\([^()]*\$[^()]*\)")
+MATH_PAREN_RE = re.compile(r"\([^()]*\x00[^()]*\)")
 
 
 def bad_title(title: str) -> bool:
-    plain = MATH_RE.sub("", MATH_PAREN_RE.sub("", title))
+    masked = MATH_RE.sub("\x00", title)
+    plain = MATH_PAREN_RE.sub("", masked)
     return bool(BAD_RE.search(plain))
 
 

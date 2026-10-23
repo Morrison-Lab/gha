@@ -30,6 +30,7 @@ def test_bad_titles(title):
     "Level set, level curve, contour",
     "Almost everywhere ($f = g$ a.e.)",
     "Norm of $(1, 2)$",
+    r"$L^p$ space ($L^p(S, \mu)$, $L^p(\mu)$)",
     "Postulate, axiom",
 ])
 def test_good_titles(title):
