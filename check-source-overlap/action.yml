@@ -70,7 +70,10 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        sudo apt-get install -y --no-install-recommends poppler-utils >/dev/null
+        if ! command -v pdftotext >/dev/null; then
+          sudo -n apt-get install -y --no-install-recommends poppler-utils >/dev/null \
+            || { echo "::error::pdftotext is missing and apt needs sudo; preinstall poppler-utils on this runner."; exit 1; }
+        fi
         out="$RUNNER_TEMP/overlap-corpus"
         mkdir -p "$out"
         repo_dir="$RUNNER_TEMP/overlap-corpus-repo"

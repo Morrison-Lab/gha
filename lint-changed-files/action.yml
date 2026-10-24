@@ -75,6 +75,15 @@ runs:
         APT_PACKAGES: ${{ inputs.apt-packages }}
       run: |
         set -euo pipefail
+        missing=$(for p in $APT_PACKAGES; do dpkg -s "$p" >/dev/null 2>&1 || echo "$p"; done)
+        if [ -z "$missing" ]; then
+          echo "::notice::All apt packages are already installed; skipping apt."
+          exit 0
+        fi
+        if ! sudo -n true 2>/dev/null; then
+          echo "::error::apt needs passwordless sudo and these packages are missing: $missing. Preinstall them on this runner."
+          exit 1
+        fi
         sudo apt-get update
         sudo apt-get install -y $APT_PACKAGES
 

@@ -28,12 +28,32 @@ runs:
     # r-lib/actions/setup-r installs `devscripts` with its recommended packages,
     # about 150 extra Perl packages. On a slow Ubuntu mirror that took 18 minutes
     # and hit the job's 20-minute limit (gha#1197). Nothing here needs them.
+    # A self-hosted runner has no passwordless sudo, so the apt setting below
+    # would stop on a password prompt. It already carries R, which is all
+    # this check needs (base R only), so setup-r is skipped there too.
+    - name: Detect passwordless sudo and R
+      id: toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "$RUNNER_OS" = Linux ] && sudo -n true 2>/dev/null; then
+          echo "sudo=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "sudo=false" >> "$GITHUB_OUTPUT"
+        fi
+        if command -v Rscript >/dev/null; then
+          echo "r=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "r=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Skip recommended apt packages
-      if: runner.os == 'Linux'
+      if: steps.toolchain.outputs.sudo == 'true'
       shell: bash
       run: echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99-no-install-recommends
 
     - name: Set up R
+      if: steps.toolchain.outputs.sudo == 'true' || steps.toolchain.outputs.r != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         use-public-rspm: true
