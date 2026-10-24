@@ -2760,6 +2760,54 @@
     ]
   },
   {
+    "objectID": "reference/check-def-commentary.html#usage",
+    "href": "reference/check-def-commentary.html#usage",
+    "title": "check-def-commentary.yml",
+    "section": "Usage",
+    "text": "Usage\nCopy examples/check-def-commentary.yml to .github/workflows/ in your repository.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-def-commentary.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-def-commentary.html#inputs",
+    "href": "reference/check-def-commentary.html#inputs",
+    "title": "check-def-commentary.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\npaths-ignore\nempty\nComma- or newline-separated glob patterns to skip\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every definition, not only a pull request’s additions\n\n\nruns-on\nubuntu-latest\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-def-commentary.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-def-commentary.html#permissions",
+    "href": "reference/check-def-commentary.html#permissions",
+    "title": "check-def-commentary.yml",
+    "section": "Permissions",
+    "text": "Permissions\nThe job needs contents: read only.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-def-commentary.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-def-commentary.html#example",
+    "href": "reference/check-def-commentary.html#example",
+    "title": "check-def-commentary.yml",
+    "section": "Example",
+    "text": "Example\nname: Check definition divs for commentary\n\non:\n  pull_request:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-def-commentary.yml@v3\n    with:\n      paths-ignore: 'chapters/outtakes/**'",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-def-commentary.yml"
+    ]
+  },
+  {
     "objectID": "workflows.html",
     "href": "workflows.html",
     "title": "Workflows",
