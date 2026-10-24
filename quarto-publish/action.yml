@@ -361,7 +361,12 @@ runs:
           # Single render invocation
           quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
         else
-          # Per-format split render
+          # Per-format split render. Each later render deletes the `site_libs`
+          # files its own format does not use, which left the HTML pages with
+          # no CSS or JavaScript (mds). Collect every format's files as it is
+          # written, and put the union back once all renders are done.
+          SITE_LIBS="$PROJECT_PATH/$OUTPUT_DIR/site_libs"
+          SITE_LIBS_STAGE=$(mktemp -d)
           first=true
           for fmt in "${FORMAT_LIST[@]}"; do
             if [ "$first" = true ]; then
@@ -370,7 +375,12 @@ runs:
             else
               quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
             fi
+            if [ -d "$SITE_LIBS" ]; then
+              cp -a "$SITE_LIBS/." "$SITE_LIBS_STAGE/"
+            fi
           done
+          mkdir -p "$SITE_LIBS"
+          cp -a "$SITE_LIBS_STAGE/." "$SITE_LIBS/"
         fi
 
         if [ -n "${PER_FILE_FORMATS:-}" ]; then
