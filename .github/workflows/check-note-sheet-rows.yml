@@ -26,7 +26,7 @@ on:
         default: ''
       fail:
         description: >-
-          Fail the workflow when a row is flagged (else non-blocking).
+          Fail the workflow on a one-concept finding (else non-blocking; prose findings always fail).
           Defaults to false (warning annotations only).
         type: boolean
         default: false

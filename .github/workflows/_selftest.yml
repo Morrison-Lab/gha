@@ -865,6 +865,9 @@ jobs:
       - name: Run check-bibliography-dois R unit tests
         shell: bash
         run: Rscript check-bibliography-dois/tests/test-check-bibliography-dois.R
+      - name: Check the preinstalled-toolchain package list matches
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-check-bibliography-dois-package-list-tests.sh
       - name: Run check-bibliography-dois offline test runner
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-check-bibliography-dois-tests.py
@@ -1678,6 +1681,33 @@ jobs:
         uses: ./check-self-credits
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-def-title-synonyms is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-def-title-synonyms@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  def-title-synonyms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-def-title-synonyms unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-def-title-synonyms/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-def-title-synonyms
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # check-one-div-per-subfile is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-one-div-per-subfile@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
@@ -1714,7 +1744,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _ci-one-div/_subfiles
-          printf '%s\n' '::: {#exr-a}' 'Ask.' ':::' '' '::: {#sol-a}' 'Answer.' ':::' > _ci-one-div/_subfiles/_page.qmd
+          printf '%s\n' '::: {#exm-a}' 'One.' ':::' '' '::: {#exm-b}' 'Two.' ':::' > _ci-one-div/_subfiles/_page.qmd
           git add -f _ci-one-div/_subfiles/_page.qmd
       - name: Check the staged subfile, expecting a failure
         id: one-div-expected-failure
@@ -1780,6 +1810,197 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-one-div || true
           rm -rf _ci-one-div
+  # check-def-commentary is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-def-commentary@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly.
+  def-commentary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-def-commentary unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-def-commentary/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-def-commentary
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no definition divs, so stage a page whose definition
+      # carries commentary and assert that the blocking call really fails.
+      - name: Stage a definition with commentary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-def-commentary
+          printf '%s\n' '::: {#def-a}' 'A term is a word. It is not a phrase.' ':::' > _ci-def-commentary/page.qmd
+          git add -f _ci-def-commentary/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: def-commentary-expected-failure
+        continue-on-error: true
+        uses: ./check-def-commentary
+        with:
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.def-commentary-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-def-commentary to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-def-commentary
+        with:
+          base-ref: ''
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-def-commentary
+        with:
+          whole-tree: 'true'
+          paths-ignore: '_ci-def-commentary'
+      - name: Check again with globs excluding the page
+        uses: ./check-def-commentary
+        with:
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Check again with fail off, expecting a pass
+        uses: ./check-def-commentary
+        with:
+          whole-tree: 'true'
+          fail: 'false'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-def-commentary || true
+          rm -rf _ci-def-commentary
+  # check-exm-figures is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-exm-figures@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the figure rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  exm-figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-exm-figures unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-exm-figures/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-exm-figures
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no example divs, so stage one with no figure and assert
+      # that the blocking call really fails.
+      - name: Stage an example div with no figure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-exm
+          printf '%s\n' '::: {#exm-a}' 'Compute the mean.' ':::' > _ci-exm/page.qmd
+          git add -f _ci-exm/page.qmd
+      - name: Check the staged example, expecting a failure
+        id: exm-expected-failure
+        continue-on-error: true
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.exm-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-exm-figures to fail on a staged example, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is blocking, so the same finding must fail with no fail input.
+      - name: Check the staged example with the default fail
+        id: exm-default-failure
+        continue-on-error: true
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.exm-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: exm-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-exm-figures
+        with:
+          base-ref: HEAD
+          fail: 'true'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.exm-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged example, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-exm-figures
+        with:
+          base-ref: ''
+          fail: 'true'
+      # Each of these must pass over the same staged subfile, so each proves
+      # its input reached the script.
+      - name: Check again with the example exempted through paths-ignore
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-exm'
+      - name: Check again with globs excluding the example
+        uses: ./check-exm-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged example
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-exm || true
+          rm -rf _ci-exm
   # check-note-sheet-rows is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-note-sheet-rows@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly.
@@ -1807,6 +2028,8 @@ jobs:
         uses: ./check-note-sheet-rows
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          # The reference page for this check is named like a note sheet but is prose.
+          paths-ignore: 'website/**'
       # This repo has no note sheet, so stage one with a merged row and assert
       # that the blocking call really fails.
       - name: Stage a note sheet with a merged row
@@ -1837,24 +2060,26 @@ jobs:
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
+          paths-ignore: 'website/**'
       - name: Check again with the sheet exempted through paths-ignore
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
           fail: 'true'
-          paths-ignore: '_ci-note-sheet'
+          paths-ignore: '_ci-note-sheet, website/**'
       - name: Check again with globs excluding the sheet
         uses: ./check-note-sheet-rows
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'LICENSE'
+          globs: '*.note-sheet-selftest-nomatch'
       - name: Remove the staged sheet
         if: always()
         shell: bash
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-note-sheet || true
           rm -rf _ci-note-sheet
+
   # check-definite-antecedents is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-definite-antecedents@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
@@ -6791,3 +7016,35 @@ jobs:
         uses: ./check-pr-concerns
         with:
           base-ref: ''
+
+  # Offline tests for scripts/seed-runner-python-toolcache.sh (gha#1205).
+  seed-runner-python-toolcache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run seed-runner-python-toolcache tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-seed-runner-python-toolcache-tests.sh
+
+  # Offline tests for scripts/register-self-hosted-runner.sh (gha#1212).
+  register-self-hosted-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run register-self-hosted-runner tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-register-self-hosted-runner-tests.sh
+
+      - name: Run runner-group-is-private tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-runner-group-is-private-tests.sh

@@ -31,7 +31,9 @@ Opt-outs: `<!-- check-term-links: allow -->` on a line skips that line;
 that are ordinary English in this corpus.
 
 Scope: only a finding on a line a diff adds is reported (`--base-ref`, `--diff`),
-so adopting the check does not reflag the corpus. `--whole-tree` reports every
+so adopting the check does not reflag the corpus. An added line whose exact text
+the same diff also deletes is moved, not new, so splitting a file reflags nothing.
+`--whole-tree` reports every
 finding, to measure a corpus. With no base and no `--whole-tree`, the check
 skips with a warning rather than widening to the whole tree.
 """
@@ -400,20 +402,39 @@ def scan_file(
 
 
 def parse_added_lines(diff_text: str, repo_root: Path) -> Dict[Path, Set[int]]:
-    """Added line numbers per file from a `git diff -U0` text."""
-    added: Dict[Path, Set[int]] = {}
+    """Added line numbers per file from a `git diff -U0` text.
+
+    An added line whose exact text (ignoring surrounding whitespace) the same
+    diff also deletes is moved, not new, and is left out, so splitting a file
+    does not reflag the first uses it already carried.
+    """
+    added: Dict[Path, Dict[int, str]] = {}
+    deleted: Set[str] = set()
     current: Optional[Path] = None
+    new_n = old_left = new_left = 0
     for line in diff_text.splitlines():
-        if line.startswith("+++ b/"):
+        # Hunk counts say how many body lines follow, so a body line that
+        # starts with "++" or "--" is never read as a file header.
+        if line.startswith("+") and new_left > 0 and current is not None:
+            added[current][new_n] = line[1:].strip()
+            new_n += 1
+            new_left -= 1
+        elif line.startswith("-") and old_left > 0:
+            deleted.add(line[1:].strip())
+            old_left -= 1
+        elif line.startswith("+++ b/"):
             current = repo_root / line[6:].strip()
-            added.setdefault(current, set())
+            added.setdefault(current, {})
         elif line.startswith("@@ ") and current is not None:
-            m = re.search(r"\+(\d+)(?:,(\d+))?", line)
+            m = re.match(r"@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
             if m:
-                start = int(m.group(1))
-                count = int(m.group(2)) if m.group(2) is not None else 1
-                added[current].update(range(start, start + count))
-    return added
+                old_left = int(m.group(1)) if m.group(1) is not None else 1
+                new_n = int(m.group(2))
+                new_left = int(m.group(3)) if m.group(3) is not None else 1
+    return {
+        f: {n for n, text in lines.items() if not text or text not in deleted}
+        for f, lines in added.items()
+    }
 
 
 def diff_added_lines(

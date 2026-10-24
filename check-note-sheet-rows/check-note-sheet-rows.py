@@ -22,7 +22,14 @@ match (default ``*note-sheet*.qmd``). It flags a row when:
 
 A label that ends in ``, ... form``, ``version`` or ``case`` (``Sample MSE,
 matrix form``) names one concept in a second form, in a row of its own, and is
-not flagged. These are heuristics, so the check is warn-only by default.
+not flagged. These are heuristics, so these rules are warn-only by default.
+
+Two prose rules are deterministic, so they are errors whatever ``NSR_FAIL``
+says (Ezra, 2026-10-23; gha#1201): a row's label is a sentence (ends in
+``.``, ``!`` or ``?``, or runs past six words) or a cell outside the first has
+words outside math; and a line outside a table is a paragraph (an inline list
+included) rather than a heading, a bold-only label, a link-only line, a div
+fence, a table caption or a bullet. Front matter is skipped.
 
 Diff-scoped like ``check-one-div-per-subfile``: only rows added since
 ``NSR_BASE_REF`` are reported (an added line whose exact text was also deleted
@@ -55,6 +62,8 @@ DEFAULT_GLOBS = "*note-sheet*.qmd"
 _DEFAULT_FAIL = False
 
 ADVICE = "give each concept its own row, and put notation or an assumption in a row of its own"
+PROSE_ADVICE = ("keep a short label and math only in each row, and put every list "
+                "in a table or bullets, as the rme exam formula sheet does")
 
 # -- Parsing -----------------------------------------------------------------
 
@@ -73,6 +82,17 @@ VARIANT_RE = re.compile(r",\s*[\w -]*\b(?:form|version|case)\s*$", re.IGNORECASE
 class Finding(NamedTuple):
     line: int
     reason: str
+    hard: bool = False  # a prose finding: an error whatever NSR_FAIL says
+
+
+# A note sheet holds formulas under brief labels and no prose, and every list is
+# a table or bullets (Ezra, 2026-10-22 and 2026-10-23; gha#1201).
+LABEL_MAX_WORDS = 6
+BOLD_LABEL_RE = re.compile(r"^\*\*[^*]+\*\*$")
+LINK_ONLY_RE = re.compile(r"^\[[^\]]*\]\([^)]*\)$")
+BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+SKIP_LINE_RE = re.compile(r"^\s*(?:#|:::|: |<|>|!\[|\{\{<)")
+WORD_RE = re.compile(r"[A-Za-z]")
 
 
 def split_cells(line: str) -> Optional[List[str]]:
@@ -112,11 +132,49 @@ def row_reasons(cells: List[str]) -> List[str]:
     return reasons
 
 
+def prose_reasons(cells: List[str]) -> List[str]:
+    """Reasons a row holds prose: a sentence label, or words in a formula cell."""
+    reasons: List[str] = []
+    if not cells or all(SEPARATOR_CELL_RE.match(c) or not c for c in cells):
+        return reasons
+    label = MATH_RE.sub("", LINK_RE.sub(r"\1", cells[0]))
+    if label.rstrip().endswith((".", "!", "?")) or len(label.split()) > LABEL_MAX_WORDS:
+        reasons.append("the label is prose")
+    for cell in cells[1:]:
+        if WORD_RE.search(MATH_RE.sub("", LINK_RE.sub(r"\1", cell))):
+            reasons.append("a formula cell holds prose")
+            break
+    return reasons
+
+
+def paragraph_reason(raw: str) -> Optional[str]:
+    """Why a line outside a table is prose or an inline list, else None."""
+    line = raw.strip()
+    if not line or SKIP_LINE_RE.match(line) or BOLD_LABEL_RE.match(line):
+        return None
+    if LINK_ONLY_RE.match(line):
+        return None
+    if BULLET_RE.match(line):
+        spans = list(MATH_RE.finditer(line))
+        for first, second in zip(spans, spans[1:]):
+            if JOIN_RE.match(line[first.end():second.start()]):
+                return "a bullet holds two formulas"
+        return None
+    return "a paragraph outside a table (put a list in a table or bullets)"
+
+
 def scan_rows(lines: List[str]) -> List[Finding]:
     """Findings for every table row outside code fences."""
     fence: Optional[Tuple[str, int]] = None
     found: List[Finding] = []
+    in_comment = in_item = False
+    body_from = 0
+    if lines and lines[0].strip() == "---":
+        body_from = next((i + 1 for i in range(1, len(lines))
+                          if lines[i].strip() == "---"), 0)
     for idx, raw in enumerate(lines):
+        if idx < body_from:
+            continue
         m = FENCE_RE.match(raw)
         if fence is not None:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
@@ -126,20 +184,35 @@ def scan_rows(lines: List[str]) -> List[Finding]:
         if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = (m.group(1)[0], len(m.group(1)))
             continue
+        if in_comment:
+            in_comment = "-->" not in raw
+            continue
+        if "<!--" in raw and "-->" not in raw.split("<!--", 1)[1]:
+            in_comment = True
+            continue
         cells = split_cells(raw)
         if cells is None:
+            if not raw.strip():
+                in_item = False
+                continue
+            if in_item and raw[:1] in (" ", "\t") and not BULLET_RE.match(raw):
+                continue  # a wrapped bullet continues on an indented line
+            in_item = bool(BULLET_RE.match(raw))
+            reason = paragraph_reason(raw)
+            if reason:
+                found.append(Finding(idx + 1, reason, True))
             continue
+        in_item = False
         following = split_cells(lines[idx + 1]) if idx + 1 < len(lines) else None
         if following and all(SEPARATOR_CELL_RE.match(c) for c in following):
             continue  # a header row names the columns, not a concept
         reasons = row_reasons(cells)
         if reasons:
             found.append(Finding(idx + 1, "; ".join(reasons)))
+        prose = prose_reasons(cells)
+        if prose:
+            found.append(Finding(idx + 1, "; ".join(prose), True))
     return found
-
-
-def format_message(reason: str) -> str:
-    return f"Note-sheet row: {reason}. Fix: {ADVICE}"
 
 
 # -- Git plumbing ------------------------------------------------------------
@@ -237,7 +310,7 @@ def _env_flag(name: str, default: bool) -> bool:
 
 
 class Report(NamedTuple):
-    findings: List[Tuple[str, int, str]]  # (path, line, reason)
+    findings: List[Tuple[str, int, str, bool]]  # (path, line, reason, hard)
     files: int
     rows: int
     skipped: bool
@@ -282,7 +355,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
             wanted[rel] = {n for n, text in numbered.items()
                            if text.strip() and text not in deleted}
 
-    findings: List[Tuple[str, int, str]] = []
+    findings: List[Tuple[str, int, str, bool]] = []
     files = rows = 0
     for rel in sorted(wanted):
         content = _read_lines(rel)
@@ -292,7 +365,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         keep = wanted[rel]
         for finding in scan_rows(content):
             if keep is None or finding.line in keep:
-                findings.append((rel, finding.line, finding.reason))
+                findings.append((rel, finding.line, finding.reason, finding.hard))
         rows += sum(1 for i, ln in enumerate(content, 1)
                     if ROW_RE.match(ln) and (keep is None or i in keep))
     return Report(findings, files, rows, False)
@@ -317,14 +390,15 @@ def main() -> int:
     scope = "whole tree" if whole_tree else f"lines added since {base_ref}"
     print(f"Examined {report.rows} table row(s) across {report.files} file(s) "
           f"(scope: {scope}).")
-    severity = "error" if fail else "warning"
-    for rel, line, reason in report.findings:
-        print(f"::{severity} file={rel},line={line}::{format_message(reason)}")
+    for rel, line, reason, hard in report.findings:
+        severity = "error" if fail or hard else "warning"
+        advice = PROSE_ADVICE if hard else ADVICE
+        print(f"::{severity} file={rel},line={line}::Note-sheet row: {reason}. Fix: {advice}")
     if not report.findings:
-        print("No note-sheet row holds more than one concept.")
+        print("No note-sheet row holds more than one concept or any prose.")
         return 0
-    print(f"\n{len(report.findings)} note-sheet row(s) hold more than one concept.")
-    return 1 if fail else 0
+    print(f"\n{len(report.findings)} note-sheet finding(s).")
+    return 1 if fail or any(f[3] for f in report.findings) else 0
 
 
 if __name__ == "__main__":

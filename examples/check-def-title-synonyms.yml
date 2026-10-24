@@ -1,0 +1,21 @@
+# Copy to .github/workflows/check-def-title-synonyms.yml in your repo.
+# Diff-scoped check: flags the title of a #def- div that lists synonyms with
+# parentheses or "also called" when a PR adds the title line. Titles are a
+# comma list with the primary term first: "Logistic function, sigmoid, expit".
+# Warn-only by default. Only contents:read is needed.
+name: Check definition title synonyms
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-def-title-synonyms.yml@v3
+    # with:
+    #   globs: '*.qmd'        # pathspecs to check
+    #   fail: true            # block instead of warn (defaults to false)
+    #   whole-tree: true      # scan every title, not just a PR's additions
