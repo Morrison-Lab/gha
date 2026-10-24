@@ -41,6 +41,7 @@ input tables and a copy-paste example.
 | [`check-wikipedia-further-reading.yml`](reference/check-wikipedia-further-reading.qmd) | Diff-scoped, blocking check that flags a Wikipedia citation or link in a Further reading list item (Wikipedia pages are citations only) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-redundant-citations.yml`](reference/check-redundant-citations.qmd) | Diff-scoped, warn-only check that flags a source cited twice, with the same locator, in one div or passage (cite a source once per div) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-self-credits.yml`](reference/check-self-credits.qmd) | Diff-scoped, warn-only check that flags a formal credit to the group's own work (a citation of an own bibliography entry, or a credit phrase beside an own site or name) | `config`, `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-exm-figures.yml`](reference/check-exm-figures.qmd) | Diff-scoped, blocking check that flags an example div (`#exm-`) with no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-one-div-per-subfile.yml`](reference/check-one-div-per-subfile.qmd) | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile; a proof stays with its claim and a solution with its exercise) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-def-title-synonyms.yml`](reference/check-def-title-synonyms.qmd) | Diff-scoped, warn-only check that flags a `#def-` div title listing synonyms with parentheses or "also called" instead of a comma list, primary term first | `globs`, `fail`, `whole-tree` |
 | [`check-note-sheet-rows.yml`](reference/check-note-sheet-rows.qmd) | Diff-scoped check, warn-only for the one-concept rules and always blocking for prose and non-table lists, that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -131,7 +132,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
-`check-one-div-per-subfile.yml`,
+`check-one-div-per-subfile.yml`, `check-exm-figures.yml`,
 `check-def-title-synonyms.yml`,
 `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
 `check-term-links.yml`, `check-paired-file-change.yml`,

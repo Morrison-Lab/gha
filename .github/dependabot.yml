@@ -30,6 +30,7 @@ updates:
       - "/check-wikipedia-further-reading"
       - "/check-self-credits"
       - "/check-one-div-per-subfile"
+      - "/check-exm-figures"
       - "/check-def-title-synonyms"
       - "/check-note-sheet-rows"
       - "/check-definite-antecedents"
