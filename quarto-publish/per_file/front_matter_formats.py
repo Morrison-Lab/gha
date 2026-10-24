@@ -1,13 +1,15 @@
 """The output formats a file declares."""
 import pathlib
 
-import yaml
-
 from per_file.format_names import format_names
 
 
 def front_matter_formats(path, config):
-    """Format names in the file's front matter, else the project's `format:`."""
+    """Format names in the file's front matter, else the project's `format:`.
+
+    A directory's `_metadata.yml` is not read.
+    """
+    import yaml  # only the fallback needs PyYAML, so a working inspect does not
     text = pathlib.Path(path).read_text(encoding="utf-8")
     meta = {}
     if text.startswith("---"):
