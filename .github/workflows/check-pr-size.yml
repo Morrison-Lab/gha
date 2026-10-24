@@ -1,0 +1,85 @@
+name: Check pull request size (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      max-files:
+        description: Most files a PR may change.
+        type: string
+        default: '10'
+      max-lines:
+        description: Most lines (added plus deleted) a PR may change.
+        type: string
+        default: '300'
+      paths-ignore:
+        description: Comma/newline-separated glob patterns (relative paths) not counted.
+        type: string
+        default: ''
+      exempt-label:
+        description: >-
+          Label that lifts the cap. Read live through the API, so a label
+          added after the run started still counts on a re-run.
+        type: string
+        default: size-exempt
+      fail:
+        description: >-
+          Fail the workflow when the PR is over the cap (else non-blocking).
+          Defaults to true.
+        type: boolean
+        default: true
+
+jobs:
+  check-pr-size:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff against the base.
+          fetch-depth: 0
+
+      - name: Read the exemption label
+        id: label
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          LABEL: ${{ inputs.exempt-label }}
+        run: |
+          set -euo pipefail
+          labels=$(gh api --paginate "repos/$REPO/issues/$PR/labels" --jq '.[].name')
+          if printf '%s\n' "$labels" | grep -Fxiq -- "$LABEL"; then
+            echo "exempt=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exempt=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check pull request size
+        uses: Morrison-Lab/gha/check-pr-size@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          max-files: ${{ inputs.max-files }}
+          max-lines: ${{ inputs.max-lines }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          exempt: ${{ steps.label.outputs.exempt || 'false' }}
+          fail: ${{ inputs.fail }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on (gha#1007). On a push there is no base, so it skips.
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

@@ -45,6 +45,7 @@ input tables and a copy-paste example.
 | [`check-exm-figures.yml`](reference/check-exm-figures.qmd) | Diff-scoped, blocking check that flags an example div (`#exm-`) with no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-one-div-per-subfile.yml`](reference/check-one-div-per-subfile.qmd) | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile; a proof stays with its claim and a solution with its exercise) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-def-title-synonyms.yml`](reference/check-def-title-synonyms.qmd) | Diff-scoped, warn-only check that flags a `#def-` div title listing synonyms with parentheses or "also called" instead of a comma list, primary term first | `globs`, `fail`, `whole-tree` |
+| [`check-pr-size.yml`](reference/check-pr-size.qmd) | Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines; a sweep goes out as minimal batches | `max-files`, `max-lines`, `paths-ignore`, `exempt-label`, `fail` |
 | [`check-note-sheet-rows.yml`](reference/check-note-sheet-rows.qmd) | Diff-scoped check, warn-only for the one-concept rules and always blocking for prose and non-table lists, that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-definite-antecedents.yml`](reference/check-definite-antecedents.qmd) | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-local-macros.yml`](reference/check-local-macros.qmd) | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
@@ -134,6 +135,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
 `check-one-div-per-subfile.yml`, `check-exm-figures.yml`, `check-def-commentary.yml`,
+`check-pr-size.yml`,
 `check-def-title-synonyms.yml`,
 `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
 `check-term-links.yml`, `check-paired-file-change.yml`,
