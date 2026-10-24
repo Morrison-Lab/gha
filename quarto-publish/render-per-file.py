@@ -36,11 +36,12 @@ def main(argv):
     if len(argv) < 4:
         raise SystemExit(__doc__)
     project, output_dir, wanted = argv[1], argv[2], argv[3:]
-    config = project_config(project)
+    config = None  # read lazily: only the fallback needs it, and PyYAML
     listing = quarto_inspect(project, ".")
     if listing is not None:
         inputs = listing["files"]["input"]
     else:
+        config = project_config(project)
         inputs = project_inputs(project, config)
     failures = []
     rendered = 0
@@ -50,6 +51,7 @@ def main(argv):
         if info is not None:
             have = set(info.get("formats", {}))
         else:
+            config = config if config is not None else project_config(project)
             have = front_matter_formats(path, config)
         for fmt in wanted:
             if fmt not in have:

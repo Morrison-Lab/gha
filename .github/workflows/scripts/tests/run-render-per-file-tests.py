@@ -105,6 +105,18 @@ def main():
     if "readfile self/sub" not in out:
         errors.append("a failed quarto inspect must show its stderr")
 
+    # A working `quarto inspect` must not need PyYAML (a runner image may lack it).
+    with tempfile.TemporaryDirectory() as blocker:
+        pathlib.Path(blocker, "yaml.py").write_text(
+            "raise ImportError('PyYAML is not installed')\n", encoding="utf-8")
+        os.environ["PYTHONPATH"] = blocker
+        try:
+            code, calls, out = run(["pdf"], config="format:\n  pdf: default\n")
+        finally:
+            del os.environ["PYTHONPATH"]
+    if code != 0 or len(calls) != 2:
+        errors.append(f"a working inspect must not import PyYAML, got {code} {calls} {out}")
+
     if errors:
         print("\n".join(errors))
         return 1
