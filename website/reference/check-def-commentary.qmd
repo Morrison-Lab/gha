@@ -1,0 +1,73 @@
+---
+title: "check-def-commentary.yml"
+---
+
+Diff-scoped, blocking check that flags commentary written inside a `#def-` div.
+A definition div holds the definition, its notation and its display equation only.
+Commentary, contrasts, motivation and history go in a `#rem-` div right after it,
+one div per subfile.
+This implements
+[gha#1180](https://github.com/Morrison-Lab/gha/issues/1180).
+
+The check reports a sentence inside a `::: {#def-...}` div that opens with
+"It is not", "This is not", "That is not", "Note that", "Notice that",
+"Unlike", "Do not confuse", "Be careful", "Beware", "In contrast",
+"By contrast", "Intuitively", "Informally" or "Historically".
+The finding sits on the line that holds the sentence.
+
+The check does not read:
+
+- lines inside a code fence, display math (`$$`) or an HTML comment;
+- inline code;
+- a div nested inside the definition (only the definition's own lines);
+- a line carrying `<!-- check-def-commentary: allow -->`,
+  for a sentence that really is part of the definition.
+
+The heuristic is noisy by design, and the marker is its escape hatch.
+
+## Scope
+
+Only an added line is reported.
+The whole file is parsed, since the div opens far above the changed line.
+An added line whose exact text was also deleted in the same diff counts as moved.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose,
+which measures how many existing definitions carry commentary.
+`fail` defaults to `true`, because a diff-scoped check reflags nothing already merged.
+
+## Usage
+
+Copy
+[`examples/check-def-commentary.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-def-commentary.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `paths-ignore` | empty | Comma- or newline-separated glob patterns to skip |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every definition, not only a pull request's additions |
+| `runs-on` | `ubuntu-latest` | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
+
+## Permissions
+
+The job needs `contents: read` only.
+
+## Example
+
+```yaml
+name: Check definition divs for commentary
+
+on:
+  pull_request:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-def-commentary.yml@v3
+    with:
+      paths-ignore: 'chapters/outtakes/**'
+```

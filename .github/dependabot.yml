@@ -31,6 +31,7 @@ updates:
       - "/check-self-credits"
       - "/check-one-div-per-subfile"
       - "/check-pr-size"
+      - "/check-def-commentary"
       - "/check-exm-figures"
       - "/check-def-title-synonyms"
       - "/check-note-sheet-rows"
