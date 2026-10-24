@@ -17,7 +17,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`,
   `check-self-credits`,
   `check-one-div-per-subfile`, `check-def-title-synonyms`, `check-definite-antecedents`,
-  `check-exm-figures`,
+  `check-exm-figures`, `check-def-commentary`,
   `check-term-links`, `check-paired-file-change`,
   `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`, `check-note-sheet-rows`,
