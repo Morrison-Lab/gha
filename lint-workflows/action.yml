@@ -70,8 +70,12 @@ runs:
         curl -fsSL -o "$TMPDIR/$TARBALL" "$URL"
         echo "${ACTIONLINT_CHECKSUM}  $TMPDIR/$TARBALL" | sha256sum -c -
         tar -xzf "$TMPDIR/$TARBALL" -C "$TMPDIR" actionlint
-        install -m 755 "$TMPDIR/actionlint" /usr/local/bin/actionlint
-        actionlint -version
+        # A directory the job owns, so a runner without sudo can install too.
+        BIN_DIR="${RUNNER_TEMP}/actionlint-bin"
+        mkdir -p "$BIN_DIR"
+        install -m 755 "$TMPDIR/actionlint" "$BIN_DIR/actionlint"
+        echo "$BIN_DIR" >> "$GITHUB_PATH"
+        "$BIN_DIR/actionlint" -version
 
     - name: Set up Python
       uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0

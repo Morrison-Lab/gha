@@ -14,6 +14,7 @@ turn it off for a pure-markdown site.
 
 | Input | Type | Default | Description |
 |---|---|---|---|
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo, such as `apt-packages`. |
 | `path` | string | `'.'` | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`). Defaults to the repo root; set it for a subdirectory site (matches `quarto-publish`'s `path`). |
 | `r-version` | string | `'4.6.0'` | R version to install with `r-lib/actions/setup-r`. |
 | `apt-packages` | string | `(long; see workflow file)` | System apt packages to install before R/Quarto setup, space-separated. Defaults to the shared renv stack plus build helpers; set to an empty string to skip the apt step. |
@@ -24,11 +25,13 @@ turn it off for a pure-markdown site.
 | `tinytex` | boolean | `false` | Install TinyTeX and enable PDF rendering. When false (default), TinyTeX is installed and PDF is rendered only when the PR is labeled `preview:pdf`. |
 | `setup-julia` | boolean | `false` | Install Julia (`julia-actions/setup-julia`) before rendering, for pages that execute `{julia}` chunks; under knitr these run through the R package JuliaCall, so add `any::JuliaCall` to `r-packages`. The Julia depot is cached between runs via `julia-actions/cache`. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and `R_LD_LIBRARY_PATH` is set to R's own `lib` directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. `@v3` and later. |
 | `julia-version` | string | `'1'` | Julia version to install, in `setup-julia`'s `version` syntax. Only used when `setup-julia` is true. `@v3` and later. |
+| `preinstalled-toolchain` | boolean | `false` | The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs `r-packages` with pak into the runner's user library. With an empty `r-packages` nothing is installed. The runner must already have R with the pak and tinytex packages, Quarto, TinyTeX, Julia and (if needed) Chrome; `tinytex` is then ignored for the install. renv, the JuliaCall setup and the freeze cache still run. |
 | `submodules` | string | `'recursive'` | Passed to `actions/checkout` `submodules` (`'recursive'`, `'true'`, or `'false'`). |
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |
 | `output-dir` | string | `'_site'` | Directory the rendered site is written to, relative to `path`. |
 | `formats` | string | `''` | Space-separated list of formats to render (e.g. `'html docx pdf revealjs'`). When empty (default), renders HTML plus any formats requested via PR labels (`preview:docx`, `preview:pdf`, `preview:revealjs`). Set to `'default'` to run a single bare `quarto render` letting `_quarto.yml` decide formats (unlike `quarto-publish` where empty string defaults to bare render). |
 | `skip-docx` | boolean | `true` | Leave Word (docx) out of the PR preview render so it builds faster; the publish build still renders it. Applies to an explicit `formats` list only: `formats: default` is a bare render, and `quarto render --to` takes one format. A PR labelled `preview:docx` opts back in, and so does `docx-tracked-changes: true`, which needs the Word files. Set to `false` to render docx as before. |
+| `skip-formats` | string | `''` | Space-separated formats (for example `pdf docx`) to leave out of the PR preview, including under `formats: default`, where `skip-docx` cannot apply. A PR labelled `preview:<format>` keeps that format, and `docx-tracked-changes: true` keeps docx. Slide decks are untouched unless named. Empty removes nothing; the publish build is unaffected. |
 | `extra-preview-labels` | string | `'[]'` | JSON array string of additional PR label names that trigger a preview re-render on add or remove (e.g. `'["preview:tracked-changes"]'`), beyond the built-in set (`clear freezer`, `preview:pdf`, `preview:docx`, `preview:revealjs`). |
 | `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
 | `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
@@ -119,12 +122,14 @@ jobs:
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   tinytex: false                     # install TinyTeX unconditionally (default: label-gated)
     #   setup-julia: true                  # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)
+    #   preinstalled-toolchain: true       # self-hosted runner with R, Quarto, TinyTeX, Julia installed
     #   julia-version: '1'
     #   submodules: recursive
     #   render-profile: website
     #   output-dir: docs                   # render to a dir other than _site
     #   formats: 'html docx pdf'           # space-separated list, or 'default' for bare render
     #   skip-docx: false                   # render docx in PR previews too (default true skips it)
+    #   skip-formats: 'pdf docx'           # leave these formats out of PR previews, even under formats: default
     #   extra-preview-labels: '["preview:tracked-changes"]' # JSON array string of additional labels that trigger preview rebuilds
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log

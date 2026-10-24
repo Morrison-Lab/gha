@@ -1,0 +1,1 @@
+- `check-secrets.yml`, `cleanup-pr-previews.yml` and `annotation-gate-run.yml` take a `runs-on` input (default `ubuntu-latest`), so a private repository can run them on a self-hosted runner ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).

@@ -2,7 +2,7 @@
 title: "check-note-sheet-rows.yml"
 ---
 
-Diff-scoped, warn-only check that flags a note-sheet table row
+Diff-scoped check that flags a note-sheet table row
 holding more than one concept.
 The lab's rule (Ezra, 2026-10-22) is that a note sheet
 gives each concept its own row:
@@ -25,6 +25,20 @@ names one concept in a second form, in a row of its own.
 It is not flagged.
 Header rows and rows inside code fences are ignored.
 
+Two prose rules are errors whatever `fail` says,
+because they are deterministic
+([gha#1201](https://github.com/Morrison-Lab/gha/issues/1201)):
+
+- a row's label is a sentence (it ends in `.`, `!` or `?`, or runs past six words),
+  or a cell after the label has words outside math;
+- a line outside a table is a paragraph, an inline list included.
+  Headings, bold-only labels, link-only lines, div fences, table captions,
+  bullets (with their indented continuation lines), images, blockquotes,
+  raw HTML, HTML comments and the YAML front matter are allowed.
+  Link text in a formula cell counts as words.
+  Every list is a table or bullets, as on the
+  [rme exam formula sheet](https://morrison-lab.github.io/rme/chapters/exam-formula-sheet.html).
+
 The check is diff-scoped:
 an added line whose exact text was also deleted
 in the same diff counts as moved.
@@ -37,8 +51,9 @@ unless `whole-tree` asks for that.
 - `globs`: space-separated git pathspecs of tracked files to check
   (default `*note-sheet*.qmd`).
 - `paths-ignore`: comma- or newline-separated glob patterns to skip.
-- `fail`: fail the workflow on a finding
+- `fail`: fail the workflow on a one-concept finding
   (default `false`, warning annotations only).
+  The prose rules always fail, whatever `fail` says.
 - `whole-tree`: scan every matching file in full (default `false`).
 - `python-version`: Python version to set up (default `3.x`).
 
