@@ -35,3 +35,39 @@ the check skips with a warning instead of scanning the whole tree.
 Set `whole-tree: true` to scan every tracked file on purpose,
 which measures how many existing definitions carry commentary.
 `fail` defaults to `true`, because a diff-scoped check reflags nothing already merged.
+
+## Usage
+
+Copy
+[`examples/check-def-commentary.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-def-commentary.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `paths-ignore` | empty | Comma- or newline-separated glob patterns to skip |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every definition, not only a pull request's additions |
+| `runs-on` | `ubuntu-latest` | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
+
+## Permissions
+
+The job needs `contents: read` only.
+
+## Example
+
+```yaml
+name: Check definition divs for commentary
+
+on:
+  pull_request:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-def-commentary.yml@v3
+    with:
+      paths-ignore: 'chapters/outtakes/**'
+```
