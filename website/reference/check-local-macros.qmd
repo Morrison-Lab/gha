@@ -81,6 +81,7 @@ Every run prints how many lines, files and definitions it examined.
 | `override-files` | string  | `'**/macros-override.*,macros-override.*'` | Glob patterns naming override files. |
 | `library`        | string  | `''`    | Space-separated paths of library files whose definitions are the names an override may redefine. |
 | `submodules`     | string  | `'false'` | Passed to `actions/checkout`, so a library submodule is available. |
+| `submodule-paths` | string  | `''`     | Whitespace-separated submodule paths to initialize instead of `submodules`, for a repository with a private submodule beside the public one this check needs. |
 | `fail`           | boolean | `false` | Fail the workflow when a macro defined outside the library is found. Warn-only by default. |
 | `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string  | `'3.x'` | Python version to set up. |

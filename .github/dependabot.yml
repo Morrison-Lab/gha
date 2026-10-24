@@ -31,6 +31,8 @@ updates:
       - "/check-self-credits"
       - "/check-one-div-per-subfile"
       - "/check-def-commentary"
+      - "/check-def-title-synonyms"
+      - "/check-note-sheet-rows"
       - "/check-definite-antecedents"
       - "/build-dependency-graph"
       - "/check-term-links"

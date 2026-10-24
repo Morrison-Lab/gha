@@ -361,3 +361,11 @@ def test_the_binary_step_makes_posit_the_only_repository_and_guards_on_rspm(step
     # Same gating as the install it prepares, so a renv or no-package caller is untouched.
     for clause in ("inputs.use-renv != 'true'", "inputs.r-packages != ''"):
         assert clause in step["if"] and clause in install["if"]
+
+
+def test_quarto_freeze_is_saved_even_when_the_render_fails_or_is_cancelled(steps):
+    # A render cancelled at its time limit skipped this save and discarded
+    # every page it had finished (gha#1184).
+    condition = step_named(steps, "Save Quarto freeze")["if"]
+    assert condition.startswith("always()")
+    assert "closed" in condition

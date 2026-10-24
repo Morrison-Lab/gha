@@ -22,6 +22,12 @@ on:
         description: Space/comma-separated BibTeX keys to skip.
         type: string
         default: ''
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R with pak and has no sudo, as a
+          self-hosted runner does. Skips the R setup steps.
+        type: boolean
+        default: false
 
 jobs:
   check-dois:
@@ -39,3 +45,4 @@ jobs:
           install-quarto: ${{ inputs.install-quarto }}
           no-metadata-check: ${{ inputs.no-metadata-check }}
           exclude-keys: ${{ inputs.exclude-keys }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}

@@ -10,6 +10,14 @@ name: Quarto Preview Deploy (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for every job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it. A self-hosted runner without root
+          cannot run steps that call apt or sudo, such as `apt-packages`.
+        type: string
+        default: ubuntu-latest
       pages-base-url:
         description: >-
           Custom Pages base URL (e.g. 'org.github.io' or a custom domain) to
@@ -29,7 +37,7 @@ jobs:
   # reports conclusion == 'success', which would otherwise cause the deploy job
   # to fire and fail on artifact download.
   gate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
     permissions:
       actions: read
@@ -52,7 +60,7 @@ jobs:
   deploy:
     needs: gate
     if: needs.gate.outputs.has-artifact == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 45
     # Serialize deploys to gh-pages so main-site publishes, PR previews, and
     # preview cleanups queue rather than race or clobber each other's commits.
