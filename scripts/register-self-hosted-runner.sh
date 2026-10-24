@@ -20,8 +20,10 @@
 # Safety: the runner joins a runner group that admits PRIVATE repositories
 # only, because a pull request from a fork of a public repository can run
 # arbitrary code on this machine. The script creates the group if missing and
-# refuses to use an existing group whose visibility is `all`, or that admits
-# public repositories.
+# refuses to use an existing group that admits public repositories. A group
+# with visibility `all` is accepted only when `allows_public_repositories` is
+# exactly the boolean `false`, since "all" then means every non-public
+# repository; scripts/runner-group-is-private.sh makes that decision.
 #
 # RUNNER_INSTANCES=<n> (default 1) sets up n runners, so n jobs run at once on
 # the host. Instance 1 uses RUNNER_DIR and RUNNER_NAME as above; instance k > 1
@@ -148,15 +150,11 @@ find_group() {
     | head -n 1
 }
 
-# Refuse a group that admits all repositories or any public repository.
+# Refuse a group that may admit any public repository.
 refuse_unless_private() {
   local group=$1
-  local visibility public inherited
-  visibility=$(jq -r .visibility <<< "$group")
-  public=$(jq -r .allows_public_repositories <<< "$group")
-  inherited=$(jq -r '.inherited_allows_public_repositories // false' <<< "$group")
-  if [ "$visibility" = all ] || [ "$public" = true ] || [ "$inherited" = true ]; then
-    echo "Runner group ${RUNNER_GROUP} admits all or public repositories; refusing." >&2
+  if ! bash "$(dirname "${BASH_SOURCE[0]}")/runner-group-is-private.sh" <<< "$group"; then
+    echo "Runner group ${RUNNER_GROUP} may admit public repositories; refusing." >&2
     exit 1
   fi
 }

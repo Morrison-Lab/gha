@@ -6700,3 +6700,7 @@ jobs:
       - name: Run register-self-hosted-runner tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-register-self-hosted-runner-tests.sh
+
+      - name: Run runner-group-is-private tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-runner-group-is-private-tests.sh
