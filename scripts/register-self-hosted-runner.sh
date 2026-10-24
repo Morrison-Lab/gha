@@ -44,6 +44,8 @@
 # remove the old one in the organization's runner settings first.
 set -euo pipefail
 
+# Absolute, because the script cd-s into the runner directory before it calls its helpers.
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ORG="${ORG:?set ORG to the organization name}"
 # The settings the caller chose, so the @reboot line can repeat them.
 forwarded=""
@@ -135,7 +137,7 @@ start_runner() {
   work=$(jq -r .workFolder "$RUNNER_DIR/.runner")
   case "$work" in /*) ;; *) work="$RUNNER_DIR/$work" ;; esac
   RUNNER_DIR="$RUNNER_DIR" RUNNER_TOOL_CACHE="$work/_tool" \
-    bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh" ||
+    bash "${SCRIPT_DIR}/seed-runner-python-toolcache.sh" ||
     echo "warning: Python toolcache seeding failed; Python-based checks may fail" >&2
   cd "$RUNNER_DIR"
   # The listener's command line holds the physical path.
@@ -158,7 +160,7 @@ find_group() {
 # Refuse a group that may admit any public repository.
 refuse_unless_private() {
   local group=$1
-  if ! bash "$(dirname "${BASH_SOURCE[0]}")/runner-group-is-private.sh" <<< "$group"; then
+  if ! bash "${SCRIPT_DIR}/runner-group-is-private.sh" <<< "$group"; then
     echo "Runner group ${RUNNER_GROUP} may admit public repositories; refusing." >&2
     exit 1
   fi

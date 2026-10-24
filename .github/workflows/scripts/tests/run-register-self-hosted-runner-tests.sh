@@ -95,5 +95,10 @@ rm -f "$work/crontab"
 dry INSTALL_REBOOT_CRON=1 > /dev/null
 check "crontab: created when none existed" "$(grep -c '^@reboot' "$work/crontab")" "1"
 
+# The helpers are called after the script cd-s into the runner directory, so their
+# path must be absolute; a relative one fails to find them.
+check "helpers: dirname of BASH_SOURCE appears only in SCRIPT_DIR" "$(grep -c 'dirname "${BASH_SOURCE' "$script")" "1"
+check "helpers: both are called through SCRIPT_DIR" "$(grep -c '"${SCRIPT_DIR}/' "$script")" "2"
+
 echo "$cases cases, $failures failures"
 [[ "$failures" -eq 0 ]]
