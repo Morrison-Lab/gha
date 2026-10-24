@@ -654,7 +654,7 @@ with:
 Why not a per-format whole-project pass for the large format:
 without `--no-clean` it deletes the other formats' outputs.
 A single-file render inside the project adds its output and touches nothing else.
-`quarto-publish/render-per-file.py` finds the files with `quarto inspect`, skips a file that does not declare the format, and fails the run if any file fails or no file matches.
+`quarto-publish/render-per-file.py` finds the files with `quarto inspect` (falling back to the project's `render:` globs and each file's front matter where `quarto inspect` fails, as it does on includes written through a self-symlink), skips a file that does not declare the format, and fails the run if any file fails or no file matches.
 Leaving `formats` empty renders every format in the normal pass, PDF included, so the large format is rendered twice.
 
 ## Dependency graphs (`build-dependency-graph`)
