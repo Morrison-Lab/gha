@@ -24,13 +24,17 @@ _spec.loader.exec_module(nsr)
 
 
 def reasons(text: str):
-    return [f.reason for f in nsr.scan_rows(text.split("\n"))]
+    return [f.reason for f in nsr.scan_rows(text.split("\n")) if not f.hard]
+
+
+def hard_reasons(text: str):
+    return [f.reason for f in nsr.scan_rows(text.split("\n")) if f.hard]
 
 
 @pytest.mark.parametrize("row", [
     "| Dot product | $\\dprod{\\vx}{\\vy} = \\sumin x_i y_i$ |",
     "| [Design matrix](linear-regression.qmd#def-design-matrix) | $\\design(\\mx)$ |",
-    "| Assume | $\\stprod{\\design(\\mx)}$ invertible |",
+    "| Condition | $\\stprod{\\design(\\mx)}$ invertible |",
     "| [$k$-fold cross-validation](big-ideas.qmd#def-cross-validation) | $\\frac{1}{k} \\sum_j \\text{MSE}_j$ |",
     "| Sample MSE, matrix form | $\\frac{1}{n} \\norm{\\vy}$ |",
     "| | |",
@@ -64,13 +68,105 @@ def test_formula_with_trailing_words_is_one_formula():
     assert reasons("| Product | $a$ is $b$ |") == []
 
 
+# -- prose rules (gha#1201): always errors -----------------------------------
+
+@pytest.mark.parametrize("row", [
+    "| Product | $(a \\times b)(b \\times c)$ is $a \\times c$ |",
+    "| Transpose | $a \\times b$ becomes $b \\times a$ |",
+    "| Assume | $\\stprod{\\design(\\mx)}$ invertible |",
+])
+def test_words_in_a_formula_cell_are_prose(row):
+    assert hard_reasons(row) == ["a formula cell holds prose"]
+
+
+@pytest.mark.parametrize("label", [
+    "The mean is the average of the values.",
+    "A label that runs on for far too many words",
+])
+def test_sentence_label_is_prose(label):
+    assert hard_reasons(f"| {label} | $m$ |") == ["the label is prose"]
+
+
+def test_brief_labels_and_math_only_cells_pass():
+    text = "| Sample mean | $\\bar{y}$ |\n| Sample MSE, matrix form | $\\mx$ |"
+    assert hard_reasons(text) == []
+
+
+def test_inline_comma_list_outside_a_table_fails():
+    # The closing line of lds#1267 before it was made a table.
+    text = "**Values:** $e \\approx 2.718$, $\\ln 2 \\approx 0.693$, $\\ln 3 \\approx 1.099$."
+    assert hard_reasons(text) == [
+        "a paragraph outside a table (put a list in a table or bullets)"]
+
+
+def test_plain_paragraph_fails():
+    assert hard_reasons("Remember to bring a calculator.") == [
+        "a paragraph outside a table (put a list in a table or bullets)"]
+
+
+def test_structure_lines_pass():
+    text = "\n".join([
+        "---", "title: Sheet", "---", "",
+        "::: {.content-visible when-format=\"html\"}",
+        "[Download the PDF](sheet.pdf)", ":::", "",
+        "## Heading", "**Linear regression**", "",
+        "| $\\euler$ | $\\ln 2$ |", "| --- | --- |", "| $2.718$ | $0.693$ |", "",
+        ": {tbl-colwidths=\"[35,65]\"}", "",
+        "- $x$", "- $y$",
+    ])
+    assert hard_reasons(text) == []
+
+
+def test_wrapped_bullet_continuation_passes():
+    assert hard_reasons("- $x$\n  continues here\n- $y$") == []
+
+
+def test_indented_line_after_a_paragraph_still_fails():
+    assert hard_reasons("Some prose.\n  more prose") != []
+
+
+def test_multiline_html_comment_passes():
+    assert hard_reasons("<!-- a long\nnote that spans\nlines -->\n| A | $x$ |") == []
+
+
+@pytest.mark.parametrize("line", [
+    "![Alt text](figure.png)",
+    "> A quoted line",
+    "<div class=\"x\">",
+])
+def test_images_quotes_and_raw_html_pass(line):
+    assert hard_reasons(line) == []
+
+
+def test_link_text_in_a_formula_cell_counts_as_words():
+    assert hard_reasons("| Mean | [definition](x.qmd) |") == [
+        "a formula cell holds prose"]
+
+
+def test_bullet_with_two_formulas_fails():
+    assert hard_reasons("- $x$, $y$") == ["a bullet holds two formulas"]
+
+
+def test_front_matter_is_skipped():
+    assert hard_reasons("---\ntitle: A long title with words\n---") == []
+
+
+def test_prose_is_an_error_even_when_fail_is_false(tmp_path, monkeypatch, capsys):
+    _repo(tmp_path, GOOD + "\n", GOOD + "\nSome prose.\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("NSR_BASE_REF", "HEAD^1")
+    monkeypatch.setenv("NSR_FAIL", "false")
+    assert nsr.main() == 1
+    assert "::error file=x-note-sheet.qmd,line=2::" in capsys.readouterr().out
+
+
 def test_code_fence_rows_ignored():
     text = "```\n| Dot product, sample mean | $x$ |\n```"
     assert reasons(text) == []
 
 
 def test_line_numbers():
-    found = nsr.scan_rows(["intro", "| Dot product, sample mean | $x$ |"])
+    found = nsr.scan_rows(["## Intro", "| Dot product, sample mean | $x$ |"])
     assert [f.line for f in found] == [2]
 
 

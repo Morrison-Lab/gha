@@ -10,30 +10,49 @@ other files' outputs and the shared site files alone, unlike a whole-project
 
 Usage: render-per-file.py PROJECT_DIR OUTPUT_DIR FORMAT [FORMAT ...]
 The Quarto profile, if any, is read from QUARTO_PROFILE.
+
+`quarto inspect` resolves a nested include from the including file's directory,
+and `quarto render` resolves it from the top-level file's directory.  A project
+that writes nested includes through a self-symlink (`mds -> .`, as mds and pds
+do) therefore renders but cannot be inspected (Morrison-Lab/gha#1214).  When
+`quarto inspect` fails, the input list comes from the project's `render:`
+globs and a file's formats from its front matter and then the project config.
+The helpers are in `per_file/`, one function per file.
 """
-import json
 import os
+import pathlib
 import subprocess
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from per_file.front_matter_formats import front_matter_formats  # noqa: E402
+from per_file.project_config import project_config  # noqa: E402
+from per_file.project_inputs import project_inputs  # noqa: E402
+from per_file.quarto_inspect import quarto_inspect  # noqa: E402
 
 
 def main(argv):
     if len(argv) < 4:
         raise SystemExit(__doc__)
     project, output_dir, wanted = argv[1], argv[2], argv[3:]
-    # check=True: a failed `quarto inspect` stops the run with its stderr shown.
-    inputs = json.loads(subprocess.run(
-        ["quarto", "inspect", "."], cwd=project,
-        capture_output=True, text=True, check=True,
-    ).stdout)["files"]["input"]
+    config = None  # read lazily: only the fallback needs it, and PyYAML
+    listing = quarto_inspect(project, ".")
+    if listing is not None:
+        inputs = listing["files"]["input"]
+    else:
+        config = project_config(project)
+        inputs = project_inputs(project, config)
     failures = []
     rendered = 0
     for path in sorted(inputs):
         rel = os.path.relpath(path, project)
-        have = set(json.loads(subprocess.run(
-            ["quarto", "inspect", rel], cwd=project,
-            capture_output=True, text=True, check=True,
-        ).stdout).get("formats", {}))
+        info = quarto_inspect(project, rel)
+        if info is not None:
+            have = set(info.get("formats", {}))
+        else:
+            config = config if config is not None else project_config(project)
+            have = front_matter_formats(path, config)
         for fmt in wanted:
             if fmt not in have:
                 continue

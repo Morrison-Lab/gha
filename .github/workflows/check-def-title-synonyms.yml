@@ -1,0 +1,52 @@
+name: Check definition title synonyms (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      whole-tree:
+        description: Scan every tracked matching file in full, not only added lines.
+        type: boolean
+        default: false
+      globs:
+        description: Space-separated git pathspecs of tracked files to check.
+        type: string
+        default: '*.qmd'
+      fail:
+        description: Fail the workflow on a finding (else warnings only).
+        type: boolean
+        default: false
+
+jobs:
+  check-def-title-synonyms:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check definition title synonyms
+        uses: Morrison-Lab/gha/check-def-title-synonyms@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          whole-tree: ${{ inputs.whole-tree }}
+          globs: ${{ inputs.globs }}
+          fail: ${{ inputs.fail }}
+          # On pull_request, HEAD^1 is the base tip GitHub built the merge ref on
+          # (see check-one-div-per-subfile, gha#1007); on push there is no base.
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

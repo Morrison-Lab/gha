@@ -13,6 +13,7 @@ The housekeeping half of the PR-preview family. On a schedule, it deletes
 | `compact-history`  | boolean | `false`        | Orphan-squash the `gh-pages` branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses). |
 | `publish-workflow` | string  | `''`           | Workflow name pattern for the base-branch publish/deploy workflow that must succeed before a merged PR preview is removed (e.g. `'Quarto Publish*'` or `'Deploy Website'`). Matches against the workflow's declared display name (`name:`). If a workflow filename (`.yml` or `.yaml`) is provided, it is resolved via the GitHub API. Defaults to auto-detecting workflows with `'publish'` or `'deploy'` in their name. Set to `'none'` or `'false'` to disable. |
 | `wait-for-publish` | boolean | `true`         | When `true` (default), wait until the base branch's publish/deploy workflow succeeds before removing preview directories for merged PRs. When `false`, merged PR previews are removed immediately regardless of publish status.     |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 

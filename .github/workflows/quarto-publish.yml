@@ -12,6 +12,14 @@ name: Quarto Publish (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for every job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it. A self-hosted runner without root
+          cannot run steps that call apt or sudo, such as `apt-packages`.
+        type: string
+        default: ubuntu-latest
       path:
         description: Path (in the caller repo) to the Quarto project to render (the dir with _quarto.yml).
         type: string
@@ -40,6 +48,13 @@ on:
         default: false
       tinytex:
         description: Install TinyTeX (needed to render PDF outputs).
+        type: boolean
+        default: false
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R, Quarto, TinyTeX and Julia and has no
+          sudo (a self-hosted runner). Skip the steps that install them and
+          install `r-packages` with pak. See the composite's input.
         type: boolean
         default: false
       setup-julia:
@@ -151,7 +166,7 @@ jobs:
   # deploy job below declares it, even when deploy is false). Only the deploy
   # job actually uses the write token.
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -191,6 +206,7 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
           julia-version: ${{ inputs.julia-version }}
           apt-packages: ${{ inputs.apt-packages }}
           output-dir: ${{ inputs.output-dir }}
@@ -216,7 +232,7 @@ jobs:
   deploy:
     needs: build
     if: inputs.deploy
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 45
     # Serialize deploys to gh-pages so main-site publishes, PR previews, and
     # preview cleanups queue rather than race or clobber each other's commits.

@@ -99,6 +99,8 @@ jobs:
 ```
 
 It takes the same `levels` and `allow-patterns` inputs.
+It also takes a `runs-on` input (default `ubuntu-latest`),
+for a private repository that runs it on a self-hosted runner.
 Grant `checks: write`; the job posts one check run per gated run.
 
 Each gated run posts its own check run named `annotation-gate`.
