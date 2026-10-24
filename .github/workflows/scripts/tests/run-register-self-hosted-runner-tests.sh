@@ -73,10 +73,22 @@ dry RUNNER_INSTANCES=3 INSTALL_REBOOT_CRON=1 > /dev/null
 dry RUNNER_INSTANCES=3 INSTALL_REBOOT_CRON=1 > /dev/null
 check "crontab: one @reboot line after two runs" "$(grep -c '^@reboot' "$work/crontab")" "1"
 check "crontab: unrelated line kept" "$(grep -c 'keep-me' "$work/crontab")" "1"
-check "crontab: line content" "$(grep '^@reboot' "$work/crontab" | sed "s| bash .*| bash SCRIPT|")" "@reboot ORG=Acme RUNNER_INSTANCES=3 bash SCRIPT"
+check "crontab: line content" "$(grep '^@reboot' "$work/crontab" | sed -e "s| bash .*| bash SCRIPT|" -e 's| PATH=[^ ]*||')" "@reboot ORG=Acme RUNNER_INSTANCES=3 bash SCRIPT"
+check "crontab: PATH is carried" "$(grep -c ' PATH=' "$work/crontab")" "1"
+
+# An organization whose name starts with another's keeps its own line.
+dry ORG=Acme2 RUNNER_INSTANCES=1 INSTALL_REBOOT_CRON=1 > /dev/null
+dry RUNNER_INSTANCES=3 INSTALL_REBOOT_CRON=1 > /dev/null
+check "crontab: Acme and Acme2 each keep one line" "$(grep -c '^@reboot' "$work/crontab")" "2"
+check "crontab: Acme2 line survives an Acme rerun" "$(grep -c 'ORG=Acme2 ' "$work/crontab")" "1"
+
+# Settings the caller gave are repeated on the line.
+dry RUNNER_INSTANCES=3 RUNNER_GROUP=my-group INSTALL_REBOOT_CRON=1 > /dev/null
+check "crontab: RUNNER_GROUP is carried" "$(grep -c 'ORG=Acme .*RUNNER_GROUP=my-group ' "$work/crontab")" "1"
+check "crontab: unset settings are not added" "$(grep 'ORG=Acme ' "$work/crontab" | grep -c RUNNER_LABELS)" "0"
 dry RUNNER_INSTANCES=2 INSTALL_REBOOT_CRON=1 > /dev/null
-check "crontab: a rerun with a new count replaces the line" "$(grep '^@reboot' "$work/crontab" | sed 's/.*RUNNER_INSTANCES=\([0-9]*\).*/\1/')" "2"
-check "crontab: still one line" "$(grep -c '^@reboot' "$work/crontab")" "1"
+check "crontab: a rerun with a new count replaces the line" "$(grep '^@reboot ORG=Acme ' "$work/crontab" | sed 's/.*RUNNER_INSTANCES=\([0-9]*\).*/\1/')" "2"
+check "crontab: still one Acme line" "$(grep -c '^@reboot ORG=Acme ' "$work/crontab")" "1"
 
 # Starting from no crontab at all.
 rm -f "$work/crontab"

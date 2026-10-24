@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-one-function-per-file: allow-multiple
-# Register one self-hosted GitHub Actions runner for an organization, on a
-# Linux machine (a lab-managed host, or WSL), as the current user with no sudo.
+# Register self-hosted GitHub Actions runners for an organization (one by
+# default, RUNNER_INSTANCES=<n> for n), on a Linux machine (a lab-managed host, or WSL), as the current user with no sudo.
 #
 # Usage: ORG=<org> bash scripts/register-self-hosted-runner.sh
 #
@@ -43,11 +43,17 @@
 set -euo pipefail
 
 ORG="${ORG:?set ORG to the organization name}"
+# The settings the caller chose, so the @reboot line can repeat them.
+forwarded=""
+for v in RUNNER_DIR RUNNER_NAME RUNNER_LABELS RUNNER_GROUP RUNNER_WORK_DIRECTORY; do
+  if [ -n "${!v:-}" ]; then forwarded+=" $v=$(printf '%q' "${!v}")"; fi
+done
 RUNNER_NAME="${RUNNER_NAME:-private-$(hostname -s)}"
 # The default directory carries the host name, so two hosts that share a home
 # directory (NFS) do not share a runner. A runner an earlier version of this
 # script configured in the old default directory keeps working there.
 if [ -z "${RUNNER_DIR:-}" ] && [ -f "$HOME/actions-runner-private/.runner" ] &&
+  command -v jq > /dev/null &&
   [ "$(jq -r .agentName "$HOME/actions-runner-private/.runner")" = "$RUNNER_NAME" ]; then
   RUNNER_DIR="$HOME/actions-runner-private"
 fi
@@ -62,19 +68,26 @@ RUNNER_GROUP="${RUNNER_GROUP:-private-runners}"
 RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY:-/var/tmp/gha-work/$RUNNER_NAME}"
 
 # With INSTALL_REBOOT_CRON=1, put one @reboot line in the user's crontab that
-# runs this script again with the same ORG and RUNNER_INSTANCES, so the
-# runners come back after a reboot (an already-configured runner is only
-# started). The line is tagged, so running this again replaces it instead of
-# adding a second. Other crontab lines are left alone.
+# runs this script again with the same ORG, RUNNER_INSTANCES, PATH and any
+# RUNNER_* setting the caller gave, so the runners come back after a reboot (an
+# already-configured runner is only started). The rerun needs `gh` logged in
+# in a way a cron job can use, `jq`, the network and the home directory at
+# boot; if it cannot, the failure is in the runner directory's log or cron's
+# mail, and the runners are started by hand. The line ends with a tag naming
+# the organization, so running this again replaces that organization's line
+# instead of adding a second, and another organization's line (even one whose
+# name starts with this one's) and other crontab lines are left alone.
 install_reboot_cron() {
   [ "${INSTALL_REBOOT_CRON:-}" = 1 ] || return 0
   local tag="# gha-self-hosted-runners ${ORG}"
   local script line current
   script=$(realpath "${BASH_SOURCE[0]}")
-  line="@reboot ORG=${ORG} RUNNER_INSTANCES=${RUNNER_INSTANCES} bash ${script} ${tag}"
+  line="@reboot ORG=${ORG} RUNNER_INSTANCES=${RUNNER_INSTANCES} PATH=$(printf '%q' "$PATH")${forwarded} bash ${script} ${tag}"
   # `crontab -l` fails when there is no crontab yet; that is an empty one.
   current=$(crontab -l 2> /dev/null || true)
-  { grep -vF "$tag" <<< "$current" || true; echo "$line"; } | crontab -
+  # Drop only lines that end with exactly this tag.
+  { awk -v t="$tag" '{ n = length(t); if (substr($0, length($0) - n + 1) != t) print }' <<< "$current"
+    echo "$line"; } | crontab -
   echo "Installed the @reboot crontab line (${tag})."
 }
 
@@ -84,17 +97,21 @@ case "$RUNNER_INSTANCES" in
 esac
 if [ "$RUNNER_INSTANCES" -gt 1 ]; then
   # Run this script once per instance, so each keeps the single-runner flow.
+  # One instance failing does not stop the others from starting; the exit
+  # status reports that any failed.
+  failed=0
   for ((k = 1; k <= RUNNER_INSTANCES; k++)); do
     if [ "$k" -eq 1 ]; then
-      INSTALL_REBOOT_CRON=0 RUNNER_INSTANCES=1 bash "${BASH_SOURCE[0]}"
+      INSTALL_REBOOT_CRON=0 RUNNER_INSTANCES=1 bash "${BASH_SOURCE[0]}" || failed=1
     else
       INSTALL_REBOOT_CRON=0 RUNNER_INSTANCES=1 RUNNER_DIR="${RUNNER_DIR}-${k}" \
         RUNNER_NAME="${RUNNER_NAME}-${k}" \
-        RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY}-${k}" bash "${BASH_SOURCE[0]}"
+        RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY}-${k}" \
+        bash "${BASH_SOURCE[0]}" || failed=1
     fi
   done
   install_reboot_cron
-  exit 0
+  exit "$failed"
 fi
 
 # DRY_RUN_CONFIG=1 prints what this run would use and touches nothing else
