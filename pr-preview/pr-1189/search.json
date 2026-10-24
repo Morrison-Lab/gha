@@ -2676,218 +2676,75 @@
     ]
   },
   {
-    "objectID": "reference/annotation-gate.html",
-    "href": "reference/annotation-gate.html",
-    "title": "annotation-gate.yml",
+    "objectID": "reference/check-def-commentary.html",
+    "href": "reference/check-def-commentary.html",
+    "title": "check-def-commentary.yml",
     "section": "",
-    "text": "Fail a run that carries an annotation nobody allowed.\nA check that emits a ::warning:: or ::notice:: on a green job tells the reader something is wrong without stopping the merge, and agents and authors skip it. This gate reads the annotations of every other job in the run through the check-runs API and fails when any notice, warning or failure annotation does not match an allow pattern.",
+    "text": "Diff-scoped, blocking check that flags commentary written inside a #def- div. A definition div holds the definition, its notation and its display equation only. Commentary, contrasts, motivation and history go in a #rem- div right after it, one div per subfile. This implements gha#1180.\nThe check reports a sentence inside a ::: {#def-...} div that opens with “It is not”, “This is not”, “That is not”, “Note that”, “Notice that”, “Unlike”, “Do not confuse”, “Be careful”, “Beware”, “In contrast”, “By contrast”, “Intuitively”, “Informally” or “Historically”. The finding sits on the line that holds the sentence.\nThe check does not read:\nThe heuristic is noisy by design, and the marker is its escape hatch.",
     "crumbs": [
       "Overview",
       "Reference",
-      "annotation-gate.yml"
+      "check-def-commentary.yml"
     ]
   },
   {
-    "objectID": "reference/annotation-gate.html#use",
-    "href": "reference/annotation-gate.html#use",
-    "title": "annotation-gate.yml",
-    "section": "Use",
-    "text": "Use\nAdd one job that lists every other job in needs and runs if: always(). See examples/annotation-gate.yml. Grant the job actions: read, checks: read and contents: read.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "annotation-gate.yml"
-    ]
-  },
-  {
-    "objectID": "reference/annotation-gate.html#inputs",
-    "href": "reference/annotation-gate.html#inputs",
-    "title": "annotation-gate.yml",
-    "section": "Inputs",
-    "text": "Inputs\n\nlevels: levels to enforce, default notice,warning,failure.\nallow-patterns: newline-separated case-insensitive regexes for tracked exceptions.\njob-name: optional extra name prefix of a job to skip. The gate’s own job is always skipped, whatever the caller named it.\n\nThe composite action Morrison-Lab/gha/annotation-gate@v3 also takes default-allow, which replaces the allowed-for-everyone list below, and token. The reusable workflow keeps the defaults. It takes three more inputs for the workflow_run mode described at the end: run-id (the run to gate instead of the current one), run-attempt, and head-sha (post the result as a check run on this commit).",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "annotation-gate.yml"
-    ]
-  },
-  {
-    "objectID": "reference/annotation-gate.html#allowed-for-everyone",
-    "href": "reference/annotation-gate.html#allowed-for-everyone",
-    "title": "annotation-gate.yml",
-    "section": "Allowed for everyone",
-    "text": "Allowed for everyone\n\nGitHub’s runner-image migration notice (“The ubuntu-latest label will migrate to …”).\nA job’s own “Process completed with exit code N” failure annotation. A failed job already fails the run, and the gate runs under if: always(), so this one would only repeat it.\nThe forced-Node deprecation warning, until the action pins are bumped. It reads “Node.js N is deprecated” and then “The following actions target Node”.\nThe two annotations the review workflow emits when a newer push supersedes a review: the concurrency group’s “Canceling since a higher priority waiting request for …” and the stale-review skip “PR head moved …; not posting a stale review”. Both describe a run that was meant to stop, and the newer push gets its own review.\nThe notice the review workflow emits on a PR that edits workflow files: “PR edits workflow files; restored .github/workflows/ from the default branch …”. It reports the safe behavior of gha#598, so it is not a defect in the PR.\nThe failure annotation require-clean-verdict emits when a review finishes with findings: “Claude review verdict is not clean (verdict: …)”. require-clean-verdict already fails its own job, and in workflow_run mode each gated run posts a distinct annotation-gate check run that a later re-review on the same commit cannot clear.\nThe preview’s “Skipping element-level diff highlighting” notice. It says a page has more elements than the highlighter compares (500), so the preview shows that page without change highlights. A pull request that touches a large chapter always emits it, and no edit to the pull request removes it.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "annotation-gate.yml"
-    ]
-  },
-  {
-    "objectID": "reference/annotation-gate.html#scope",
-    "href": "reference/annotation-gate.html#scope",
-    "title": "annotation-gate.yml",
+    "objectID": "reference/check-def-commentary.html#scope",
+    "href": "reference/check-def-commentary.html#scope",
+    "title": "check-def-commentary.yml",
     "section": "Scope",
-    "text": "Scope\nAnnotations from the gate’s own job, and from a job that has not finished, are not seen. A reusable-workflow job is covered, because the jobs endpoint lists each by its full name.",
+    "text": "Scope\nOnly an added line is reported. The whole file is parsed, since the div opens far above the changed line. An added line whose exact text was also deleted in the same diff counts as moved. With no base-ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to scan every tracked file on purpose, which measures how many existing definitions carry commentary. fail defaults to true, because a diff-scoped check reflags nothing already merged.",
     "crumbs": [
       "Overview",
       "Reference",
-      "annotation-gate.yml"
+      "check-def-commentary.yml"
     ]
   },
   {
-    "objectID": "reference/annotation-gate.html#one-gate-for-a-repository-with-many-workflow-files",
-    "href": "reference/annotation-gate.html#one-gate-for-a-repository-with-many-workflow-files",
-    "title": "annotation-gate.yml",
-    "section": "One gate for a repository with many workflow files",
-    "text": "One gate for a repository with many workflow files\nThe job above sees only the jobs of its own run. A repository whose checks live in separate workflow files calls annotation-gate-run.yml from one workflow_run workflow instead. It gates each run that finishes and posts the result as a check run named annotation-gate on that run’s commit, so it shows on the pull request.\nname: Annotation gate\non: # zizmor: ignore[dangerous-triggers] -- the gate checks out nothing and runs no code from the triggering run\n  workflow_run:\n    workflows: [\"*\"]\n    types: [completed]\njobs:\n  gate:\n    # The gate's own run must not trigger another gate.\n    if: ${{ github.event.workflow_run.name != 'Annotation gate' }}\n    permissions:\n      actions: read\n      checks: write\n      contents: read\n    uses: Morrison-Lab/gha/.github/workflows/annotation-gate-run.yml@v3\n    with:\n      run-id: ${{ github.event.workflow_run.id }}\n      run-attempt: ${{ github.event.workflow_run.run_attempt }}\n      head-sha: ${{ github.event.workflow_run.head_sha }}\nIt takes the same levels and allow-patterns inputs. It also takes a runs-on input (default ubuntu-latest), for a private repository that runs it on a self-hosted runner. Grant checks: write; the job posts one check run per gated run.\nEach gated run posts its own check run named annotation-gate. When several workflows finish on one commit, the commit carries several checks of that name, and a failing one blocks a required check. annotation-gate-run.yml holds checks: write, so it is not in the read-only list on the permissions page. It calls the action at @v3, so it gates the right run only once v3 has slid past the commit that added these inputs; before that the unknown inputs are ignored and the gate checks its own run. See examples/annotation-gate-run.yml for the stub to copy.",
+    "objectID": "reference/check-def-commentary.html#usage",
+    "href": "reference/check-def-commentary.html#usage",
+    "title": "check-def-commentary.yml",
+    "section": "Usage",
+    "text": "Usage\nCopy examples/check-def-commentary.yml to .github/workflows/ in your repository.",
     "crumbs": [
       "Overview",
       "Reference",
-      "annotation-gate.yml"
+      "check-def-commentary.yml"
     ]
   },
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Morrison-Lab/gha",
-    "section": "",
-    "text": "This site documents Morrison-Lab/gha, a set of reusable GitHub Actions shared across the d-morrison, UCD-SERG, ucdavis, UCLA-PHP, and UCD-IDDRC owners. It is modeled on r-lib/actions and easystats/workflows: a repo calls a shared workflow with a tiny stub instead of carrying its own copy.\nThe repo is public so it can be referenced from repositories across those owners.",
+    "objectID": "reference/check-def-commentary.html#inputs",
+    "href": "reference/check-def-commentary.html#inputs",
+    "title": "check-def-commentary.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\npaths-ignore\nempty\nComma- or newline-separated glob patterns to skip\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every definition, not only a pull request’s additions\n\n\nruns-on\nubuntu-latest\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
     "crumbs": [
       "Overview",
-      "Morrison-Lab/gha"
+      "Reference",
+      "check-def-commentary.yml"
     ]
   },
   {
-    "objectID": "index.html#how-it-works",
-    "href": "index.html#how-it-works",
-    "title": "Morrison-Lab/gha",
-    "section": "How it works",
-    "text": "How it works\nEach capability ships as two layers:\n\nA composite action (for example check-bibliography-dois/action.yml) bundles the real steps and any helper script. It is referenced as Morrison-Lab/gha/&lt;name&gt;@vN (the major tag that capability currently recommends - see Versioning).\nA reusable workflow (.github/workflows/&lt;name&gt;.yml, on: workflow_call) wraps the composite, declares permissions, and checks out the caller’s repo. This is what consumer repos target.\n\nA consumer repo adds a small caller stub (see the examples/ directory):\nname: Check Bibliography DOIs\non:\n  push: { branches: [main] }\n  pull_request:\n  workflow_dispatch:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\nPin to the major tag that capability currently recommends (@v2 in the example above) - it varies per capability rather than defaulting uniformly to @v1; see Versioning for the full breakdown. Do not reference @main from consumers.",
+    "objectID": "reference/check-def-commentary.html#permissions",
+    "href": "reference/check-def-commentary.html#permissions",
+    "title": "check-def-commentary.yml",
+    "section": "Permissions",
+    "text": "Permissions\nThe job needs contents: read only.",
     "crumbs": [
       "Overview",
-      "Morrison-Lab/gha"
+      "Reference",
+      "check-def-commentary.yml"
     ]
   },
   {
-    "objectID": "index.html#actions-vs.-workflows",
-    "href": "index.html#actions-vs.-workflows",
-    "title": "Morrison-Lab/gha",
-    "section": "Actions vs. workflows",
-    "text": "Actions vs. workflows\n\n\n\n\n\n\nNoteComposite action\n\n\n\nA composite action is a list of steps. It runs inside a job that already exists - the caller’s runner and permissions are already in place. An action has no concept of jobs or triggers; it is just a named bundle of commands.\n# &lt;name&gt;/action.yml\nname: My Action\ndescription: Does a thing\ninputs:\n  my-input:\n    description: ...\nruns:\n  using: composite\n  steps:\n    - run: echo \"hello\"\n      shell: bash\n\n\n\n\n\n\n\n\nNoteReusable workflow\n\n\n\nA reusable workflow is a complete pipeline. It defines its own jobs, each with its own runner (runs-on:), permissions (permissions:), and steps. A consumer calls it as a job, not as a step.\n# .github/workflows/&lt;name&gt;.yml\non: workflow_call\njobs:\n  my-job:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo \"hello\"\n\n\n\n\n\n\n\n\nWarningshell: is required in composite actions\n\n\n\nEvery run: step in a composite action must declare shell:. Workflows have a default shell; composite actions do not.\n\n\n\n\n\n\n\n\n\n\n\nComposite action\nReusable workflow\n\n\n\n\nKey top-level keys\nname, description, inputs, outputs, runs\non, jobs\n\n\nJobs\nNo - only steps under runs\nYes - one or more jobs blocks\n\n\nruns-on\nAbsent - inherits the caller’s runner\nPer job\n\n\npermissions\nAbsent\nYes (caller must also grant them)\n\n\nCalled from\nA job’s steps (via uses)\nA workflow’s jobs (via uses)\n\n\n\nBecause an action cannot declare permissions or choose its runner, this repo uses the two-layer design: the composite action holds the real logic, and the reusable workflow wraps it to handle the runner, permissions, and checkout. Consumer repos reference only the workflow layer.",
+    "objectID": "reference/check-def-commentary.html#example",
+    "href": "reference/check-def-commentary.html#example",
+    "title": "check-def-commentary.yml",
+    "section": "Example",
+    "text": "Example\nname: Check definition divs for commentary\n\non:\n  pull_request:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-def-commentary.yml@v3\n    with:\n      paths-ignore: 'chapters/outtakes/**'",
     "crumbs": [
       "Overview",
-      "Morrison-Lab/gha"
-    ]
-  },
-  {
-    "objectID": "index.html#where-to-go-next",
-    "href": "index.html#where-to-go-next",
-    "title": "Morrison-Lab/gha",
-    "section": "Where to go next",
-    "text": "Where to go next\n\nWorkflows catalogs every reusable workflow and what it does.\nPermissions lists the GITHUB_TOKEN permissions and secrets each one needs.\nVersioning explains the moving major tags (@v1/@v2, per capability) and how third-party actions are pinned.\n\nThis very site is built and shipped by the workflows it documents: quarto-publish deploys it to GitHub Pages, and the preview family renders a preview for each pull request.",
-    "crumbs": [
-      "Overview",
-      "Morrison-Lab/gha"
-    ]
-  },
-  {
-    "objectID": "versioning.html",
-    "href": "versioning.html",
-    "title": "Versioning",
-    "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-exm-figures.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-write-idiom.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "versioning.html#widening-permissions-is-a-breaking-change",
-    "href": "versioning.html#widening-permissions-is-a-breaking-change",
-    "title": "Versioning",
-    "section": "Widening permissions is a breaking change",
-    "text": "Widening permissions is a breaking change\nA reusable workflow’s job-level permissions: block is part of its caller contract: a nested job cannot request more than the caller grants, so adding a permission - even a read - fails every caller written against the old contract at parse time (Invalid workflow file), with no API-visible diagnostic (a startup_failure run exposes no jobs, logs, or annotations; the error text appears only on the run page in the UI). gha#685 measured this when gha#638 added issues: read to ai-code-review.yml and the v2 slide delivered it: every consumer run concluded startup_failure until the caller-side grant landed. So treat a permissions: widening like any other breaking change: prefer a major-version bump; where a bump is disproportionate, find the callers and PR the caller-side grant before sliding the tag, and name the required caller edit in the change’s changelog fragment. Find them with the per-workflow code searches that REVDEPS.md documents, not by reading its consumer table: that table is hand-maintained, and so is the owner list beside it. Measured 2026-09-07, the owner list this change replaces returned 10 of the 18 repositories pinning claude-code-review.yml@v2, missing all 8 under owners nobody had added. Its names last changed 2026-06-18, so it had been wrong for as long as nobody looked. Run the unscoped search too and union the results, and treat any count as a floor: a push to a caller’s file can drop it out of the code-search index until it is reindexed, so even a long-standing caller can be missing from either form with nothing saying so.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "versioning.html#advancing-a-major-tag",
-    "href": "versioning.html#advancing-a-major-tag",
-    "title": "Versioning",
-    "section": "Advancing a major tag",
-    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nA brand-new capability’s own PR merging to main does not make it usable at @v2 yet - if a consumer repo’s PR needs to reference a just-merged workflow at @v2 right away, check whether @v2 has actually been advanced past that merge first (step 3 above), or the consumer’s reference resolves to a workflow-not-found error rather than a stale-but-working one.\nTo prevent manual tag advancement from being forgotten when main moves ahead of the major tag, a tag drift check (check-tag-drift) runs as part of CI to surface when main has unreleased commits ahead of the active major tag (e.g. v2). It emits a GitHub Actions notice and job summary pointing to slide-major-tag.yml whenever tag advancement is pending.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "versioning.html#pinning-third-party-actions",
-    "href": "versioning.html#pinning-third-party-actions",
-    "title": "Versioning",
-    "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml at @v2, and check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-exm-figures.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-write-idiom.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-repo-hygiene.yml, check-quarto-website.yml, check-quarto-book.yml, check-quarto-manuscript.yml, check-quarto-links.yml, check-quarto-prose.yml, check-orphaned-images.yml, check-source-overlap.yml, check-r-package.yml, check-python-package.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml at @v3 - see the versioning note above), so they are not SHA-pinned.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "versioning.html#reverse-dependencies",
-    "href": "versioning.html#reverse-dependencies",
-    "title": "Versioning",
-    "section": "Reverse dependencies",
-    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "permissions.html",
-    "href": "permissions.html",
-    "title": "Permissions",
-    "section": "",
-    "text": "A called reusable workflow cannot hold more GITHUB_TOKEN permissions than the caller grants, and most repos default to a read-only token. So workflows that need to write must have the caller grant it on the calling job. The stubs in examples/ already include the right permissions: blocks; copy them as-is.",
-    "crumbs": [
-      "Overview",
-      "Permissions"
-    ]
-  },
-  {
-    "objectID": "permissions.html#per-workflow-grants",
-    "href": "permissions.html#per-workflow-grants",
-    "title": "Permissions",
-    "section": "Per-workflow grants",
-    "text": "Per-workflow grants\n\n\nannotation-gate, check-ai-tells, check-bibliography-dois, check-code-similarity, check-dependency-graph, check-duplicate-roxygen, check-equation-renders, check-extra, check-formatting, check-informal-definitions, check-junk-files, check-literal-math-letters, check-wikipedia-further-reading, check-redundant-citations, check-self-credits, check-one-div-per-subfile, check-pr-size, check-def-title-synonyms, check-definite-antecedents, check-exm-figures, check-term-links, check-paired-file-change, check-local-macros, check-fform-paren, check-write-idiom, check-math-definitions, check-merge-drops, check-note-sheet-rows, check-new-line-breaks, check-news, check-non-standard-chars, check-one-function-per-file, check-orphaned-images, check-phi, check-python-package, check-quarto-book, check-quarto-links, check-quarto-manuscript, check-quarto-prose, check-quarto-website, check-r-package, check-repo-hygiene, check-secrets, check-source-overlap, check-typed-output, check-typos, cursor-code-review, lint-changed-files, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, r-cmd-check, spellcheck, student-qmd, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues, so grant issues: write, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncheck-news reads the PR’s labels live for its skip-label exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs issues: read and pull-requests: read alongside contents: read.\nversion-check reads the PR’s labels live for its no version increment exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs pull-requests: read alongside contents: read. Not issues: read: that scope alone returned 403 on the same call (gha#724), since GitHub authorizes a label read on an issue object that is a pull request against the pull-requests permission.\ncleanup-pr-previews commits deletions to gh-pages and queries workflow runs to verify deployment before pruning merged PR previews, so grant contents: write, pull-requests: read, actions: read.\nbump-submodule, sync-shared-fragments, sync-upstream, update-quarto-extensions open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, checks: read (grant it; optional under @v2, which no longer requests it per gha#832, but required by the model job as of @v3), and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions / checks: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server). Grant checks: read regardless of which tag you pin, but note what it does and does not buy. actions: read covers workflow runs but not GET .../commits/{ref}/check-runs, so without checks: read the reviewer’s check-status reads fail with HTTP 403 and a clean diff can be reported as blocked (ucdavis/bcs#964). The model job briefly lost this scope on @v2: a called workflow cannot request a permission its caller lacks, so the run ends in startup_failure before any job begins, and @v2’s original grant of checks: read on the model job broke startup for 17 of the 18 repositories pinning this workflow at @v2 that had not yet added the caller-side grant above (gha#831). Dropping the scope from the model job un-broke those callers but reopened the 403 for everyone – which is what v3 fixes by reinstating it there, now that the caller-side grant above is established practice. Keep granting checks: read regardless: it is optional under the currently-tagged @v2 (which no longer requests it, per gha#832) but required by the model job once you adopt @v3. A Dependabot bump from @v2 to @v3 is where a missing grant shows up, and it shows up as an absence: the bumped run ends in startup_failure, so the PR carries no review check at all rather than a red one. Add checks: read to the caller job in that same PR before merging it (gha#1006; measured on Morrison-Lab/mds#78).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nai-code-review selects the first available AI reviewer and dispatches its review workflow, so grant contents: read, pull-requests: read, issues: read, actions: write, and pass the secrets of whichever agent review workflows are installed (see examples/ai-code-review.yml). issues: read is required since the delivery classifier’s comment scan landed (gha#638); a caller missing it fails at parse time with no API-visible diagnostic (gha#685).\ngemini pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the GEMINI_API_KEY secret.\ngemini-code-review posts the Gemini review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nantigravity-code-review posts the Antigravity review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nsmall-model-agent posts the small-model agent’s PR comment, so grant contents: read, pull-requests: write.\nclaude-manage-project files issues and updates the project board, so grant contents: read, issues: write, repository-projects: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret (required).\nopposition-research mines competitor feature demand and files opportunity issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\ncheck-dependency-updates audits dependencies and files update issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\naltdoc-multiversion-docs deploys to gh-pages, comments PR previews, and rewrites rendered links, so grant contents: write, pull-requests: write, and issues: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
-    "crumbs": [
-      "Overview",
-      "Permissions"
-    ]
-  },
-  {
-    "objectID": "permissions.html#optional-secrets",
-    "href": "permissions.html#optional-secrets",
-    "title": "Permissions",
-    "section": "Optional secrets",
-    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, to push to a protected branch, or – for bump-dev-version with its default auto-merge in a repo with required status checks – to let the bump PR’s checks run so it can merge (a GITHUB_TOKEN-authored PR’s pull_request checks never report, so the merge stays blocked; see its reference page). Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, r-cmd-check, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
-    "crumbs": [
-      "Overview",
-      "Permissions"
-    ]
-  },
-  {
-    "objectID": "permissions.html#notes-for-private-consumers",
-    "href": "permissions.html#notes-for-private-consumers",
-    "title": "Permissions",
-    "section": "Notes for private consumers",
-    "text": "Notes for private consumers\nReusable workflows in this public repo are callable from public repos automatically. A private consumer must allow access to this repo under Settings -&gt; Actions -&gt; General -&gt; Access before it can call these workflows.",
-    "crumbs": [
-      "Overview",
-      "Permissions"
+      "Reference",
+      "check-def-commentary.yml"
     ]
   },
   {
@@ -2906,7 +2763,7 @@
     "href": "workflows.html#versioning",
     "title": "Workflows",
     "section": "Versioning",
-    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-exm-figures.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-write-idiom.yml, check-dependency-graph.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, and claude-code-review.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. bump-submodule.yml and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-exm-figures.yml, check-def-commentary.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-write-idiom.yml, check-dependency-graph.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, and claude-code-review.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. bump-submodule.yml and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -2976,6 +2833,221 @@
     "crumbs": [
       "Overview",
       "Workflows"
+    ]
+  },
+  {
+    "objectID": "permissions.html",
+    "href": "permissions.html",
+    "title": "Permissions",
+    "section": "",
+    "text": "A called reusable workflow cannot hold more GITHUB_TOKEN permissions than the caller grants, and most repos default to a read-only token. So workflows that need to write must have the caller grant it on the calling job. The stubs in examples/ already include the right permissions: blocks; copy them as-is.",
+    "crumbs": [
+      "Overview",
+      "Permissions"
+    ]
+  },
+  {
+    "objectID": "permissions.html#per-workflow-grants",
+    "href": "permissions.html#per-workflow-grants",
+    "title": "Permissions",
+    "section": "Per-workflow grants",
+    "text": "Per-workflow grants\n\n\nannotation-gate, check-ai-tells, check-bibliography-dois, check-code-similarity, check-dependency-graph, check-duplicate-roxygen, check-equation-renders, check-extra, check-formatting, check-informal-definitions, check-junk-files, check-literal-math-letters, check-wikipedia-further-reading, check-redundant-citations, check-self-credits, check-one-div-per-subfile, check-def-title-synonyms, check-definite-antecedents, check-pr-size, check-exm-figures, check-def-commentary, check-term-links, check-paired-file-change, check-local-macros, check-fform-paren, check-write-idiom, check-math-definitions, check-merge-drops, check-note-sheet-rows, check-new-line-breaks, check-news, check-non-standard-chars, check-one-function-per-file, check-orphaned-images, check-phi, check-python-package, check-quarto-book, check-quarto-links, check-quarto-manuscript, check-quarto-prose, check-quarto-website, check-r-package, check-repo-hygiene, check-secrets, check-source-overlap, check-typed-output, check-typos, cursor-code-review, lint-changed-files, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, r-cmd-check, spellcheck, student-qmd, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues, so grant issues: write, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncheck-news reads the PR’s labels live for its skip-label exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs issues: read and pull-requests: read alongside contents: read.\nversion-check reads the PR’s labels live for its no version increment exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs pull-requests: read alongside contents: read. Not issues: read: that scope alone returned 403 on the same call (gha#724), since GitHub authorizes a label read on an issue object that is a pull request against the pull-requests permission.\ncleanup-pr-previews commits deletions to gh-pages and queries workflow runs to verify deployment before pruning merged PR previews, so grant contents: write, pull-requests: read, actions: read.\nbump-submodule, sync-shared-fragments, sync-upstream, update-quarto-extensions open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, checks: read (grant it; optional under @v2, which no longer requests it per gha#832, but required by the model job as of @v3), and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions / checks: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server). Grant checks: read regardless of which tag you pin, but note what it does and does not buy. actions: read covers workflow runs but not GET .../commits/{ref}/check-runs, so without checks: read the reviewer’s check-status reads fail with HTTP 403 and a clean diff can be reported as blocked (ucdavis/bcs#964). The model job briefly lost this scope on @v2: a called workflow cannot request a permission its caller lacks, so the run ends in startup_failure before any job begins, and @v2’s original grant of checks: read on the model job broke startup for 17 of the 18 repositories pinning this workflow at @v2 that had not yet added the caller-side grant above (gha#831). Dropping the scope from the model job un-broke those callers but reopened the 403 for everyone – which is what v3 fixes by reinstating it there, now that the caller-side grant above is established practice. Keep granting checks: read regardless: it is optional under the currently-tagged @v2 (which no longer requests it, per gha#832) but required by the model job once you adopt @v3. A Dependabot bump from @v2 to @v3 is where a missing grant shows up, and it shows up as an absence: the bumped run ends in startup_failure, so the PR carries no review check at all rather than a red one. Add checks: read to the caller job in that same PR before merging it (gha#1006; measured on Morrison-Lab/mds#78).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nai-code-review selects the first available AI reviewer and dispatches its review workflow, so grant contents: read, pull-requests: read, issues: read, actions: write, and pass the secrets of whichever agent review workflows are installed (see examples/ai-code-review.yml). issues: read is required since the delivery classifier’s comment scan landed (gha#638); a caller missing it fails at parse time with no API-visible diagnostic (gha#685).\ngemini pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the GEMINI_API_KEY secret.\ngemini-code-review posts the Gemini review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nantigravity-code-review posts the Antigravity review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nsmall-model-agent posts the small-model agent’s PR comment, so grant contents: read, pull-requests: write.\nclaude-manage-project files issues and updates the project board, so grant contents: read, issues: write, repository-projects: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret (required).\nopposition-research mines competitor feature demand and files opportunity issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\ncheck-dependency-updates audits dependencies and files update issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\naltdoc-multiversion-docs deploys to gh-pages, comments PR previews, and rewrites rendered links, so grant contents: write, pull-requests: write, and issues: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
+    "crumbs": [
+      "Overview",
+      "Permissions"
+    ]
+  },
+  {
+    "objectID": "permissions.html#optional-secrets",
+    "href": "permissions.html#optional-secrets",
+    "title": "Permissions",
+    "section": "Optional secrets",
+    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, to push to a protected branch, or – for bump-dev-version with its default auto-merge in a repo with required status checks – to let the bump PR’s checks run so it can merge (a GITHUB_TOKEN-authored PR’s pull_request checks never report, so the merge stays blocked; see its reference page). Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, r-cmd-check, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
+    "crumbs": [
+      "Overview",
+      "Permissions"
+    ]
+  },
+  {
+    "objectID": "permissions.html#notes-for-private-consumers",
+    "href": "permissions.html#notes-for-private-consumers",
+    "title": "Permissions",
+    "section": "Notes for private consumers",
+    "text": "Notes for private consumers\nReusable workflows in this public repo are callable from public repos automatically. A private consumer must allow access to this repo under Settings -&gt; Actions -&gt; General -&gt; Access before it can call these workflows.",
+    "crumbs": [
+      "Overview",
+      "Permissions"
+    ]
+  },
+  {
+    "objectID": "versioning.html",
+    "href": "versioning.html",
+    "title": "Versioning",
+    "section": "",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-exm-figures.yml, check-def-commentary.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-write-idiom.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#widening-permissions-is-a-breaking-change",
+    "href": "versioning.html#widening-permissions-is-a-breaking-change",
+    "title": "Versioning",
+    "section": "Widening permissions is a breaking change",
+    "text": "Widening permissions is a breaking change\nA reusable workflow’s job-level permissions: block is part of its caller contract: a nested job cannot request more than the caller grants, so adding a permission - even a read - fails every caller written against the old contract at parse time (Invalid workflow file), with no API-visible diagnostic (a startup_failure run exposes no jobs, logs, or annotations; the error text appears only on the run page in the UI). gha#685 measured this when gha#638 added issues: read to ai-code-review.yml and the v2 slide delivered it: every consumer run concluded startup_failure until the caller-side grant landed. So treat a permissions: widening like any other breaking change: prefer a major-version bump; where a bump is disproportionate, find the callers and PR the caller-side grant before sliding the tag, and name the required caller edit in the change’s changelog fragment. Find them with the per-workflow code searches that REVDEPS.md documents, not by reading its consumer table: that table is hand-maintained, and so is the owner list beside it. Measured 2026-09-07, the owner list this change replaces returned 10 of the 18 repositories pinning claude-code-review.yml@v2, missing all 8 under owners nobody had added. Its names last changed 2026-06-18, so it had been wrong for as long as nobody looked. Run the unscoped search too and union the results, and treat any count as a floor: a push to a caller’s file can drop it out of the code-search index until it is reindexed, so even a long-standing caller can be missing from either form with nothing saying so.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#advancing-a-major-tag",
+    "href": "versioning.html#advancing-a-major-tag",
+    "title": "Versioning",
+    "section": "Advancing a major tag",
+    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nA brand-new capability’s own PR merging to main does not make it usable at @v2 yet - if a consumer repo’s PR needs to reference a just-merged workflow at @v2 right away, check whether @v2 has actually been advanced past that merge first (step 3 above), or the consumer’s reference resolves to a workflow-not-found error rather than a stale-but-working one.\nTo prevent manual tag advancement from being forgotten when main moves ahead of the major tag, a tag drift check (check-tag-drift) runs as part of CI to surface when main has unreleased commits ahead of the active major tag (e.g. v2). It emits a GitHub Actions notice and job summary pointing to slide-major-tag.yml whenever tag advancement is pending.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#pinning-third-party-actions",
+    "href": "versioning.html#pinning-third-party-actions",
+    "title": "Versioning",
+    "section": "Pinning third-party actions",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml at @v2, and check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-exm-figures.yml, check-def-commentary.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-write-idiom.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-repo-hygiene.yml, check-quarto-website.yml, check-quarto-book.yml, check-quarto-manuscript.yml, check-quarto-links.yml, check-quarto-prose.yml, check-orphaned-images.yml, check-source-overlap.yml, check-r-package.yml, check-python-package.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml at @v3 - see the versioning note above), so they are not SHA-pinned.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#reverse-dependencies",
+    "href": "versioning.html#reverse-dependencies",
+    "title": "Versioning",
+    "section": "Reverse dependencies",
+    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Morrison-Lab/gha",
+    "section": "",
+    "text": "This site documents Morrison-Lab/gha, a set of reusable GitHub Actions shared across the d-morrison, UCD-SERG, ucdavis, UCLA-PHP, and UCD-IDDRC owners. It is modeled on r-lib/actions and easystats/workflows: a repo calls a shared workflow with a tiny stub instead of carrying its own copy.\nThe repo is public so it can be referenced from repositories across those owners.",
+    "crumbs": [
+      "Overview",
+      "Morrison-Lab/gha"
+    ]
+  },
+  {
+    "objectID": "index.html#how-it-works",
+    "href": "index.html#how-it-works",
+    "title": "Morrison-Lab/gha",
+    "section": "How it works",
+    "text": "How it works\nEach capability ships as two layers:\n\nA composite action (for example check-bibliography-dois/action.yml) bundles the real steps and any helper script. It is referenced as Morrison-Lab/gha/&lt;name&gt;@vN (the major tag that capability currently recommends - see Versioning).\nA reusable workflow (.github/workflows/&lt;name&gt;.yml, on: workflow_call) wraps the composite, declares permissions, and checks out the caller’s repo. This is what consumer repos target.\n\nA consumer repo adds a small caller stub (see the examples/ directory):\nname: Check Bibliography DOIs\non:\n  push: { branches: [main] }\n  pull_request:\n  workflow_dispatch:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\nPin to the major tag that capability currently recommends (@v2 in the example above) - it varies per capability rather than defaulting uniformly to @v1; see Versioning for the full breakdown. Do not reference @main from consumers.",
+    "crumbs": [
+      "Overview",
+      "Morrison-Lab/gha"
+    ]
+  },
+  {
+    "objectID": "index.html#actions-vs.-workflows",
+    "href": "index.html#actions-vs.-workflows",
+    "title": "Morrison-Lab/gha",
+    "section": "Actions vs. workflows",
+    "text": "Actions vs. workflows\n\n\n\n\n\n\nNoteComposite action\n\n\n\nA composite action is a list of steps. It runs inside a job that already exists - the caller’s runner and permissions are already in place. An action has no concept of jobs or triggers; it is just a named bundle of commands.\n# &lt;name&gt;/action.yml\nname: My Action\ndescription: Does a thing\ninputs:\n  my-input:\n    description: ...\nruns:\n  using: composite\n  steps:\n    - run: echo \"hello\"\n      shell: bash\n\n\n\n\n\n\n\n\nNoteReusable workflow\n\n\n\nA reusable workflow is a complete pipeline. It defines its own jobs, each with its own runner (runs-on:), permissions (permissions:), and steps. A consumer calls it as a job, not as a step.\n# .github/workflows/&lt;name&gt;.yml\non: workflow_call\njobs:\n  my-job:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo \"hello\"\n\n\n\n\n\n\n\n\nWarningshell: is required in composite actions\n\n\n\nEvery run: step in a composite action must declare shell:. Workflows have a default shell; composite actions do not.\n\n\n\n\n\n\n\n\n\n\n\nComposite action\nReusable workflow\n\n\n\n\nKey top-level keys\nname, description, inputs, outputs, runs\non, jobs\n\n\nJobs\nNo - only steps under runs\nYes - one or more jobs blocks\n\n\nruns-on\nAbsent - inherits the caller’s runner\nPer job\n\n\npermissions\nAbsent\nYes (caller must also grant them)\n\n\nCalled from\nA job’s steps (via uses)\nA workflow’s jobs (via uses)\n\n\n\nBecause an action cannot declare permissions or choose its runner, this repo uses the two-layer design: the composite action holds the real logic, and the reusable workflow wraps it to handle the runner, permissions, and checkout. Consumer repos reference only the workflow layer.",
+    "crumbs": [
+      "Overview",
+      "Morrison-Lab/gha"
+    ]
+  },
+  {
+    "objectID": "index.html#where-to-go-next",
+    "href": "index.html#where-to-go-next",
+    "title": "Morrison-Lab/gha",
+    "section": "Where to go next",
+    "text": "Where to go next\n\nWorkflows catalogs every reusable workflow and what it does.\nPermissions lists the GITHUB_TOKEN permissions and secrets each one needs.\nVersioning explains the moving major tags (@v1/@v2, per capability) and how third-party actions are pinned.\n\nThis very site is built and shipped by the workflows it documents: quarto-publish deploys it to GitHub Pages, and the preview family renders a preview for each pull request.",
+    "crumbs": [
+      "Overview",
+      "Morrison-Lab/gha"
+    ]
+  },
+  {
+    "objectID": "reference/annotation-gate.html",
+    "href": "reference/annotation-gate.html",
+    "title": "annotation-gate.yml",
+    "section": "",
+    "text": "Fail a run that carries an annotation nobody allowed.\nA check that emits a ::warning:: or ::notice:: on a green job tells the reader something is wrong without stopping the merge, and agents and authors skip it. This gate reads the annotations of every other job in the run through the check-runs API and fails when any notice, warning or failure annotation does not match an allow pattern.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "annotation-gate.yml"
+    ]
+  },
+  {
+    "objectID": "reference/annotation-gate.html#use",
+    "href": "reference/annotation-gate.html#use",
+    "title": "annotation-gate.yml",
+    "section": "Use",
+    "text": "Use\nAdd one job that lists every other job in needs and runs if: always(). See examples/annotation-gate.yml. Grant the job actions: read, checks: read and contents: read.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "annotation-gate.yml"
+    ]
+  },
+  {
+    "objectID": "reference/annotation-gate.html#inputs",
+    "href": "reference/annotation-gate.html#inputs",
+    "title": "annotation-gate.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\nlevels: levels to enforce, default notice,warning,failure.\nallow-patterns: newline-separated case-insensitive regexes for tracked exceptions.\njob-name: optional extra name prefix of a job to skip. The gate’s own job is always skipped, whatever the caller named it.\n\nThe composite action Morrison-Lab/gha/annotation-gate@v3 also takes default-allow, which replaces the allowed-for-everyone list below, and token. The reusable workflow keeps the defaults. It takes three more inputs for the workflow_run mode described at the end: run-id (the run to gate instead of the current one), run-attempt, and head-sha (post the result as a check run on this commit).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "annotation-gate.yml"
+    ]
+  },
+  {
+    "objectID": "reference/annotation-gate.html#allowed-for-everyone",
+    "href": "reference/annotation-gate.html#allowed-for-everyone",
+    "title": "annotation-gate.yml",
+    "section": "Allowed for everyone",
+    "text": "Allowed for everyone\n\nGitHub’s runner-image migration notice (“The ubuntu-latest label will migrate to …”).\nA job’s own “Process completed with exit code N” failure annotation. A failed job already fails the run, and the gate runs under if: always(), so this one would only repeat it.\nThe forced-Node deprecation warning, until the action pins are bumped. It reads “Node.js N is deprecated” and then “The following actions target Node”.\nThe two annotations the review workflow emits when a newer push supersedes a review: the concurrency group’s “Canceling since a higher priority waiting request for …” and the stale-review skip “PR head moved …; not posting a stale review”. Both describe a run that was meant to stop, and the newer push gets its own review.\nThe notice the review workflow emits on a PR that edits workflow files: “PR edits workflow files; restored .github/workflows/ from the default branch …”. It reports the safe behavior of gha#598, so it is not a defect in the PR.\nThe failure annotation require-clean-verdict emits when a review finishes with findings: “Claude review verdict is not clean (verdict: …)”. require-clean-verdict already fails its own job, and in workflow_run mode each gated run posts a distinct annotation-gate check run that a later re-review on the same commit cannot clear.\nThe preview’s “Skipping element-level diff highlighting” notice. It says a page has more elements than the highlighter compares (500), so the preview shows that page without change highlights. A pull request that touches a large chapter always emits it, and no edit to the pull request removes it.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "annotation-gate.yml"
+    ]
+  },
+  {
+    "objectID": "reference/annotation-gate.html#scope",
+    "href": "reference/annotation-gate.html#scope",
+    "title": "annotation-gate.yml",
+    "section": "Scope",
+    "text": "Scope\nAnnotations from the gate’s own job, and from a job that has not finished, are not seen. A reusable-workflow job is covered, because the jobs endpoint lists each by its full name.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "annotation-gate.yml"
+    ]
+  },
+  {
+    "objectID": "reference/annotation-gate.html#one-gate-for-a-repository-with-many-workflow-files",
+    "href": "reference/annotation-gate.html#one-gate-for-a-repository-with-many-workflow-files",
+    "title": "annotation-gate.yml",
+    "section": "One gate for a repository with many workflow files",
+    "text": "One gate for a repository with many workflow files\nThe job above sees only the jobs of its own run. A repository whose checks live in separate workflow files calls annotation-gate-run.yml from one workflow_run workflow instead. It gates each run that finishes and posts the result as a check run named annotation-gate on that run’s commit, so it shows on the pull request.\nname: Annotation gate\non: # zizmor: ignore[dangerous-triggers] -- the gate checks out nothing and runs no code from the triggering run\n  workflow_run:\n    workflows: [\"*\"]\n    types: [completed]\njobs:\n  gate:\n    # The gate's own run must not trigger another gate.\n    if: ${{ github.event.workflow_run.name != 'Annotation gate' }}\n    permissions:\n      actions: read\n      checks: write\n      contents: read\n    uses: Morrison-Lab/gha/.github/workflows/annotation-gate-run.yml@v3\n    with:\n      run-id: ${{ github.event.workflow_run.id }}\n      run-attempt: ${{ github.event.workflow_run.run_attempt }}\n      head-sha: ${{ github.event.workflow_run.head_sha }}\nIt takes the same levels and allow-patterns inputs. It also takes a runs-on input (default ubuntu-latest), for a private repository that runs it on a self-hosted runner. Grant checks: write; the job posts one check run per gated run.\nEach gated run posts its own check run named annotation-gate. When several workflows finish on one commit, the commit carries several checks of that name, and a failing one blocks a required check. annotation-gate-run.yml holds checks: write, so it is not in the read-only list on the permissions page. It calls the action at @v3, so it gates the right run only once v3 has slid past the commit that added these inputs; before that the unknown inputs are ignored and the gate checks its own run. See examples/annotation-gate-run.yml for the stub to copy.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "annotation-gate.yml"
     ]
   },
   {
