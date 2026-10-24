@@ -36,7 +36,8 @@ else:
 """
 
 
-def run(formats, fail_on="", inspect_fails=False, files=None, config=""):
+def run(formats, fail_on="", inspect_fails=False, files=None, config="",
+        extra_configs=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         fake = tmp / "bin" / "quarto"
@@ -51,6 +52,8 @@ def run(formats, fail_on="", inspect_fails=False, files=None, config=""):
             path.write_text(text, encoding="utf-8")
         if config:
             (project / "_quarto.yml").write_text(config, encoding="utf-8")
+        for name, text in (extra_configs or {}).items():
+            (project / name).write_text(text, encoding="utf-8")
         log = tmp / "log.txt"
         env = dict(
             os.environ,
@@ -104,6 +107,18 @@ def main():
         errors.append(f"inspect failure: render-list fallback, got {code} {calls}")
     if "readfile self/sub" not in out:
         errors.append("a failed quarto inspect must show its stderr")
+
+    # With QUARTO_PROFILE unset, the `profile: default:` of _quarto.yml applies, so
+    # the website profile's `!references.qmd` keeps that page out (mds, gha#1214).
+    code, calls, out = run(
+        ["pdf"], inspect_fails=True,
+        files={"a.qmd": "---\nformat: pdf\n---\n",
+               "references.qmd": "---\nformat: pdf\n---\n"},
+        config="profile:\n  default: website\nformat:\n  pdf: default\n",
+        extra_configs={"_quarto-website.yml":
+                       "project:\n  render:\n    - '*.qmd'\n    - '!references.qmd'\n"})
+    if code != 0 or calls != ["render a.qmd --to pdf --output-dir _site"]:
+        errors.append(f"default profile must apply to the fallback, got {code} {calls}")
 
     # A working `quarto inspect` must not need PyYAML (a runner image may lack it).
     with tempfile.TemporaryDirectory() as blocker:
