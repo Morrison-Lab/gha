@@ -624,6 +624,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-def-title-synonyms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-title-synonyms.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-note-sheet-rows.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-note-sheet-rows.yml</span></a>
   </div>
@@ -999,7 +1005,7 @@ cookieconsent.run({
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">run-id</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.id }}</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">run-attempt</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.run_attempt }}</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">head-sha</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.head_sha }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>It takes the same <code>levels</code> and <code>allow-patterns</code> inputs. Grant <code>checks: write</code>; the job posts one check run per gated run.</p>
+<p>It takes the same <code>levels</code> and <code>allow-patterns</code> inputs. It also takes a <code>runs-on</code> input (default <code>ubuntu-latest</code>), for a private repository that runs it on a self-hosted runner. Grant <code>checks: write</code>; the job posts one check run per gated run.</p>
 <p>Each gated run posts its own check run named <code>annotation-gate</code>. When several workflows finish on one commit, the commit carries several checks of that name, and a failing one blocks a required check. <code>annotation-gate-run.yml</code> holds <code>checks: write</code>, so it is not in the read-only list on the permissions page. It calls the action at <code>@v3</code>, so it gates the right run only once <code>v3</code> has slid past the commit that added these inputs; before that the unknown inputs are ignored and the gate checks its own run. See <code>examples/annotation-gate-run.yml</code> for the stub to copy.</p>
 
 
