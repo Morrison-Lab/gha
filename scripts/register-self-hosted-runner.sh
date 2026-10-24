@@ -130,7 +130,12 @@ done
 gh auth status > /dev/null
 
 start_runner() {
-  RUNNER_DIR="$RUNNER_DIR" bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh" ||
+  # The runner's tool cache is <work folder>/_tool, as recorded in .runner for
+  # a runner configured earlier, so seed that one.
+  work=$(jq -r .workFolder "$RUNNER_DIR/.runner")
+  case "$work" in /*) ;; *) work="$RUNNER_DIR/$work" ;; esac
+  RUNNER_DIR="$RUNNER_DIR" RUNNER_TOOL_CACHE="$work/_tool" \
+    bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh" ||
     echo "warning: Python toolcache seeding failed; Python-based checks may fail" >&2
   cd "$RUNNER_DIR"
   # The listener's command line holds the physical path.
