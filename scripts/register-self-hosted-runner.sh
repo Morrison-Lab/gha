@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-one-function-per-file: allow-multiple
-# Register one self-hosted GitHub Actions runner for an organization, on a
-# Linux machine (a lab-managed host, or WSL), as the current user with no sudo.
+# Register self-hosted GitHub Actions runners for an organization (one by
+# default, RUNNER_INSTANCES=<n> for n), on a Linux machine (a lab-managed host, or WSL), as the current user with no sudo.
 #
 # Usage: ORG=<org> bash scripts/register-self-hosted-runner.sh
 #
@@ -20,20 +20,111 @@
 # Safety: the runner joins a runner group that admits PRIVATE repositories
 # only, because a pull request from a fork of a public repository can run
 # arbitrary code on this machine. The script creates the group if missing and
-# refuses to use an existing group whose visibility is `all`, or that admits
-# public repositories.
+# refuses to use an existing group that admits public repositories. A group
+# with visibility `all` is accepted only when `allows_public_repositories` is
+# exactly the boolean `false`, since "all" then means every non-public
+# repository; scripts/runner-group-is-private.sh makes that decision.
+#
+# RUNNER_INSTANCES=<n> (default 1) sets up n runners, so n jobs run at once on
+# the host. Instance 1 uses RUNNER_DIR and RUNNER_NAME as above; instance k > 1
+# uses "<RUNNER_DIR>-k" and "<RUNNER_NAME>-k", with the same labels and group.
+# The default RUNNER_DIR is "~/actions-runner-private-<host>"; an existing runner
+# in the old default, "~/actions-runner-private", with this host's name is kept.
+# Each is a separate runner, with its own directory, work folder and process.
+# Raising n later adds the new instances and leaves the existing ones alone.
+#
+# RUNNER_WORK_DIRECTORY (default /var/tmp/gha-work/<runner name>) is the local
+# folder the runner checks out into; see the comment where it is set.
 #
 # The runner process is started with nohup and does not survive a reboot:
-# run this script again after one.
+# run this script again after one, or run it once with INSTALL_REBOOT_CRON=1 to
+# add an @reboot crontab line that does so (one line, replaced on a rerun).
+# DRY_RUN_CONFIG=1 prints the names and directories a run would use and exits.
 # If a runner with the same name is already registered, configuration fails:
 # remove the old one in the organization's runner settings first.
 set -euo pipefail
 
+# Absolute, because the script cd-s into the runner directory before it calls its helpers.
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ORG="${ORG:?set ORG to the organization name}"
-RUNNER_DIR="$(realpath -m "${RUNNER_DIR:-$HOME/actions-runner-private}")"
+# The settings the caller chose, so the @reboot line can repeat them.
+forwarded=""
+for v in RUNNER_DIR RUNNER_NAME RUNNER_LABELS RUNNER_GROUP RUNNER_WORK_DIRECTORY; do
+  if [ -n "${!v:-}" ]; then forwarded+=" $v=$(printf '%q' "${!v}")"; fi
+done
 RUNNER_NAME="${RUNNER_NAME:-private-$(hostname -s)}"
+# The default directory carries the host name, so two hosts that share a home
+# directory (NFS) do not share a runner. A runner an earlier version of this
+# script configured in the old default directory keeps working there.
+if [ -z "${RUNNER_DIR:-}" ] && [ -f "$HOME/actions-runner-private/.runner" ] &&
+  command -v jq > /dev/null &&
+  [ "$(jq -r .agentName "$HOME/actions-runner-private/.runner")" = "$RUNNER_NAME" ]; then
+  RUNNER_DIR="$HOME/actions-runner-private"
+fi
+RUNNER_DIR="$(realpath -m "${RUNNER_DIR:-$HOME/actions-runner-private-$(hostname -s)}")"
 RUNNER_LABELS="${RUNNER_LABELS:-private-runner,$(hostname -s)}"
 RUNNER_GROUP="${RUNNER_GROUP:-private-runners}"
+# The work folder (checkouts, renders) is on local disk, not in RUNNER_DIR:
+# RUNNER_DIR is on the NFS home, where a shallow clone took 10 s against 0.6 s
+# locally and creating 5000 files 8 s against 0.1 s (cf463-02, 2026-10-23).
+# /var/tmp, not /tmp, because /tmp is cleared at boot. It takes effect when a
+# runner is configured; an already-configured runner keeps its work folder.
+RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY:-/var/tmp/gha-work/$RUNNER_NAME}"
+
+# With INSTALL_REBOOT_CRON=1, put one @reboot line in the user's crontab that
+# runs this script again with the same ORG, RUNNER_INSTANCES, PATH and any
+# RUNNER_* setting the caller gave, so the runners come back after a reboot (an
+# already-configured runner is only started). The rerun needs `gh` logged in
+# in a way a cron job can use, `jq`, the network and the home directory at
+# boot; if it cannot, the failure is in the runner directory's log or cron's
+# mail, and the runners are started by hand. The line ends with a tag naming
+# the organization, so running this again replaces that organization's line
+# instead of adding a second, and another organization's line (even one whose
+# name starts with this one's) and other crontab lines are left alone.
+install_reboot_cron() {
+  [ "${INSTALL_REBOOT_CRON:-}" = 1 ] || return 0
+  local tag="# gha-self-hosted-runners ${ORG}"
+  local script line current
+  script=$(realpath "${BASH_SOURCE[0]}")
+  line="@reboot ORG=${ORG} RUNNER_INSTANCES=${RUNNER_INSTANCES} PATH=$(printf '%q' "$PATH")${forwarded} bash ${script} ${tag}"
+  # `crontab -l` fails when there is no crontab yet; that is an empty one.
+  current=$(crontab -l 2> /dev/null || true)
+  # Drop only lines that end with exactly this tag.
+  { awk -v t="$tag" '{ n = length(t); if (substr($0, length($0) - n + 1) != t) print }' <<< "$current"
+    echo "$line"; } | crontab -
+  echo "Installed the @reboot crontab line (${tag})."
+}
+
+RUNNER_INSTANCES="${RUNNER_INSTANCES:-1}"
+case "$RUNNER_INSTANCES" in
+  '' | *[!0-9]* | 0) echo "RUNNER_INSTANCES must be a positive integer." >&2; exit 1 ;;
+esac
+if [ "$RUNNER_INSTANCES" -gt 1 ]; then
+  # Run this script once per instance, so each keeps the single-runner flow.
+  # One instance failing does not stop the others from starting; the exit
+  # status reports that any failed.
+  failed=0
+  for ((k = 1; k <= RUNNER_INSTANCES; k++)); do
+    if [ "$k" -eq 1 ]; then
+      INSTALL_REBOOT_CRON=0 RUNNER_INSTANCES=1 bash "${BASH_SOURCE[0]}" || failed=1
+    else
+      INSTALL_REBOOT_CRON=0 RUNNER_INSTANCES=1 RUNNER_DIR="${RUNNER_DIR}-${k}" \
+        RUNNER_NAME="${RUNNER_NAME}-${k}" \
+        RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY}-${k}" \
+        bash "${BASH_SOURCE[0]}" || failed=1
+    fi
+  done
+  install_reboot_cron
+  exit "$failed"
+fi
+
+# DRY_RUN_CONFIG=1 prints what this run would use and touches nothing else
+# (with INSTALL_REBOOT_CRON=1 it still writes the crontab line).
+if [ "${DRY_RUN_CONFIG:-}" = 1 ]; then
+  echo "runner name=${RUNNER_NAME} dir=${RUNNER_DIR} work=${RUNNER_WORK_DIRECTORY}"
+  install_reboot_cron
+  exit 0
+fi
 
 for tool in gh jq; do
   command -v "$tool" > /dev/null || { echo "$tool is not installed" >&2; exit 1; }
@@ -41,7 +132,12 @@ done
 gh auth status > /dev/null
 
 start_runner() {
-  RUNNER_DIR="$RUNNER_DIR" bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh" ||
+  # The runner's tool cache is <work folder>/_tool, as recorded in .runner for
+  # a runner configured earlier, so seed that one.
+  work=$(jq -r .workFolder "$RUNNER_DIR/.runner")
+  case "$work" in /*) ;; *) work="$RUNNER_DIR/$work" ;; esac
+  RUNNER_DIR="$RUNNER_DIR" RUNNER_TOOL_CACHE="$work/_tool" \
+    bash "${SCRIPT_DIR}/seed-runner-python-toolcache.sh" ||
     echo "warning: Python toolcache seeding failed; Python-based checks may fail" >&2
   cd "$RUNNER_DIR"
   # The listener's command line holds the physical path.
@@ -61,15 +157,11 @@ find_group() {
     | head -n 1
 }
 
-# Refuse a group that admits all repositories or any public repository.
+# Refuse a group that may admit any public repository.
 refuse_unless_private() {
   local group=$1
-  local visibility public inherited
-  visibility=$(jq -r .visibility <<< "$group")
-  public=$(jq -r .allows_public_repositories <<< "$group")
-  inherited=$(jq -r '.inherited_allows_public_repositories // false' <<< "$group")
-  if [ "$visibility" = all ] || [ "$public" = true ] || [ "$inherited" = true ]; then
-    echo "Runner group ${RUNNER_GROUP} admits all or public repositories; refusing." >&2
+  if ! bash "${SCRIPT_DIR}/runner-group-is-private.sh" <<< "$group"; then
+    echo "Runner group ${RUNNER_GROUP} may admit public repositories; refusing." >&2
     exit 1
   fi
 }
@@ -83,6 +175,7 @@ if [ -f "$RUNNER_DIR/.runner" ]; then
   fi
   refuse_unless_private "$group"
   start_runner
+  install_reboot_cron
   exit 0
 fi
 
@@ -135,7 +228,9 @@ ACTIONS_RUNNER_INPUT_TOKEN="$token" ./config.sh --unattended \
   --url "https://github.com/${ORG}" \
   --name "$RUNNER_NAME" \
   --labels "$RUNNER_LABELS" \
-  --runnergroup "$RUNNER_GROUP"
+  --runnergroup "$RUNNER_GROUP" \
+  --work "$RUNNER_WORK_DIRECTORY"
 unset token
 
 start_runner
+install_reboot_cron
