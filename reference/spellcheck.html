@@ -1040,6 +1040,12 @@ cookieconsent.run({
 <td><code>ubuntu-latest</code></td>
 <td>Runner label for the job.</td>
 </tr>
+<tr class="odd">
+<td><code>preinstalled-toolchain</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>The runner already provides R with pak and has no sudo, as a self-hosted runner does. Skips the R setup steps (<code>install-quarto</code> then has no effect) and installs {spelling} with pak if it is missing.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -1061,7 +1067,8 @@ cookieconsent.run({
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">    #   exclude: 'vignettes/*.Rmd'</span></span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: 'true'</span></span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   additional-options: ''</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: 'auto'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: 'auto'</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preinstalled-toolchain: true          # runner has R with pak and no sudo</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>spellcheck.yml</code>).</p>
 </section>
 <section id="why-it-sets-up-r-instead-of-running-in-a-container" class="level2">

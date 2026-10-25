@@ -544,7 +544,7 @@
     "href": "reference/spellcheck.html#inputs",
     "title": "spellcheck.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the package root, relative to the repository.\n\n\nexclude\nstring\n''\nComma-separated files or folders to skip. Accepts globs.\n\n\nfail\nstring\n'true'\nWhether to fail the job on misspelled words ('true', 'false').\n\n\nadditional-options\nstring\n'--vanilla'\nOptions passed to Rscript. Pass '' to let R read its profiles.\n\n\ninstall-quarto\nstring\n'false'\nWhether dependency setup installs Quarto.\n\n\nruns-on\nstring\nubuntu-latest\nRunner label for the job.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the package root, relative to the repository.\n\n\nexclude\nstring\n''\nComma-separated files or folders to skip. Accepts globs.\n\n\nfail\nstring\n'true'\nWhether to fail the job on misspelled words ('true', 'false').\n\n\nadditional-options\nstring\n'--vanilla'\nOptions passed to Rscript. Pass '' to let R read its profiles.\n\n\ninstall-quarto\nstring\n'false'\nWhether dependency setup installs Quarto.\n\n\nruns-on\nstring\nubuntu-latest\nRunner label for the job.\n\n\npreinstalled-toolchain\nboolean\nfalse\nThe runner already provides R with pak and has no sudo, as a self-hosted runner does. Skips the R setup steps (install-quarto then has no effect) and installs {spelling} with pak if it is missing.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -568,7 +568,7 @@
     "href": "reference/spellcheck.html#example",
     "title": "spellcheck.yml",
     "section": "Example",
-    "text": "Example\nname: Spellcheck\non:\n  push: { branches: [main] }\n  pull_request:\njobs:\n  spellcheck:\n    uses: Morrison-Lab/gha/.github/workflows/spellcheck.yml@v2\n    # with:\n    #   path: '.'\n    #   exclude: 'vignettes/*.Rmd'\n    #   fail: 'true'\n    #   additional-options: ''\n    #   install-quarto: 'auto'\nSee the examples/ directory for the full caller stub (spellcheck.yml).",
+    "text": "Example\nname: Spellcheck\non:\n  push: { branches: [main] }\n  pull_request:\njobs:\n  spellcheck:\n    uses: Morrison-Lab/gha/.github/workflows/spellcheck.yml@v2\n    # with:\n    #   path: '.'\n    #   exclude: 'vignettes/*.Rmd'\n    #   fail: 'true'\n    #   additional-options: ''\n    #   install-quarto: 'auto'\n    #   preinstalled-toolchain: true          # runner has R with pak and no sudo\nSee the examples/ directory for the full caller stub (spellcheck.yml).",
     "crumbs": [
       "Overview",
       "Reference",
