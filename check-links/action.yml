@@ -61,16 +61,24 @@ runs:
           echo "args=--verbose --no-progress './**/*.qmd' './**/*.md' './**/*.html'" >> "$GITHUB_OUTPUT"
         fi
 
-    # lychee-action installs lychee under $RUNNER_TEMP/lychee/bin and adds that
-    # directory to GITHUB_PATH from inside its own, nested, composite action.
-    # On the lab's self-hosted runners (runner 2.338.1) that addition did not
-    # reach the step that runs `lychee`, which failed with "lychee: command not
-    # found" (exit 127). Adding the directory here, one level up, puts it on the
-    # PATH of every later step; on a hosted runner it only repeats what the
-    # action does anyway.
-    - name: Put lychee's install directory on the PATH
+    # lychee-action installs lychee under $RUNNER_TEMP/lychee/bin and puts that
+    # directory on the PATH through GITHUB_PATH, but it then runs its
+    # entrypoint.sh, whose shebang is `#!/bin/bash -l`. A login shell re-reads
+    # /etc/profile, and on Debian that resets PATH, which drops the directory:
+    # "lychee: command not found" (exit 127), so the check never ran on a
+    # self-hosted Debian runner. A login shell does keep ~/.local/bin (through
+    # ~/.profile) and the environment, so this shim in ~/.local/bin finds the
+    # real binary through $RUNNER_TEMP at call time. It holds no run-specific
+    # path, so concurrent jobs sharing a home directory do not conflict.
+    - name: Make lychee reachable from a login shell
       shell: bash
-      run: echo "$RUNNER_TEMP/lychee/bin" >> "$GITHUB_PATH"
+      run: |
+        mkdir -p "$HOME/.local/bin"
+        shim="$HOME/.local/bin/lychee"
+        tmp="$(mktemp "$HOME/.local/bin/.lychee.XXXXXX")"
+        printf '%s\n' '#!/bin/sh' 'exec "$RUNNER_TEMP/lychee/bin/lychee" "$@"' > "$tmp"
+        chmod +x "$tmp"
+        mv -f "$tmp" "$shim"
 
     - name: Check links
       id: lychee
