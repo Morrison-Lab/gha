@@ -115,6 +115,44 @@ def test_the_longer_term_wins_over_its_prefix():
     assert run_text(page, {"d.qmd": defs}) == []
 
 
+LOGISTIC_DEFS = (
+    "::: {#def-regression}\n\n#### Regression\n\nA **regression** predicts a value.\n\n:::\n"
+    "\n::: {#def-logistic-regression}\n\n#### Logistic regression\n\n"
+    "A **logistic regression** predicts a probability.\n\n:::\n"
+)
+
+
+def test_link_over_part_of_a_longer_defined_phrase_is_flagged():
+    page = "::: {#exm-a}\n\nWe fit a logistic [regression](#def-regression).\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [
+        ("partial-link", "logistic regression")
+    ]
+
+
+def test_link_over_the_leading_words_of_a_longer_phrase_is_flagged():
+    page = "::: {#exm-a}\n\nWe fit a [logistic](#def-regression) regression.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [
+        ("partial-link", "logistic regression")
+    ]
+
+
+def test_link_over_the_whole_longer_phrase_passes():
+    page = "::: {#exm-a}\n\nWe fit a [logistic regression](#def-logistic-regression).\n\n:::\n"
+    assert run_text(page, {"d.qmd": LOGISTIC_DEFS}) == []
+
+
+def test_unlinked_longer_phrase_is_reported_as_the_phrase_not_its_tail():
+    page = "::: {#exm-a}\n\nWe fit a logistic regression.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [
+        ("unlinked-first-use", "logistic regression")
+    ]
+
+
+def test_shorter_term_alone_still_links_normally():
+    page = "::: {#exm-a}\n\nA [regression](#def-regression) predicts.\n\n:::\n"
+    assert run_text(page, {"d.qmd": LOGISTIC_DEFS}) == []
+
+
 def test_plural_and_case_are_matched():
     page = "::: {#exm-a}\n\nRisks differ.\n\n:::\n"
     assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("unlinked-first-use", "risk")]

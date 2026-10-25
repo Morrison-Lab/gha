@@ -19,6 +19,9 @@ Findings:
 - `unlinked-first-use`: the first occurrence of a known term in a passage is plain
   text, not inside a link or an `@def-...` cross-reference. The term's own def div
   is skipped, and so is any other passage in a div of a file that holds that def div.
+- `partial-link`: a link covers only part of a longer defined phrase, such as
+  "logistic [regression](#def-regression)" when "logistic regression" is defined.
+  The whole phrase is the link (Ezra, 2026-10-24, lds#1375; gha#1219).
 - `no-definition`: a bold term in a passage that is not a def div, and that
   matches no known term, so it is introduced as technical with no definition
   anywhere in the corpus. Give it a `#def-` div.
@@ -325,6 +328,12 @@ def scan_passage(
     link_spans += [m.span() for m in CROSSREF_RE.finditer(text)]
     prose = CITATION_RE.sub(lambda m: " " * len(m.group(0)), text)
     prose = LINK_TARGET_RE.sub(lambda m: " " * len(m.group(0)), prose)
+    # Blank a link's brackets (keeping offsets) so a phrase split by a link still matches whole.
+    chars = list(prose)
+    for lm in LINK_RE.finditer(text):
+        chars[lm.start()] = " "
+        chars[lm.start() + 1 + len(lm.group("text"))] = " "
+    prose = "".join(chars)
 
     def reportable(n: int) -> bool:
         return n not in opted and (added is None or n in added)
@@ -344,7 +353,19 @@ def scan_passage(
             if passage.in_div and own_defs and terms[key] & own_defs:
                 continue
             start = m.start()
-            if any(a <= start < b for a, b in link_spans):
+            if any(a <= start and m.end() <= b for a, b in link_spans):
+                continue
+            # A link over only part of a longer defined term: the whole phrase is the link.
+            if any(a < m.end() and start < b for a, b in link_spans):
+                n = line_at(start)
+                if reportable(n):
+                    findings.append(Finding(
+                        file=path, line=n, rule="partial-link", term=key,
+                        message=(
+                            f"'{m.group(0)}' is a defined phrase; link the whole "
+                            "phrase to its definition, not a shorter term inside it."
+                        ),
+                    ))
                 continue
             # "term (@def-term)" links the term it follows.
             if FOLLOWING_CROSSREF_RE.match(prose, m.end()):
