@@ -61,6 +61,17 @@ runs:
           echo "args=--verbose --no-progress './**/*.qmd' './**/*.md' './**/*.html'" >> "$GITHUB_OUTPUT"
         fi
 
+    # lychee-action installs lychee under $RUNNER_TEMP/lychee/bin and adds that
+    # directory to GITHUB_PATH from inside its own, nested, composite action.
+    # On the lab's self-hosted runners (runner 2.338.1) that addition did not
+    # reach the step that runs `lychee`, which failed with "lychee: command not
+    # found" (exit 127). Adding the directory here, one level up, puts it on the
+    # PATH of every later step; on a hosted runner it only repeats what the
+    # action does anyway.
+    - name: Put lychee's install directory on the PATH
+      shell: bash
+      run: echo "$RUNNER_TEMP/lychee/bin" >> "$GITHUB_PATH"
+
     - name: Check links
       id: lychee
       uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
