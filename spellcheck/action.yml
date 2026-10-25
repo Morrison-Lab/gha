@@ -32,8 +32,8 @@ inputs:
 
   preinstalled-toolchain:
     description: >-
-      The runner already provides R and has no sudo, as a self-hosted runner
-      does. When 'true', skip setup-r and setup-r-dependencies, and install
+      The runner already provides R (with the pak package) and has no sudo,
+      as a self-hosted runner does. When 'true', skip setup-r and setup-r-dependencies, and install
       {spelling} with pak into the runner's user library if it is missing.
       `install-quarto` has no effect in this mode.
     default: 'false'
