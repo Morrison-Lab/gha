@@ -35,6 +35,12 @@ on:
         description: Runner label for the job.
         type: string
         default: ubuntu-latest
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R and has no sudo, as a self-hosted
+          runner does. Skips the R setup steps.
+        type: boolean
+        default: false
 
 jobs:
   spellcheck:
@@ -56,3 +62,4 @@ jobs:
           fail: ${{ inputs.fail }}
           additional-options: ${{ inputs.additional-options }}
           install-quarto: ${{ inputs.install-quarto }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
