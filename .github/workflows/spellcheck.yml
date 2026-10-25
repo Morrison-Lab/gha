@@ -37,8 +37,8 @@ on:
         default: ubuntu-latest
       preinstalled-toolchain:
         description: >-
-          The runner already provides R and has no sudo, as a self-hosted
-          runner does. Skips the R setup steps.
+          The runner already provides R (with the pak package) and has no sudo,
+          as a self-hosted runner does. Skips the R setup steps.
         type: boolean
         default: false
 
