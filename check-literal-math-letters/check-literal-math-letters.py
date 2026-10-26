@@ -170,6 +170,16 @@ LABEL_CALLS = frozenset({
 LABEL_ARGS = frozenset({
     "label", "subtitle", "caption", "title", "xlab", "ylab", "main", "sub",
 })
+# Calls whose ``label``, ``title`` and similar arguments are plot text.  Any
+# other call (``data.frame(label = ...)``, ``tibble(title = ...)``) is not.
+PLOT_CALLS = frozenset({
+    "plot", "title", "mtext", "axis", "text", "annotate", "legend", "layout",
+    "update_layout", "update_xaxes", "update_yaxes", "guides", "guide_legend",
+    "guide_colorbar", "guide_colourbar", "figure", "subplots", "suptitle",
+    "annotate_figure", "text_box", "bar", "barh", "scatter", "hist", "errorbar",
+})
+CODE_WORD_RE = re.compile(r"[\w.$@]+")
+CODE_ARG_NAME_RE = re.compile(r"(?<![\w.$@])([A-Za-z_]\w*)\s*$")
 CODE_BRACES_RE = re.compile(r"\{[^{}]*\}")  # an f-string field is a value
 CODE_ESCAPED_QUOTE_RE = re.compile(r"\\([\"'\\])")
 CODE_ALLOW_RE = re.compile(r"check-literal-math-letters: allow")
@@ -451,8 +461,11 @@ def _scan_chunk_line(raw: str, state: dict) -> List[str]:
     bare parenthesis, so a ``labs(`` that ends its line still covers the
     arguments below it; ``arg`` is the argument being read, so ``label =`` at
     the end of a line still labels the string on the next; and ``open`` is a
-    string still unclosed at the end of the line, as (quote, is a label), so a
-    multi-line string is read on every line.  A string counts as a label when
+    triple-quoted string still unclosed at the end of the line, as (quote, is a
+    label), so it is read on every line; an ordinary quote is not carried over.
+    A ``label``-like argument counts only in a plot call (``PLOT_CALLS``,
+    ``geom_*``, ``scale_*`` or a label call) and ends at the first value that
+    is not a string or a call.  A string counts as a label when
     it sits inside a label call or is the value of a label argument.  Comments
     are skipped, and so is ``{...}`` in a string (an f-string field).  A
     comment ``check-literal-math-letters: allow`` sets ``state["allow"]``; the
@@ -488,7 +501,16 @@ def _scan_chunk_line(raw: str, state: dict) -> List[str]:
             tokens.extend(_label_tokens(raw[i + len(quote):j], in_label))
             if j >= n and len(quote) == 3:
                 state["open"] = (quote, in_label)
+            state["arg"] = ""
             i = j + len(quote)
+            continue
+        if ch.isalnum() or ch in "_$@":
+            # a value that is neither a string nor a call ends the argument
+            word = CODE_WORD_RE.match(raw, i)
+            i = word.end()
+            rest = raw[i:].lstrip()
+            if not rest.startswith(("(", '"', "'")):
+                state["arg"] = ""
             continue
         if ch == "(":
             m = re.search(r"([A-Za-z_][\w.]*)\s*$", raw[:i])
@@ -499,8 +521,13 @@ def _scan_chunk_line(raw: str, state: dict) -> List[str]:
         elif ch == ",":
             state["arg"] = ""
         elif ch == "=" and raw[i - 1:i] not in ("=", "!", "<", ">") and raw[i + 1:i + 2] != "=":
-            m = re.search(r"([A-Za-z_]\w*)\s*$", raw[:i])
-            state["arg"] = m.group(1) if m else ""
+            m = CODE_ARG_NAME_RE.search(raw[:i])
+            inner = calls[-1][0] if calls else None
+            plotty = inner is not None and (
+                inner in LABEL_CALLS or inner in PLOT_CALLS
+                or inner.startswith(("scale_", "geom_")))
+            name = m.group(1) if m else ""
+            state["arg"] = name if plotty and name in LABEL_ARGS else ""
         i += 1
     return tokens
 

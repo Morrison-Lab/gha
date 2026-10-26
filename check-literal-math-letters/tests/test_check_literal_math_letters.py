@@ -671,6 +671,32 @@ def test_chunk_label_args_continuations_and_concatenation(code, expected):
 
 
 @pytest.mark.parametrize("code", [
+    'd <- data.frame(label = "logit z")',
+    'tibble(title = "logit z")',
+    'label = "logit z"',
+    'title = 1\nx <- "Log-odds z"',
+    'theme(plot.title = "logit z")',
+    'df$label = "logit z"',
+    'labs(x = foo(data.frame(name = 1)))\nnote <- "logit z"',
+])
+def test_chunk_label_like_arguments_outside_plot_calls_pass(code):
+    assert flagged(_chunk(code)) == {}
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('plt.legend(title="Logit z")', {2: ["z[log-odds]"]}),
+    ('expression("Log-odds F")', {2: ["F[log-odds]"]}),
+    ('legend("top", legend = "logit z")', {2: ["z[log-odds]"]}),
+    ('labs(caption = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('plot(x, y, sub = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('labs(x = paste0("a", f(1)), y = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('plot(x, main = f"Log-odds z")', {2: ["z[log-odds]"]}),
+])
+def test_chunk_more_label_shapes_are_flagged(code, expected):
+    assert flagged(_chunk(code)) == expected
+
+
+@pytest.mark.parametrize("code", [
     'xlab("# check-literal-math-letters: allow Log-odds z")',
     'labs(x = "#1", y = "check-literal-math-letters: allow Log-odds z")',
 ])
