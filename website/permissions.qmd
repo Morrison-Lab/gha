@@ -20,7 +20,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-def-title-synonyms`, `check-definite-antecedents`,
   `check-pr-concerns`,
   `check-pr-size`,
-  `check-exm-figures`, `check-self-contained-captions`,
+  `check-exm-figures`, `check-tree-lists`, `check-self-contained-captions`,
   `check-def-commentary`, `check-solution-citations`,
   `check-exercise-before-result`,
   `check-term-links`, `check-paired-file-change`,

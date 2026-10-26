@@ -149,7 +149,7 @@ def _git(cwd, *args):
 
 def _repo(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
+    _git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow: synthetic test address
     _git(tmp_path, "config", "user.name", "t")
     monkeypatch.chdir(tmp_path)
     return tmp_path
