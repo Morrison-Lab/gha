@@ -86,8 +86,23 @@ class Finding(NamedTuple):
     kind: str
 
 
-def _strip_comments(text: str) -> str:
-    return re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
+def _strip_line_comment(line: str, in_comment: bool) -> Tuple[str, bool]:
+    """Drop HTML comment text from one line; say whether a comment stays open."""
+    out, i = [], 0
+    while i < len(line):
+        if in_comment:
+            end = line.find("-->", i)
+            if end < 0:
+                return "".join(out), True
+            i, in_comment = end + 3, False
+        else:
+            start = line.find("<!--", i)
+            if start < 0:
+                out.append(line[i:])
+                break
+            out.append(line[i:start])
+            i, in_comment = start + 4, True
+    return "".join(out), in_comment
 
 
 def blocks_of(path: str, root_dir: str, depth: int = 0) -> List[Block]:
@@ -97,11 +112,15 @@ def blocks_of(path: str, root_dir: str, depth: int = 0) -> List[Block]:
             raw = handle.read()
     except OSError:
         return []
-    lines = _strip_comments(raw).split("\n")
+    lines = raw.split("\n")
     out: List[Block] = []
     fence: Optional[Tuple[str, int]] = None
     nest = 0
+    in_comment = False
     for idx, text in enumerate(lines):
+        # A "<!--" inside a code fence is code, not a comment.
+        if fence is None:
+            text, in_comment = _strip_line_comment(text, in_comment)
         m = FENCE_RE.match(text)
         if fence is not None:
             if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] and not m.group(2).strip():

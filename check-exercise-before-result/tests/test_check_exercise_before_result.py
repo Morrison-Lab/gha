@@ -105,6 +105,12 @@ def test_an_indented_heading_breaks_adjacency(tree):
     assert bad(tree) == [("_thm-a.qmd", "thm")]
 
 
+def test_an_unclosed_comment_marker_in_a_fence_hides_nothing(tree):
+    write(tree, "ch.qmd", chapter(
+        "```html", "<!--", "```", "::: {#thm-x}", "Claim.", ":::", "<!-- note -->"))
+    assert bad(tree) == [("ch.qmd", "thm")]
+
+
 def test_inline_divs_count_as_blocks(tree):
     write(tree, "ch.qmd", chapter(
         "::: {#exr-x}", "Show it.", ":::", "", "::: {#sol-x}", "Done.", ":::", "",
