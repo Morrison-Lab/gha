@@ -70,6 +70,10 @@ def test_code_only_handles_tildes_and_plain_r_fence():
     assert lines(ccm.code_only("```\ngeom_smooth()\n```\n")) == []
 
 
+def test_code_only_accepts_pandoc_class_fence():
+    assert lines(ccm.code_only("```{.r}\ngeom_smooth()\n```\n")) == [2]
+
+
 def test_rendered_prose_warning_message_not_flagged():
     assert ccm.scan_html("<p>R prints Warning message: in the console.</p>") == []
 

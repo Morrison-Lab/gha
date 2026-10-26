@@ -130,7 +130,7 @@ def call_spans(text: str) -> List[Tuple[int, int, str, str]]:
     return out
 
 
-FENCE_OPEN_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})\s*\{?\s*(\w*)")
+FENCE_OPEN_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})\s*\{?\s*\.?(\w*)")
 
 
 def code_only(text: str) -> str:
