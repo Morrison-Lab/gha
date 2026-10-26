@@ -8,6 +8,6 @@
   a visual word (plot, sketch, draw, diagram, contour, picture, or mark points on a surface)
   in an exercise or example title, `visuali[sz]` in any title,
   or a sketch or plot request in an exercise prompt.
-  An exercise's figure may be in the exercise, its solution or another file of its family.
+  An exercise's figure may be in the exercise, its solution, or another file of its family.
   It counts figures as `check-exm-figures` does,
   and an `<!-- no-figure: reason -->` comment inside the div is the exception for a false positive.

@@ -7,7 +7,7 @@ on:
         description: >-
           Runner label for the job. Use a self-hosted label only for a
           private repository; never for a public one, whose pull requests
-          can run arbitrary code on it.
+          can run arbitrary code on the runner.
         type: string
         default: ubuntu-latest
       python-version:

@@ -9,9 +9,11 @@ corresponding figure, and for an exercise the solution includes it.
 The trigger is wider than the one word, so the rule's own example,
 "Mark every zero-gradient point on a surface", is caught:
 
-- a title matching ``TITLE_RE``: visuali[sz]\*, plot, sketch, draw,
-  contour, picture, diagram, or "mark ... points/curves/surfaces/regions";
-- for an exercise (``#exr-``), a prompt that says sketch, draw, plot or
+- for an exercise or example, a title matching ``TITLE_RE``: visuali[sz]\*,
+  plot, sketch, draw, contour, picture, diagram, or "mark ... points,
+  curves, surfaces, or regions";
+- for any other div, a title that says visuali[sz]\*;
+- for an exercise (``#exr-``), a prompt that says sketch, draw, plot, or
   visuali[sz]\* outside its code fences.
 
 A div's title is the text of the first heading inside it (``#### Title``) or
@@ -21,7 +23,7 @@ definition, result or remark id (``#exr-``, ``#exm-``, ``#def-``, ``#thm-``,
 the figure or the answer itself and is never the subject.
 
 What counts as a figure is what ``check-exm-figures`` counts: an image, a
-``fig-`` labelled chunk or div, an ``@fig-`` reference, or an include of a
+``fig-`` labeled chunk or div, an ``@fig-`` reference, or an include of a
 ``_fig`` subfile. For an exercise, the figure may also be in
 
 - a ``#sol-<slug>`` div in the same file, where ``<slug>`` is the exercise's
