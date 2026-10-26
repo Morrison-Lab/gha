@@ -141,12 +141,34 @@ GREEK_SUGGESTIONS = {
     "mu": r"\mean if this is the population mean",
 }
 # A line that names the log-odds (or logit) and writes it as a bare `z` or
-# `F` in math. The course symbol is \logodds (eta); `F` came from a source
-# that writes the log-odds as f(x). `z` and `F` have no suggestion above, so
-# this rule runs in both modes (Ezra, 2026-10-26, lds#1411).
-LOGODDS_CONTEXT_RE = re.compile(r"log[- ]?odds|\blogit\b", re.IGNORECASE)
-LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z])([zF])(?![A-Za-z])")
+# `F` in math. The course symbol is \logodds (eta); the notes once used `F`
+# and `z` for it. `z` and `F` have no suggestion above, so this rule runs in
+# both modes (Ezra, 2026-10-26, lds#1411). It is deliberately narrow:
+# a letter that is a subscript, superscript, applied function (`F(x)`, `F^{-1}`),
+# part of a longer symbol (`x_z`, `z_i`), or inside a `\text{}`/`\mathrm{}`
+# argument is skipped, and so is a line that names a Wald statistic, a
+# quantile or a test, where `z` and `F` are the standard symbols.
+# `\logodds` itself is not context: the boundary and lookbehind exclude it.
+LOGODDS_CONTEXT_RE = re.compile(r"(?<!\\)\b(?:log[- ]?odds|logits?)\b", re.IGNORECASE)
+LOGODDS_EXEMPT_RE = re.compile(r"\b(?:wald|quantiles?|statistics?|tests?|z-scores?)\b", re.IGNORECASE)
+LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z0-9_^])([zF])(?![A-Za-z0-9_^(])")
 LOGODDS_SUFFIX = "[log-odds]"
+
+
+def _blank_text_args(seg: str) -> str:
+    """``seg`` with the braced argument of each text-like command blanked."""
+    out: List[str] = []
+    i, n = 0, len(seg)
+    while i < n:
+        m = re.compile(r"\\([A-Za-z]+)\*?").match(seg, i)
+        if m and m.group(1) in SKIP_ARG_COMMANDS:
+            j = _skip_group(seg, m.end())
+            out.append(" " * (j - i))
+            i = j
+        else:
+            out.append(seg[i])
+            i += 1
+    return "".join(out)
 # Literal Greek characters map to the command they spell.
 UNICODE_GREEK = {
     "\u03b1": "alpha", "\u03b2": "beta", "\u03b3": "gamma", "\u03b4": "delta", "\u03b5": "varepsilon",
@@ -491,10 +513,13 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
         for seg in math:
             spans += 1
             tokens.extend(scan_math(seg))
-        if LOGODDS_CONTEXT_RE.search(line):
+        if LOGODDS_CONTEXT_RE.search(line) and not LOGODDS_EXEMPT_RE.search(line):
             for seg in math:
-                for lm in LOGODDS_LETTER_RE.finditer(seg):
-                    tokens.append(lm.group(1) + LOGODDS_SUFFIX)
+                for lm in LOGODDS_LETTER_RE.finditer(_blank_text_args(seg)):
+                    letter = lm.group(1)
+                    if letter in tokens:  # the generic token says it already
+                        tokens.remove(letter)
+                    tokens.append(letter + LOGODDS_SUFFIX)
         if tokens:
             findings.append(Finding(lineno, tuple(tokens)))
     return findings, spans
