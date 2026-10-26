@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-multipart-exercises.yml in your repo.
+# Diff-scoped check: fails when a PR adds or revises an exercise div (#exr-...)
+# that holds more than one part (lettered, roman or numbered items, or inline
+# (a) ... (b)). Every multi-part exercise is split into separate divs, each with
+# its own solution. <!-- multipart-ok: reason --> exempts one exercise.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check multi-part exercises
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-multipart-exercises.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: false                            # warn instead of block (defaults to true)
+    #   whole-tree: true                       # scan every exercise, not just those a PR touches

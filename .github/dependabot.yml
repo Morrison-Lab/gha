@@ -35,6 +35,7 @@ updates:
       - "/check-def-commentary"
       - "/check-exm-figures"
       - "/check-def-title-synonyms"
+      - "/check-multipart-exercises"
       - "/check-note-sheet-rows"
       - "/check-definite-antecedents"
       - "/build-dependency-graph"
