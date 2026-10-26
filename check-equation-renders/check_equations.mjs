@@ -56,6 +56,7 @@ const MIME_TYPES = {
 const MATHJAX_TIMEOUT_MS = 15_000;
 const PAGE_LOAD_TIMEOUT_MS = 30_000;
 const PAGE_LOAD_ATTEMPTS = 2;
+const NETWORK_SETTLE_TIMEOUT_MS = 5_000;
 const CONCURRENCY = 4;
 
 function parseArgs(argv) {
@@ -107,96 +108,103 @@ async function checkPage(browser, baseUrl, relPath) {
   try {
     // `load`, not `networkidle`: a large page or a slow CDN request can keep
     // the network busy past the timeout, which fails the crawl for a reason
-    // that has nothing to do with the equations. The MathJax wait below is
-    // what the check actually needs. One retry absorbs a transient stall.
+    // that has nothing to do with the equations. The MathJax wait in
+    // scanLoadedPage is what the check actually needs. One retry absorbs a
+    // transient stall, and so does a page script that navigates just after
+    // `load` ("Execution context was destroyed"), which the retry reloads.
     for (let attempt = 1; ; attempt++) {
       try {
         await page.goto(`${baseUrl}/${relPath}`, {
           waitUntil: 'load',
           timeout: PAGE_LOAD_TIMEOUT_MS,
         });
-        break;
+        // Best effort: let a post-load redirect or reload settle, without
+        // failing the page when the network never goes quiet.
+        await page.waitForLoadState('networkidle', { timeout: NETWORK_SETTLE_TIMEOUT_MS }).catch(() => {});
+        return await scanLoadedPage(page);
       } catch (err) {
-        if (attempt >= PAGE_LOAD_ATTEMPTS) throw err;
+        if (attempt >= PAGE_LOAD_ATTEMPTS) {
+          return [{ anchorId: null, message: `page failed to load: ${err.message}` }];
+        }
         console.warn(`check-equation-renders: retrying ${relPath} after: ${err.message.split('\n')[0]}`);
       }
     }
-
-    const referencesMathJax = await page.evaluate(() =>
-      Array.from(document.scripts).some((s) => /mathjax/i.test(s.src))
-    );
-
-    // A page that doesn't reference MathJax at all never defines
-    // window.MathJax; skip straight to the DOM scan (there's nothing to wait
-    // for, and mathJaxReady staying true is correct since nothing was expected).
-    let mathJaxReady = true;
-    if (referencesMathJax) {
-      mathJaxReady = await page
-        .waitForFunction(() => window.MathJax?.startup?.promise !== undefined, {
-          timeout: MATHJAX_TIMEOUT_MS,
-        })
-        .then(() => true)
-        .catch(() => false);
-    }
-
-    let startupError = null;
-    if (mathJaxReady && referencesMathJax) {
-      await page
-        .evaluate(() => window.MathJax.startup.promise)
-        .catch((err) => {
-          startupError = err.message;
-        });
-    }
-    await page.waitForTimeout(250); // let post-promise DOM mutations (error node insertion) settle
-
-    const domErrors = await page.evaluate(() => {
-      const anchorIdOf = (node) => node.closest('[id]')?.id ?? null;
-
-      const hardErrors = Array.from(document.querySelectorAll('[data-mjx-error]')).map((node) => ({
-        anchorId: anchorIdOf(node),
-        message: node.getAttribute('data-mjx-error'),
-      }));
-
-      const undefinedMacroErrors = Array.from(
-        document.querySelectorAll('mjx-container mjx-mtext, mjx-container mtext')
-      )
-        .filter((node) => /^\\[a-zA-Z]/.test(node.textContent.trim()))
-        .map((node) => ({
-          anchorId: anchorIdOf(node),
-          message: `undefined macro rendered as literal text: ${node.textContent.trim()}`,
-        }));
-
-      // MathJax keeps two parallel trees per formula (the visible CHTML output
-      // and a hidden assistive-MathML annotation), so a single error is
-      // reported by both -- dedupe on (anchor, message) before returning.
-      const seen = new Set();
-      return [...hardErrors, ...undefinedMacroErrors].filter(({ anchorId, message }) => {
-        const key = `${anchorId} ${message}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    });
-
-    const loadErrors = [];
-    if (referencesMathJax && !mathJaxReady) {
-      loadErrors.push({
-        anchorId: null,
-        message:
-          'MathJax script referenced but never initialized (window.MathJax.startup.promise) ' +
-          'before timeout -- equation rendering could not be verified on this page',
-      });
-    }
-    if (startupError) {
-      loadErrors.push({ anchorId: null, message: `MathJax startup failed: ${startupError}` });
-    }
-
-    return [...loadErrors, ...domErrors];
-  } catch (err) {
-    return [{ anchorId: null, message: `page failed to load: ${err.message}` }];
   } finally {
     await page.close();
   }
+}
+
+async function scanLoadedPage(page) {
+  const referencesMathJax = await page.evaluate(() =>
+    Array.from(document.scripts).some((s) => /mathjax/i.test(s.src))
+  );
+
+  // A page that doesn't reference MathJax at all never defines
+  // window.MathJax; skip straight to the DOM scan (there's nothing to wait
+  // for, and mathJaxReady staying true is correct since nothing was expected).
+  let mathJaxReady = true;
+  if (referencesMathJax) {
+    mathJaxReady = await page
+      .waitForFunction(() => window.MathJax?.startup?.promise !== undefined, {
+        timeout: MATHJAX_TIMEOUT_MS,
+      })
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  let startupError = null;
+  if (mathJaxReady && referencesMathJax) {
+    await page
+      .evaluate(() => window.MathJax.startup.promise)
+      .catch((err) => {
+        startupError = err.message;
+      });
+  }
+  await page.waitForTimeout(250); // let post-promise DOM mutations (error node insertion) settle
+
+  const domErrors = await page.evaluate(() => {
+    const anchorIdOf = (node) => node.closest('[id]')?.id ?? null;
+
+    const hardErrors = Array.from(document.querySelectorAll('[data-mjx-error]')).map((node) => ({
+      anchorId: anchorIdOf(node),
+      message: node.getAttribute('data-mjx-error'),
+    }));
+
+    const undefinedMacroErrors = Array.from(
+      document.querySelectorAll('mjx-container mjx-mtext, mjx-container mtext')
+    )
+      .filter((node) => /^\\[a-zA-Z]/.test(node.textContent.trim()))
+      .map((node) => ({
+        anchorId: anchorIdOf(node),
+        message: `undefined macro rendered as literal text: ${node.textContent.trim()}`,
+      }));
+
+    // MathJax keeps two parallel trees per formula (the visible CHTML output
+    // and a hidden assistive-MathML annotation), so a single error is
+    // reported by both -- dedupe on (anchor, message) before returning.
+    const seen = new Set();
+    return [...hardErrors, ...undefinedMacroErrors].filter(({ anchorId, message }) => {
+      const key = `${anchorId} ${message}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  });
+
+  const loadErrors = [];
+  if (referencesMathJax && !mathJaxReady) {
+    loadErrors.push({
+      anchorId: null,
+      message:
+        'MathJax script referenced but never initialized (window.MathJax.startup.promise) ' +
+        'before timeout -- equation rendering could not be verified on this page',
+    });
+  }
+  if (startupError) {
+    loadErrors.push({ anchorId: null, message: `MathJax startup failed: ${startupError}` });
+  }
+
+  return [...loadErrors, ...domErrors];
 }
 
 async function runWithConcurrency(items, limit, worker) {
