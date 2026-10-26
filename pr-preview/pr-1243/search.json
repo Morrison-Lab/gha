@@ -4291,7 +4291,7 @@
     "href": "reference/check-solution-citations.html#exceptions",
     "title": "check-solution-citations.yml",
     "section": "Exceptions",
-    "text": "Exceptions\nThe one exception is an exercise that asks students to prove a result before the result is stated. The result’s proof may then cite the solution that precedes it. The check does not flag:\n\na line carrying &lt;!-- check-solution-citations: allow --&gt;, the explicit mark for that exception;\na line that says “the solution to @exr-…”, the lab’s existing wording for a result whose exercise asks for the proof;\na @sol- reference outside a proof or result div, such as in another solution;\nlines inside a code fence, display math ($$), an HTML comment or inline code.",
+    "text": "Exceptions\nThe one exception is an exercise that asks students to prove a result before the result is stated. The result’s proof may then cite the solution that precedes it. The check does not flag:\n\na line carrying &lt;!-- check-solution-citations: allow --&gt;, the explicit mark for that exception;\na line that says “the solution (or answer) to ?@exr-slug”, the lab’s existing wording for a result whose exercise asks for the proof. It excuses only @sol-slug, the solution that shares the exercise’s slug;\na @sol- reference outside a proof or result div, such as in another solution;\nlines inside a code fence, display math ($$), an HTML comment or inline code.",
     "crumbs": [
       "Overview",
       "Reference",
