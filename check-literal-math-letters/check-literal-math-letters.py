@@ -25,7 +25,10 @@ What is not flagged:
   commands (``\label``, ``\tag``, ``\eqref``, ``\begin``, ``\end``, ...);
 - runs of two or more letters (``\sin`` written without a backslash is a
   different mistake, and ``x y`` written as ``xy`` is not a *single* letter);
-- code fences, code spans, HTML comments and YAML front matter;
+- code fences, code spans, HTML comments and YAML front matter; the one
+  exception is the log-odds rule, which also reads the label strings of a plot
+  inside a code chunk (``labs()``, ``xlab()``, ``set_xlabel()``, ``label=`` and
+  the like, across lines, with comments skipped);
 - any ``::: {.notation}`` div (a passage that discusses the notation itself,
   where a literal letter is the point);
 - macro definitions (a math span that opens with ``\newcommand``, ``\def`` and
@@ -153,6 +156,33 @@ LOGODDS_CONTEXT_RE = re.compile(r"(?<!\\)\b(?:log[- ]?odds|logits?)\b", re.IGNOR
 LOGODDS_EXEMPT_RE = re.compile(r"\b(?:wald|quantiles?|statistics?|tests?|z-scores?)\b", re.IGNORECASE)
 LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z0-9_^])([zF])(?![A-Za-z0-9_^(])")
 LOGODDS_SUFFIX = "[log-odds]"
+# The label strings of a plot in a code chunk: the strings inside ggplot2's
+# labs(), xlab(), ylab(), ggtitle(), expression() and scale_*(), matplotlib's
+# set_xlabel(), set_ylabel(), set_title() and legend(), and the value of a
+# ``label``, ``subtitle``, ``caption``, ``title``, ``xlab``, ``ylab``, ``main``
+# or ``sub`` argument (base R plot() and plotly layout() included).
+# Only strings are read; a bare symbol in ``expression(paste("Log-odds ", z))``
+# is not.
+LABEL_CALLS = frozenset({
+    "labs", "xlab", "ylab", "ggtitle", "expression",
+    "set_xlabel", "set_ylabel", "set_title", "legend",
+})
+LABEL_ARGS = frozenset({
+    "label", "subtitle", "caption", "title", "xlab", "ylab", "main", "sub",
+})
+# Calls whose ``label``, ``title`` and similar arguments are plot text.  Any
+# other call (``data.frame(label = ...)``, ``tibble(title = ...)``) is not.
+PLOT_CALLS = frozenset({
+    "plot", "title", "mtext", "axis", "text", "annotate", "legend", "layout",
+    "update_layout", "update_xaxes", "update_yaxes", "guides", "guide_legend",
+    "guide_colorbar", "guide_colourbar", "figure", "subplots", "suptitle",
+    "annotate_figure", "text_box", "bar", "barh", "scatter", "hist", "errorbar",
+})
+CODE_WORD_RE = re.compile(r"[\w.$@]+")
+CODE_ARG_NAME_RE = re.compile(r"(?<![\w.$@])([A-Za-z_]\w*)\s*$")
+CODE_BRACES_RE = re.compile(r"\{[^{}]*\}")  # an f-string field is a value
+CODE_ESCAPED_QUOTE_RE = re.compile(r"\\([\"'\\])")
+CODE_ALLOW_RE = re.compile(r"check-literal-math-letters: allow")
 
 
 def _blank_text_args(seg: str) -> str:
@@ -415,6 +445,93 @@ def _div_is_notation(attrs: str) -> bool:
     return bool(NOTATION_CLASS_RE.search(QUOTED_RE.sub("", attrs)))
 
 
+def _label_tokens(body: str, in_label: bool) -> List[str]:
+    """Log-odds tokens in the text of one string, when it is a label."""
+    text = CODE_BRACES_RE.sub("", CODE_ESCAPED_QUOTE_RE.sub(r"\1", body))
+    if in_label and LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
+        return [m.group(1) + LOGODDS_SUFFIX for m in LOGODDS_LETTER_RE.finditer(text)]
+    return []
+
+
+def _scan_chunk_line(raw: str, state: dict) -> List[str]:
+    """Log-odds tokens in the label strings of one line of a code chunk.
+
+    ``state`` carries what earlier lines of the chunk left open: ``calls`` is
+    the stack of (call name, enclosing argument) pairs, the name ``""`` for a
+    bare parenthesis, so a ``labs(`` that ends its line still covers the
+    arguments below it; ``arg`` is the argument being read, so ``label =`` at
+    the end of a line still labels the string on the next; and ``open`` is a
+    triple-quoted string still unclosed at the end of the line, as (quote, is a
+    label), so it is read on every line; an ordinary quote is not carried over.
+    A ``label``-like argument counts only in a plot call (``PLOT_CALLS``,
+    ``geom_*``, ``scale_*`` or a label call) and ends at the first value that
+    is not a string or a call.  A string counts as a label when
+    it sits inside a label call or is the value of a label argument.  Comments
+    are skipped, and so is ``{...}`` in a string (an f-string field).  A
+    comment ``check-literal-math-letters: allow`` sets ``state["allow"]``; the
+    same words inside a string do not.
+    """
+    tokens: List[str] = []
+    calls: List[Tuple[str, str]] = state["calls"]
+    i, n = 0, len(raw)
+    if state.get("open"):
+        quote, in_label = state["open"]
+        j = 0
+        while j < n and not raw.startswith(quote, j):
+            j += 2 if raw[j] == "\\" else 1
+        tokens.extend(_label_tokens(raw[:j], in_label))
+        if j >= n:
+            return tokens
+        state["open"] = None
+        i = j + len(quote)
+    while i < n:
+        ch = raw[i]
+        if ch == "#":
+            if CODE_ALLOW_RE.search(raw, i):
+                state["allow"] = True
+            break
+        if ch in "\"'":
+            quote = ch * 3 if raw.startswith(ch * 3, i) else ch
+            j = i + len(quote)
+            while j < n and not raw.startswith(quote, j):
+                j += 2 if raw[j] == "\\" else 1
+            in_label = state["arg"] in LABEL_ARGS or any(
+                c in LABEL_CALLS or c.startswith("scale_") or outer in LABEL_ARGS
+                for c, outer in calls)
+            tokens.extend(_label_tokens(raw[i + len(quote):j], in_label))
+            if j >= n and len(quote) == 3:
+                state["open"] = (quote, in_label)
+            state["arg"] = ""
+            i = j + len(quote)
+            continue
+        if ch.isalnum() or ch in "_$@":
+            # a value that is neither a string nor a call ends the argument
+            word = CODE_WORD_RE.match(raw, i)
+            i = word.end()
+            rest = raw[i:].lstrip()
+            if not rest.startswith(("(", '"', "'")):
+                state["arg"] = ""
+            continue
+        if ch == "(":
+            m = re.search(r"([A-Za-z_][\w.]*)\s*$", raw[:i])
+            calls.append((m.group(1).split(".")[-1] if m else "", state["arg"]))
+            state["arg"] = ""
+        elif ch == ")":
+            state["arg"] = calls.pop()[1] if calls else ""
+        elif ch == ",":
+            state["arg"] = ""
+        elif ch == "=" and raw[i - 1:i] not in ("=", "!", "<", ">") and raw[i + 1:i + 2] != "=":
+            m = CODE_ARG_NAME_RE.search(raw[:i])
+            inner = calls[-1][0] if calls else None
+            plotty = inner is not None and (
+                inner in LABEL_CALLS or inner in PLOT_CALLS
+                or inner.startswith(("scale_", "geom_")))
+            name = m.group(1) if m else ""
+            state["arg"] = name if plotty and name in LABEL_ARGS else ""
+        i += 1
+    return tokens
+
+
 def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     """Findings (one per line) and the number of math spans scanned."""
     if _has_ignore_file(lines):
@@ -428,6 +545,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     env: Optional[str] = None
     divs: List[Div] = []
     allow_through = 0  # last line number covered by an `allow` directive
+    chunk_state: dict = {"calls": [], "arg": ""}  # left open in the current chunk
     start = 0
 
     if lines and lines[0].strip() == "---":
@@ -444,10 +562,17 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
                     and not m.group(2).strip()):
                 fence = None
+            else:
+                code_tokens = _scan_chunk_line(raw, chunk_state)
+                if chunk_state.pop("allow", False):
+                    allow_through = lineno + 1  # this line and the next
+                if code_tokens and lineno > allow_through:
+                    findings.append(Finding(lineno, tuple(code_tokens)))
             continue
         m = FENCE_RE.match(raw)
         if m and not in_display and env is None:
             fence = (m.group(1)[0], len(m.group(1)))
+            chunk_state = {"calls": [], "arg": ""}
             continue
 
         directive = None if in_comment else DIRECTIVE_RE.match(raw)
