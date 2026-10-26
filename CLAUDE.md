@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-def-title-synonyms`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-exm-figures`, `check-def-commentary`, `check-pr-size`, `check-pr-concerns`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-multipart-exercises`, `check-def-title-synonyms`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-exm-figures`, `check-def-commentary`, `check-pr-size`, `check-pr-concerns`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -417,6 +417,9 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
   the consumer lists its own `urls`, `names`, `authors`, `keys` and `allow-keys` in `.github/own-works.yml`,
   so credits to outside people never match and a link for further reading is never flagged;
   it takes the same diff model and is warn-only by default (`fail: false`);
+  `check-multipart-exercises/` (Python, stdlib only, gha#1156) bundles the composite action, script, and pytest suite
+  for failing a PR that adds or revises an `exr-` div holding more than one part (list items in one marker style, or inline "(a) first, (b) second");
+  it takes the same diff model, but a touched exercise is judged whole and it blocks by default (`fail: true`);
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
   for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
   It takes the same diff model as `check-one-div-per-subfile/`.
