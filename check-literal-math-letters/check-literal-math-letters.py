@@ -35,10 +35,11 @@ What is not flagged:
   what not to write), or a cross-mark line that follows a check-mark
   paragraph, up to the next empty ``>`` line, a line that opens with a check
   mark, a change of quote nesting depth, or a non-quote line;
-- macro definitions (a math span that opens with ``\newcommand``, ``\def`` and
+- macro definitions (a math span that opens with ``\newcommand``, ``\def``, and
   the like), which are check 2's concern;
-- a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``,
-  and a file carrying ``<!-- check-literal-math-letters: ignore-file -->``.
+- a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``
+  (which may sit alone on a blockquote line), and a file carrying
+  ``<!-- check-literal-math-letters: ignore-file -->``.
 
 Strict by design: there is no allow-list for indices or dummy variables. The
 rule says to find the category first, and the false-positive rate is measured
@@ -255,6 +256,11 @@ NOTATION_CLASS_RE = re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
 # is not obeyed.
 DIRECTIVE_RE = re.compile(
     r"^\s*<!--\s*check-literal-math-letters:\s*([a-z-]+)\s*-->\s*$"
+)
+# An `allow` directive may also sit alone on a blockquote line. Only `allow`:
+# a quoted `ignore-file` is still not obeyed, so a guide can show it as text.
+QUOTED_ALLOW_RE = re.compile(
+    r"^\s*(?:>\s*)+<!--\s*check-literal-math-letters:\s*allow\s*-->\s*$"
 )
 QUOTED_RE = re.compile(r"\"[^\"]*\"|'[^']*'")
 
@@ -589,7 +595,8 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             continue
 
         directive = None if in_comment else DIRECTIVE_RE.match(raw)
-        if directive and directive.group(1) == "allow":
+        if (directive and directive.group(1) == "allow") or (
+                not in_comment and QUOTED_ALLOW_RE.match(raw)):
             allow_through = lineno + 1
 
         line, in_comment = _mask_html_comments(raw, in_comment)
