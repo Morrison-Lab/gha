@@ -754,7 +754,8 @@ runs:
           `#def-` divs); otherwise ignore it. When the diff touches notes
           content (`.qmd` or `.md` pages and their `_subfiles`), check it
           against these rules and report each violation as a blocking
-          finding with a `path:line` anchor. Do not wave one through because
+          finding with a `path:line` anchor, except where rules (9) and
+          (10) say otherwise. Do not wave one through because
           a CI check is warn-only or absent. (1) One div per subfile; a
           theorem and its proof share a file. (2) One defined term per
           `#def-`, `#thm-`, `#lem-`, `#cor-` or `#prp-` div; an alias stays in
