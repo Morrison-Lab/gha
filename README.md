@@ -162,7 +162,7 @@ that need to write must have the **caller** grant it on the calling job:
 - `summary` (comments on issues, runs Claude through `claude-code-action`) → grant `issues: write`,
   `contents: read`; pass `secrets: inherit` for `CLAUDE_CODE_OAUTH_TOKEN`.
 
-- <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
+- <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-code-messages`, `check-bibliography-dois`,
   `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-def-title-synonyms`, `check-definite-antecedents`, `check-term-links`, `check-paired-file-change`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`, `check-exm-figures`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
   `check-merge-drops`,

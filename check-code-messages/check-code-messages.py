@@ -16,6 +16,10 @@ message unless it is given an argument:
 - ``geom_histogram()`` or ``stat_bin()`` with none of ``bins``, ``binwidth``
   and ``breaks`` (the "using bins = 30" message).
 
+In a ``.qmd``, ``.Rmd`` or ``.md`` file only the lines of R code chunks are
+read, so prose and inline code that name these functions are not flagged; a
+``.R`` file is read in full.
+
 The call is read across lines up to its closing parenthesis, outside strings
 and comments. Diff-scoped by default: only a call that spans a line added
 since ``CCM_BASE_REF`` is reported, so a corpus's existing calls are not
@@ -124,6 +128,31 @@ def call_spans(text: str) -> List[Tuple[int, int, str, str]]:
     return out
 
 
+FENCE_OPEN_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})\s*\{?\s*(\w*)")
+
+
+def code_only(text: str) -> str:
+    """Blank every line outside an R code chunk, keeping the line numbers.
+
+    Prose and inline code that merely name ``geom_smooth()`` are not calls.
+    """
+    out, fence, is_r = [], "", False
+    for line in text.split("\n"):
+        m = FENCE_OPEN_RE.match(line)
+        if fence:
+            if m and line.strip().startswith(fence) and not m.group(2):
+                fence = ""
+                out.append("")
+            else:
+                out.append(line if is_r else "")
+        elif m:
+            fence, is_r = m.group(1), m.group(2).lower() in ("r", "rscript")
+            out.append("")
+        else:
+            out.append("")
+    return "\n".join(out)
+
+
 def lint_text(text: str, added: Optional[Set[int]] = None
               ) -> List[Tuple[int, str]]:
     """Findings (line, message); only calls touching ``added`` if given."""
@@ -145,7 +174,6 @@ STDERR_RE = re.compile(r'class="[^"]*\bcell-output-stderr\b[^"]*"')
 TEXT_RES = (
     re.compile(r"`geom_smooth\(\)` using (?:formula|method)"),
     re.compile(r"`stat_bin\(\)` using `bins = 30`"),
-    re.compile(r"Warning message"),
 )
 TAG_RE = re.compile(r"<[^>]+>")
 
@@ -243,6 +271,8 @@ def source_findings(base_ref: str, globs: List[str], whole_tree: bool
         if text is None:
             continue
         files += 1
+        if not rel.endswith(".R"):
+            text = code_only(text)
         findings += [(rel, n, msg) for n, msg in lint_text(text, wanted[rel])]
     return findings, files
 

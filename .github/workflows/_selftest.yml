@@ -1764,6 +1764,17 @@ jobs:
             echo "::error::expected check-code-messages to fail twice, got site='$SITE' source='$SOURCE'"
             exit 1
           fi
+      - name: Assert the findings name the right problems, not a crash
+        shell: bash
+        env:
+          CCM_SITE_DIR: _ci-ccm/_site
+          CCM_WHOLE_TREE: 'true'
+        run: |
+          set -uo pipefail
+          out=$(python3 check-code-messages/check-code-messages.py)
+          echo "$out"
+          grep -q 'file=_ci-ccm/page.qmd,line=2::`geom_smooth()` with no `formula`' <<< "$out"
+          grep -q 'cell-output-stderr\|warning or message block' <<< "$out"
       - name: Check the staged files with the default fail (warn-only)
         uses: ./check-code-messages
         with:

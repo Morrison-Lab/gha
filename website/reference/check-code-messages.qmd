@@ -1,0 +1,42 @@
+---
+title: "check-code-messages.yml"
+---
+
+Diff-scoped, warn-only check that keeps warnings and non-output messages
+out of rendered code.
+The lab's rule (Ezra, 2026-10-26) is that rendered code shows its output
+and nothing else.
+The commonest case is the "`geom_smooth()` using formula = 'y ~ x'" message,
+which disappears when the call names its `formula`.
+
+The source lint flags, in the R chunks of `.qmd`, `.Rmd` and `.md` files
+and in `.R` files:
+
+- `geom_smooth()` or `stat_smooth()` with no `formula` argument;
+- `geom_histogram()` or `stat_bin()` with none of `bins`, `binwidth` and
+  `breaks`.
+
+It reads a call across lines up to its closing parenthesis,
+and reports a call only when the pull request adds a line inside it.
+Prose, inline code and non-R chunks are not read.
+
+## Scanning a rendered site
+
+The `check-code-messages` composite action also takes `site-dir`,
+a directory of rendered HTML such as `_site`.
+It flags every Quarto `cell-output-stderr` block,
+where knitr, reticulate and Jupyter put all warnings and messages,
+and the text of the two messages above.
+The scan always covers the whole directory,
+so run it after a render, and set `site-ignore` to skip pages.
+The reusable workflow does not render, so a repository that wants the scan
+calls the action in its own render job.
+
+## Inputs
+
+| Input | Meaning |
+| --- | --- |
+| `globs` | Space-separated pathspecs to lint (default `*.qmd *.Rmd *.R`) |
+| `fail` | Fail on a finding instead of warning (default `false`) |
+| `whole-tree` | Lint every tracked file, not just a PR's additions |
+| `runs-on`, `python-version` | Runner and Python version |

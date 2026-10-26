@@ -52,6 +52,22 @@ def test_other_functions_ignored():
     assert lines("my_geom_smooth()\nplotly::geom_smooth_x()\n") == []
 
 
+def test_code_only_masks_prose_and_other_languages():
+    text = "Use `geom_smooth()` here.\n```{python}\ngeom_smooth()\n```\n```{r}\ngeom_smooth()\n```\n"
+    masked = ccm.code_only(text)
+    assert lines(masked) == [6]
+    assert masked.count("\n") == text.count("\n")
+
+
+def test_code_only_handles_tildes_and_plain_r_fence():
+    assert lines(ccm.code_only("~~~r\ngeom_smooth()\n~~~\n")) == [2]
+    assert lines(ccm.code_only("```\ngeom_smooth()\n```\n")) == []
+
+
+def test_rendered_prose_warning_message_not_flagged():
+    assert ccm.scan_html("<p>R prints Warning message: in the console.</p>") == []
+
+
 def test_added_lines():
     diff = "+++ b/a.qmd\n@@ -1,0 +5,2 @@\n+a\n+b\n"
     assert ccm.added_lines(diff) == {"a.qmd": {5, 6}}
@@ -66,4 +82,4 @@ def test_scan_html_stderr_block():
 
 def test_scan_html_clean_and_text_message():
     assert ccm.scan_html('<div class="cell-output cell-output-stdout">ok</div>') == []
-    assert len(ccm.scan_html("<pre>Warning message:\nfoo</pre>")) == 1
+    assert len(ccm.scan_html("<pre>`stat_bin()` using `bins = 30`.</pre>")) == 1
