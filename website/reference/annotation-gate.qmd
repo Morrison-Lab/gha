@@ -104,16 +104,22 @@ It also takes a `runs-on` input (default `ubuntu-latest`),
 for a private repository that runs it on a self-hosted runner.
 Grant `checks: write`; the job posts one check run per gated run.
 
-`workflow-id` is optional, and is any string that names the workflow and the event
-that triggered it, so a `push` run and a `pull_request` run of one workflow on the same commit
+`workflow-id` is optional.
+It is any string that names the workflow and the event that triggered it,
+so a `push` run and a `pull_request` run of one workflow on the same commit
 keep separate gates; the example joins `workflow_id` and `event`.
-When set, a gate still queued or running for an earlier run of the same workflow
-on the same commit (a re-run or a later attempt) is cancelled when a newer one starts,
-through a job-level `concurrency` group named `annotation-gate-run-<head-sha>-<workflow-id>`,
+When set, a gate still queued or running for an earlier run of the same
+workflow and event on the same commit (a re-run or a later attempt) is
+cancelled when a newer one starts.
+A job-level `concurrency` group does this, named
+`annotation-gate-run-<head-sha>-<workflow-id>`,
 so a burst of finishing runs cannot flood a small self-hosted pool.
-The gate posts its check run in one call at the end, so a cancelled gate leaves none behind.
-Empty, the group falls back to the run id, which is unique, and each run keeps its own gate.
-Do not name a caller-level `concurrency` group with the prefix `annotation-gate-run-`:
+The gate posts its check run in one call at the end,
+so a cancelled gate leaves none behind.
+Empty, the group falls back to the run id, which is unique,
+and each run keeps its own gate.
+Do not name a caller-level `concurrency` group with the prefix
+`annotation-gate-run-`:
 a job that shares its caller's group is cancelled as a deadlock.
 
 Each gated run posts its own check run named `annotation-gate`.
