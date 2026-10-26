@@ -260,7 +260,8 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
 - `lint-changed-lines.yml` runs [lintr](https://lintr.r-lib.org/) over only the
   lines a pull request adds or modifies (not whole changed files), so lint rules
   can be adopted or tightened incrementally: new and edited code must comply
-  while untouched legacy code is left alone. `file-pattern` widens the files
+  while untouched legacy code is left alone.
+  `file-pattern` widens the files
   linted to Quarto and R Markdown documents, whose R chunks lintr lints, and
   `lms-ref` installs the shared `lms` package and lints with
   `lms::default_linters(nested_calls = TRUE)`, the lab's linters including the
