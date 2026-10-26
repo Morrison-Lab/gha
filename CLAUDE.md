@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-def-title-synonyms`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-exm-figures`, `check-tree-lists`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-def-title-synonyms`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-exm-figures`, `check-visualization-figures`, `check-tree-lists`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -5604,6 +5604,14 @@ is possible and the gate falls back to the raw count, classifying such a run
 exactly as it is classified today.
 That direction is deliberate, since assuming unnamed denials were ours would
 weaken the gha#198 gate on evidence we do not have.
+
+## A new content check must catch the example that motivated it
+
+When a rule comes with an example (Ezra's `exr-surface-stationary-points` for `check-visualization-figures`, 2026-10-26),
+the check's tests include that example verbatim, and the first whole-tree run must flag it.
+A trigger written from the rule's wording alone missed its own example,
+because the title said "Mark every zero-gradient point on a surface" and never "visualization".
+If the check misses the example, the trigger is too narrow: broaden it, then sweep the whole tree and fix what it newly finds.
 
 ## Never just theorize -- investigate empirically
 
