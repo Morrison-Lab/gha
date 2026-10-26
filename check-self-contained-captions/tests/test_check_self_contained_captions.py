@@ -62,6 +62,13 @@ def test_a_caption_that_is_only_a_reference_is_flagged():
     assert flagged(fig("See [@exm-a].")) == [7]
 
 
+def test_a_table_title_ending_on_for_is_content_not_a_pointer():
+    assert scc.first_sentence_problem("Estimated coefficients for [model @eq-lm]", table=True) is None
+    assert scc.first_sentence_problem("Means of @tbl-a", table=True) is not None
+    tbl = "::: {#tbl-a}\n| a |\n|---|\n| 1 |\n\nRegression estimates for [Model @eq-m]\n:::\n"
+    assert flagged(tbl) == []
+
+
 def test_a_link_keeps_its_text_but_drops_the_url():
     cap = "[Logistic function](https://x.org/a.html) of @exm-a."
     assert scc.first_sentence_problem(cap) is not None
@@ -77,9 +84,9 @@ def test_only_the_first_sentence_counts():
 
 
 def test_table_div_and_pipe_caption_and_chunk_option():
-    tbl = "::: {#tbl-a}\n| a |\n|---|\n| 1 |\n\nThe means of @exm-a.\n:::\n"
+    tbl = "::: {#tbl-a}\n| a |\n|---|\n| 1 |\n\nMeans of @exm-a.\n:::\n"
     assert flagged(tbl) == [6]
-    pipe = "| a |\n|---|\n| 1 |\n\n: The means of @exm-a {#tbl-b}\n"
+    pipe = "| a |\n|---|\n| 1 |\n\n: Means of @exm-a {#tbl-b}\n"
     assert flagged(pipe) == [5]
     opt = "```{r}\n#| fig-cap: The slope at @exm-a\nplot(1)\n```\n"
     assert flagged(opt) == [2]

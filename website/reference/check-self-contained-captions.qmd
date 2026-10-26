@@ -17,6 +17,9 @@ with the reference, inline code and link URLs removed,
 it has fewer than four words or ends on a word that needs a complement
 ("of", "at", "the", ...).
 A trailing ", as in @x" or "(see @x)" is support, not a defect.
+A long first sentence (eight words or more) may end on "of @x" and still say what the float shows.
+A table caption is a noun-phrase title, so "Estimated coefficients for @eq-x" passes;
+only a first sentence under three words is flagged there.
 "The symmetry of @exm-logistic-symmetry." is flagged;
 "The logistic function at -2 is as high as one minus its value at 2 (@exm-logistic-symmetry)." passes.
 

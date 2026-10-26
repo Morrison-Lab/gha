@@ -75,6 +75,7 @@ ods = _load_sibling("check-one-div-per-subfile")
 DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = True
 MIN_WORDS = 4
+MIN_TABLE_WORDS = 3
 # A long first sentence that names its subject may end on "of @x" and still
 # say what the float shows ("The residuals of the first five cars of @x").
 SHORT_WORDS = 8
@@ -87,7 +88,7 @@ ADVICE = (
 
 FLOAT_RE = re.compile(r"#(?:fig|tbl)-")
 EXEMPT_RE = re.compile(r"<!--\s*caption-ref:\s*(?!-->)\S")
-CAPTION_OPTION_RE = re.compile(r"^\s*#\|\s*(?:fig|tbl)-cap:\s*(.*)$")
+CAPTION_OPTION_RE = re.compile(r"^\s*#\|\s*(fig|tbl)-cap:\s*(.*)$")
 PIPE_CAPTION_RE = re.compile(r"^:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
 
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
@@ -118,7 +119,7 @@ class Caption(NamedTuple):
     text: str
 
 
-def first_sentence_problem(text: str) -> Optional[str]:
+def first_sentence_problem(text: str, table: bool = False) -> Optional[str]:
     """Why the caption's first sentence only points elsewhere, else None."""
     flat = " ".join(text.split())
     flat = INLINE_CODE_RE.sub(" ", flat)
@@ -136,9 +137,11 @@ def first_sentence_problem(text: str) -> Optional[str]:
     sentence = flat[:m.start()] if m else flat
     sentence = SUPPORT_TAIL_RE.sub("", sentence)
     words = WORD_RE.findall(sentence)
-    if len(words) < MIN_WORDS:
+    # A table caption is a noun-phrase title, so "Estimated coefficients for
+    # @eq-x" already says what the table holds: only the word count applies.
+    if len(words) < (MIN_TABLE_WORDS if table else MIN_WORDS):
         return f"its first sentence has only {len(words)} word(s) besides the cross-reference"
-    if len(words) < SHORT_WORDS and words[-1].lower() in DANGLING:
+    if not table and len(words) < SHORT_WORDS and words[-1].lower() in DANGLING:
         return f"its first sentence ends on '{words[-1]}', so it needs the cross-reference to make sense"
     return None
 
@@ -162,8 +165,8 @@ def scan_floats(lines: List[str]) -> List[Tuple[int, int, str, Optional[Caption]
             else:
                 om = CAPTION_OPTION_RE.match(raw)
                 if om:
-                    text = om.group(1).strip().strip("\"'")
-                    found.append((idx + 1, idx + 1, "chunk option",
+                    text = om.group(2).strip().strip("\"'")
+                    found.append((idx + 1, idx + 1, om.group(1) + "-cap chunk option",
                                   Caption(idx + 1, idx + 1, text)))
             continue
         if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
@@ -219,7 +222,7 @@ def scan_file(lines: List[str], keep: Optional[Set[int]]):
         body = lines[start - 1:end]
         if any(EXEMPT_RE.search(s) for s in body):
             continue
-        reason = first_sentence_problem(cap.text)
+        reason = first_sentence_problem(cap.text, table="tbl" in attrs)
         if reason is None:
             continue
         if keep is None or any(start <= n <= end for n in keep):
