@@ -140,6 +140,13 @@ GREEK_SUGGESTIONS = {
     "varepsilon": r"\eps if this is the error term",
     "mu": r"\mean if this is the population mean",
 }
+# A line that names the log-odds (or logit) and writes it as a bare `z` or
+# `F` in math. The course symbol is \logodds (eta); `F` came from a source
+# that writes the log-odds as f(x). `z` and `F` have no suggestion above, so
+# this rule runs in both modes (Ezra, 2026-10-26, lds#1411).
+LOGODDS_CONTEXT_RE = re.compile(r"log[- ]?odds|\blogit\b", re.IGNORECASE)
+LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z])([zF])(?![A-Za-z])")
+LOGODDS_SUFFIX = "[log-odds]"
 # Literal Greek characters map to the command they spell.
 UNICODE_GREEK = {
     "\u03b1": "alpha", "\u03b2": "beta", "\u03b3": "gamma", "\u03b4": "delta", "\u03b5": "varepsilon",
@@ -484,6 +491,10 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
         for seg in math:
             spans += 1
             tokens.extend(scan_math(seg))
+        if LOGODDS_CONTEXT_RE.search(line):
+            for seg in math:
+                for lm in LOGODDS_LETTER_RE.finditer(seg):
+                    tokens.append(lm.group(1) + LOGODDS_SUFFIX)
         if tokens:
             findings.append(Finding(lineno, tuple(tokens)))
     return findings, spans
@@ -494,6 +505,10 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
 def _describe(token: str) -> str:
     if token.startswith("\\") and token[1:] in DEPRECATED:
         return f"{token} is deprecated -> {DEPRECATED[token[1:]]}"
+    if token.endswith(LOGODDS_SUFFIX):
+        letter = token[0]
+        return (f"{letter} -> \\logodds if this is the log-odds "
+                f"(the course symbol is eta, not {letter})")
     if token.startswith("\\"):
         suggestion = GREEK_SUGGESTIONS.get(token[1:])
     else:

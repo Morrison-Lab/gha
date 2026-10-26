@@ -515,3 +515,28 @@ def test_load_deprecated_reads_the_use_instruction(tmp_path):
 def test_load_deprecated_missing_file_yields_no_rules(tmp_path, capsys):
     assert lml.load_deprecated(str(tmp_path / "absent.tsv")) == {}
     assert "Could not read" in capsys.readouterr().out
+
+
+# -- the log-odds symbol -----------------------------------------------------
+
+def test_z_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
+    got = flagged("If the log-odds of an event are $z$, its probability is p.")
+    assert got == {1: ["z[log-odds]"]}
+
+
+def test_f_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
+    got = flagged("It passes through one half at $F = 0$ on the log-odds axis.")
+    assert got == {1: ["F[log-odds]"]}
+
+
+def test_z_without_log_odds_context_passes_in_precise_mode(known_mode):
+    assert flagged("The Wald statistic is $z = b / s$.") == {}
+
+
+def test_logodds_macro_is_not_flagged_in_precise_mode(known_mode):
+    assert flagged(r"The log-odds are $\logodds = 0$.") == {}
+
+
+def test_log_odds_message_names_the_macro(known_mode):
+    msg = lml.format_message(("z[log-odds]",))
+    assert r"\logodds" in msg
