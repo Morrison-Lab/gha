@@ -57,5 +57,5 @@ jobs:
           paths-ignore: ${{ inputs.paths-ignore }}
           fail: ${{ inputs.fail }}
           # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
-          # it was built on (gha#1007). On a push there is no base, so it skips.
+          # that merge ref was built on (gha#1007). On a push there is no base, so the check skips.
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

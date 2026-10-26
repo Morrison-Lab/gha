@@ -85,6 +85,26 @@ def test_only_the_last_pair_counts(tree):
     assert bad(tree) == []
 
 
+def test_quoted_include_paths_are_followed(tree):
+    write(tree, "ch.qmd", chapter(
+        '{{< include "_sub/_exr-a.qmd" >}}', "{{< include '_sub/_sol-a.qmd' >}}",
+        "{{< include _sub/_thm-a.qmd >}}"))
+    assert bad(tree) == []
+
+
+def test_an_id_inside_a_quoted_attribute_is_not_the_divs_kind(tree):
+    write(tree, "ch.qmd", chapter(
+        '::: {.callout title="See #exr-1" #thm-x}', "Claim.", ":::"))
+    assert bad(tree) == [("ch.qmd", "thm")]
+
+
+def test_an_indented_heading_breaks_adjacency(tree):
+    write(tree, "ch.qmd", chapter(
+        "{{< include _sub/_exr-a.qmd >}}", "{{< include _sub/_sol-a.qmd >}}",
+        "  ## Next", "{{< include _sub/_thm-a.qmd >}}"))
+    assert bad(tree) == [("_thm-a.qmd", "thm")]
+
+
 def test_inline_divs_count_as_blocks(tree):
     write(tree, "ch.qmd", chapter(
         "::: {#exr-x}", "Show it.", ":::", "", "::: {#sol-x}", "Done.", ":::", "",

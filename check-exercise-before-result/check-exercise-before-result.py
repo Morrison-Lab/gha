@@ -63,13 +63,14 @@ ADVICE = (
     "--> to the first line of the result if no exercise can precede it"
 )
 
-INCLUDE_RE = re.compile(r"\{\{<\s*include\s+([^\s>]+)\s*>\}\}")
+INCLUDE_RE = re.compile(r"\{\{<\s*include\s+['\"]?([^\s>'\"]+)['\"]?\s*>\}\}")
 SLIDEBREAK_RE = re.compile(r"\{\{<\s*slidebreak\s*>\}\}")
-KIND_FILE_RE = re.compile(r"^_?([a-z]+)[-_]")
-DIV_ID_RE = re.compile(r"#([a-z]+)-[A-Za-z0-9_-]+")
+KIND_FILE_RE = re.compile(r"^_([a-z]+)[-_]")
+DIV_ID_RE = re.compile(r"(?:^|[\s{])#([a-z]+)-[A-Za-z0-9_-]+")
+QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
-HEADING_RE = re.compile(r"^#{1,6}\s")
+HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s")
 
 
 class Block(NamedTuple):
@@ -113,7 +114,7 @@ def blocks_of(path: str, root_dir: str, depth: int = 0) -> List[Block]:
         if dm:
             if dm.group(2):
                 if nest == 0:
-                    idm = DIV_ID_RE.search(dm.group(2))
+                    idm = DIV_ID_RE.search(QUOTED_RE.sub("", dm.group(2)))
                     out.append(Block(idm.group(1) if idm else "other", path, idx + 1, True))
                 nest += 1
             elif nest:
