@@ -799,7 +799,7 @@ runs:
           line violates the rule when it holds two or more independent
           clauses (each with its own subject and verb, including two
           imperatives), or a main clause together with a subordinate
-          clause of its own, whichever comes first (a clause opened by
+          clause of its own, either of which is enough (a clause opened by
           "because", "when", "if", "while", "although", "since", "which"
           or "that" counts, and so does a semicolon or a colon that joins
           two clauses). A colon that introduces a label, a value or a list
@@ -811,8 +811,9 @@ runs:
           because the lab's policy is that a wording or format nit blocks
           a merge; report each violating line as a blocking finding with
           a `path:line` anchor. Do not flag a short phrase set off by a
-          comma, a line that is only a list item or a link, or a line
-          inside a code fence.
+          comma, a bare list-item marker, a line that is only a link, or a
+          line inside a code fence. A list item that packs several clauses
+          still violates the rule.
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
