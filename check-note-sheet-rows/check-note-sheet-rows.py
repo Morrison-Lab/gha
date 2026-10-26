@@ -121,7 +121,7 @@ def row_reasons(cells: List[str]) -> List[str]:
     if MATH_RE.search(label) and not LINK_RE.search(cells[0]):
         reasons.append("the label holds notation")
     plain = MATH_RE.sub("", label)
-    if len(cells) > 1 and LABEL_JOIN_RE.search(plain) and not VARIANT_RE.search(plain):
+    if len(cells) > 1 and LABEL_JOIN_RE.search(VARIANT_RE.sub("", plain)):
         reasons.append("the label joins two concepts")
     for cell in cells[1:]:
         spans = list(MATH_RE.finditer(cell))
