@@ -8,6 +8,7 @@ The script's name has a hyphen, so load it by path.
 """
 
 import importlib.util
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -119,7 +120,95 @@ def test_diff_scope_only_reports_floats_holding_a_kept_line():
     assert found == []
 
 
-def test_the_defaults_agree_with_the_action():
-    action = (_DIR / "action.yml").read_text()
-    assert "SCC_FAIL: ${{ inputs.fail }}" in action
-    assert "default: 'true'" in action
+# -- git: diff scoping end to end --------------------------------------------
+
+BAD = "::: {#fig-a}\nplot\n\nThe symmetry of @exm-a.\n:::\n"
+
+
+def _git(repo, *args):
+    subprocess.run(["git", "-C", str(repo), *args], check=True,
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+@pytest.fixture
+def repo(tmp_path, monkeypatch):
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow: synthetic test address
+    _git(tmp_path, "config", "user.name", "t")
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+def _write(repo, name, text):
+    (repo / name).write_text(text, encoding="utf-8")
+    _git(repo, "add", name)
+
+
+def _commit(repo, name, text):
+    _write(repo, name, text)
+    _git(repo, "commit", "-q", "-m", "c")
+
+
+def _run(base):
+    return scc.run_check(base, [scc.DEFAULT_GLOBS], [], False)
+
+
+def test_untouched_caption_is_grandfathered(repo):
+    _commit(repo, "old.qmd", BAD)
+    _write(repo, "other.qmd", "text\n")
+    assert _run("HEAD").findings == []
+
+
+def test_touching_a_float_flags_its_caption(repo):
+    _commit(repo, "old.qmd", BAD)
+    _write(repo, "old.qmd", BAD.replace("plot", "plot again"))
+    assert [n for _, n, _, _ in _run("HEAD").findings] == [4]
+
+
+def test_a_moved_line_is_not_new(repo):
+    _commit(repo, "old.qmd", BAD + "\ntail\n")
+    _write(repo, "old.qmd", "tail\n\n" + BAD)
+    assert _run("HEAD").findings == []
+
+
+def test_no_base_ref_skips_instead_of_scanning_the_tree(repo):
+    _commit(repo, "old.qmd", BAD)
+    report = _run("")
+    assert report.skipped and report.findings == []
+
+
+def test_unresolvable_base_ref_skips(repo):
+    _commit(repo, "old.qmd", BAD)
+    assert _run("no-such-ref").skipped
+
+
+def test_whole_tree_and_paths_ignore(repo):
+    _commit(repo, "old.qmd", BAD)
+    report = scc.run_check("", [scc.DEFAULT_GLOBS], [], True)
+    assert not report.skipped and len(report.findings) == 1
+    assert (report.files, report.captions) == (1, 1)
+    ignores = scc.ods.compile_ignores(["old.qmd"])
+    assert scc.run_check("", [scc.DEFAULT_GLOBS], ignores, True).findings == []
+
+
+def test_main_exit_codes(repo, monkeypatch):
+    _commit(repo, "old.qmd", BAD)
+    monkeypatch.setenv("SCC_WHOLE_TREE", "true")
+    assert scc.main() == 1
+    monkeypatch.setenv("SCC_FAIL", "false")
+    assert scc.main() == 0
+
+
+# -- defaults agree across script, action and workflow ----------------------
+
+def test_defaults_agree_across_script_action_and_workflow():
+    action = (_DIR / "action.yml").read_text(encoding="utf-8")
+    workflow = (_DIR.parent / ".github" / "workflows"
+                / "check-self-contained-captions.yml").read_text(encoding="utf-8")
+    assert scc._DEFAULT_FAIL is True
+    assert "default: 'true'" in action.split("  fail:")[1].split("runs:")[0]
+    assert "default: true" in workflow.split("      fail:")[1].split("jobs:")[0]
+    assert f"default: '{scc.DEFAULT_GLOBS}'" in action
+    assert f"default: '{scc.DEFAULT_GLOBS}'" in workflow
+    for name in ("BASE_REF", "WHOLE_TREE", "GLOBS", "PATHS_IGNORE", "FAIL"):
+        assert f"SCC_{name}" in action
