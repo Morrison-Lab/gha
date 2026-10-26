@@ -28,6 +28,7 @@ can opt out by adding a comment directive:
 | `base-ref` | string | `''` | Git ref to diff against for diff-scoped checking (e.g. `origin/main`). On pull requests and pushes, defaults to `HEAD^1` (the base tip GitHub built the merge ref on) or the previous commit automatically for diff-scoping. |
 | `fail` | boolean | `true` | Whether to fail the workflow if duplicate roxygen documentation is detected. |
 | `python-version` | string | `'3.x'` | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -44,6 +45,8 @@ on:
 jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-duplicate-roxygen.yml@v3
+    # with:
+    #   runs-on: private-runner  # self-hosted runner label (private repositories only)
 ```
 
 See the

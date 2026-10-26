@@ -60,6 +60,18 @@ check("200 OK warning is NULL", is.null(res_200$warning), TRUE)
 check("200 OK error is NULL", is.null(res_200$error), TRUE)
 check("200 OK call count", call_count, 1)
 
+# Test 1b: 202 Accepted (some publishers answer this) -> valid immediately
+call_count <- 0
+mock_get_202 <- function(...) {
+  call_count <<- call_count + 1
+  make_mock_response(202)
+}
+res_202 <- validate_doi_url("10.1201/9781315182780", backoff_base_sec = 0, http_get = mock_get_202)
+check("202 Accepted is_valid", res_202$is_valid, TRUE)
+check("202 Accepted warning is NULL", is.null(res_202$warning), TRUE)
+check("202 Accepted error is NULL", is.null(res_202$error), TRUE)
+check("202 Accepted call count", call_count, 1)
+
 # Test 2: 403 Forbidden (paywalled) -> valid immediately
 call_count <- 0
 mock_get_403 <- function(...) {

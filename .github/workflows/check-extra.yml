@@ -11,6 +11,13 @@ name: Extra R-package checks (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
       path:
         description: >-
           Path to the R package root (the directory holding DESCRIPTION).
@@ -55,7 +62,7 @@ jobs:
   check-no-warnings:
     name: Check for warnings
     if: ${{ inputs.check-warnings }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 60
     permissions:
       contents: read
@@ -76,7 +83,7 @@ jobs:
   check-random-test-order:
     name: Check random test order
     if: ${{ inputs.check-random-order }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -97,7 +104,7 @@ jobs:
   check-readme:
     name: Check README rendering
     if: ${{ inputs.check-readme }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 45
     permissions:
       contents: read

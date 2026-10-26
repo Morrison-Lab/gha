@@ -11,6 +11,7 @@ skip the deploy.
 
 | Input                      | Type    | Default                                           | Description                                                                                                                                       |
 | -------------------------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runs-on`                  | string  | `'ubuntu-latest'`            | Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo. |
 | `path`                     | string  | `'.'`                                             | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`).                                                       |
 | `setup-r`                  | boolean | `false`                                           | Install R and project R dependencies before rendering (for R/knitr Quarto projects).                                                              |
 | `r-packages`               | string  | `(long; see workflow file)`                       | r-lib/actions package specs installed when `setup-r` is true and `use-renv` is false. Defaults to `any::knitr` and `any::rmarkdown`.              |
@@ -20,12 +21,14 @@ skip the deploy.
 | `tinytex`                  | boolean | `false`                                           | Install TinyTeX (needed to render PDF outputs).                                                                                                   |
 | `setup-julia`              | boolean | `false`                                           | Install Julia (`julia-actions/setup-julia`) before rendering, for pages that execute `{julia}` chunks; under knitr these run through the R package JuliaCall, so add `any::JuliaCall` to `r-packages` (with `setup-r`). The Julia depot is cached between runs via `julia-actions/cache`. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and `R_LD_LIBRARY_PATH` is set to R's own `lib` directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. `@v3` and later. |
 | `julia-version`            | string  | `'1'`                                             | Julia version to install, in `setup-julia`'s `version` syntax. Only used when `setup-julia` is true. `@v3` and later. |
+| `preinstalled-toolchain` | boolean | `false` | The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs `r-packages` with pak into the runner's user library. With an empty `r-packages` nothing is installed. The runner must already have R with the pak and tinytex packages, Quarto, TinyTeX, Julia and (if needed) Chrome; `tinytex` is then ignored for the install. renv, the JuliaCall setup and the freeze cache still run. |
 | `apt-packages`             | string  | `''`                                              | Extra apt packages to install before rendering (space-separated).                                                                                 |
 | `output-dir`               | string  | `'_site'`                                         | Directory the rendered site is written to, relative to `path`; forwarded to `quarto render --output-dir` and overrides any `_quarto.yml` setting. |
 | `render-profile`           | string  | `''`                                              | Quarto `--profile` to render with (e.g. `'website'`). Empty to omit.                                                                              |
 | `formats`                  | string  | `''`                                              | Whitespace- or newline-separated Quarto output formats to render individually in order to prevent V8 out-of-memory errors on large sites.         |
 | `per-file-formats`         | string  | `''`                                              | Whitespace- or newline-separated formats (e.g. `pdf`) to render one file at a time, each in its own process, after the normal render. Prevents Deno heap exhaustion on a large PDF pass; list the other formats in `formats`. |
 | `freeze-cache`             | boolean | `false`                                           | Restore and save Quarto `_freeze` directory via `actions/cache` keyed on `renv.lock` and commit SHA. After the restore, frozen results of pages whose file, included subfiles or named data files changed since the cached commit are removed. The saved cache also seeds PR previews. |
+| `freeze-cache-save-on-failure` | boolean | `false`                                       | Also save `_freeze` when the render fails, so a re-run resumes from the pages already executed. Only used when `freeze-cache` is true. A run killed outright, by a timeout or a lost runner, may not get to save. |
 | `deno-v8-options`          | string  | `'--max-old-space-size=12288,--max-heap-size=12288'` | Options passed to Deno V8 via `QUARTO_DENO_V8_OPTIONS` to raise the heap limit for large site renders.                                           |
 | `fail-on-render-warning`   | boolean | `false`                                           | Fail the build if Quarto emits any render warnings (`WARN` in the render log).                                                                   |
 | `forbid-log-patterns`      | string  | `''`                                              | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files).                              |
@@ -108,6 +111,7 @@ jobs:
     #   setup-chrome: true      # install Chrome for revealjs/screenshots/mermaid
     #   tinytex: true           # needed to render PDF outputs
     #   setup-julia: true       # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)
+    #   preinstalled-toolchain: true       # self-hosted runner with R, Quarto, TinyTeX, Julia installed
     #   julia-version: '1'
     #   apt-packages: ''        # extra system packages (space-separated)
     #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)
@@ -115,6 +119,7 @@ jobs:
     #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
     #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)
     #   freeze-cache: true      # cache Quarto _freeze across runs
+    #   freeze-cache-save-on-failure: true  # keep it when the render fails
     #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
     #   fail-on-render-warning: true # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log

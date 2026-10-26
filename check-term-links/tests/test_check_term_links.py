@@ -115,6 +115,44 @@ def test_the_longer_term_wins_over_its_prefix():
     assert run_text(page, {"d.qmd": defs}) == []
 
 
+LOGISTIC_DEFS = (
+    "::: {#def-regression}\n\n#### Regression\n\nA **regression** predicts a value.\n\n:::\n"
+    "\n::: {#def-logistic-regression}\n\n#### Logistic regression\n\n"
+    "A **logistic regression** predicts a probability.\n\n:::\n"
+)
+
+
+def test_link_over_part_of_a_longer_defined_phrase_is_flagged():
+    page = "::: {#exm-a}\n\nWe fit a logistic [regression](#def-regression).\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [
+        ("partial-link", "logistic regression")
+    ]
+
+
+def test_link_over_the_leading_words_of_a_longer_phrase_is_flagged():
+    page = "::: {#exm-a}\n\nWe fit a [logistic](#def-regression) regression.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [
+        ("partial-link", "logistic regression")
+    ]
+
+
+def test_link_over_the_whole_longer_phrase_passes():
+    page = "::: {#exm-a}\n\nWe fit a [logistic regression](#def-logistic-regression).\n\n:::\n"
+    assert run_text(page, {"d.qmd": LOGISTIC_DEFS}) == []
+
+
+def test_unlinked_longer_phrase_is_reported_as_the_phrase_not_its_tail():
+    page = "::: {#exm-a}\n\nWe fit a logistic regression.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [
+        ("unlinked-first-use", "logistic regression")
+    ]
+
+
+def test_shorter_term_alone_still_links_normally():
+    page = "::: {#exm-a}\n\nA [regression](#def-regression) predicts.\n\n:::\n"
+    assert run_text(page, {"d.qmd": LOGISTIC_DEFS}) == []
+
+
 def test_plural_and_case_are_matched():
     page = "::: {#exm-a}\n\nRisks differ.\n\n:::\n"
     assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("unlinked-first-use", "risk")]
@@ -262,3 +300,38 @@ def test_cli_allow_file_and_terms_file(repo):
 def test_cli_paths_ignore(repo):
     res = run_cli(repo, WHOLE_TREE="true", FAIL="true", PATHS_IGNORE="old.qmd, new.qmd")
     assert res.returncode == 0
+
+
+def test_cli_moved_line_is_not_new(repo):
+    # Splitting a file moves lines; a first use the base already carried is not reflagged.
+    text = (repo / "old.qmd").read_text()
+    (repo / "moved.qmd").write_text(text)
+    (repo / "old.qmd").write_text("Nothing left here.\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "move")
+    res = run_cli(repo, BASE_REF="main", FAIL="true")
+    assert "moved.qmd" not in res.stdout and "new.qmd:3" in res.stdout
+
+
+def test_cli_edited_line_with_the_same_first_use_is_still_flagged(repo):
+    (repo / "old.qmd").write_text("::: {#exm-o}\n\nThe risk was here, and still is.\n\n:::\n")
+    git(repo, "commit", "-q", "-am", "edit")
+    res = run_cli(repo, BASE_REF="main", FAIL="true")
+    assert "old.qmd:3" in res.stdout
+
+
+def test_parse_added_lines_ignores_body_lines_that_look_like_headers(tmp_path):
+    diff = (
+        "diff --git a/a.qmd b/a.qmd\n--- a/a.qmd\n+++ b/a.qmd\n"
+        "@@ -1,0 +2,2 @@\n++ not a header\n+++ b/also not a header\n"
+    )
+    assert ctl.parse_added_lines(diff, tmp_path) == {tmp_path / "a.qmd": {2, 3}}
+
+
+def test_parse_added_lines_drops_lines_the_diff_also_deletes(tmp_path):
+    diff = (
+        "--- a/a.qmd\n+++ b/a.qmd\n@@ -3,1 +0,0 @@\n-The risk was here.\n"
+        "--- a/b.qmd\n+++ b/b.qmd\n@@ -0,0 +1,2 @@\n+The risk was here.\n+A new line.\n"
+    )
+    out = ctl.parse_added_lines(diff, tmp_path)
+    assert out[tmp_path / "b.qmd"] == {2}

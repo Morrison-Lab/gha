@@ -73,6 +73,12 @@ website:
           - reference/check-redundant-citations.qmd
           - reference/check-self-credits.qmd
           - reference/check-one-div-per-subfile.qmd
+          - reference/check-pr-size.qmd
+          - reference/check-pr-concerns.qmd
+          - reference/check-def-commentary.qmd
+          - reference/check-exm-figures.qmd
+          - reference/check-def-title-synonyms.qmd
+          - reference/check-note-sheet-rows.qmd
           - reference/check-definite-antecedents.qmd
           - reference/check-paired-file-change.qmd
           - reference/check-term-links.qmd

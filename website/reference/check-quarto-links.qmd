@@ -75,6 +75,7 @@ touch the link.
 | `target-extensions` | string | `'.qmd, .md, .Rmd, .ipynb'` | Extensions of link targets to verify. |
 | `paths-ignore` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of source files to skip. |
 | `fail` | boolean | `true` | Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit `false` opts out. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -95,6 +96,7 @@ jobs:
     #   paths-ignore: 'chapters/outtakes/'
     #   target-extensions: '.qmd, .md'
     #   fail: false
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See `check-quarto-links.yml` in

@@ -59,6 +59,7 @@ changes more files than one API page is not silently under-linted.
 | `extra-packages`     | string  | `''`               | Extra R packages to install (space- or comma-separated). `gh` and `lintr` are always installed from CRAN.                                                         |
 | `install-package`    | boolean | `true`             | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Skipped when `path` has no `DESCRIPTION`. Set `false` to skip even when `DESCRIPTION` is present. |
 | `fail`               | boolean | `true`             | Fail the workflow when lintr reports a lint (rather than warn only).                                                                                              |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -91,6 +92,7 @@ jobs:
     #   extra-packages: ''      # extra R deps (gh + lintr always installed from CRAN)
     #   install-package: false  # skip R CMD INSTALL even when DESCRIPTION is present
     #   fail: false             # warn instead of failing on lints
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

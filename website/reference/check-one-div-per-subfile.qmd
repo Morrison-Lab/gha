@@ -5,7 +5,9 @@ title: "check-one-div-per-subfile.yml"
 Diff-scoped, warn-only check that flags a Quarto subfile
 holding more than one top-level div.
 The lab's rule (Ezra, 2026-10-18) is that new and revised content
-gets one div per subfile, a solution in its own `_sol` file included.
+gets one div per subfile.
+One exception (Ezra, 2026-10-23):
+a proof may share a file with its claim, and a solution with its exercise.
 This implements
 [gha#1092](https://github.com/Morrison-Lab/gha/issues/1092).
 
@@ -47,7 +49,7 @@ because the default glob matches those.
 Only a subfile with a line a pull request adds is reported.
 A touched subfile counts as revised,
 so the whole file is parsed (a div opens far above the changed line)
-and a one-line fix to a file that still holds an exercise and its solution
+and a one-line fix to a file that still holds two claims
 is reported.
 An untouched subfile keeps its layout.
 An added line whose exact text was also deleted in the same diff
@@ -68,6 +70,7 @@ Every run prints how many lines, subfiles and divs it examined.
 | `fail`         | boolean | `false`               | Fail the workflow when a subfile holds more than one top-level div. The default gives warning annotations only. |
 | `whole-tree`   | boolean | `false`               | Scan every tracked subfile in full instead of only a PR's added lines. |
 | `python-version` | string | `'3.x'`              | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -79,7 +82,8 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 # Copy to .github/workflows/check-one-div-per-subfile.yml in your repo.
 # Diff-scoped check: flags a subfile (_subfiles/_*.qmd) that holds more than one
 # top-level div when a PR adds a line to it. New and revised content gets one div
-# per subfile, a solution in its own _sol file included. Warn-only by default.
+# per subfile (a proof may share a file with its claim, a solution with its
+# exercise). Warn-only by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check one div per subfile
 
@@ -98,6 +102,7 @@ jobs:
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
     #   fail: true                             # block instead of warn (defaults to false)
     #   whole-tree: true                       # scan every subfile, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See

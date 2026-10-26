@@ -18,6 +18,7 @@ repo's own R/Python capabilities already do.
 | `fail`                 | boolean | `true`  | Fail the workflow when yamllint reports an error (not a warning).                                                                                                                                              |
 | `max-script-lines`     | string  | `'150'` | Flag a `run:` block longer than this many lines. Matches the [lab manual's](https://ucd-serg.github.io/lab-manual/coding-practices.html) `<150`-line function-length heuristic.                                |
 | `fail-on-long-scripts` | boolean | `false` | Fail when a `run:` block exceeds `max-script-lines`. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -47,6 +48,7 @@ jobs:
     #   config-file: '.yamllint.yml'   # override the bundled default config
     #   paths-ignore: 'renv/**'        # skip known-vendored paths
     #   fail: false                    # warn instead of failing on yamllint errors
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

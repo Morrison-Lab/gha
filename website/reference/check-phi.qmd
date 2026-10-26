@@ -19,6 +19,7 @@ only `file:line:col` and the detector name.
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`.                      |
 | `allowlist-file` | string  | `''`    | Path in the caller repo to a regex allowlist file.                                                                              |
 | `fail`           | boolean | `true`  | Fail the workflow when possible PHI is found; otherwise warn only.                                                              |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -50,6 +51,7 @@ jobs:
     #   paths-ignore: 'tests/testthat/fixtures/*,docs/*'      # skip known-safe paths
     #   allowlist-file: '.github/phi-allowlist.txt'           # regexes to suppress
     #   fail: false                                           # warn instead of failing
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 #
 # Suppressing false positives:
 #   - Add a `phi-allow` comment on the offending line, or

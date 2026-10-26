@@ -3,9 +3,9 @@ description: >-
   Diff-scoped check that flags a Quarto subfile (a `.qmd` file whose name
   starts with `_`, under a `_subfiles` directory) that holds more than one
   top-level fenced div, when the diff adds a line to it. New and revised
-  content gets one div per subfile, a solution in its own `_sol` file
-  included (Ezra, 2026-10-18). Nested divs and `rem-source-` remarks do not
-  count. Scoped to lines a diff adds (an added line whose exact text was also
+  content gets one div per subfile (Ezra, 2026-10-18), except that a proof
+  may share a file with its claim and a solution with its exercise (Ezra,
+  2026-10-23). Nested divs and `rem-source-` remarks do not count. Scoped to lines a diff adds (an added line whose exact text was also
   deleted in the same diff counts as moved). Warn-only by default.
 inputs:
   python-version:

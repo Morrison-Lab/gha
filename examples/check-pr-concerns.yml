@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-pr-concerns.yml in a content repo (notes,
+# course sites). Blocking check: fails a PR that changes both content (chapters,
+# subfiles, .qmd, .Rmd) and infrastructure (.github, tools, scripts, hooks,
+# filters, .claude, _quarto*.yml). Content and infrastructure go in separate
+# PRs. The `mixed-ok` label lifts the check. Needs contents:read and
+# pull-requests:read. Do not use it in a repo whose pages document its own
+# infrastructure (gha itself): every PR there touches both.
+name: Check pull request concerns
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-pr-concerns.yml@v3
+    permissions:
+      contents: read
+      pull-requests: read
+    # with:
+    #   content-paths: 'chapters/**'    # replaces the default content globs
+    #   infra-paths: '.github/**'       # replaces the default infrastructure globs
+    #   paths-ignore: 'data/**'         # counted as neither
+    #   exempt-label: mixed-ok          # label that lifts the check
+    #   fail: false                     # warn instead of block (defaults to true)

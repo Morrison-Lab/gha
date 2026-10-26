@@ -15,6 +15,7 @@ release time to collate `news.d/` fragments into `NEWS.md` under section heading
 |---|---|---|---|
 | `changelog` | string | `'NEWS.md'` | Path to the changelog file to check. |
 | `no-changelog-label` | string | `'no-changelog'` | PR label that skips this workflow's own changelog check. Set to an empty string to disable this workflow's escape hatch. The wrapped `UCD-SERG/changelog-check-action` separately, unconditionally recognizes its own hardcoded `no changelog` (space) label - not controlled by this input. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
@@ -43,6 +44,7 @@ jobs:
     # with:
     #   changelog: NEWS.md
     #   no-changelog-label: no-changelog
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 See [`examples/check-news.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-news.yml)
