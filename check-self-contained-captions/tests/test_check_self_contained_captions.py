@@ -39,7 +39,7 @@ def test_the_motivating_caption_is_flagged_and_names_the_dangling_word():
 
 
 def test_a_dangling_preposition_is_flagged():
-    cap = "The slope of the logistic function, at the scores of @exm-logistic-derivative."
+    cap = "The slope at the scores of @exm-logistic-derivative."
     assert "ends on 'of'" in scc.first_sentence_problem(cap)
 
 
@@ -49,6 +49,8 @@ def test_a_dangling_preposition_is_flagged():
     "Fitted line",
     "A scatter plot of height against weight.",
     "Two groups differ in their means [@smith2020, Fig. 2].",
+    "Average percentage of words equal to each word (columns of Table 1.1 in @hastie2009esl).",
+    "The residuals of the first five cars of @exm-residual.",
 ])
 def test_self_contained_captions_pass(caption):
     assert scc.first_sentence_problem(caption) is None

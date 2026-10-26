@@ -75,6 +75,9 @@ ods = _load_sibling("check-one-div-per-subfile")
 DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = True
 MIN_WORDS = 4
+# A long first sentence that names its subject may end on "of @x" and still
+# say what the float shows ("The residuals of the first five cars of @x").
+SHORT_WORDS = 8
 
 ADVICE = (
     "open the caption with a sentence that says what the float shows, and "
@@ -89,8 +92,10 @@ PIPE_CAPTION_RE = re.compile(r"^:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
 
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
 LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
-BRACKET_REF_RE = re.compile(r"\[[^\]]*@[\w:.-]+[^\]]*\]")
-REF_RE = re.compile(r"@[A-Za-z][\w:.-]*[\w]")
+# Only a reference to a div or section counts; a bare citation key does not.
+REF_PREFIX = r"@(?:fig|tbl|exm|exr|def|thm|lem|cor|prp|rem|cnj|alg|lst|sec|eq|apx)-"
+BRACKET_REF_RE = re.compile(r"\[[^\]]*" + REF_PREFIX + r"[^\]]*\]")
+REF_RE = re.compile(REF_PREFIX + r"[\w:.-]*\w")
 SHORTCODE_RE = re.compile(r"\{\{<.*?>\}\}")
 EMPTY_PARENS_RE = re.compile(r"\(\s*(?:see|cf\.?|in)?\s*\)", re.IGNORECASE)
 # ", as in @x" or "(see @x)" after a complete clause only supports it.
@@ -133,7 +138,7 @@ def first_sentence_problem(text: str) -> Optional[str]:
     words = WORD_RE.findall(sentence)
     if len(words) < MIN_WORDS:
         return f"its first sentence has only {len(words)} word(s) besides the cross-reference"
-    if words[-1].lower() in DANGLING:
+    if len(words) < SHORT_WORDS and words[-1].lower() in DANGLING:
         return f"its first sentence ends on '{words[-1]}', so it needs the cross-reference to make sense"
     return None
 
