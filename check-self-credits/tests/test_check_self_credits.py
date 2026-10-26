@@ -156,6 +156,34 @@ def test_source_div_naming_own_site(cfg, own):
     assert flagged(text, cfg, own) == [(2, "credit")]
 
 
+@pytest.mark.parametrize("text", [
+    "The CI tooling was written by Ezra for the UCD-SERG lab manual.",
+    "This site is built from the Morrison-Lab/sds template.",
+    "Template by Morrison-Lab/sds.",
+    "Thanks to the UCD-SERG lab manual authors.",
+    "We acknowledge the UCD-SERG lab manual.",
+])
+def test_self_acknowledgment_wordings(text, cfg, own):
+    assert flagged(text, cfg, own) == [(1, "credit")]
+
+
+def test_acknowledgments_section_naming_own_site(cfg, own):
+    text = "## Acknowledgments\n\nThe layout comes from Morrison-Lab/sds.\n"
+    assert flagged(text, cfg, own) == [(3, "credit")]
+
+
+def test_acknowledgments_section_ends_at_next_heading(cfg, own):
+    text = ("## Acknowledgements\n\nThanks, Smith.\n\n## Notes\n\n"
+            "See Morrison-Lab/sds.\n")
+    assert flagged(text, cfg, own) == []
+
+
+def test_acknowledging_outsiders_is_not_flagged(cfg, own):
+    text = ("We thank Smith and Lee, who wrote the first draft.\n"
+            "See Morrison-Lab/sds.\n")
+    assert flagged(text, cfg, own) == []
+
+
 # -- What is not flagged -----------------------------------------------------
 
 def test_bare_link_for_further_reading(cfg, own):

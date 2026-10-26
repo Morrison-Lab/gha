@@ -534,3 +534,59 @@ def test_cross_mark_skip_ends_at_a_blank_line_and_a_non_quote_line():
 
 def test_quote_without_a_cross_mark_is_still_checked():
     assert flagged("> Let $x$ be the input.\n") == {1: ["x"]}
+
+
+# -- the log-odds symbol -----------------------------------------------------
+
+def test_z_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
+    got = flagged("If the log-odds of an event are $z$, its probability is p.")
+    assert got == {1: ["z[log-odds]"]}
+
+
+def test_f_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
+    got = flagged("It passes through one half at $F = 0$ on the log-odds axis.")
+    assert got == {1: ["F[log-odds]"]}
+
+
+def test_z_without_log_odds_context_passes_in_precise_mode(known_mode):
+    assert flagged("The Wald statistic is $z = b / s$.") == {}
+
+
+def test_logodds_macro_is_not_flagged_in_precise_mode(known_mode):
+    assert flagged(r"The log-odds are $\logodds = 0$.") == {}
+
+
+def test_log_odds_message_names_the_macro(known_mode):
+    msg = lml.format_message(("z[log-odds]",))
+    assert r"\logodds" in msg
+
+
+@pytest.mark.parametrize("text", [
+    "The Wald $z$ for the logit slope.",
+    "The logit is $F^{-1}(p)$ and the quantile is $z_{\\alpha/2}$.",
+    "The log-odds $\\mathrm{F}$ and $\\text{F-test}$ differ.",
+    "Let $a_z$ be the log-odds.",
+    r"The score is $\logodds$ and the other value is $z_i$.",
+    "The logits are $z_i$ and $z1$.",
+    "The log-odds follow $F(t)$.",
+    "The log odds are $\\zeta$.",
+])
+def test_log_odds_rule_leaves_correct_notation_alone(known_mode, text):
+    assert flagged(text) == {}
+
+
+def test_log_odds_rule_covers_logit_and_plurals(known_mode):
+    assert flagged("The logits are $z$.") == {1: ["z[log-odds]"]}
+    assert flagged("The log odds are $F$.") == {1: ["F[log-odds]"]}
+
+
+def test_log_odds_macro_alone_is_not_context(known_mode):
+    assert flagged(r"The score is $\logodds$ and $z = 2$.") == {}
+
+
+def test_log_odds_rule_runs_in_default_mode_without_double_reporting():
+    assert flagged("The log-odds are $z$.") == {1: ["z[log-odds]"]}
+
+
+def test_log_odds_message_hides_the_internal_tag():
+    assert "[log-odds]" not in lml.format_message(("F[log-odds]",))

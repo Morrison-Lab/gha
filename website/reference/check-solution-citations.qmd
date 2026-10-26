@@ -1,0 +1,86 @@
+---
+title: "check-solution-citations.yml"
+---
+
+Diff-scoped, blocking check that flags a citation of a solution
+inside a proof or result div.
+A derivation never cites a solution to an exercise.
+A solution that a later argument relies on is followed by a result div
+(`#thm-`, `#lem-`, `#cor-` or `#prp-`),
+and the later argument cites that result div.
+This implements
+[gha#1234](https://github.com/Morrison-Lab/gha/issues/1234).
+
+The check reports a cross-reference `@sol-...` on a line inside a `proof` div
+or a `#thm-`, `#lem-`, `#cor-` or `#prp-` div, including a div nested in one.
+The finding sits on the line that holds the reference.
+
+## Exceptions
+
+The one exception is an exercise that asks students to prove a result
+before the result is stated.
+The result's proof may then cite the solution that precedes it.
+The check does not flag:
+
+- a `proof` div whose whole body is one line with one `@sol-` reference,
+  such as "By @sol-x."
+  That proof derives nothing itself and points at the solution of the exercise
+  that asks for the result
+  ([#1251](https://github.com/Morrison-Lab/gha/issues/1251)).
+  A second content line, display math, a code fence, a nested div
+  or a second distinct reference makes the proof structured, and it is flagged.
+  A one-line proof nested inside a result div is allowed on the same terms;
+- a line carrying `<!-- check-solution-citations: allow -->`,
+  the explicit mark for that exception;
+- a line that says "the solution (or answer) to @exr-slug",
+  the lab's existing wording for a result whose exercise asks for the proof.
+  It excuses only `@sol-slug`, the solution that shares the exercise's slug;
+- a `@sol-` reference outside a proof or result div, such as in another solution;
+- lines inside a code fence, display math (`$$`), an HTML comment or inline code.
+
+## Scope
+
+Only an added line is reported.
+The whole file is parsed, since the div opens far above the changed line.
+An added line whose exact text was also deleted in the same diff counts as moved.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose,
+which measures how many existing proofs cite a solution.
+`fail` defaults to `true`, because a diff-scoped check reflags nothing already merged.
+
+## Usage
+
+Copy
+[`examples/check-solution-citations.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-solution-citations.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `paths-ignore` | empty | Comma- or newline-separated glob patterns to skip |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every proof, not only a pull request's additions |
+| `runs-on` | `ubuntu-latest` | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
+
+## Permissions
+
+The job needs `contents: read` only.
+
+## Example
+
+```yaml
+name: Check proofs for solution citations
+
+on:
+  pull_request:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-solution-citations.yml@v3
+    with:
+      paths-ignore: 'chapters/outtakes/**'
+```

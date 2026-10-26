@@ -76,6 +76,7 @@ website:
           - reference/check-pr-size.qmd
           - reference/check-pr-concerns.qmd
           - reference/check-def-commentary.qmd
+          - reference/check-solution-citations.qmd
           - reference/check-exm-figures.qmd
           - reference/check-def-title-synonyms.qmd
           - reference/check-multipart-exercises.qmd
