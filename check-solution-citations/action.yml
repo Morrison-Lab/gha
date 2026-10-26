@@ -3,6 +3,7 @@ description: >-
   Diff-scoped check that flags a cross-reference to a solution (`@sol-`) inside
   a `proof` div or a `#thm-`, `#lem-`, `#cor-` or `#prp-` div. A derivation
   cites a result div that follows the solution, not the solution itself.
+  A one-line proof that only cites one solution is allowed.
   Scoped to lines a diff adds. Blocking by default. Escape hatch, for an
   exercise that asks students to prove the result: an HTML comment reading
   `check-solution-citations: allow` on the line, or a sentence reading
