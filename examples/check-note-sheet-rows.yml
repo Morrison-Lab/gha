@@ -20,3 +20,4 @@ jobs:
     #   paths-ignore: ''            # skip known-noisy paths
     #   fail: true                  # block instead of warn (defaults to false)
     #   whole-tree: true            # scan every note sheet, not just a PR's additions
+    #   runs-on: private-runner     # self-hosted runner label (private repositories only)
