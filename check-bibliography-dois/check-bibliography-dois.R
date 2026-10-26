@@ -139,7 +139,7 @@ validate_doi_url <- function(doi,
       } else if (code == 429 || (code >= 500 && code <= 599)) {
         # 429 (rate-limited) or 5xx (resolver/publisher server error): transient
         NULL
-      } else if (code == 404 && crossref_registered(doi_identifier, http_get)) {
+      } else if (code == 404 && isTRUE(crossref_registered(doi_identifier, http_get))) {
         # gha#1017: doi.org redirected, but the publisher's landing page
         # answered 404 (Cambridge University Press did this intermittently
         # for registered books). Crossref knowing the DOI is the evidence it
@@ -174,11 +174,15 @@ validate_doi_url <- function(doi,
   }
 
   # All attempts exhausted
-  if (!is.null(last_status_code) && last_status_code >= 500 && last_status_code <= 599) {
-    # If it's still a 5xx after retries, report as a warning rather than failure
+  if (!is.null(last_status_code) &&
+        (last_status_code == 429 || (last_status_code >= 500 && last_status_code <= 599))) {
+    # If it's still a 5xx or a 429 after retries, report as a warning rather
+    # than failure: a rate limit says nothing about whether the DOI is real
+    # (psw#369 failed twice on one, in a file the PR did not touch).
     return(list(
       is_valid = TRUE,
-      warning = sprintf("DOI URL returned status %d after %d attempts (resolver unavailable, not verified)", last_status_code, max_attempts),
+      warning = sprintf("DOI URL returned status %d after %d attempts (%s, not verified)", last_status_code, max_attempts,
+                        if (last_status_code == 429) "rate-limited" else "resolver unavailable"),
       error = NULL,
       status_code = last_status_code
     ))
@@ -199,10 +203,20 @@ validate_doi_url <- function(doi,
     # knowing the DOI is the evidence it is real, so this is the same
     # not-verified warning as a persistent 5xx. A DOI Crossref cannot confirm
     # still fails, so an unreachable network never passes a bad DOI.
-    if (crossref_registered(doi_identifier, http_get)) {
+    registered <- crossref_registered(doi_identifier, http_get)
+    if (isTRUE(registered)) {
       return(list(
         is_valid = TRUE,
         warning = sprintf("DOI is registered with Crossref, but doi.org was unreachable after %d attempts (%s; not verified)", max_attempts, last_error_message),
+        error = NULL,
+        status_code = NULL
+      ))
+    }
+    if (is.na(registered)) {
+      # Crossref answered 429 or 5xx, so it cannot confirm or deny the DOI.
+      return(list(
+        is_valid = TRUE,
+        warning = sprintf("doi.org was unreachable after %d attempts (%s) and Crossref was rate-limited or unavailable (not verified)", max_attempts, last_error_message),
         error = NULL,
         status_code = NULL
       ))
@@ -227,13 +241,14 @@ validate_doi_url <- function(doi,
 #'
 #' @param doi_identifier Bare DOI, such as `10.1017/9781108539890`
 #' @inheritParams validate_doi_url
-#' @return TRUE only when the Crossref works endpoint answers 200
+#' @return TRUE when the Crossref works endpoint answers 200, NA when it
+#'   answers 429 or 5xx (it cannot say either way), FALSE otherwise
 crossref_registered <- function(doi_identifier, http_get = GET) {
   api_url <- sprintf("https://api.crossref.org/works/%s", doi_identifier)
-  tryCatch(
-    status_code(http_get(api_url, timeout(30), user_agent(USER_AGENT))) == 200,
-    error = function(e) FALSE
-  )
+  tryCatch({
+    code <- status_code(http_get(api_url, timeout(30), user_agent(USER_AGENT)))
+    if (code == 200) TRUE else if (code == 429 || code >= 500) NA else FALSE
+  }, error = function(e) FALSE)
 }
 
 #' Get DOI metadata from CrossRef API
