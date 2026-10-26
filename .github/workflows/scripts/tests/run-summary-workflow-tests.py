@@ -15,9 +15,13 @@ from typing import Optional, Tuple
 # tests/ -> scripts/ -> workflows/ -> .github/ -> repo root
 REPO_ROOT = Path(__file__).resolve().parents[4]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "summary.yml"
-ACTION = (
-    "anthropics/claude-code-action@6b6870e649b5ff408753befeaee5fc7989d4e6a9"
+# Dependabot bumps the pinned SHA, so read it from the workflow instead of
+# restating it here. The "pins" check below still requires a full commit SHA.
+_PIN = re.search(
+    r"anthropics/claude-code-action@[0-9a-f]{40}",
+    WORKFLOW.read_text(encoding="utf-8"),
 )
+ACTION = _PIN.group(0) if _PIN else "anthropics/claude-code-action@<no SHA pin>"
 
 
 def step_span(text: str, name: str) -> Optional[Tuple[int, int]]:
