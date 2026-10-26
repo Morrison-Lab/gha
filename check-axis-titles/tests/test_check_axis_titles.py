@@ -117,6 +117,72 @@ def test_multiline_labs_attributes_to_the_string_line():
     assert found == []
 
 
+# -- findings from the independent review ------------------------------------
+
+@pytest.mark.parametrize("code", [
+    'plt.xlabel("x")',
+    'plt.xlabel("x")',
+    'ax.set_xlabel(xlabel="x")',
+    'ax.set(xlabel="x")',
+    'fig.update_xaxes(title_text="x")',
+    'fig.update_xaxes(title="x")',
+    'fig.update_layout(xaxis=dict(title=dict(text="x")))',
+    'layout(xaxis = list(title = list(text = "x")))',
+    'p + scale_x_continuous(name = "x")',
+    'fig.update_layout(xaxis2=dict(title="x"))',
+    'layout(xaxis=list(range=list(1, 2), title="x"))',
+    'layout(\n  xaxis = list(\n    title = "x"\n  )\n)',
+])
+def test_more_ways_to_title_an_axis(code):
+    assert bad(code) == ["x"]
+
+
+def test_unit_and_foreign_titles_are_judged_by_plain_words():
+    assert bad(r'ax.set_xlabel(r"$\mathrm{time}$")') == []
+    assert bad('labs(x = "$5 to $10 per hour")') == []
+
+
+def test_aes_after_a_closed_labs_is_not_a_title():
+    assert bad('labs(x = "Weight") + aes(x = "x")') == []
+
+
+def test_commented_out_call_is_not_flagged():
+    assert bad('# labs(x = "x")\n# xlab("x")') == []
+
+
+def test_unclosed_labs_does_not_swallow_the_rest_of_the_file():
+    text = "Use `labs(` to set titles.\n" + "\n".join(
+        f"filler line {i}" for i in range(30)) + '\nplot(aes(x = "x"))\nfoo(y = "y")'
+    assert bad(text) == []
+
+
+def test_paren_and_quote_inside_a_title_string():
+    text = 'labs(\n  x = "Weight (lb)",\n  y = "y"\n) + aes(x = "x")'
+    assert bad(text) == ["y"]
+
+
+def test_deleted_line_in_one_file_does_not_exempt_another(tmp_path, monkeypatch):
+    import subprocess
+
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True,
+                       capture_output=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (tmp_path / "a.R").write_text('labs(\n  x = "x",\n  y = "Rate"\n)\n')
+    git("add", ".")
+    git("commit", "-q", "-m", "base")
+    (tmp_path / "a.R").write_text('labs(\n  y = "Rate"\n)\n')
+    (tmp_path / "b.R").write_text('labs(\n  x = "x",\n  y = "Rate"\n)\n')
+    git("add", ".")
+    git("commit", "-q", "-m", "change")
+    monkeypatch.chdir(tmp_path)
+    report = axt.run_check("HEAD~1", ["*.R"], [], False)
+    assert [(rel, t.text) for rel, t in report.findings] == [("b.R", "x")]
+
+
 def test_skips_without_a_base_ref():
     report = axt.run_check("", ["*.qmd"], [], False)
     assert report.skipped

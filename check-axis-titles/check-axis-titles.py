@@ -23,6 +23,12 @@ are not. ``NULL``, a string with no letter or digit (empty, or a ``"..."``
 placeholder), and a title built from a variable or call
 (not a quoted literal) are not examined.
 
+A title made only of a unit or a two-letter name ("pH", "Hz", "1/s") is
+flagged too; give it a word ("Acidity, pH") or exempt it.
+A call is read up to its closing parenthesis (at most 25 lines), commented-out
+lines are skipped, and a title passed as an expression (``expression(x)``) is
+not examined.
+
 A justified exception puts ``axis-title-ok: reason`` anywhere on the line
 (for example in a ``# axis-title-ok: ...`` comment). A comment with no reason
 does not exempt it. Whole paths are exempt through ``paths-ignore``.
@@ -86,15 +92,28 @@ ADVICE = (
 )
 
 STR = r"""[rRfFuU]{0,2}(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')"""
+# Calls whose title is a literal on the same line.
 CALL_RES = [
     re.compile(r"\b(?:xlab|ylab)\(\s*" + STR),
-    re.compile(r"\bset_[xyz]label\(\s*" + STR),
-    re.compile(r"\b[xy]axis_title\s*=\s*" + STR),
-    re.compile(r"\b[xy]axis\s*=\s*(?:list|dict)\([^)]*?\btitle\s*=\s*" + STR),
+    re.compile(r"\b(?:set_)?[xyz]label\(\s*" + STR),
+    re.compile(r"\b[xyz]label\s*=\s*" + STR),
+    re.compile(r"\b[xy]axis\d*_title\s*=\s*" + STR),
+    re.compile(r"\bscale_[xy]_\w+\(\s*(?:name\s*=\s*)?" + STR),
 ]
-LABS_START_RE = re.compile(r"\blabs\(")
+# Calls read across lines up to their closing parenthesis, with the pattern
+# for the title argument inside them.
 LABS_ARG_RE = re.compile(r"(?<![\w.])(?:x|y)\s*=\s*" + STR)
-MATH_RE = re.compile(r"\$[^$]*\$")
+TITLE_ARG_RE = re.compile(
+    r"(?<![\w.])title(?:_text)?\s*=\s*(?:(?:list|dict)\(\s*text\s*=\s*)?" + STR
+)
+SPAN_STARTS = [
+    (re.compile(r"\blabs\("), LABS_ARG_RE),
+    (re.compile(r"\b[xy]axis\d*\s*=\s*(?:list|dict)\("), TITLE_ARG_RE),
+    (re.compile(r"\bupdate_[xy]axes\("), TITLE_ARG_RE),
+]
+SPAN_LINES = 25  # a call that does not close within this many lines is ignored
+MATH_RE = re.compile(r"\$(?!\d)[^$]*\$")
+MATH_WORD_RE = re.compile(r"\\(?:text|textrm|mathrm|mbox)\{([^}]*)\}")
 WORD_RE = re.compile(r"[^\W\d_]{3,}")
 EXEMPT_RE = re.compile(r"axis-title-ok:\s*\S")
 
@@ -105,37 +124,70 @@ class Title(NamedTuple):
 
 
 def has_plain_word(title: str) -> bool:
-    return bool(WORD_RE.search(MATH_RE.sub(" ", title)))
+    """A run of three or more letters outside math, or inside \\text{}."""
+    spoken = " ".join(MATH_WORD_RE.findall(title))
+    return bool(WORD_RE.search(MATH_RE.sub(" ", title) + " " + spoken))
 
 
 def _literal(m: "re.Match[str]") -> str:
     return m.group(1) if m.group(1) is not None else m.group(2)
 
 
+def _span(lines: List[str], idx: int, col: int) -> List[Tuple[int, str]]:
+    """Text from ``lines[idx][col:]`` to the matching close parenthesis.
+
+    Parentheses inside strings and after ``#`` do not count. Returns
+    ``(line index, text)`` pieces, or nothing when the call does not close
+    within ``SPAN_LINES`` lines, so an unclosed ``labs(`` in prose or a
+    comment never swallows the rest of the file.
+    """
+    depth = 1
+    pieces: List[Tuple[int, str]] = []
+    for k in range(idx, min(len(lines), idx + SPAN_LINES)):
+        text = lines[k]
+        i = col if k == idx else 0
+        start, end, closed, quote = i, len(text), False, None
+        while i < len(text):
+            c = text[i]
+            if quote:
+                if c == "\\":
+                    i += 1
+                elif c == quote:
+                    quote = None
+            elif c in "\"'":
+                quote = c
+            elif c == "#":
+                end = i
+                break
+            elif c == "(":
+                depth += 1
+            elif c == ")":
+                depth -= 1
+                if depth == 0:
+                    end, closed = i, True
+                    break
+            i += 1
+        pieces.append((k, text[start:end]))
+        if closed:
+            return pieces
+    return []
+
+
 def scan_titles(lines: List[str]) -> List[Title]:
     """Every quoted axis-title literal, with the line it is on."""
     found: List[Title] = []
-    depth = 0  # open parentheses of a labs() call that spans lines
     for idx, raw in enumerate(lines):
-        if depth > 0:
-            segment = raw
-        else:
-            start = LABS_START_RE.search(raw)
-            segment = raw[start.end():] if start else ""
-            if start:
-                depth = 1
-        if depth > 0:
-            quoteless = re.sub(STR, '""', segment)
-            for m in LABS_ARG_RE.finditer(segment):
-                found.append(Title(idx + 1, _literal(m)))
-            depth += quoteless.count("(") - quoteless.count(")")
-            depth = max(depth, 0)
+        if raw.lstrip().startswith("#"):
+            continue
         for rx in CALL_RES:
             for m in rx.finditer(raw):
-                groups = m.groups()
-                text = groups[-2] if groups[-2] is not None else groups[-1]
-                found.append(Title(idx + 1, text))
-    return found
+                found.append(Title(idx + 1, _literal(m)))
+        for start_rx, arg_rx in SPAN_STARTS:
+            for sm in start_rx.finditer(raw):
+                for k, piece in _span(lines, idx, sm.end()):
+                    for m in arg_rx.finditer(piece):
+                        found.append(Title(k + 1, _literal(m)))
+    return sorted(set(found))
 
 
 def scan_file(lines: List[str], keep: Optional[Set[int]]) -> Tuple[List[Title], int]:
@@ -185,12 +237,15 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
                              base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, 0, 0, True)
-        added, deleted = ods.parse_diff(diff)
-        for rel, numbered in added.items():
-            if ods._ignored(rel, ignores):
-                continue
-            wanted[rel] = {n for n, text in numbered.items()
-                           if text.strip() and text not in deleted}
+        # Pair moved lines within one file only: a line deleted from a.R must
+        # not exempt the same text newly added to b.R.
+        for section in re.split(r"(?m)^(?=diff --git )", diff):
+            added, deleted = ods.parse_diff(section)
+            for rel, numbered in added.items():
+                if ods._ignored(rel, ignores):
+                    continue
+                wanted[rel] = {n for n, text in numbered.items()
+                               if text.strip() and text not in deleted}
 
     findings: List[Tuple[str, Title]] = []
     files = lines = titles = 0
