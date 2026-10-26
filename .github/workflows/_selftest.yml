@@ -2158,6 +2158,120 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-exm || true
           rm -rf _ci-exm
+  # check-visualization-figures is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-visualization-figures@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the figure rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  visualization-figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-visualization-figures unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-visualization-figures/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-visualization-figures
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no visualization divs, so stage one with no figure and assert
+      # that the blocking call really fails.
+      - name: Stage a visualization div with no figure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-viz
+          printf '%s\n' '::: {#exr-a}' '#### Visualize the cost' ':::' > _ci-viz/page.qmd
+          git add -f _ci-viz/page.qmd
+      - name: Check the staged div, expecting a failure
+        id: viz-expected-failure
+        continue-on-error: true
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.viz-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-visualization-figures to fail on a staged div, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is blocking, so the same finding must fail with no fail input.
+      - name: Check the staged div with the default fail
+        id: viz-default-failure
+        continue-on-error: true
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.viz-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: viz-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-visualization-figures
+        with:
+          base-ref: HEAD
+          fail: 'true'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.viz-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged div, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-visualization-figures
+        with:
+          base-ref: ''
+          fail: 'true'
+      # Each of these must pass over the same staged subfile, so each proves
+      # its input reached the script.
+      - name: Check again with the div exempted through paths-ignore
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-viz'
+      - name: Check again with globs excluding the div
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged div
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-viz || true
+          rm -rf _ci-viz
   # check-self-contained-captions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-self-contained-captions@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.

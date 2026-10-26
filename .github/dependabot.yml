@@ -36,6 +36,7 @@ updates:
       - "/check-solution-citations"
       - "/check-exercise-before-result"
       - "/check-exm-figures"
+      - "/check-visualization-figures"
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
       - "/check-multipart-exercises"

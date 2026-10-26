@@ -79,6 +79,7 @@ website:
           - reference/check-solution-citations.qmd
           - reference/check-exercise-before-result.qmd
           - reference/check-exm-figures.qmd
+          - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
           - reference/check-multipart-exercises.qmd

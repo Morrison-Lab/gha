@@ -1,0 +1,90 @@
+---
+title: "check-visualization-figures.yml"
+---
+
+Diff-scoped, blocking check that flags a div whose title mentions
+visualization but that has no figure.
+The lab's rule (Ezra, 2026-10-26) is that every div whose title matches
+`visuali[sz]` (visualize, visualizing, visualization) has a corresponding
+figure.
+For an exercise (`#exr-`), the figure may be in the exercise or in its solution.
+
+The divs checked carry an exercise, example, definition, result or remark id
+(`#exr-`, `#exm-`, `#def-`, `#thm-`, `#lem-`, `#prp-`, `#cor-`, `#rem-`).
+A div's title is its `title="..."` attribute or the text of its first heading.
+A `#fig-` or `#sol-` div is the figure or the answer itself, never the subject.
+
+A figure is anything `check-exm-figures` counts:
+
+- a Markdown image or an `<img>` tag;
+- a div or chunk labelled `fig-`
+  (`{#fig-...}`, `#| label: fig-...`, `#| fig-cap:` or `#| fig-alt:`);
+- a cross-reference to a figure (`@fig-...`);
+- an include of a figure subfile (`{{< include ..._fig.qmd >}}`).
+
+The solution of an exercise is found as
+
+- a `#sol-<slug>` div in the same file, where `<slug>` is the exercise's id
+  without its `exr-` prefix, or
+- a sibling file with `_exr-` replaced by `_sol-` in its name.
+
+A justified exception carries a reason:
+an HTML comment `<!-- no-figure: reason -->` inside the div exempts it.
+Use `paths-ignore` to exempt whole paths.
+
+## Scope
+
+Only a div that holds a line a pull request adds is reported,
+so existing divs are never reflagged.
+A changed solution file puts its exercise in scope too,
+since removing the solution's figure leaves the exercise without one.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow when a visualization div has no figure. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-visualization-figures.yml in your repo.
+# Diff-scoped check: flags a div whose title mentions visualization but has no figure
+# (an exercise may have it in its solution) when a PR adds a line to it.
+# Add a figure, or <!-- no-figure: reason --> in the div.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check visualization figures
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-visualization-figures.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
+```
+
+See
+[`examples/check-visualization-figures.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-visualization-figures.yml)
+for the full caller stub.
