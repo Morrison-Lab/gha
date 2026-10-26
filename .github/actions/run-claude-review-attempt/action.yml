@@ -802,12 +802,17 @@ runs:
           its own subject and verb, and an imperative counts), a clause
           opened by a subordinator such as "because", "when", "if",
           "while", "although", "since", "unless", "until", "after",
-          "before", "whereas", "where", "which" or "so that", and a
-          semicolon or a colon that joins two clauses. Count a "that"
-          clause only when it follows a clause that is complete without
-          it, so "Suppose that n > 0." and "We say that the estimator is
-          consistent." are one clause each. A colon that introduces a
-          label, a value or a list does not count. The
+          "before", "whereas", "where", "which" or "so that". A
+          semicolon or a colon that joins two clauses marks a boundary
+          between them and adds no clause of its own. Do not count a
+          "that" clause that completes its verb or adjective ("Suppose
+          that n > 0.", "We say that the estimator is consistent.", "We
+          are certain that it holds.") or that restricts a noun ("the
+          estimator that minimizes the loss"). A colon that introduces
+          a label, a value or a list does not count. A line that holds
+          the tail of one sentence and the start of another violates
+          the one-sentence-per-line rule even when each part is a
+          single clause. The
           `check-new-line-breaks` regex check is looser than this rule,
           so a line it accepts can still violate it. For these lines
           this rule overrides the paragraph below on cosmetic
@@ -818,8 +823,9 @@ runs:
           flag a short phrase set off by a comma, a bare list-item
           marker, a line that is only a link, a heading, a pipe-table
           row, a Quarto div or callout header, a YAML front-matter
-          field, a single-line caption or link title, or a line inside
-          a code fence. A list item that packs several clauses still
+          field, a caption or link title, a line inside a code fence,
+          inline or display math, inline code, or the inside of a
+          Pandoc citation bracket such as "[@a; see @b]". A list item that packs several clauses still
           violates the rule.
 
           **Watch for AI hallucinations.** This diff may be partly
