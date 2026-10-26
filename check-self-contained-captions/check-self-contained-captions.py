@@ -88,8 +88,8 @@ ADVICE = (
 
 FLOAT_RE = re.compile(r"#(?:fig|tbl)-")
 EXEMPT_RE = re.compile(r"<!--\s*caption-ref:\s*(?!-->)\S")
-INLINE_COMMENT_RE = re.compile(r"<!--.*?-->")
-CAPTION_OPTION_RE =re.compile(r"^\s*#\|\s*(fig|tbl)-cap:\s*(.*)$")
+INLINE_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+CAPTION_OPTION_RE = re.compile(r"^\s*#\|\s*(fig|tbl)-cap:\s*(.*)$")
 PIPE_CAPTION_RE = re.compile(r"^:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
 
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
