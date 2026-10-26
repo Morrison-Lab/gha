@@ -1,16 +1,21 @@
 # Copy to .github/workflows/annotation-gate.yml in your repo.
 # For a repository whose checks are spread over many workflow files: this
-# gates each run that finishes and posts an `annotation-gate` check run on the
-# run's commit, so it shows on the pull request. Add that check to the
-# repository ruleset as required. Each gated run posts its own check run of
-# that name, so a commit with several workflows can carry both a passing and a
-# failing one; the failing one blocks a required check.
+# gates the latest run of every workflow on a commit when one finishes and
+# posts a single `annotation-gate` check run on that commit, so it shows on the
+# pull request. Add that check to the repository ruleset as required.
 name: Annotation gate
 
 on: # zizmor: ignore[dangerous-triggers] -- the gate checks out nothing and runs no code from the triggering run
   workflow_run:
     workflows: ["*"]
     types: [completed]
+
+# One gate per commit: a newer completion on the same commit cancels the older
+# gate, which has already been superseded because `all-runs` re-checks every
+# workflow's latest run on the commit.
+concurrency:
+  group: annotation-gate-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
 
 jobs:
   gate:
@@ -25,7 +30,7 @@ jobs:
       run-id: ${{ github.event.workflow_run.id }}
       run-attempt: ${{ github.event.workflow_run.run_attempt }}
       head-sha: ${{ github.event.workflow_run.head_sha }}
-      workflow-id: ${{ github.event.workflow_run.workflow_id }}-${{ github.event.workflow_run.event }}
+      all-runs: true
     #   levels: 'warning,failure'              # skip notices
     #   allow-patterns: |                      # tracked exceptions, regexes
     #     lychee .* Rejected status code: 503

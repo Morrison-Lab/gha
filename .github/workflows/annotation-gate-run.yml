@@ -37,6 +37,14 @@ on:
           pool. When empty, each run keeps its own gate.
         type: string
         default: ''
+      all-runs:
+        description: >-
+          Gate every workflow's latest completed run on `head-sha` in this one
+          job and post one check run, so the caller can use a concurrency
+          group per commit and a burst of finishing runs queues one gate
+          instead of one per workflow. `run-id` is then unused.
+        type: boolean
+        default: false
       levels:
         description: Comma list of annotation levels to enforce (notice, warning, failure).
         type: string
@@ -55,7 +63,7 @@ jobs:
     # The group name differs from any a caller sets at workflow level: a job
     # that shares its caller's group is cancelled as a deadlock.
     concurrency:
-      group: annotation-gate-run-${{ inputs.head-sha }}-${{ inputs.workflow-id || inputs.run-id }}
+      group: annotation-gate-run-${{ inputs.head-sha }}-${{ inputs.all-runs && 'all' || inputs.workflow-id || inputs.run-id }}
       cancel-in-progress: true
     permissions:
       actions: read
@@ -68,5 +76,6 @@ jobs:
           run-id: ${{ inputs.run-id }}
           run-attempt: ${{ inputs.run-attempt }}
           head-sha: ${{ inputs.head-sha }}
+          all-runs: ${{ inputs.all-runs }}
           levels: ${{ inputs.levels }}
           allow-patterns: ${{ inputs.allow-patterns }}
