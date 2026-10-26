@@ -1,9 +1,10 @@
 """Unit tests for check-visualization-figures.
 
-Covers which divs are checked (a visualization title on an exercise, example,
-definition, result or remark div; not a figure or a solution), where the title
-comes from, what counts as a figure, the paired solution of an exercise, the
-exemption comment, diff scoping, the skip-not-fallback guard and the defaults.
+Covers which divs ask for a picture (a visual word in the title of an exercise
+or example, the word visualization in any title, a sketch or plot verb in an
+exercise prompt), what counts as a figure, where an exercise's figure may be
+(its solution, or another file of its family), the exemption comment, diff
+scoping, the skip-not-fallback guard and the defaults.
 
 The script's name has a hyphen, so load it by path.
 """
@@ -22,19 +23,19 @@ assert _spec is not None and _spec.loader is not None
 viz = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(viz)
 
-NO_FIG = "::: {#exr-a}\n#### Visualize the cost\n\nPlot it.\n:::\n"
+NO_FIG = "::: {#exr-a}\n#### Visualize the cost\n\nCompute it.\n:::\n"
 
 
-def missing(text: str, solution=None, path: str = "x.qmd"):
-    """Opening lines of the visualization divs with no figure."""
+def missing(text: str, related=None, path: str = "x.qmd"):
+    """Opening lines of the picture-asking divs with no figure."""
     found, _ = viz.check_lines(
         text.split("\n"), path, None,
-        solution=solution.split("\n") if solution else None,
+        related=[r.split("\n") for r in related] if related is not None else [],
     )
     return [d.start for d in found]
 
 
-# -- which divs are checked --------------------------------------------------
+# -- which divs ask for a picture --------------------------------------------
 
 def test_visualization_title_without_figure_is_flagged():
     assert missing(NO_FIG) == [1]
@@ -42,31 +43,77 @@ def test_visualization_title_without_figure_is_flagged():
 
 @pytest.mark.parametrize("word", ["Visualize", "visualizing", "Visualization",
                                   "visualise", "VISUALIZED"])
-def test_every_form_of_the_word_matches(word):
+def test_every_form_of_visualization_matches(word):
     assert missing(f"::: {{#exm-a}}\n#### {word} the data\n:::\n") == [1]
 
 
-def test_title_without_the_word_is_not_checked():
-    assert missing("::: {#exr-a}\n#### Sketch the level sets\n:::\n") == []
+@pytest.mark.parametrize("title", [
+    "Plot the residuals",
+    "Sketch the level sets",
+    "Draw where the fit lands",
+    "Read the shapes off the diagram",
+    "Mark every zero-gradient point on a surface",
+    "Contour lines of a surface",
+])
+def test_visual_words_in_an_exercise_title_match(title):
+    assert missing(f"::: {{#exr-a}}\n#### {title}\n:::\n") == [1]
 
 
-def test_word_in_the_body_but_not_the_title_is_not_checked():
-    assert missing("::: {#exr-a}\n#### Sketch\n\nVisualize it.\n:::\n") == []
+@pytest.mark.parametrize("title", [
+    "Find the maximum",
+    "Reproducible draws",
+    "Weigh an SVM against its drawbacks",
+    "The graph of a linear function",
+    "Mark the day",
+])
+def test_other_titles_are_not_checked(title):
+    assert missing(f"::: {{#exr-a}}\n#### {title}\n:::\n") == []
+
+
+@pytest.mark.parametrize("prefix", ["def", "thm", "lem", "prp", "cor", "rem"])
+def test_results_are_checked_for_visualization_only(prefix):
+    assert missing(f"::: {{#{prefix}-a}}\n#### Visualization\n:::\n") == [1]
+    assert missing(f"::: {{#{prefix}-a}}\n#### Box plot\n:::\n") == []
+
+
+@pytest.mark.parametrize("prefix", ["fig", "sol", "tbl"])
+def test_figures_and_solutions_are_not_subjects(prefix):
+    assert missing(f"::: {{#{prefix}-a}}\n#### Visualization\n:::\n") == []
 
 
 def test_title_attribute_is_read():
     assert missing('::: {#exm-a title="Visualizing a surface"}\nText.\n:::\n') == [1]
 
 
-@pytest.mark.parametrize("prefix", ["exr", "exm", "def", "thm", "lem", "prp",
-                                    "cor", "rem"])
-def test_subject_prefixes(prefix):
-    assert missing(f"::: {{#{prefix}-a}}\n#### Visualization\n:::\n") == [1]
+@pytest.mark.parametrize("prompt", [
+    "Sketch the density.",
+    "Compute it, then plot the path.",
+    "Plot the path.",
+    "Draw the dendrogram.",
+    "Draw a real line with three points.",
+    "Visualize the margin.",
+])
+def test_picture_verbs_in_an_exercise_prompt_match(prompt):
+    assert missing(f"::: {{#exr-a}}\n#### Margins\n\n{prompt}\n:::\n") == [1]
 
 
-@pytest.mark.parametrize("prefix", ["fig", "sol", "tbl"])
-def test_figures_and_solutions_are_not_subjects(prefix):
-    assert missing(f"::: {{#{prefix}-a}}\n#### Visualization\n:::\n") == []
+@pytest.mark.parametrize("prompt", [
+    "Draw 100 standard normal values.",
+    "Draw conclusions about the estimate.",
+    "Read the residual plot of the fit.",
+    "Compute the plot of land.",
+])
+def test_other_prompts_are_not_checked(prompt):
+    assert missing(f"::: {{#exr-a}}\n#### Margins\n\n{prompt}\n:::\n") == []
+
+
+def test_prompt_inside_a_code_fence_is_not_checked():
+    doc = "::: {#exr-a}\n#### Margins\n\n```r\n# Sketch the density\n```\n:::\n"
+    assert missing(doc) == []
+
+
+def test_prompt_words_do_not_trigger_an_example():
+    assert missing("::: {#exm-a}\n#### Margins\n\nSketch the density.\n:::\n") == []
 
 
 def test_div_in_a_code_fence_or_comment_is_ignored():
@@ -94,7 +141,7 @@ def test_plain_chunk_is_not_a_figure():
     assert missing(doc) == [1]
 
 
-# -- the solution of an exercise ---------------------------------------------
+# -- where an exercise's figure may be ---------------------------------------
 
 def test_solution_div_in_the_same_file_with_a_figure_satisfies():
     doc = NO_FIG + "\n::: {#sol-a}\n::: {#fig-p}\nplot\n:::\n:::\n"
@@ -106,17 +153,12 @@ def test_solution_div_in_the_same_file_without_a_figure_does_not():
     assert missing(doc) == [1]
 
 
-def test_solution_with_another_slug_does_not_satisfy():
-    doc = NO_FIG + "\n::: {#sol-b}\nSee @fig-p.\n:::\n"
-    assert missing(doc) == [1]
+def test_related_file_with_a_figure_satisfies():
+    assert missing(NO_FIG, related=["::: {#sol-a}\nSee @fig-p.\n:::\n"]) == []
 
 
-def test_sibling_solution_file_with_a_figure_satisfies():
-    assert missing(NO_FIG, solution="::: {#sol-a}\nSee @fig-p.\n:::\n") == []
-
-
-def test_sibling_solution_file_without_a_figure_does_not():
-    assert missing(NO_FIG, solution="::: {#sol-a}\nText.\n:::\n") == [1]
+def test_related_file_without_a_figure_does_not():
+    assert missing(NO_FIG, related=["::: {#sol-a}\nText.\n:::\n"]) == [1]
 
 
 def test_solution_never_satisfies_an_example():
@@ -124,13 +166,32 @@ def test_solution_never_satisfies_an_example():
     assert missing(doc) == [1]
 
 
-def test_sibling_solution_is_found_by_file_name(tmp_path, monkeypatch):
+def test_family_names():
+    assert viz.family("_exr-a.qmd") == "a"
+    assert viz.family("_sol-a-part2.qmd") == "a"
+    assert viz.family("dir/_exr-a-b-part10.qmd") == "a-b"
+    assert viz.family("_exm-a.qmd") == ""
+
+
+def test_related_files_are_found_by_family(tmp_path):
+    (tmp_path / "_exr-a.qmd").write_text("x\n")
+    (tmp_path / "_sol-a.qmd").write_text("sol\n")
+    (tmp_path / "_sol-a-part2.qmd").write_text("part\n")
+    (tmp_path / "_sol-ab.qmd").write_text("other\n")
+    found = viz.related_files(str(tmp_path / "_exr-a.qmd"))
+    assert sorted(f[0] for f in found) == ["part", "sol"]
+
+
+def test_part_of_an_exercise_uses_the_figure_of_its_family(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "_sol-a-part2.qmd").write_text("::: {#sol-a-part2}\n@fig-p\n:::\n")
-    exercise = "::: {#exr-a-part2}\n#### Visualize it (part 2)\n:::\n"
-    found, _ = viz.check_lines(exercise.split("\n"), "_exr-a-part2.qmd", None)
+    (tmp_path / "_sol-a.qmd").write_text("::: {#sol-a}\n@fig-p\n:::\n")
+    part = "::: {#exr-a-part2}\n#### Plot it (part 2)\n:::\n"
+    (tmp_path / "_exr-a-part2.qmd").write_text(part)
+    found, _ = viz.check_lines(part.split("\n"), "_exr-a-part2.qmd", None)
     assert found == []
-    found, _ = viz.check_lines(exercise.split("\n"), "_exr-b.qmd", None)
+    other = "::: {#exr-b}\n#### Plot it\n:::\n"
+    (tmp_path / "_exr-b.qmd").write_text(other)
+    found, _ = viz.check_lines(other.split("\n"), "_exr-b.qmd", None)
     assert [d.start for d in found] == [1]
 
 
@@ -155,8 +216,8 @@ def _git(cwd, *args):
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
-    _git(tmp_path, "config", "user.name", "t")
+    _git(tmp_path, "config", "user.email", "ci")
+    _git(tmp_path, "config", "user.name", "ci")
     monkeypatch.chdir(tmp_path)
     return tmp_path
 
@@ -177,14 +238,16 @@ def test_whole_tree_flags_everything(repo):
     assert [f[0] for f in report.findings] == ["a.qmd"]
 
 
-def test_changed_solution_puts_its_exercise_in_scope(repo):
+def test_changed_solution_puts_its_exercise_family_in_scope(repo):
     (repo / "_exr-a.qmd").write_text(NO_FIG)
+    (repo / "_exr-a-part2.qmd").write_text(NO_FIG)
     (repo / "_sol-a.qmd").write_text("::: {#sol-a}\n@fig-p\n:::\n")
     _git(repo, "add", "."), _git(repo, "commit", "-qm", "base")
     (repo / "_sol-a.qmd").write_text("::: {#sol-a}\nNo figure now.\n:::\n")
     _git(repo, "add", "."), _git(repo, "commit", "-qm", "drop figure")
     report = viz.run_check("HEAD~1", ["*.qmd"], [], False)
-    assert [f[0] for f in report.findings] == ["_exr-a.qmd"]
+    assert sorted(f[0] for f in report.findings) == ["_exr-a-part2.qmd",
+                                                     "_exr-a.qmd"]
 
 
 def test_no_base_ref_skips(repo):

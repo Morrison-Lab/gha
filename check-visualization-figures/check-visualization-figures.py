@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 # check-one-function-per-file: allow-multiple
 r"""
-Flag a div whose title mentions visualization but that has no figure.
+Flag a div that asks for a picture but has no figure.
 
-The lab's rule (Ezra, 2026-10-26): every div whose
-title matches ``visuali[sz]`` (visualize, visualizing, visualization) must
-have a corresponding figure. For an exercise (``#exr-``) the figure may be in
-the exercise or in its solution.
+The lab's rule (Ezra, 2026-10-26): every div whose title mentions
+visualization (visualize, visualizing, visualization) must have a
+corresponding figure, and for an exercise the solution includes it.
+The trigger is wider than the one word, so the rule's own example,
+"Mark every zero-gradient point on a surface", is caught:
+
+- a title matching ``TITLE_RE``: visuali[sz]\*, plot, sketch, draw,
+  contour, picture, diagram, or "mark ... points/curves/surfaces/regions";
+- for an exercise (``#exr-``), a prompt that says sketch, draw, plot or
+  visuali[sz]\* outside its code fences.
 
 A div's title is the text of the first heading inside it (``#### Title``) or
 its ``title="..."`` attribute. The divs checked carry an exercise, example,
@@ -16,15 +22,17 @@ the figure or the answer itself and is never the subject.
 
 What counts as a figure is what ``check-exm-figures`` counts: an image, a
 ``fig-`` labelled chunk or div, an ``@fig-`` reference, or an include of a
-``_fig`` subfile. For an exercise, the solution is found in this order:
+``_fig`` subfile. For an exercise, the figure may also be in
 
 - a ``#sol-<slug>`` div in the same file, where ``<slug>`` is the exercise's
   id without its ``exr-`` prefix;
-- a sibling file with ``_exr-`` replaced by ``_sol-`` in its name
-  (``_exr-a-part2.qmd`` pairs with ``_sol-a-part2.qmd``).
+- another file of the same exercise family in the same folder:
+  ``_exr-a.qmd``, ``_sol-a.qmd``, ``_exr-a-part2.qmd`` and ``_sol-a-part2.qmd``
+  share the base name ``a``, since a multi-part exercise shows its figure once.
 
 A div is exempt when it holds ``<!-- no-figure: reason -->`` with a
-non-empty reason. Whole paths are exempt through ``paths-ignore``.
+non-empty reason, which is the escape for a false positive.
+Whole paths are exempt through ``paths-ignore``.
 
 Design notes, as in ``check-exm-figures``, whose figure test and the shared
 parsing and git helpers of ``check-one-div-per-subfile`` this script imports:
@@ -81,7 +89,30 @@ ADVICE = (
 )
 
 SUBJECT_RE = re.compile(r"#((?:exr|exm|def|thm|lem|prp|cor|rem)-[\w:.-]+)")
-VIZ_RE = re.compile(r"visuali[sz]", re.IGNORECASE)
+# A title asks for a picture: a visual verb or noun, or "mark ... points" and
+# the like. "graph" is left out on purpose: it names a data structure and the
+# graph of a function as often as a plot.
+TITLE_RE = re.compile(
+    r"visuali[sz]\w*"
+    r"|\b(?:plots?|plotting|sketch\w*|draw|drawing|contours?|pictures?|diagrams?)\b"
+    r"|\bmark\b.*\b(?:points?|curves?|surfaces?|regions?)\b",
+    re.IGNORECASE,
+)
+# A definition, theorem or remark names a plot type ("Boxplot") or a contour
+# without needing a figure inside it, since the example that follows it has
+# one, so only the word visualization asks them for a figure.
+RESULT_TITLE_RE = re.compile(r"visuali[sz]\w*", re.IGNORECASE)
+# An exercise's prompt asks the reader to produce a picture. "draw" alone is
+# left out ("draw a sample"), and "plot" counts as a verb only.
+PROMPT_RE = re.compile(
+    r"\b(?:sketch\w*|visuali[sz]\w*)\b"
+    r"|(?:^|[.!?:]\s+|\b(?:to|and|or|then|you|can|should|will)\s+)plot\b"
+    r"|\bdraw\s+(?:the|a|an|one|two|each)?\s*"
+    r"(?:real\s+)?(?:dendrograms?|trees?|diagrams?|pictures?|figures?|graphs?"
+    r"|contours?|curves?|lines?)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+RELATED_RE = re.compile(r"^_(?:exr|sol)-(.+?)(?:-part\d+)?\.qmd$")
 HEADING_RE = re.compile(r"^\s*#{1,6}\s+(.*\S)")
 TITLE_ATTR_RE = re.compile(r"""\btitle\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 
@@ -134,28 +165,66 @@ def title_of(lines: List[str], div: Div) -> str:
     return ""
 
 
-def solution_slug(div_id: str) -> Optional[str]:
-    return div_id[len("exr-"):] if div_id.startswith("exr-") else None
+def family(path: str) -> str:
+    """The base name shared by an exercise, its solution and its parts."""
+    m = RELATED_RE.match(os.path.basename(path))
+    return m.group(1) if m else ""
 
 
-def sibling_solution(path: str) -> Optional[List[str]]:
-    """Lines of the ``_sol-`` file paired with an ``_exr-`` file, if any."""
-    folder, name = os.path.split(path)
-    if not name.startswith("_exr-"):
-        return None
-    return ods._read_lines(os.path.join(folder, "_sol-" + name[len("_exr-"):]))
+def related_files(path: str) -> List[List[str]]:
+    """Lines of the ``_exr-``/``_sol-`` files of the same exercise.
+
+    ``_exr-a.qmd`` is related to ``_sol-a.qmd``, ``_exr-a-part2.qmd`` and the
+    rest of its family: a multi-part exercise shows its figure once.
+    """
+    base = family(path)
+    folder = os.path.dirname(path) or "."
+    if not base or not os.path.isdir(folder):
+        return []
+    found = []
+    for name in sorted(os.listdir(folder)):
+        if name != os.path.basename(path) and family(name) == base:
+            content = ods._read_lines(os.path.join(folder, name))
+            if content is not None:
+                found.append(content)
+    return found
+
+
+def asks_for_picture(lines: List[str], div: Div, subject: str) -> bool:
+    """Whether the title, or an exercise's prompt, asks for a picture."""
+    title = title_of(lines, div)
+    if subject.startswith(("exr-", "exm-")):
+        if TITLE_RE.search(title):
+            return True
+    elif RESULT_TITLE_RE.search(title):
+        return True
+    if not subject.startswith("exr-"):
+        return False
+    prompt = []
+    in_code = False
+    for line in lines[div.start:div.end - 1]:
+        if ods.FENCE_RE.match(line):
+            in_code = not in_code
+        elif not in_code and not HEADING_RE.match(line):
+            prompt.append(line)
+    return bool(PROMPT_RE.search("\n".join(prompt)))
+
+
+def has_figure_or_exemption(body: List[str]) -> bool:
+    return exf.has_figure(body) or exf.is_exempt(body)
 
 
 def check_lines(lines: List[str], path: str, keep: Optional[Set[int]],
-                solution: Optional[List[str]] = None) -> Tuple[List[Div], int]:
-    """Visualization divs with no figure that hold a kept line, and divs seen.
+                related: Optional[List[List[str]]] = None
+                ) -> Tuple[List[Div], int]:
+    """Divs that ask for a picture but have none, holding a kept line.
 
-    ``solution`` is the lines of the paired solution file; it defaults to the
-    sibling ``_sol-`` file of ``path``.
+    Also returns how many divs ask for a picture. ``related`` is the lines of
+    the exercise's other files; it defaults to ``related_files(path)``.
     """
     divs = scan_divs(lines)
-    if solution is None:
-        solution = sibling_solution(path)
+    if related is None:
+        related = related_files(path)
     same_file_solutions = {
         m.group(1): d for d in divs
         for m in [re.search(r"#(sol-[\w:.-]+)", d.attrs)] if m
@@ -164,21 +233,16 @@ def check_lines(lines: List[str], path: str, keep: Optional[Set[int]],
     seen = 0
     for div in divs:
         subject = SUBJECT_RE.search(div.attrs)
-        if not subject or not VIZ_RE.search(title_of(lines, div)):
+        if not subject or not asks_for_picture(lines, div, subject.group(1)):
             continue
         seen += 1
-        body = lines[div.start - 1:div.end]
-        if exf.has_figure(body) or exf.is_exempt(body):
+        if has_figure_or_exemption(lines[div.start - 1:div.end]):
             continue
-        slug = solution_slug(subject.group(1))
-        if slug is not None:
-            sol = same_file_solutions.get("sol-" + slug)
-            if sol is not None:
-                sol_body = lines[sol.start - 1:sol.end]
-                if exf.has_figure(sol_body) or exf.is_exempt(sol_body):
-                    continue
-            if solution is not None and (
-                    exf.has_figure(solution) or exf.is_exempt(solution)):
+        if subject.group(1).startswith("exr-"):
+            if any(has_figure_or_exemption(lines[d.start - 1:d.end])
+                   for d in same_file_solutions.values()):
+                continue
+            if any(has_figure_or_exemption(other) for other in related):
                 continue
         if keep is None or any(div.start <= n <= div.end for n in keep):
             missing.append(div)
@@ -188,7 +252,7 @@ def check_lines(lines: List[str], path: str, keep: Optional[Set[int]],
 def format_message(attrs: str) -> str:
     ident = SUBJECT_RE.search(attrs)
     name = "#" + ident.group(1) if ident else "div"
-    return f"Div {name} has a visualization title but no figure. Fix: {ADVICE}"
+    return f"Div {name} asks for a picture (a visual word in its title or prompt) but has no figure. Fix: {ADVICE}"
 
 
 class Report(NamedTuple):
@@ -225,14 +289,18 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
                 continue
             wanted[rel] = {n for n, text in numbered.items()
                            if text.strip() and text not in deleted}
-        # A changed solution file puts its exercise's divs in scope: the
-        # exercise holds no added line, but its figure may have been removed.
+        # A changed solution file puts the exercise family's prompts in scope:
+        # they hold no added line, but their figure may have been removed.
         for rel in list(wanted):
             folder, name = os.path.split(rel)
-            if name.startswith("_sol-"):
-                twin = os.path.join(folder, "_exr-" + name[len("_sol-"):])
-                if twin not in wanted and os.path.exists(twin):
-                    wanted[twin] = None
+            base = family(name) if name.startswith("_sol-") else ""
+            if not base or not os.path.isdir(folder or "."):
+                continue
+            for other in sorted(os.listdir(folder or ".")):
+                if other.startswith("_exr-") and family(other) == base:
+                    twin = os.path.join(folder, other)
+                    if twin not in wanted:
+                        wanted[twin] = None
 
     findings: List[Tuple[str, int, str]] = []
     files = lines = divs = 0

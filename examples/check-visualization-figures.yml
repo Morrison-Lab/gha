@@ -1,5 +1,6 @@
 # Copy to .github/workflows/check-visualization-figures.yml in your repo.
-# Diff-scoped check: flags a div whose title mentions visualization but has no figure (an exercise may have it in its solution) when a PR
+# Diff-scoped check: flags a div that asks for a picture (visualize, plot, sketch, ...) but has no figure
+# (an exercise may have it in its solution) when a PR
 # adds a line to it. Add a figure, or <!-- no-figure: reason --> in the div.
 # Blocking by default.
 # Only contents:read is needed (the default), so no permissions block is required.
