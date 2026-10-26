@@ -26,6 +26,15 @@ on:
         description: Its commit, github.event.workflow_run.head_sha.
         type: string
         required: true
+      workflow-id:
+        description: >-
+          The finished run's workflow, github.event.workflow_run.workflow_id.
+          When set, a gate still queued for an earlier run of the same
+          workflow on the same commit (a re-run or a later attempt) is
+          replaced by the newer one, so a burst of finishing runs cannot
+          flood a small self-hosted pool. Empty keeps one gate per run.
+        type: string
+        default: ''
       levels:
         description: Comma list of annotation levels to enforce (notice, warning, failure).
         type: string
@@ -41,6 +50,11 @@ jobs:
   annotation-gate-run:
     runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
+    # The group name differs from any a caller sets at workflow level: a job
+    # that shares its caller's group is cancelled as a deadlock.
+    concurrency:
+      group: annotation-gate-run-${{ inputs.head-sha }}-${{ inputs.workflow-id || inputs.run-id }}
+      cancel-in-progress: true
     permissions:
       actions: read
       checks: write
