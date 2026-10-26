@@ -94,6 +94,56 @@ CASES = [
         [comment(review(verdict=NOT_CLEAN), "NONE", created="2026-10-22T21:00:00Z"), comment(review())],
         True,
     ),
+    (
+        "the PR author's own marked review counts (trust model, gha#1182)",
+        [dict(comment(review()), user={"login": "pr-author"})],
+        True,
+    ),
+    (
+        "a Reviewed-Commit line inside a code fence does not count",
+        [comment(f"Summary.\n\n{CLEAN}\n\n```\nReviewed-Commit: {HEAD}\n```\n\n{MARKER}")],
+        False,
+    ),
+    (
+        "a Reviewed-Commit line inside a tilde fence does not count",
+        [comment(f"Summary.\n\n{CLEAN}\n\n~~~\nReviewed-Commit: {HEAD}\n~~~\n\n{MARKER}")],
+        False,
+    ),
+    (
+        "a blockquoted Reviewed-Commit line does not count",
+        [comment(f"{CLEAN}\n\n> Reviewed-Commit: {HEAD}\n\n{MARKER}")],
+        False,
+    ),
+    (
+        "an indented-code Reviewed-Commit line does not count",
+        [comment(f"{CLEAN}\n\nQuoted:\n\n    Reviewed-Commit: {HEAD}\n\n{MARKER}")],
+        False,
+    ),
+    (
+        "a marker on the second line of an indented code block does not count",
+        [comment(f"{CLEAN}\n\nReviewed-Commit: {HEAD}\n\nQuoted:\n\n    first\n    {MARKER}")],
+        False,
+    ),
+    (
+        "prose after an indented code block counts again",
+        [comment(f"Quoted:\n\n    first\n    second\n\n{review()}")],
+        True,
+    ),
+    (
+        "a marker inside a code fence does not count",
+        [comment(f"{CLEAN}\n\nReviewed-Commit: {HEAD}\n\n```\n{MARKER}\n```")],
+        False,
+    ),
+    (
+        "a fence that closes lets later prose count again",
+        [comment(f"```\nquoted\n```\n\n{review()}")],
+        True,
+    ),
+    (
+        "a shorter closing run does not end a longer fence",
+        [comment(f"````\n```\nReviewed-Commit: {HEAD}\n````\n\n{CLEAN}\n\n{MARKER}")],
+        False,
+    ),
 ]
 
 
