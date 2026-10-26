@@ -1,0 +1,1 @@
+- `check-def-title-synonyms` reference page: the example title that holds `\measure` is now a code span, so the site's equation-render check no longer reports the macro as undefined.

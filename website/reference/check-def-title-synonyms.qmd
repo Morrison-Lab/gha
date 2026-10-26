@@ -14,7 +14,7 @@ The check reports a title on a line the pull request adds
 when it holds a parenthesis, "also called", "also known as",
 "a.k.a.", "aka" or "or simply".
 Math (`$...$`) and a parenthetical that contains math are ignored,
-so "Almost everywhere ($\measure$-a.e.)" passes.
+so a title like `Almost everywhere ($\measure$-a.e.)` passes.
 
 An untouched title is never reflagged.
 With no base ref the check skips instead of scanning the whole tree;
