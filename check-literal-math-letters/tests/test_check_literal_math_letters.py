@@ -571,3 +571,37 @@ def test_log_odds_rule_runs_in_default_mode_without_double_reporting():
 
 def test_log_odds_message_hides_the_internal_tag():
     assert "[log-odds]" not in lml.format_message(("F[log-odds]",))
+
+
+# -- log-odds labels in code chunks -------------------------------------------
+
+def _chunk(code):
+    return "```{r}\n" + code + "\n```"
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('ggplot(d) + labs(x = "Log-odds F", y = "p")', ["F[log-odds]"]),
+    ('xlab("Log-odds z")', ["z[log-odds]"]),
+    ('ax.set_xlabel("Log-odds z")', ["z[log-odds]"]),
+    ('plt.plot(x, y, label="logit z = 0")', ["z[log-odds]"]),
+])
+def test_log_odds_letter_in_a_chunk_label_is_flagged(code, expected):
+    got = flagged(_chunk(code))
+    assert got == {2: expected}
+
+
+@pytest.mark.parametrize("code", [
+    'labs(x = "Log-odds η")',
+    'labs(x = "Score z")',
+    'labs(x = "Wald z, log-odds test")',
+    'lde_pts$z <- seq(-6, 6)  # log-odds z',
+    'plogis(sg_z)',
+    'labs(x = "Log-odds F(x)")',
+])
+def test_chunk_code_that_is_not_a_log_odds_label_passes(code):
+    assert flagged(_chunk(code)) == {}
+
+
+def test_chunk_label_allow_directive_is_honoured():
+    text = _chunk('# <!-- check-literal-math-letters: allow -->\nxlab("Log-odds z")')
+    assert flagged(text) == {}

@@ -25,7 +25,8 @@ What is not flagged:
   commands (``\label``, ``\tag``, ``\eqref``, ``\begin``, ``\end``, ...);
 - runs of two or more letters (``\sin`` written without a backslash is a
   different mistake, and ``x y`` written as ``xy`` is not a *single* letter);
-- code fences, code spans, HTML comments and YAML front matter;
+- code fences (except the label strings of a plot call, see below), code
+  spans, HTML comments and YAML front matter;
 - any ``::: {.notation}`` div (a passage that discusses the notation itself,
   where a literal letter is the point);
 - macro definitions (a math span that opens with ``\newcommand``, ``\def`` and
@@ -153,6 +154,12 @@ LOGODDS_CONTEXT_RE = re.compile(r"(?<!\\)\b(?:log[- ]?odds|logits?)\b", re.IGNOR
 LOGODDS_EXEMPT_RE = re.compile(r"\b(?:wald|quantiles?|statistics?|tests?|z-scores?)\b", re.IGNORECASE)
 LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z0-9_^])([zF])(?![A-Za-z0-9_^(])")
 LOGODDS_SUFFIX = "[log-odds]"
+# A label call in a code chunk: ggplot2 labs()/xlab()/ylab()/expression()/name=,
+# matplotlib set_xlabel()/set_ylabel()/label=.
+CODE_LABEL_RE = re.compile(
+    r"\b(?:labs|xlab|ylab|ggtitle|expression|set_xlabel|set_ylabel|set_title"
+    r"|scale_\w+|label|name|title)\s*[(=]")
+CODE_STRING_RE = re.compile(r"\"([^\"\n]*)\"|'([^'\n]*)'")
 
 
 def _blank_text_args(seg: str) -> str:
@@ -415,6 +422,17 @@ def _div_is_notation(attrs: str) -> bool:
     return bool(NOTATION_CLASS_RE.search(QUOTED_RE.sub("", attrs)))
 
 
+def _code_label_tokens(raw: str) -> List[str]:
+    """Log-odds tokens in the label strings of one line of a code chunk."""
+    tokens: List[str] = []
+    for sm in CODE_STRING_RE.finditer(raw):
+        text = sm.group(1) if sm.group(1) is not None else sm.group(2)
+        if LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
+            for lm in LOGODDS_LETTER_RE.finditer(text):
+                tokens.append(lm.group(1) + LOGODDS_SUFFIX)
+    return tokens
+
+
 def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     """Findings (one per line) and the number of math spans scanned."""
     if _has_ignore_file(lines):
@@ -444,6 +462,12 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
                     and not m.group(2).strip()):
                 fence = None
+            elif "check-literal-math-letters: allow" in raw:
+                allow_through = lineno + 1  # a comment line in the chunk
+            elif lineno > allow_through and CODE_LABEL_RE.search(raw):
+                code_tokens = _code_label_tokens(raw)
+                if code_tokens:
+                    findings.append(Finding(lineno, tuple(code_tokens)))
             continue
         m = FENCE_RE.match(raw)
         if m and not in_display and env is None:
