@@ -2926,6 +2926,49 @@ jobs:
       - name: Run find-fallback-verdict tests
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-find-fallback-verdict-tests.py
+      # The unit tests call the script directly, so they cannot see whether
+      # action.yml resolves its script paths and passes its inputs through
+      # (gha#196, gha#812). Two real `uses: ./` calls over a stubbed comments
+      # file, one per direction, prove it. The fixture is generated here so
+      # no committed review text is swept into other jobs' scans.
+      - name: Write find-fallback-verdict fixture
+        id: ffv-fixture
+        shell: bash
+        run: |
+          head=$(printf 'c%.0s' $(seq 40))
+          stale=$(printf 'd%.0s' $(seq 40))
+          body="Summary: fine.\n\n### Verdict: Ready for merge\n\nReviewed-Commit: ${head}\n\n---\n_Posted by Claude Code (AI agent) --- not written by a human._"
+          jq -n --arg b "$(printf "$body")" \
+            '[{body: $b, author_association: "MEMBER", created_at: "2026-10-22T20:00:00Z", html_url: "https://example.test/c/1"}]' \
+            > "$RUNNER_TEMP/ffv-comments.json"
+          echo "head=${head}" >> "$GITHUB_OUTPUT"
+          echo "stale=${stale}" >> "$GITHUB_OUTPUT"
+      - name: find-fallback-verdict finds a clean review of the head
+        id: ffv-found
+        uses: ./.github/actions/find-fallback-verdict
+        with:
+          repository: example/repo
+          pr-number: '1'
+          comments-file: ${{ runner.temp }}/ffv-comments.json
+          head-sha: ${{ steps.ffv-fixture.outputs.head }}
+      - name: find-fallback-verdict ignores a review of an older sha
+        id: ffv-stale
+        uses: ./.github/actions/find-fallback-verdict
+        with:
+          repository: example/repo
+          pr-number: '1'
+          comments-file: ${{ runner.temp }}/ffv-comments.json
+          head-sha: ${{ steps.ffv-fixture.outputs.stale }}
+      - name: Assert find-fallback-verdict outputs
+        shell: bash
+        env:
+          FOUND: ${{ steps.ffv-found.outputs.found }}
+          FOUND_URL: ${{ steps.ffv-found.outputs.url }}
+          STALE: ${{ steps.ffv-stale.outputs.found }}
+        run: |
+          [[ "$FOUND" == "true" ]] || { echo "::error::expected found=true, got '$FOUND'"; exit 1; }
+          [[ "$FOUND_URL" == "https://example.test/c/1" ]] || { echo "::error::wrong url '$FOUND_URL'"; exit 1; }
+          [[ "$STALE" == "false" ]] || { echo "::error::expected found=false for a stale sha, got '$STALE'"; exit 1; }
       - name: Run classify-push-failure tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh

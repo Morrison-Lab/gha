@@ -17,8 +17,19 @@ inputs:
     description: Pull request number.
     required: true
   github-token:
-    description: "Token with `pull-requests: read`."
-    required: true
+    description: "Token with `pull-requests: read`. Unused when `comments-file` is set."
+    required: false
+    default: ''
+  comments-file:
+    description: >-
+      Path to a JSON array of PR comments, read instead of the API. For
+      selftests only, so the composite can run for real with no network.
+    required: false
+    default: ''
+  head-sha:
+    description: "Full head sha to match. Read from the API when empty."
+    required: false
+    default: ''
 
 outputs:
   found:
@@ -38,12 +49,17 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         REPO: ${{ inputs.repository }}
         PR_NUMBER: ${{ inputs.pr-number }}
+        COMMENTS_FILE: ${{ inputs.comments-file }}
+        HEAD_SHA: ${{ inputs.head-sha }}
       run: |
         set -euo pipefail
-        head_sha=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.head.sha')
-        comments_file="${RUNNER_TEMP}/fallback-verdict-comments.json"
-        gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments?per_page=100" \
-          | jq -s 'add // []' > "$comments_file"
+        head_sha="${HEAD_SHA:-$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.head.sha')}"
+        comments_file="$COMMENTS_FILE"
+        if [[ -z "$comments_file" ]]; then
+          comments_file="${RUNNER_TEMP}/fallback-verdict-comments.json"
+          gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments?per_page=100" \
+            | jq -s 'add // []' > "$comments_file"
+        fi
         python3 "$GITHUB_ACTION_PATH/../../workflows/scripts/find-fallback-verdict.py" \
           "$comments_file" "$head_sha" \
           "$GITHUB_ACTION_PATH/../../workflows/scripts/classify-review-verdict.sh"
