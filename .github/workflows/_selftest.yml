@@ -1921,7 +1921,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _ci-solution-citations
-          printf '%s\n' '::: proof' 'By @sol-a.' ':::' > _ci-solution-citations/page.qmd
+          printf '%s\n' '::: proof' 'First a step.' 'By @sol-a.' ':::' > _ci-solution-citations/page.qmd
           git add -f _ci-solution-citations/page.qmd
       - name: Check the staged page, expecting a failure
         id: solution-citations-expected-failure
