@@ -1,0 +1,24 @@
+# Copy to .github/workflows/check-pr-size.yml in your repo.
+# Blocking check: fails a PR that changes more than 10 files or 300 lines
+# (added plus deleted). Every PR should be as small and focused as it can be
+# while completely solving its task; a sweep goes out as minimal batches.
+# Generated, lock, image and data paths are not counted. The `size-exempt`
+# label lifts the cap. Needs contents:read and pull-requests:read.
+name: Check pull request size
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-pr-size.yml@v3
+    permissions:
+      contents: read
+      pull-requests: read
+    # with:
+    #   max-files: '10'                  # most files a PR may change
+    #   max-lines: '300'                 # most added plus deleted lines
+    #   paths-ignore: 'data/**'          # paths not counted, on top of the built-ins
+    #   exempt-label: size-exempt        # label that lifts the cap
+    #   fail: false                      # warn instead of block (defaults to true)

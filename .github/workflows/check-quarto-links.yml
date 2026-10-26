@@ -3,6 +3,13 @@ name: Check Quarto Links (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
       globs:
         description: Space-separated git pathspecs of tracked source files to scan.
         type: string
@@ -22,7 +29,7 @@ on:
 
 jobs:
   check-quarto-links:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
     permissions:
       contents: read

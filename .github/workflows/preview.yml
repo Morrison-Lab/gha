@@ -13,6 +13,14 @@ name: Quarto Preview Build (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for every job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it. A self-hosted runner without root
+          cannot run steps that call apt or sudo, such as `apt-packages`.
+        type: string
+        default: ubuntu-latest
       path:
         description: >-
           Path (relative to the caller repo root) to the Quarto project to
@@ -62,6 +70,13 @@ on:
           r-packages). See the composite's input for details.
         type: boolean
         default: false
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R, Quarto, TinyTeX and Julia and has no
+          sudo (a self-hosted runner). Skip the steps that install them and
+          install `r-packages` with pak. See the composite's input.
+        type: boolean
+        default: false
       julia-version:
         description: Julia version to install. Only used when setup-julia is true.
         type: string
@@ -90,6 +105,16 @@ on:
           the Word files. Set to false to render docx as before.
         type: boolean
         default: true
+      skip-formats:
+        description: >-
+          Space-separated formats (for example 'pdf docx') to leave out of the
+          PR preview, including under `formats: default`, where `skip-docx`
+          cannot apply. A PR labelled `preview:<format>` keeps that format, and
+          `docx-tracked-changes: true` keeps docx. Slide decks are untouched
+          unless named. Empty (default) removes nothing; the publish build is
+          unaffected.
+        type: string
+        default: ''
       extra-preview-labels:
         description: >-
           JSON array string of additional PR label names that trigger a preview
@@ -212,7 +237,7 @@ jobs:
       (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
       (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name))
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # Cancel an in-progress preview build when a newer commit on the same ref
     # supersedes it. Without cancel-in-progress the default is false, so a fresh
@@ -252,12 +277,14 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
           julia-version: ${{ inputs.julia-version }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
           output-dir: ${{ inputs.output-dir }}
           formats: ${{ inputs.formats }}
           skip-docx: ${{ inputs.skip-docx }}
+          skip-formats: ${{ inputs.skip-formats }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}

@@ -19,6 +19,9 @@ Findings:
 - `unlinked-first-use`: the first occurrence of a known term in a passage is plain
   text, not inside a link or an `@def-...` cross-reference. The term's own def div
   is skipped, and so is any other passage in a div of a file that holds that def div.
+- `partial-link`: a link covers only part of a longer defined phrase, such as
+  "logistic [regression](#def-regression)" when "logistic regression" is defined.
+  The whole phrase is the link (Ezra, 2026-10-24, lds#1375; gha#1219).
 - `no-definition`: a bold term in a passage that is not a def div, and that
   matches no known term, so it is introduced as technical with no definition
   anywhere in the corpus. Give it a `#def-` div.
@@ -31,7 +34,9 @@ Opt-outs: `<!-- check-term-links: allow -->` on a line skips that line;
 that are ordinary English in this corpus.
 
 Scope: only a finding on a line a diff adds is reported (`--base-ref`, `--diff`),
-so adopting the check does not reflag the corpus. `--whole-tree` reports every
+so adopting the check does not reflag the corpus. An added line whose exact text
+the same diff also deletes is moved, not new, so splitting a file reflags nothing.
+`--whole-tree` reports every
 finding, to measure a corpus. With no base and no `--whole-tree`, the check
 skips with a warning rather than widening to the whole tree.
 """
@@ -323,6 +328,12 @@ def scan_passage(
     link_spans += [m.span() for m in CROSSREF_RE.finditer(text)]
     prose = CITATION_RE.sub(lambda m: " " * len(m.group(0)), text)
     prose = LINK_TARGET_RE.sub(lambda m: " " * len(m.group(0)), prose)
+    # Blank a link's brackets (keeping offsets) so a phrase split by a link still matches whole.
+    chars = list(prose)
+    for lm in LINK_RE.finditer(text):
+        chars[lm.start()] = " "
+        chars[lm.start() + 1 + len(lm.group("text"))] = " "
+    prose = "".join(chars)
 
     def reportable(n: int) -> bool:
         return n not in opted and (added is None or n in added)
@@ -342,7 +353,19 @@ def scan_passage(
             if passage.in_div and own_defs and terms[key] & own_defs:
                 continue
             start = m.start()
-            if any(a <= start < b for a, b in link_spans):
+            if any(a <= start and m.end() <= b for a, b in link_spans):
+                continue
+            # A link over only part of a longer defined term: the whole phrase is the link.
+            if any(a < m.end() and start < b for a, b in link_spans):
+                n = line_at(start)
+                if reportable(n):
+                    findings.append(Finding(
+                        file=path, line=n, rule="partial-link", term=key,
+                        message=(
+                            f"'{m.group(0)}' is a defined phrase; link the whole "
+                            "phrase to its definition, not a shorter term inside it."
+                        ),
+                    ))
                 continue
             # "term (@def-term)" links the term it follows.
             if FOLLOWING_CROSSREF_RE.match(prose, m.end()):
@@ -400,20 +423,39 @@ def scan_file(
 
 
 def parse_added_lines(diff_text: str, repo_root: Path) -> Dict[Path, Set[int]]:
-    """Added line numbers per file from a `git diff -U0` text."""
-    added: Dict[Path, Set[int]] = {}
+    """Added line numbers per file from a `git diff -U0` text.
+
+    An added line whose exact text (ignoring surrounding whitespace) the same
+    diff also deletes is moved, not new, and is left out, so splitting a file
+    does not reflag the first uses it already carried.
+    """
+    added: Dict[Path, Dict[int, str]] = {}
+    deleted: Set[str] = set()
     current: Optional[Path] = None
+    new_n = old_left = new_left = 0
     for line in diff_text.splitlines():
-        if line.startswith("+++ b/"):
+        # Hunk counts say how many body lines follow, so a body line that
+        # starts with "++" or "--" is never read as a file header.
+        if line.startswith("+") and new_left > 0 and current is not None:
+            added[current][new_n] = line[1:].strip()
+            new_n += 1
+            new_left -= 1
+        elif line.startswith("-") and old_left > 0:
+            deleted.add(line[1:].strip())
+            old_left -= 1
+        elif line.startswith("+++ b/"):
             current = repo_root / line[6:].strip()
-            added.setdefault(current, set())
+            added.setdefault(current, {})
         elif line.startswith("@@ ") and current is not None:
-            m = re.search(r"\+(\d+)(?:,(\d+))?", line)
+            m = re.match(r"@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
             if m:
-                start = int(m.group(1))
-                count = int(m.group(2)) if m.group(2) is not None else 1
-                added[current].update(range(start, start + count))
-    return added
+                old_left = int(m.group(1)) if m.group(1) is not None else 1
+                new_n = int(m.group(2))
+                new_left = int(m.group(3)) if m.group(3) is not None else 1
+    return {
+        f: {n for n, text in lines.items() if not text or text not in deleted}
+        for f, lines in added.items()
+    }
 
 
 def diff_added_lines(

@@ -3,6 +3,13 @@ name: Check Bibliography DOIs (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
       install-quarto:
         description: Install Quarto when setting up R dependencies.
         type: boolean
@@ -15,10 +22,16 @@ on:
         description: Space/comma-separated BibTeX keys to skip.
         type: string
         default: ''
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R with pak and has no sudo, as a
+          self-hosted runner does. Skips the R setup steps.
+        type: boolean
+        default: false
 
 jobs:
   check-dois:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -32,3 +45,4 @@ jobs:
           install-quarto: ${{ inputs.install-quarto }}
           no-metadata-check: ${{ inputs.no-metadata-check }}
           exclude-keys: ${{ inputs.exclude-keys }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}

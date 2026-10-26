@@ -1,0 +1,1 @@
+- The Claude review prompt now lists the lab's notes-content rules for Morrison-Lab Quarto notes repos (one div per subfile, one term per definition div, example after definition, no forward references, linked terms, semantic macros, split exercises, no graded answers) and tells the reviewer to report each violation as a blocking finding (#1177).

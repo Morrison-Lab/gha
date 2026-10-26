@@ -90,6 +90,23 @@ inputs:
       Restore and save Quarto _freeze directory via actions/cache keyed on
       renv.lock and commit SHA.
     default: 'false'
+  freeze-cache-save-on-failure:
+    description: >-
+      Also save the _freeze directory when the render step fails, so a re-run
+      resumes from the pages that already executed. Only used when
+      freeze-cache is true. A run killed outright (a timeout or a lost runner)
+      may not get to save.
+    default: 'false'
+  preinstalled-toolchain:
+    description: >-
+      The runner already provides R (with the pak and tinytex packages),
+      Quarto, TinyTeX, Julia and, if needed, Chrome, and has no sudo, as a
+      self-hosted runner does. When 'true', skip the steps that install them
+      (apt packages, Chrome, Quarto, R, Julia and its cache), ignore `tinytex`
+      for the install, and install `r-packages` with pak into the runner's
+      user library. renv, the JuliaCall setup, TinyTeX packages and the
+      freeze cache still run.
+    default: 'false'
   deno-v8-options:
     description: >-
       Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap
@@ -115,7 +132,7 @@ runs:
   using: composite
   steps:
     - name: Install apt packages
-      if: inputs.apt-packages != ''
+      if: inputs.apt-packages != '' && inputs.preinstalled-toolchain != 'true'
       shell: bash
       env:
         APT_PACKAGES: ${{ inputs.apt-packages }}
@@ -125,10 +142,11 @@ runs:
         sudo apt-get install -y $APT_PACKAGES
 
     - name: Setup Chrome
-      if: inputs.setup-chrome == 'true'
+      if: inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
 
     - name: Set up Quarto
+      if: inputs.preinstalled-toolchain != 'true'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
         # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
@@ -139,7 +157,7 @@ runs:
         tinytex: ${{ inputs.tinytex }}
 
     - name: Set up R
-      if: inputs.setup-r == 'true'
+      if: inputs.setup-r == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         use-public-rspm: true
@@ -157,12 +175,26 @@ runs:
         RENV_CONFIG_INSTALL_REMOTES: false
 
     - name: Install R dependencies
-      if: inputs.setup-r == 'true' && inputs.use-renv != 'true'
+      if: inputs.setup-r == 'true' && inputs.use-renv != 'true' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
       with:
         packages: ${{ inputs.r-packages }}
+
+    # With a preinstalled toolchain, install the packages with pak into the
+    # runner's user library; setup-r-dependencies would ask for sudo.
+    - name: Install R dependencies (preinstalled R)
+      if: >-
+        inputs.setup-r == 'true' && inputs.use-renv != 'true' &&
+        inputs.r-packages != '' && inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      env:
+        GITHUB_PAT: ${{ github.token }}
+        R_PACKAGES: ${{ inputs.r-packages }}
+      run: |
+        set -euo pipefail
+        Rscript -e 'pkgs <- Sys.getenv("R_PACKAGES"); pkgs <- trimws(strsplit(pkgs, "[[:space:],]+")[[1]]); pkgs <- pkgs[nzchar(pkgs)]; pak::pkg_install(pkgs)'
 
     - name: Install local package
       if: inputs.setup-r == 'true' && inputs.install-package == 'true'
@@ -172,7 +204,7 @@ runs:
       run: R CMD INSTALL "$PROJECT_PATH"
 
     - name: Set up Julia
-      if: inputs.setup-julia == 'true'
+      if: inputs.setup-julia == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
       with:
         version: ${{ inputs.julia-version }}
@@ -188,7 +220,7 @@ runs:
     # usually publishes, so turning it off loses nothing. GitHub's own cache
     # eviction still bounds the old entries.
     - name: Cache Julia packages
-      if: inputs.setup-julia == 'true'
+      if: inputs.setup-julia == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: julia-actions/cache@9353db09a0f2bbbdec6f41791918c75d37391b36 # v3.5.0
       with:
         # Save only when the job succeeds. The action saves on failure and
@@ -329,7 +361,12 @@ runs:
           # Single render invocation
           quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
         else
-          # Per-format split render
+          # Per-format split render. Each later render deletes the `site_libs`
+          # files its own format does not use, which left the HTML pages with
+          # no CSS or JavaScript (mds). Collect every format's files as it is
+          # written, and put the union back once all renders are done.
+          SITE_LIBS="$PROJECT_PATH/$OUTPUT_DIR/site_libs"
+          SITE_LIBS_STAGE=$(mktemp -d)
           first=true
           for fmt in "${FORMAT_LIST[@]}"; do
             if [ "$first" = true ]; then
@@ -338,7 +375,12 @@ runs:
             else
               quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
             fi
+            if [ -d "$SITE_LIBS" ]; then
+              cp -a "$SITE_LIBS/." "$SITE_LIBS_STAGE/"
+            fi
           done
+          mkdir -p "$SITE_LIBS"
+          cp -a "$SITE_LIBS_STAGE/." "$SITE_LIBS/"
         fi
 
         if [ -n "${PER_FILE_FORMATS:-}" ]; then
@@ -367,7 +409,9 @@ runs:
         fi
 
     - name: Save Quarto freeze
-      if: inputs.freeze-cache == 'true'
+      if: >-
+        always() && inputs.freeze-cache == 'true' &&
+        (success() || inputs.freeze-cache-save-on-failure == 'true')
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze

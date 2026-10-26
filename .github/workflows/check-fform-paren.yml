@@ -3,6 +3,13 @@ name: Check f forms written as \name\paren{...} (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
       python-version:
         description: Python version to set up.
         type: string
@@ -38,6 +45,15 @@ on:
           'recursive' or 'false'), so the latex-macros submodule is available.
         type: string
         default: 'true'
+      submodule-paths:
+        description: >-
+          Whitespace-separated submodule paths to initialize, for example
+          `latex-macros`, instead of the `submodules` input. Use it when the
+          repository has a private submodule beside the public one this check
+          needs, so a full checkout would fail. Empty (the default) uses
+          `submodules`.
+        type: string
+        default: ''
       fail:
         description: >-
           Fail the workflow when a name-paren use with an f form is found
@@ -47,7 +63,7 @@ on:
 
 jobs:
   check-fform-paren:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -57,7 +73,13 @@ jobs:
         with:
           # Full history so PR runs can diff added lines against the base.
           fetch-depth: 0
-          submodules: ${{ inputs.submodules }}
+          submodules: ${{ inputs.submodule-paths == '' && inputs.submodules || 'false' }}
+
+      - name: Check out only the named submodules
+        if: inputs.submodule-paths != ''
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
+        with:
+          paths: ${{ inputs.submodule-paths }}
 
       - name: Check f forms written as name-paren
         uses: Morrison-Lab/gha/check-fform-paren@v3

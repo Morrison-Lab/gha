@@ -56,6 +56,16 @@ inputs:
       libunwind rather than the system one, which segfaults on any Julia
       exception.
     default: 'false'
+  preinstalled-toolchain:
+    description: >-
+      The runner already provides R (with the pak and tinytex packages),
+      Quarto, TinyTeX, Julia and, if needed, Chrome, and has no sudo, as a
+      self-hosted runner does. When 'true', skip the steps that install them
+      (apt packages, Chrome, Quarto, R, Julia and its cache), ignore `tinytex`
+      for the install, and install `r-packages` with pak into the runner's
+      user library. renv, the JuliaCall setup, TinyTeX packages and the
+      freeze cache still run.
+    default: 'false'
   julia-version:
     description: Julia version to install (setup-julia's `version` syntax). Only used when setup-julia is true.
     default: '1'
@@ -85,6 +95,17 @@ inputs:
       `preview:docx` opts back in, and so does `docx-tracked-changes: true`,
       which needs the Word files. Set to 'false' to render docx as before.
     default: 'true'
+  skip-formats:
+    description: >-
+      Space-separated formats (for example 'pdf docx') to leave out of the
+      preview, which `skip-docx` cannot do for `formats: default`. Before the
+      render, `preview/skip-formats.py` removes those formats' entries from the
+      project's `_quarto*.yml` files and every page's front matter in the
+      working copy, so a bare `quarto render` still builds every other format,
+      slide decks included. A PR labelled `preview:<format>` keeps that format,
+      and `docx-tracked-changes: true` keeps docx. Empty (default) removes
+      nothing. The publish build is unaffected.
+    default: ''
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
     default: 'false'
@@ -214,7 +235,7 @@ runs:
         echo "$PREVIEW_ACTION" > _preview_upload/meta/action.txt
 
     - name: Set up Quarto
-      if: github.event.action != 'closed'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
         GH_TOKEN: ${{ github.token }}
@@ -225,14 +246,14 @@ runs:
         tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
 
     - name: Set up R
-      if: github.event.action != 'closed'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         r-version: ${{ inputs.r-version }}
         use-public-rspm: true
 
     - name: Install system dependencies
-      if: github.event.action != 'closed' && inputs.apt-packages != ''
+      if: github.event.action != 'closed' && inputs.apt-packages != '' && inputs.preinstalled-toolchain != 'true'
       shell: bash
       env:
         APT_PACKAGES: ${{ inputs.apt-packages }}
@@ -243,7 +264,7 @@ runs:
         sudo apt-get install -y $APT_PACKAGES
 
     - name: Setup Chrome
-      if: github.event.action != 'closed' && inputs.setup-chrome == 'true'
+      if: github.event.action != 'closed' && inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
 
     - name: Restore R dependencies (renv)
@@ -260,13 +281,53 @@ runs:
       with:
         bypass-cache: never
 
+    # setup-r writes ~/.Rprofile with two repositories: RSPM (Posit Public
+    # Package Manager, which serves compiled Linux binaries) and CRAN
+    # (cran.rstudio.com, source only). An lds preview resolved every package
+    # to a CRAN source tarball and built 207 of them, 31 minutes of a
+    # 45-minute run (gha#1174). Leaving only RSPM stops pak from resolving a
+    # source tarball. Skipped when RSPM is unset, e.g. use-public-rspm off.
+    - name: Prefer Posit Package Manager binaries
+      if: >-
+        github.event.action != 'closed' && runner.os == 'Linux' &&
+        inputs.use-renv != 'true' && inputs.r-packages != '' &&
+        inputs.preinstalled-toolchain != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -z "${RSPM:-}" ]; then
+          echo "::notice::RSPM is unset, so R keeps its default repositories."
+          exit 0
+        fi
+        printf '%s\n' 'options(repos = c(CRAN = Sys.getenv("RSPM")))' >> "$HOME/.Rprofile"
+
+    # `cache: always` saves the package library even when the job fails or is
+    # cancelled. The default (`true`) saves only on success, and a preview
+    # cancelled at its time limit never saved, so the next run reinstalled
+    # everything (gha#1174).
     - name: Install R dependencies
-      if: github.event.action != 'closed' && inputs.use-renv != 'true' && inputs.r-packages != ''
+      if: github.event.action != 'closed' && inputs.use-renv != 'true' && inputs.r-packages != '' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
       with:
         packages: ${{ inputs.r-packages }}
+        cache: always
+
+    # With a preinstalled toolchain the runner's own R and user library are
+    # used: setup-r-dependencies would ask for sudo to install system
+    # requirements, so install the packages with pak into the user library.
+    - name: Install R dependencies (preinstalled R)
+      if: >-
+        github.event.action != 'closed' && inputs.use-renv != 'true' &&
+        inputs.r-packages != '' && inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      env:
+        GITHUB_PAT: ${{ github.token }}
+        R_PACKAGES: ${{ inputs.r-packages }}
+      run: |
+        set -euo pipefail
+        Rscript -e 'pkgs <- Sys.getenv("R_PACKAGES"); pkgs <- trimws(strsplit(pkgs, "[[:space:],]+")[[1]]); pkgs <- pkgs[nzchar(pkgs)]; pak::pkg_install(pkgs)'
 
     - name: Install local package
       if: github.event.action != 'closed' && inputs.install-package == 'true'
@@ -276,7 +337,7 @@ runs:
       run: R CMD INSTALL "$PROJECT_PATH"
 
     - name: Set up Julia
-      if: github.event.action != 'closed' && inputs.setup-julia == 'true'
+      if: github.event.action != 'closed' && inputs.setup-julia == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
       with:
         version: ${{ inputs.julia-version }}
@@ -291,7 +352,7 @@ runs:
     # it off loses nothing. GitHub's own cache eviction still bounds the old
     # entries.
     - name: Cache Julia packages
-      if: github.event.action != 'closed' && inputs.setup-julia == 'true'
+      if: github.event.action != 'closed' && inputs.setup-julia == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: julia-actions/cache@9353db09a0f2bbbdec6f41791918c75d37391b36 # v3.5.0
       with:
         # Save only when the job succeeds. The action saves on failure and
@@ -415,6 +476,17 @@ runs:
             ;;
         esac
         echo "TZ=$TIMEZONE" >> "$GITHUB_ENV"
+
+    - name: Leave skipped formats out of the preview
+      if: github.event.action != 'closed' && inputs.skip-formats != ''
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      env:
+        SKIP_FORMATS: ${{ inputs.skip-formats }}
+        # The tracked-changes step compares rendered Word files (gha#1059).
+        KEEP_FORMATS: ${{ inputs.docx-tracked-changes == 'true' && 'docx' || '' }}
+        PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+      run: python3 "$GITHUB_ACTION_PATH/skip-formats.py"
 
     - name: Render Quarto site
       if: github.event.action != 'closed'
@@ -627,8 +699,13 @@ runs:
         echo "contents of $PROJECT_PATH:"
         ls "$PROJECT_PATH"
 
+    # `always()` so a render that fails, or is cancelled by the time limit or
+    # a newer push, still saves the pages it finished. Quarto writes a page's
+    # freeze file only after that page has executed, so the directory holds
+    # whole pages, and `freeze: auto` re-checks each against its source file
+    # (gha#1184).
     - name: Save Quarto freeze
-      if: github.event.action != 'closed'
+      if: always() && github.event.action != 'closed'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze

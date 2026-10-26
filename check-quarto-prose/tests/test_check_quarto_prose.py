@@ -668,7 +668,8 @@ def _input_names(path: Path, header: str, indent: int) -> set[str]:
 
 def test_action_and_workflow_declare_the_same_inputs() -> None:
     action = _input_names(_ACTION_YML, "inputs:", 2)
-    workflow = _input_names(_WORKFLOW_YML, "    inputs:", 6)
+    # `runs-on` picks the runner, so only the workflow has it (gha#1167).
+    workflow = _input_names(_WORKFLOW_YML, "    inputs:", 6) - {"runs-on"}
     assert action == workflow
     assert {"globs", "paths-ignore", "base-ref", "idioms-file", "allow-file", "fail"} <= action
 

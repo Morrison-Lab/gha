@@ -45,6 +45,10 @@ a label such as "note" or "example".
   A paragraph outside divs is still checked.
   The plural of a term counts as the term, and the longest term wins, so
   "test set" is not also a use of "set".
+- **`partial-link`.**
+  A link covers only part of a longer defined phrase,
+  such as "logistic [regression](...)" when "logistic regression" is defined.
+  Link the whole phrase to its own definition.
 - **`no-definition`.**
   A bold term in a passage that is not a definition div, and that matches no
   known term: it is introduced as technical and defined nowhere.
@@ -75,6 +79,7 @@ jobs:
     #   terms-file: .github/terms.txt
     #   allow-file: .github/terms-allow.txt
     #   fail: true
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
 ## Inputs
@@ -88,5 +93,6 @@ jobs:
 | `whole-tree` | `false` | Report every finding, not only those on added lines |
 | `fail` | `true` | Fail the job on a finding (`false`: warning annotations only) |
 | `python-version` | `3.x` | Python version to set up |
+| `runs-on` | `ubuntu-latest` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 The reusable workflow needs only `contents: read`.
