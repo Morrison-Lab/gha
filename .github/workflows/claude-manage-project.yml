@@ -60,7 +60,7 @@ jobs:
       repository-projects: write
     steps:
       - name: Run Claude Code
-        uses: anthropics/claude-code-action@6b6870e649b5ff408753befeaee5fc7989d4e6a9  # v1.0.258
+        uses: anthropics/claude-code-action@16f9f71ab9c490faf367f94dd294897edc25be33  # v1.0.261
         env:
           # Prefer a Projects-capable token when the consumer supplies one.
           # NOTE: this is step-global. When PROJECTS_TOKEN is supplied it
