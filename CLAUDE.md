@@ -229,6 +229,18 @@ while `opposition-research`, `check-dependency-updates`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
+### Adding a new check
+
+Model a new diff-scoped check on `check-exm-figures` or `check-tree-lists` (composite action, script, tests, reusable workflow, example stub, reference page).
+A new check also has to appear in these lists, or CI fails (gha#1264):
+
+- the read-only capability lists in `README.md` and `website/permissions.qmd`;
+- the `@v3` lists in `README.md` (two), `website/versioning.qmd` (two) and `website/workflows.qmd`, and the table row in `website/workflows.qmd`;
+- `.github/dependabot.yml`, `website/_quarto.yml`, and a `changelog.d/` fragment.
+
+A synthetic email address in a test needs a `# phi-allow` comment.
+When a check fails within seconds, read its `##[error]` lines with a log tail of 120 lines or more before calling it an infrastructure failure.
+
 ### Layout
 
 - `conductor/` -- A pure-documentation top-level directory holding the Morrison-Lab "Conductor" orchestration tool scaffold (internal tooling for AI-agent workflow management).
