@@ -73,6 +73,21 @@ def test_answer_to_exercise_wording_is_the_exception():
     assert hits(text) == []
 
 
+def test_exception_wording_excuses_only_the_matching_slug():
+    text = "::: proof\nThis is the solution to @exr-x, not @sol-y.\n:::"
+    assert hits(text) == [(2, "@sol-y")]
+
+
+def test_exception_wording_reads_a_bracketed_crossref():
+    text = "::: proof\nThis is the solution to [@exr-x]; see @sol-x.\n:::"
+    assert hits(text) == []
+
+
+def test_proof_in_a_quoted_attribute_is_not_a_scope():
+    text = '::: {#sol-1 title="Alternative proof" data-for="#thm-1"}\nSee @sol-a.\n:::'
+    assert hits(text) == []
+
+
 def test_nested_div_inside_a_proof_is_read():
     text = "::: proof\n::: {.callout-note}\nSee @sol-a.\n:::\n:::"
     assert hits(text) == [(3, "@sol-a")]

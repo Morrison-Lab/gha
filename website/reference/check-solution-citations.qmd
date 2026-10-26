@@ -24,8 +24,9 @@ The check does not flag:
 
 - a line carrying `<!-- check-solution-citations: allow -->`,
   the explicit mark for that exception;
-- a line that says "the solution to @exr-...",
-  the lab's existing wording for a result whose exercise asks for the proof;
+- a line that says "the solution (or answer) to @exr-slug",
+  the lab's existing wording for a result whose exercise asks for the proof.
+  It excuses only `@sol-slug`, the solution that shares the exercise's slug;
 - a `@sol-` reference outside a proof or result div, such as in another solution;
 - lines inside a code fence, display math (`$$`), an HTML comment or inline code.
 
