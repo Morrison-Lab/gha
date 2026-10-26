@@ -164,7 +164,10 @@ def main():
     levels = parse_levels(os.environ.get("GATE_LEVELS", ",".join(LEVELS_ALL)))
     allow = split_lines(os.environ.get("GATE_DEFAULT_ALLOW")) + split_lines(os.environ.get("GATE_ALLOW"))
 
-    all_runs = os.environ.get("GATE_ALL_RUNS") == "true" and bool(head_sha)
+    all_runs = os.environ.get("GATE_ALL_RUNS") == "true"
+    if all_runs and not head_sha:
+        print("::error::all-runs needs head-sha, the commit to gate.")
+        return 2
     if all_runs:
         runs = paged(f"{base}/repos/{repo}/actions/runs?head_sha={head_sha}", token, "workflow_runs")
         targets = [(r["id"], r["run_attempt"]) for r in latest_runs(runs, os.environ.get("GITHUB_WORKFLOW", ""))]

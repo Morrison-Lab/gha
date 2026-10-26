@@ -267,3 +267,13 @@ def test_commit_mode_fetches_a_job_the_commit_listing_does_not_cover(monkeypatch
     ann_ok = {"annotation_level": "notice", "message": "x"}
     code, posted, fetched = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {100: [ann_ok]}, {})
     assert code == 1 and fetched == [100]
+
+
+def test_commit_mode_without_a_head_sha_fails_fast(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_RUN_ID", "1")
+    monkeypatch.setenv("GATE_ALL_RUNS", "true")
+    monkeypatch.delenv("GATE_HEAD_SHA", raising=False)
+    monkeypatch.delenv("GATE_RUN_ID", raising=False)
+    assert g.main() == 2
