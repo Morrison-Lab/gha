@@ -787,6 +787,13 @@ runs:
           such as "the important features" before any importance is
           shown; a statement the same div cites or proves is exempt.
           Name the unmet referent or the asserted claim in the finding.
+          (11) Case analyses are bullet lists: where a diff adds
+          consecutive sentences or paragraphs that each treat one case of
+          the same result (a value of a variable, a sign, a branch of a
+          definition), they are one bullet per case, each starting with a
+          bold case label, introduced by a sentence ending in a colon. Report
+          it as a suggestion, never as blocking, and do not flag a single
+          case or cases that depend on one another step by step.
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
