@@ -2,9 +2,11 @@
 title: "check-solution-citations.yml"
 ---
 
-Diff-scoped, blocking check that flags a citation of a solution inside a proof or result div.
+Diff-scoped, blocking check that flags a citation of a solution
+inside a proof or result div.
 A derivation never cites a solution to an exercise.
-A solution that a later argument relies on is followed by a result div (`#thm-`, `#lem-`, `#cor-` or `#prp-`),
+A solution that a later argument relies on is followed by a result div
+(`#thm-`, `#lem-`, `#cor-` or `#prp-`),
 and the later argument cites that result div.
 This implements
 [gha#1234](https://github.com/Morrison-Lab/gha/issues/1234).
@@ -15,7 +17,8 @@ The finding sits on the line that holds the reference.
 
 ## Exceptions
 
-The one exception is an exercise that asks students to prove a result before the result is stated.
+The one exception is an exercise that asks students to prove a result
+before the result is stated.
 The result's proof may then cite the solution that precedes it.
 The check does not flag:
 
