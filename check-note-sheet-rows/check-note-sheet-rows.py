@@ -34,8 +34,8 @@ fence, a table caption or a bullet. Front matter is skipped.
 Diff-scoped like ``check-one-div-per-subfile``: only rows added since
 ``NSR_BASE_REF`` are reported (an added line whose exact text was also deleted
 in the same diff is moved, not new). With no base ref, or when the diff cannot
-be computed, the check skips with a warning, never a whole-tree scan, unless
-``NSR_WHOLE_TREE=true`` asks for one.
+be computed, the check skips with a notice or warning, never a whole-tree scan,
+unless ``NSR_WHOLE_TREE=true`` asks for one.
 
 Configuration (environment variables, set by the composite action):
   NSR_BASE_REF      Git ref/SHA to diff against.

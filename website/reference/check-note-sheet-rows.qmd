@@ -43,7 +43,7 @@ The check is diff-scoped:
 an added line whose exact text was also deleted
 in the same diff counts as moved.
 With no base ref, or when the diff cannot be computed,
-it skips with a notice instead of scanning the whole tree,
+it skips with a notice or warning instead of scanning the whole tree,
 unless `whole-tree` asks for that.
 
 ## Inputs
