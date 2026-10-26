@@ -29,7 +29,7 @@ on:
       workflow-id:
         description: >-
           The finished run's workflow, github.event.workflow_run.workflow_id.
-          When set, a gate still queued for an earlier run of the same
+          When set, a gate still queued or running for an earlier run of the same
           workflow on the same commit (a re-run or a later attempt) is
           replaced by the newer one, so a burst of finishing runs cannot
           flood a small self-hosted pool. Empty keeps one gate per run.
