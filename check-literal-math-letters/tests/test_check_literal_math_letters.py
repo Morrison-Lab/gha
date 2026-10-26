@@ -644,3 +644,12 @@ def test_chunk_allow_exempts_its_own_line_and_the_next_only():
 def test_chunk_call_state_resets_between_chunks():
     text = _chunk("labs(") + "\n\n" + _chunk('d <- c(label_text = "Log-odds z")')
     assert flagged(text) == {}
+
+
+@pytest.mark.parametrize("code", [
+    'if (label == "Log-odds z") 1',
+    'df[df$col == "log-odds z", ] |> labs(x = "Score")',
+    'filter(name != "Log-odds F")',
+])
+def test_chunk_comparisons_are_not_labels(code):
+    assert flagged(_chunk(code)) == {}
