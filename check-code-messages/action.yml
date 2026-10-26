@@ -1,7 +1,7 @@
 name: Check code messages
 description: >-
   Keeps warnings and non-output messages out of rendered code. The source lint
-  flags a `geom_smooth()` or `stat_smooth()` call with no `formula` argument,
+  flags a `geom_smooth()` or `stat_smooth()` call missing `method` or `formula`,
   and a `geom_histogram()` or `stat_bin()` call with no `bins`, `binwidth` or
   `breaks`, on a call that spans a line the diff adds. The rendered-output scan
   flags every Quarto `cell-output-stderr` block (where knitr, reticulate and

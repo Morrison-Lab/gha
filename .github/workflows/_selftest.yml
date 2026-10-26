@@ -1773,7 +1773,7 @@ jobs:
           set -uo pipefail
           out=$(python3 check-code-messages/check-code-messages.py)
           echo "$out"
-          grep -q 'file=_ci-ccm/page.qmd,line=2::`geom_smooth()` with no `formula`' <<< "$out"
+          grep -q 'file=_ci-ccm/page.qmd,line=2::`geom_smooth()` needs both' <<< "$out"
           grep -q 'cell-output-stderr\|warning or message block' <<< "$out"
       - name: Check the staged files with the default fail (warn-only)
         uses: ./check-code-messages

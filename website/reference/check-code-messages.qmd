@@ -7,12 +7,12 @@ out of rendered code.
 The lab's rule (Ezra, 2026-10-26) is that rendered code shows its output
 and nothing else.
 The commonest case is the "`geom_smooth()` using formula = 'y ~ x'" message,
-which disappears when the call names its `formula`.
+which disappears when the call names its `method` and `formula`.
 
 The source lint flags, in the R chunks of `.qmd`, `.Rmd` and `.md` files
 and in `.R` files:
 
-- `geom_smooth()` or `stat_smooth()` with no `formula` argument;
+- `geom_smooth()` or `stat_smooth()` missing `method` or `formula`;
 - `geom_histogram()` or `stat_bin()` with none of `bins`, `binwidth` and
   `breaks`.
 

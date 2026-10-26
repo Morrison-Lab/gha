@@ -1,6 +1,6 @@
 # Copy to .github/workflows/check-code-messages.yml in your repo.
-# Diff-scoped check: flags a geom_smooth() or stat_smooth() call with no
-# `formula`, and a geom_histogram() or stat_bin() call with no `bins`,
+# Diff-scoped check: flags a geom_smooth() or stat_smooth() call missing
+# `method` or `formula`, and a geom_histogram() or stat_bin() call with no `bins`,
 # `binwidth` or `breaks`, when a PR adds a line to it, so a render prints no
 # warning or message. Warn-only by default.
 # Only contents:read is needed (the default), so no permissions block is required.
