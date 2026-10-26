@@ -25,6 +25,7 @@ jobs:
       run-id: ${{ github.event.workflow_run.id }}
       run-attempt: ${{ github.event.workflow_run.run_attempt }}
       head-sha: ${{ github.event.workflow_run.head_sha }}
+      workflow-id: ${{ github.event.workflow_run.workflow_id }}-${{ github.event.workflow_run.event }}
     #   levels: 'warning,failure'              # skip notices
     #   allow-patterns: |                      # tracked exceptions, regexes
     #     lychee .* Rejected status code: 503
