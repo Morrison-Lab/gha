@@ -5593,6 +5593,14 @@ exactly as it is classified today.
 That direction is deliberate, since assuming unnamed denials were ours would
 weaken the gha#198 gate on evidence we do not have.
 
+## A new content check must catch the example that motivated it
+
+When a rule comes with an example (Ezra's `exr-surface-stationary-points` for `check-visualization-figures`, 2026-10-26),
+the check's tests include that example verbatim, and the first whole-tree run must flag it.
+A trigger written from the rule's wording alone missed its own example,
+because the title said "Mark every zero-gradient point on a surface" and never "visualization".
+If the check misses the example, the trigger is too narrow: broaden it, then sweep the whole tree and fix what it newly finds.
+
 ## Never just theorize -- investigate empirically
 
 A hypothesis that is cheap to test must be tested before it is asserted, and
