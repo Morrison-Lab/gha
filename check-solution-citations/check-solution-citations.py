@@ -133,9 +133,10 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
             if stack:
                 stack[-1][3] = True
             continue
-        if "$$" in CODE_SPAN_RE.sub(" ", raw) and stack:
+        dollars = CODE_SPAN_RE.sub(" ", raw).count("$$")
+        if dollars and stack:
             stack[-1][3] = True
-        if raw.count("$$") % 2 == 1:
+        if dollars % 2 == 1:
             in_math = not in_math
             continue
         if in_math:

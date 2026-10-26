@@ -86,6 +86,8 @@ def test_a_proof_class_after_another_class_is_read_as_a_proof():
 
 def test_dollars_in_a_code_span_are_not_math():
     assert hits("::: proof\nBy @sol-a (using `$$` syntax).\n:::") == []
+    text = "::: proof\nUsing `$$` syntax.\nBy @sol-a.\n:::"
+    assert hits(text) == [(3, "@sol-a")]
 
 
 def test_a_pointer_that_also_names_another_solution_is_flagged():
