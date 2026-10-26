@@ -201,8 +201,10 @@ validate_doi_url <- function(doi,
     # A persistent transport error (timeout, DNS, TLS) says the resolver or
     # publisher host is unreachable, not that the DOI is wrong. Crossref
     # knowing the DOI is the evidence it is real, so this is the same
-    # not-verified warning as a persistent 5xx. A DOI Crossref cannot confirm
-    # still fails, so an unreachable network never passes a bad DOI.
+    # not-verified warning as a persistent 5xx. A DOI Crossref denies (404 or
+    # another 4xx, or a transport error) still fails, so an unreachable network
+    # never passes a bad DOI. Crossref answering 429 or 5xx (NA) can neither
+    # confirm nor deny the DOI, so that is a not-verified warning too.
     registered <- crossref_registered(doi_identifier, http_get)
     if (isTRUE(registered)) {
       return(list(
@@ -247,7 +249,7 @@ crossref_registered <- function(doi_identifier, http_get = GET) {
   api_url <- sprintf("https://api.crossref.org/works/%s", doi_identifier)
   tryCatch({
     code <- status_code(http_get(api_url, timeout(30), user_agent(USER_AGENT)))
-    if (code == 200) TRUE else if (code == 429 || code >= 500) NA else FALSE
+    if (code == 200) TRUE else if (code == 429 || (code >= 500 && code <= 599)) NA else FALSE
   # A Crossref timeout or transport error stays FALSE (not registered): the
   # conservative reading, so an unreachable network never passes a bad DOI.
   }, error = function(e) FALSE)
