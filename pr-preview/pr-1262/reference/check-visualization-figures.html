@@ -1000,8 +1000,13 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, blocking check that flags a div whose title mentions visualization but that has no figure. The lab’s rule (Ezra, 2026-10-26) is that every div whose title matches <code>visuali[sz]</code> (visualize, visualizing, visualization) has a corresponding figure. For an exercise (<code>#exr-</code>), the figure may be in the exercise or in its solution.</p>
-<p>The divs checked carry an exercise, example, definition, result or remark id (<code>#exr-</code>, <code>#exm-</code>, <code>#def-</code>, <code>#thm-</code>, <code>#lem-</code>, <code>#prp-</code>, <code>#cor-</code>, <code>#rem-</code>). A div’s title is its <code>title="..."</code> attribute or the text of its first heading. A <code>#fig-</code> or <code>#sol-</code> div is the figure or the answer itself, never the subject.</p>
+<p>Diff-scoped, blocking check that flags a div that asks for a picture but has no figure. The lab’s rule (Ezra, 2026-10-26) is that every div whose title mentions visualization (visualize, visualizing, visualization) has a corresponding figure, and that for an exercise the solution includes it. The trigger is wider than that one word, so the rule’s own example, “Mark every zero-gradient point on a surface”, is caught. A div asks for a picture when</p>
+<ul>
+<li>its title, for an exercise or example, has a visual word: <code>visuali[sz]*</code>, plot, sketch, draw, contour, picture, diagram, or “mark” with point, curve, surface or region;</li>
+<li>its title, for a definition, theorem, lemma, proposition, corollary or remark, has <code>visuali[sz]*</code> (a definition of a plot type gets its figure from the example that follows it);</li>
+<li>its prompt, for an exercise, says sketch or visualize, or plot as a verb, or draw a dendrogram, tree, diagram, picture, figure, graph, contour, curve or line, outside its code fences.</li>
+</ul>
+<p>Words that name something else, such as graph, “draw a sample” and “draw conclusions”, do not trigger it. A div’s title is its <code>title="..."</code> attribute or the text of its first heading. A <code>#fig-</code> or <code>#sol-</code> div is the figure or the answer itself, never the subject.</p>
 <p>A figure is anything <code>check-exm-figures</code> counts:</p>
 <ul>
 <li>a Markdown image or an <code>&lt;img&gt;</code> tag;</li>
@@ -1009,15 +1014,15 @@ cookieconsent.run({
 <li>a cross-reference to a figure (<code>@fig-...</code>);</li>
 <li>an include of a figure subfile (<code>{{&lt; include ..._fig.qmd &gt;}}</code>).</li>
 </ul>
-<p>The solution of an exercise is found as</p>
+<p>For an exercise, the figure may also be in</p>
 <ul>
 <li>a <code>#sol-&lt;slug&gt;</code> div in the same file, where <code>&lt;slug&gt;</code> is the exercise’s id without its <code>exr-</code> prefix, or</li>
-<li>a sibling file with <code>_exr-</code> replaced by <code>_sol-</code> in its name.</li>
+<li>another file of the same exercise family in the same folder: <code>_exr-a.qmd</code>, <code>_sol-a.qmd</code>, <code>_exr-a-part2.qmd</code> and <code>_sol-a-part2.qmd</code> share the base name <code>a</code>, since a multi-part exercise shows its figure once.</li>
 </ul>
-<p>A justified exception carries a reason: an HTML comment <code>&lt;!-- no-figure: reason --&gt;</code> inside the div exempts it. Use <code>paths-ignore</code> to exempt whole paths.</p>
+<p>A false positive or a justified exception carries a reason: an HTML comment <code>&lt;!-- no-figure: reason --&gt;</code> inside the div exempts it. Use <code>paths-ignore</code> to exempt whole paths.</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
-<p>Only a div that holds a line a pull request adds is reported, so existing divs are never reflagged. A changed solution file puts its exercise in scope too, since removing the solution’s figure leaves the exercise without one. With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to scan every tracked file on purpose.</p>
+<p>Only a div that holds a line a pull request adds is reported, so existing divs are never reflagged. A changed solution file puts its exercise family in scope too, since removing the solution’s figure leaves the exercise without one. With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to scan every tracked file on purpose.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -1077,8 +1082,8 @@ cookieconsent.run({
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-visualization-figures.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Diff-scoped check: flags a div whose title mentions visualization but has no figure</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># (an exercise may have it in its solution) when a PR adds a line to it.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Diff-scoped check: flags a div that asks for a picture (visualize, plot, sketch, ...)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># but has no figure (an exercise may have it in its solution) when a PR adds a line to it.</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Add a figure, or &lt;!-- no-figure: reason --&gt; in the div.</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Blocking by default.</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Only contents:read is needed (the default), so no permissions block is required.</span></span>
