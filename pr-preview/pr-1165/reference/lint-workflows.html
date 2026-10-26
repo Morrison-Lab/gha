@@ -618,6 +618,42 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-pr-size.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-size.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-pr-concerns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-concerns.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-def-commentary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-commentary.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-exm-figures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-exm-figures.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-def-title-synonyms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-title-synonyms.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-note-sheet-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-note-sheet-rows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-definite-antecedents.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-definite-antecedents.yml</span></a>
   </div>
@@ -939,12 +975,6 @@ cookieconsent.run({
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 10%">
-<col style="width: 3%">
-<col style="width: 32%">
-<col style="width: 54%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -995,6 +1025,12 @@ cookieconsent.run({
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Fail the workflow when either tool reports a finding.</td>
+</tr>
+<tr class="even">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</td>
 </tr>
 </tbody>
 </table>
@@ -1055,7 +1091,8 @@ cookieconsent.run({
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pedantic: true                  # also emit zizmor code-smell findings</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false                     # warn instead of failing on findings --</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #                                   # useful while working through a</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                                   # pre-existing backlog</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                                   # pre-existing backlog</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-workflows.yml</code>).</p>
 
 
