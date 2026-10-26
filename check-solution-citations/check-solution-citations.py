@@ -78,8 +78,8 @@ EXCEPTION_RE = re.compile(
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 # Match the div's own class or id token, never text inside a quoted attribute.
-SCOPE_RE = re.compile(r"(?:^|[\s{])(?:\.?proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}.#]|$)")
-PROOF_RE = re.compile(r"(?:^|[\s{])\.?proof(?=[\s}.#]|$)")
+SCOPE_RE = re.compile(r"(?:^|[\s{.])(?:proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}.#]|$)")
+PROOF_RE = re.compile(r"(?:^|[\s{.])proof(?=[\s}.#]|$)")
 QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
@@ -133,7 +133,7 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
             if stack:
                 stack[-1][3] = True
             continue
-        if "$$" in raw and stack:
+        if "$$" in CODE_SPAN_RE.sub(" ", raw) and stack:
             stack[-1][3] = True
         if raw.count("$$") % 2 == 1:
             in_math = not in_math
@@ -165,6 +165,8 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
         for hit in SOL_REF_RE.finditer(prose):
             if hit.group(0)[len("@sol-"):] not in excused:
                 findings.append(Finding(idx + 1, hit.group(0)))
+                if excused:
+                    several.add(idx)  # a pointer cites exactly one solution
                 break
     return findings
 

@@ -74,6 +74,25 @@ def test_a_proof_with_one_line_display_math_is_flagged():
     assert hits("::: proof\n$$x = 1$$ By @sol-a.\n:::") == [(2, "@sol-a")]
 
 
+def test_a_chained_proof_class_is_read_as_a_proof():
+    assert hits("::: {.proof.unlisted}\nBy @sol-a.\n:::") == []
+
+
+def test_a_proof_class_after_another_class_is_read_as_a_proof():
+    assert hits("::: {.unlisted.proof}\nBy @sol-a.\n:::") == []
+    assert hits("::: {.unlisted.proof}\nFirst.\nBy @sol-a.\n:::") == [(3, "@sol-a")]
+    assert hits("::: {#thm-x}\n::: {.unlisted.proof}\nBy @sol-a.\n:::\n:::") == []
+
+
+def test_dollars_in_a_code_span_are_not_math():
+    assert hits("::: proof\nBy @sol-a (using `$$` syntax).\n:::") == []
+
+
+def test_a_pointer_that_also_names_another_solution_is_flagged():
+    text = "::: proof\nThis is the solution to @exr-x, not @sol-y.\n:::"
+    assert hits(text) == [(2, "@sol-y")]
+
+
 def test_repeating_one_solution_is_still_one_citation():
     assert hits("::: proof\nBy @sol-a (specifically @sol-a).\n:::") == []
 
