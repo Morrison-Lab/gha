@@ -1,1 +1,4 @@
-- This repo's website preview now checks equation renders in a `check-equations` job on the pull request itself. The `workflow_run` leg only warns, because GitHub records its run against main's commit, so a bad page in one PR's preview turned main red.
+- This repo's website preview now checks equation renders in a `check-equations` job on the pull request itself.
+  The `workflow_run` leg only warns,
+  because GitHub records its run against main's commit,
+  so a bad page in one PR's preview turned main red.
