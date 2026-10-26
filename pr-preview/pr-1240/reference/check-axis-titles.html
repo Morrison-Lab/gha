@@ -986,6 +986,7 @@ cookieconsent.run({
 <p>The check reads these calls, on a line a pull request adds:</p>
 <ul>
 <li>ggplot2 <code>labs(x = "...", y = "...")</code>, including a call that spans lines, and <code>xlab("...")</code> and <code>ylab("...")</code>;</li>
+<li>ggplot2 titles given as <code>expression(...)</code> or <code>bquote(...)</code>, where only the quoted strings count as words, so <code>expression(f(x))</code> is flagged and <code>expression("Density, " * f(x))</code> is not;</li>
 <li>matplotlib <code>set_xlabel("...")</code>, <code>set_ylabel("...")</code> and <code>set_zlabel("...")</code>;</li>
 <li>plotly <code>xaxis_title</code>, <code>yaxis_title</code>, and <code>title</code> inside <code>xaxis = list(...)</code> or <code>yaxis = dict(...)</code> on one line.</li>
 </ul>
