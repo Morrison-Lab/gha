@@ -793,27 +793,34 @@ runs:
           bold case label, introduced by a sentence ending in a colon. Report
           it as a suggestion, never as blocking, and do not flag a single
           case or cases that depend on one another step by step.
-          (12) Semantic line breaks are clause-level: in prose lines the
-          diff adds or changes, each sentence starts a new line, and a
-          sentence of more than one clause breaks after each clause. A
-          line violates the rule when it holds two or more independent
-          clauses (each with its own subject and verb, including two
-          imperatives), or a main clause together with a subordinate
-          clause of its own, either of which is enough (a clause opened by
-          "because", "when", "if", "while", "although", "since", "which"
-          or "that" counts, and so does a semicolon or a colon that joins
-          two clauses). A colon that introduces a label, a value or a list
-          does not count. The `check-new-line-breaks` regex check is
-          looser than this rule, so a line it accepts can still violate
-          it. When the diff touches notes content, this rule overrides the
-          paragraph below on cosmetic source-only formatting and any
-          instruction to treat semantic line breaks as a suggestion,
-          because the lab's policy is that a wording or format nit blocks
-          a merge; report each violating line as a blocking finding with
-          a `path:line` anchor. Do not flag a short phrase set off by a
-          comma, a bare list-item marker, a line that is only a link, or a
-          line inside a code fence. A list item that packs several clauses
-          still violates the rule.
+          (12) Semantic line breaks are clause-level: in the prose lines
+          of notes content (`.qmd` and `.md` pages and their `_subfiles`)
+          that the diff adds or changes, each sentence starts a new line,
+          and a sentence of more than one clause breaks after each
+          clause. A line violates the rule when it holds two or more
+          clauses, counting each of these: an independent clause (with
+          its own subject and verb, and an imperative counts), a clause
+          opened by a subordinator such as "because", "when", "if",
+          "while", "although", "since", "unless", "until", "after",
+          "before", "whereas", "where", "which" or "so that", and a
+          semicolon or a colon that joins two clauses. Count a "that"
+          clause only when it follows a clause that is complete without
+          it, so "Suppose that n > 0." and "We say that the estimator is
+          consistent." are one clause each. A colon that introduces a
+          label, a value or a list does not count. The
+          `check-new-line-breaks` regex check is looser than this rule,
+          so a line it accepts can still violate it. For these lines
+          this rule overrides the paragraph below on cosmetic
+          source-only formatting and any instruction to treat semantic
+          line breaks as a suggestion, because the lab's policy is that
+          a wording or format nit blocks a merge; report each violating
+          line as a blocking finding with a `path:line` anchor. Do not
+          flag a short phrase set off by a comma, a bare list-item
+          marker, a line that is only a link, a heading, a pipe-table
+          row, a Quarto div or callout header, a YAML front-matter
+          field, a single-line caption or link title, or a line inside
+          a code fence. A list item that packs several clauses still
+          violates the rule.
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
