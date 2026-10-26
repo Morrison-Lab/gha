@@ -34,7 +34,8 @@ What is not flagged:
 - macro definitions (a math span that opens with ``\newcommand``, ``\def``, and
   the like), which are check 2's concern;
 - a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``
-  (which may sit alone on a blockquote line), and a file carrying ``<!-- check-literal-math-letters: ignore-file -->``.
+  (which may sit alone on a blockquote line), and a file carrying
+  ``<!-- check-literal-math-letters: ignore-file -->``.
 
 Strict by design: there is no allow-list for indices or dummy variables. The
 rule says to find the category first, and the false-positive rate is measured
