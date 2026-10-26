@@ -1887,6 +1887,77 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-def-commentary || true
           rm -rf _ci-def-commentary
+  # check-axis-titles is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-axis-titles@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the title rules and both scopes; the calls below prove
+  # action.yml wires each input through.
+  axis-titles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-axis-titles unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-axis-titles/tests/ -v
+      # The script's own docstring quotes bad titles, so a diff-scoped run over
+      # this PR would flag it. Stage a bad title in a file that is not in the diff
+      # and assert that the blocking call really fails.
+      - name: Stage a page with a bare-symbol axis title
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-axt
+          printf '%s\n' 'ax.set_xlabel("x")' > _ci-axt/plot.py
+          git add -f _ci-axt/plot.py
+      - name: Check the staged page, expecting a failure
+        id: axt-expected-failure
+        continue-on-error: true
+        uses: ./check-axis-titles
+        with:
+          whole-tree: 'true'
+          globs: '_ci-axt/*.py'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.axt-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-axis-titles to fail on a staged title, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Stage a page with a plain-word title
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'ax.set_xlabel("Probability, p")' > _ci-axt/plot.py
+          git add -f _ci-axt/plot.py
+      - name: Check the plain-word page, expecting a pass
+        uses: ./check-axis-titles
+        with:
+          whole-tree: 'true'
+          globs: '_ci-axt/*.py'
+          fail: 'true'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-axt || true
+          rm -rf _ci-axt
   # check-exm-figures is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-exm-figures@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The

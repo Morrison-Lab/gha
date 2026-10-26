@@ -44,6 +44,7 @@ input tables and a copy-paste example.
 | [`check-pr-concerns.yml`](reference/check-pr-concerns.qmd) | Diff-scoped, blocking check that fails a PR mixing content and infrastructure paths | `content-paths`, `infra-paths`, `paths-ignore`, `exempt-label`, `fail` |
 | [`check-def-commentary.yml`](reference/check-def-commentary.qmd) | Diff-scoped, blocking check that flags commentary written inside a `#def-` div ("It is not", "Note that", "Unlike" and similar) when a PR adds the line; commentary goes in a `#rem-` div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-exm-figures.yml`](reference/check-exm-figures.qmd) | Diff-scoped, blocking check that flags an example div (`#exm-`) with no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-axis-titles.yml`](reference/check-axis-titles.qmd) | Diff-scoped, blocking check that flags an axis title made only of a symbol or expression, when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-one-div-per-subfile.yml`](reference/check-one-div-per-subfile.qmd) | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile; a proof stays with its claim and a solution with its exercise) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-multipart-exercises.yml`](reference/check-multipart-exercises.qmd) | Diff-scoped check that fails when a PR adds or revises an exercise div (`#exr-`) holding more than one part | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-def-title-synonyms.yml`](reference/check-def-title-synonyms.qmd) | Diff-scoped, warn-only check that flags a `#def-` div title listing synonyms with parentheses or "also called" instead of a comma list, primary term first | `globs`, `fail`, `whole-tree` |
@@ -137,7 +138,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
 `check-one-div-per-subfile.yml`, `check-multipart-exercises.yml`,
-`check-exm-figures.yml`, `check-def-commentary.yml`,
+`check-exm-figures.yml`, `check-axis-titles.yml`, `check-def-commentary.yml`,
 `check-pr-concerns.yml`,
 `check-pr-size.yml`,
 `check-def-title-synonyms.yml`,

@@ -1,0 +1,88 @@
+---
+title: "check-axis-titles.yml"
+---
+
+Diff-scoped, blocking check that flags an axis title made only of a symbol
+or an expression.
+The lab's rule (Ezra, 2026-10-26) is that an axis title names the quantity
+in plain words, and the symbol is optional:
+"Probability, p" and "Log-odds, η", not "p", "z", "x1" or "f(x)".
+This implements
+[gha#1235](https://github.com/Morrison-Lab/gha/issues/1235).
+
+The check reads these calls, on a line a pull request adds:
+
+- ggplot2 `labs(x = "...", y = "...")`, including a call that spans lines,
+  and `xlab("...")` and `ylab("...")`;
+- matplotlib `set_xlabel("...")`, `set_ylabel("...")` and `set_zlabel("...")`;
+- plotly `xaxis_title`, `yaxis_title`, and `title` inside `xaxis = list(...)`
+  or `yaxis = dict(...)` on one line.
+
+A title is flagged when it holds no plain word.
+After math spans (`$...$`) are dropped, a word is a run of three or more letters,
+so "x", "x1", "f(x)" and "y h(x)" are flagged,
+and "mpg", "Log-odds, η" and "Weight (lb)" are not.
+`NULL`, a string with no letter or digit, and a title built from a variable
+are not examined.
+
+A justified exception puts `axis-title-ok: reason` anywhere on the line.
+A comment with no reason does not exempt it.
+Use `paths-ignore` to exempt whole paths.
+
+## Scope
+
+Only a title on a line a pull request adds is reported,
+so existing figures are never reflagged.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose,
+which measures how many titles a repository already carries.
+Every run prints how many lines, files and titles it examined.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd *.Rmd *.R *.py'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow when an axis title has no plain word. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-axis-titles.yml in your repo.
+# Diff-scoped check: flags an axis title made only of a symbol or expression
+# ("x", "f(x)") when a PR adds it. Name the quantity in plain words, or add axis-title-ok: reason.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check axis titles
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-axis-titles.yml@v3
+    # with:
+    #   globs: '*.qmd *.Rmd *.R *.py'      # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
+```
+
+See
+[`examples/check-axis-titles.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-axis-titles.yml)
+for the full caller stub.
