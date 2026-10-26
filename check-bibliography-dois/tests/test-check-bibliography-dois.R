@@ -178,6 +178,33 @@ check("429-then-200 warning is NULL", is.null(res_retry_429$warning), TRUE)
 check("429-then-200 error is NULL", is.null(res_retry_429$error), TRUE)
 check("429-then-200 call count", call_count, 2)
 
+# Test 6b: Persistent 429 across all attempts -> a rate limit is a warning, not a failure
+call_count <- 0
+mock_get_persistent_429 <- function(...) {
+  call_count <<- call_count + 1
+  make_mock_response(429)
+}
+res_persistent_429 <- validate_doi_url("10.1201/9781315182780", backoff_base_sec = 0, http_get = mock_get_persistent_429)
+check("persistent 429 is_valid (downgraded to warning)", res_persistent_429$is_valid, TRUE)
+check("persistent 429 error is NULL", is.null(res_persistent_429$error), TRUE)
+check("persistent 429 has warning", !is.null(res_persistent_429$warning), TRUE)
+check("persistent 429 call count", call_count, 3)
+
+# Test 6c: doi.org unreachable (error) and Crossref rate-limited -> warning, not failure
+mock_get_doi_error_crossref_429 <- function(url, ...) {
+  if (grepl("api.crossref.org", url, fixed = TRUE)) make_mock_response(429) else stop("connection refused")
+}
+res_doi_error_crossref_429 <- validate_doi_url("10.1201/9781315182780", backoff_base_sec = 0, http_get = mock_get_doi_error_crossref_429)
+check("doi.org error + Crossref 429 is_valid (warning)", res_doi_error_crossref_429$is_valid, TRUE)
+check("doi.org error + Crossref 429 has warning", !is.null(res_doi_error_crossref_429$warning), TRUE)
+
+# Test 6d: doi.org 404 with Crossref rate-limited still fails (Crossref cannot confirm the DOI)
+mock_get_404_crossref_429 <- function(url, ...) {
+  if (grepl("api.crossref.org", url, fixed = TRUE)) make_mock_response(429) else make_mock_response(404)
+}
+res_404_crossref_429 <- validate_doi_url("10.1201/9781315182780", backoff_base_sec = 0, http_get = mock_get_404_crossref_429)
+check("doi.org 404 + Crossref 429 is_valid", res_404_crossref_429$is_valid, FALSE)
+
 # Test 7: Persistent 503 across all 3 attempts -> downgraded to warning!
 call_count <- 0
 mock_get_persistent_503 <- function(...) {

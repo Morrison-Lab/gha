@@ -1,0 +1,1 @@
+- `check-bibliography-dois` reports a persistent HTTP 429 from doi.org, or a Crossref 429 or 5xx while doi.org is unreachable, as a not-verified warning instead of a failure, since a rate limit says nothing about whether the DOI is real.
