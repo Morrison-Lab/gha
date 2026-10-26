@@ -14,7 +14,9 @@ The check reads these calls, on a line a pull request adds:
 
 - ggplot2 `labs(x = "...", y = "...")`, including a call that spans lines,
   and `xlab("...")` and `ylab("...")`;
-- ggplot2 titles given as `expression(...)` or `bquote(...)`, where only the quoted strings count as words, so `expression(f(x))` is flagged and `expression("Density, " * f(x))` is not;
+- ggplot2 titles given as `expression(...)` or `bquote(...)`,
+  where only the quoted strings count as words,
+  so `expression(f(x))` is flagged and `expression("Density, " * f(x))` is not;
 - matplotlib `set_xlabel("...")`, `set_ylabel("...")` and `set_zlabel("...")`;
 - plotly `xaxis_title`, `yaxis_title`, and `title` inside `xaxis = list(...)`
   or `yaxis = dict(...)` on one line.
