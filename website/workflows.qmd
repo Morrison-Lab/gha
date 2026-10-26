@@ -46,6 +46,7 @@ input tables and a copy-paste example.
 | [`check-solution-citations.yml`](reference/check-solution-citations.qmd) | Diff-scoped, blocking check that flags a citation of a solution (`@sol-`) inside a proof or result div when a PR adds the line; a derivation cites a result div that follows the solution | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-exercise-before-result.yml`](reference/check-exercise-before-result.qmd) | Diff-scoped, blocking check that flags a result div (`#thm-`, `#lem-`, `#cor-`, `#prp-`) added or edited without an exercise and its solution just before it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-exm-figures.yml`](reference/check-exm-figures.qmd) | Diff-scoped, blocking check that flags an example div (`#exm-`) with no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-tree-lists.yml`](reference/check-tree-lists.qmd) | Diff-scoped, blocking check that flags a definition, example or other labelled div that mentions a tree, holds a list nested three or more levels deep and has no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-visualization-figures.yml`](reference/check-visualization-figures.qmd) | Diff-scoped, blocking check that flags a div that asks for a picture (a visual word in its title, or a sketch or plot request in an exercise prompt) but has no figure (an exercise may have it in its solution), when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-self-contained-captions.yml`](reference/check-self-contained-captions.qmd) | Diff-scoped, blocking check that flags a figure or table caption whose first sentence only points to another div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-code-messages.yml`](reference/check-code-messages.qmd) | Diff-scoped, warn-only check that flags a `geom_smooth()` or `stat_smooth()` call missing `method` or `formula`, and a `geom_histogram()` or `stat_bin()` call with no `bins`, `binwidth` or `breaks`, when a PR adds a line to it; the action also scans a rendered site for `cell-output-stderr` blocks | `globs`, `fail`, `whole-tree` |
@@ -142,7 +143,8 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
 `check-one-div-per-subfile.yml`, `check-code-messages.yml`, `check-multipart-exercises.yml`,
-`check-exm-figures.yml`, `check-visualization-figures.yml`, `check-self-contained-captions.yml`,
+`check-exm-figures.yml`, `check-visualization-figures.yml`,
+`check-tree-lists.yml`, `check-self-contained-captions.yml`,
 `check-def-commentary.yml`, `check-solution-citations.yml`,
 `check-exercise-before-result.yml`,
 `check-pr-concerns.yml`,
