@@ -142,6 +142,21 @@ def test_unit_and_foreign_titles_are_judged_by_plain_words():
     assert bad('labs(x = "$5 to $10 per hour")') == []
 
 
+@pytest.mark.parametrize("code", [
+    'labs(x = "Time, t", y = expression(f(x)))',
+    'ylab(expression(hat(F)(t)))',
+    'labs(y = bquote(S^{-1}*(p)))',
+    'labs(\n  y = expression(\n    f(x) == abs(x)\n  )\n)',
+])
+def test_plotmath_titles_without_a_quoted_word_are_flagged(code):
+    assert len(bad(code)) == 1
+
+
+def test_plotmath_title_with_a_quoted_word_is_fine():
+    assert bad('labs(y = expression("Density, " * f(x)))') == []
+    assert bad('ylab(bquote("Survival, " * S(t)))') == []
+
+
 def test_aes_after_a_closed_labs_is_not_a_title():
     assert bad('labs(x = "Weight") + aes(x = "x")') == []
 

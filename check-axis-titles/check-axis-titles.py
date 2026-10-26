@@ -13,6 +13,9 @@ What counts as an axis title, in a line a diff adds:
 - ggplot2 ``labs(x = "...", y = "...")``, including a call that spans lines,
   and ``xlab("...")`` / ``ylab("...")``;
 - matplotlib ``set_xlabel("...")`` / ``set_ylabel("...")`` (and ``set_zlabel``);
+- ggplot2 titles given as ``expression(...)`` or ``bquote(...)``: only the quoted strings in
+  them count as words, so ``expression(f(x))`` is flagged and
+  ``expression("Density, " * f(x))`` is not;
 - plotly ``xaxis_title="..."`` / ``yaxis_title="..."``, and ``title="..."``
   inside an ``xaxis = list(...)`` / ``yaxis=dict(...)`` on the same line.
 
@@ -111,6 +114,10 @@ SPAN_STARTS = [
     (re.compile(r"\b[xy]axis\d*\s*=\s*(?:list|dict)\("), TITLE_ARG_RE),
     (re.compile(r"\bupdate_[xy]axes\("), TITLE_ARG_RE),
 ]
+# A plotmath title: only the quoted strings in it count as words.
+EXPR_START_RE = re.compile(
+    r"(?:(?<![\w.])[xy]\s*=\s*|\b[xy]lab\(\s*)(?:expression|bquote)\("
+)
 SPAN_LINES = 25  # a call that does not close within this many lines is ignored
 MATH_RE = re.compile(r"\$(?!\d)[^$]*\$")
 MATH_WORD_RE = re.compile(r"\\(?:text|textrm|mathrm|mbox)\{([^}]*)\}")
@@ -121,6 +128,7 @@ EXEMPT_RE = re.compile(r"axis-title-ok:\s*\S")
 class Title(NamedTuple):
     line: int  # 1-based line holding the string
     text: str
+    expr: bool = False  # the body of an expression()/bquote() title
 
 
 def has_plain_word(title: str) -> bool:
@@ -187,6 +195,10 @@ def scan_titles(lines: List[str]) -> List[Title]:
                 for k, piece in _span(lines, idx, sm.end()):
                     for m in arg_rx.finditer(piece):
                         found.append(Title(k + 1, _literal(m)))
+        for sm in EXPR_START_RE.finditer(raw):
+            body = " ".join(piece for _, piece in _span(lines, idx, sm.end()))
+            if body.strip():
+                found.append(Title(idx + 1, body.strip(), True))
     return sorted(set(found))
 
 
@@ -197,7 +209,11 @@ def scan_file(lines: List[str], keep: Optional[Set[int]]) -> Tuple[List[Title], 
     for t in titles:
         if keep is not None and t.line not in keep:
             continue
-        if not re.search(r"\w", t.text) or has_plain_word(t.text):
+        if t.expr:
+            quoted = " ".join(_literal(m) for m in re.finditer(STR, t.text))
+            if has_plain_word(quoted):
+                continue
+        elif not re.search(r"\w", t.text) or has_plain_word(t.text):
             continue
         if EXEMPT_RE.search(lines[t.line - 1]):
             continue
