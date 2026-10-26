@@ -515,3 +515,22 @@ def test_load_deprecated_reads_the_use_instruction(tmp_path):
 def test_load_deprecated_missing_file_yields_no_rules(tmp_path, capsys):
     assert lml.load_deprecated(str(tmp_path / "absent.tsv")) == {}
     assert "Could not read" in capsys.readouterr().out
+
+
+def test_cross_mark_counter_example_is_skipped_but_check_mark_line_is_flagged():
+    doc = "> ❌ Let $x$ be the input.\n>\n> ✅ Let $x$ be the input.\n"
+    assert flagged(doc) == {3: ["x"]}
+
+
+def test_cross_mark_paragraph_continues_over_quote_lines_until_a_check_mark():
+    doc = "> ❌ Let $x$ be\n> the input, $y$.\n> ✅ Let $w$ be it.\n"
+    assert flagged(doc) == {3: ["w"]}
+
+
+def test_cross_mark_skip_ends_at_a_blank_line_and_a_non_quote_line():
+    doc = "> ❌ $x$\n\n$y$\n\n> ❌ $x$\nafter $z$\n"
+    assert flagged(doc) == {3: ["y"], 6: ["z"]}
+
+
+def test_quote_without_a_cross_mark_is_still_checked():
+    assert flagged("> Let $x$ be the input.\n") == {1: ["x"]}

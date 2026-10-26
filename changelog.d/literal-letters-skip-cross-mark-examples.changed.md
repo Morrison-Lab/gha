@@ -1,0 +1,1 @@
+- `check-literal-math-letters` skips a blockquote counter-example that opens with a cross mark, so notation guides can show the raw form they warn against.

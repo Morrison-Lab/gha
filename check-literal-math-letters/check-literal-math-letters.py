@@ -28,6 +28,9 @@ What is not flagged:
 - code fences, code spans, HTML comments and YAML front matter;
 - any ``::: {.notation}`` div (a passage that discusses the notation itself,
   where a literal letter is the point);
+- a blockquote paragraph that opens with a cross mark (a counter-example of
+  what not to write), up to the next empty ``>`` line, a line that opens with
+  a check mark, or a non-quote line;
 - macro definitions (a math span that opens with ``\newcommand``, ``\def`` and
   the like), which are check 2's concern;
 - a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``,
@@ -182,7 +185,12 @@ ENV_BEGIN_RE = re.compile(
     r"^\s*\\begin\{(" + "|".join(DISPLAY_ENVIRONMENTS) + r")\*?\}"
 )
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?![\s$])(.+?)(?<![\s\\$])\$(?!\d)")
-NOTATION_CLASS_RE = re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
+# A blockquote paragraph that opens with the cross mark is a counter-example of
+# what not to write, so its raw letters are the point and are never flagged.
+QUOTE_RE = re.compile(r"^\s*>(.*)$")
+BAD_EXAMPLE_MARK = "❌"
+GOOD_EXAMPLE_MARK = "✅"
+NOTATION_CLASS_RE =re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
 # Anchored to the whole line, so a directive quoted in prose or a code span
 # is not obeyed.
 DIRECTIVE_RE = re.compile(
@@ -399,6 +407,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     env: Optional[str] = None
     divs: List[Div] = []
     allow_through = 0  # last line number covered by an `allow` directive
+    bad_example = False  # inside a blockquote paragraph that opens with a cross mark
     start = 0
 
     if lines and lines[0].strip() == "---":
@@ -429,7 +438,16 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
         if not line.strip():
             in_display = False
             env = None  # a blank line ends an unclosed environment, as for $$
+            bad_example = False
             continue
+
+        quote = QUOTE_RE.match(line)
+        if quote is None or not quote.group(1).strip():
+            bad_example = False  # a non-quote line or an empty `>` ends the paragraph
+        elif quote.group(1).lstrip().startswith(BAD_EXAMPLE_MARK):
+            bad_example = True
+        elif quote.group(1).lstrip().startswith(GOOD_EXAMPLE_MARK):
+            bad_example = False
 
         if not in_display and env is None:
             dm = DIV_RE.match(line)
@@ -478,7 +496,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                     pos, in_display = j + 2, True
 
         math = [seg for seg in math if seg.strip()]
-        if any(d.notation for d in divs) or lineno <= allow_through:
+        if any(d.notation for d in divs) or lineno <= allow_through or bad_example:
             continue
         tokens: List[str] = []
         for seg in math:
