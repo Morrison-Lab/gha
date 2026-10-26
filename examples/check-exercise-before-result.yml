@@ -1,0 +1,21 @@
+# Copy to .github/workflows/check-exercise-before-result.yml in your repo.
+# Diff-scoped, blocking check: flags a `#thm-`, `#lem-`, `#cor-` or `#prp-` div
+# that a PR adds or edits without an exercise and its solution just before it
+# in the chapter's include order. Only contents:read is needed.
+name: Check result divs for a preceding exercise
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-exercise-before-result.yml@v3
+    # with:
+    #   globs: '*.qmd'                          # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # check every result, not just changed ones
