@@ -78,7 +78,8 @@ EXCEPTION_RE = re.compile(
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 # Match the div's own class or id token, never text inside a quoted attribute.
-SCOPE_RE = re.compile(r"(?:^|[\s{])(?:\.?proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}.#]|$)")
+SCOPE_RE = re.compile(r"(?:^|[\s{.])(?:proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}.#]|$)")
+PROOF_RE = re.compile(r"(?:^|[\s{.])proof(?=[\s}.#]|$)")
 QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
@@ -110,7 +111,11 @@ def strip_comment(raw: str, in_comment: bool) -> Tuple[str, bool]:
 def scan_proofs(lines: List[str]) -> List[Finding]:
     """Solution references inside a proof or result div, nested divs included."""
     findings: List[Finding] = []
-    stack: List[bool] = []
+    # One entry per open div: [in scope, is a proof, content lines, structured].
+    # A proof whose whole body is one line with one solution citation is a
+    # pointer to the solution of the exercise that asks for the result: allowed.
+    stack: List[list] = []
+    several: Set[int] = set()  # 0-based lines citing more than one solution
     fence: Optional[Tuple[str, int]] = None
     in_math = in_comment = False
     for idx, original in enumerate(lines):
@@ -125,8 +130,13 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
             continue
         if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = (m.group(1)[0], len(m.group(1)))
+            if stack:
+                stack[-1][3] = True
             continue
-        if raw.count("$$") % 2 == 1:
+        dollars = CODE_SPAN_RE.sub(" ", raw).count("$$")
+        if dollars and stack:
+            stack[-1][3] = True
+        if dollars % 2 == 1:
             in_math = not in_math
             continue
         if in_math:
@@ -134,17 +144,30 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
         dm = DIV_RE.match(raw)
         if dm:
             if dm.group(2):
-                stack.append(bool(SCOPE_RE.search(QUOTED_RE.sub('', dm.group(2)))))
+                attrs = QUOTED_RE.sub('', dm.group(2))
+                if stack:
+                    stack[-1][3] = True
+                stack.append([bool(SCOPE_RE.search(attrs)),
+                              bool(PROOF_RE.search(attrs)), [], False])
             elif stack:
-                stack.pop()
+                _, is_proof, body, structured = stack.pop()
+                if (is_proof and not structured and len(body) == 1
+                        and body[0] not in several):
+                    findings = [f for f in findings if f.line != body[0] + 1]
             continue
-        if not any(stack) or ALLOW_MARKER in original:
+        if stack and raw.strip():
+            stack[-1][2].append(idx)
+        if not any(entry[0] for entry in stack) or ALLOW_MARKER in original:
             continue
         prose = CODE_SPAN_RE.sub(" ", raw)
         excused = {m.group(1) for m in EXCEPTION_RE.finditer(prose)}
+        if len(set(SOL_REF_RE.findall(prose))) > 1:
+            several.add(idx)
         for hit in SOL_REF_RE.finditer(prose):
             if hit.group(0)[len("@sol-"):] not in excused:
                 findings.append(Finding(idx + 1, hit.group(0)))
+                if excused:
+                    several.add(idx)  # a pointer cites exactly one solution
                 break
     return findings
 
