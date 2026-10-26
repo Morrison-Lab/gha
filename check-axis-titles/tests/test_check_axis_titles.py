@@ -184,7 +184,7 @@ def test_deleted_line_in_one_file_does_not_exempt_another(tmp_path, monkeypatch)
                        capture_output=True)
 
     git("init", "-q", "-b", "main")
-    git("config", "user.email", "t@example.com")
+    git("config", "user.email", "t@example.com")  # phi-allow: synthetic
     git("config", "user.name", "t")
     (tmp_path / "a.R").write_text('labs(\n  x = "x",\n  y = "Rate"\n)\n')
     git("add", ".")
