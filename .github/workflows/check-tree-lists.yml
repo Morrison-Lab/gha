@@ -1,0 +1,67 @@
+name: Check tree lists (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      whole-tree:
+        description: >-
+          Scan every tracked file the globs match, in full, instead of only the
+          lines a pull request adds. Use it to measure a corpus.
+        type: boolean
+        default: false
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to check (recursive
+          by default).
+        type: string
+        default: '*.qmd'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: >-
+          Fail the workflow when a tree is written only as a list
+          (else non-blocking). Defaults to true.
+        type: boolean
+        default: true
+
+jobs:
+  check-tree-lists:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check tree lists
+        uses: Morrison-Lab/gha/check-tree-lists@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          whole-tree: ${{ inputs.whole-tree }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          # On PRs, check only lines added relative to the base; otherwise
+          # (push) there is no base to diff against, so the check is skipped.
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on. The payload's pull_request.base.sha can lag that tip,
+          # counting the base's newer commits as added by the PR (gha#1007).
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

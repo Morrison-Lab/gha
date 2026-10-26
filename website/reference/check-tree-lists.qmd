@@ -1,0 +1,87 @@
+---
+title: "check-tree-lists.yml"
+---
+
+Diff-scoped, blocking check that flags a tree written only as a nested list.
+The lab's rule (Ezra, 2026-10-26) is that a tree (a parse tree, decision tree,
+dendrogram or any other hierarchy) is drawn as a diagram figure,
+not only written as nested bullets.
+This implements
+[gha#1263](https://github.com/Morrison-Lab/gha/issues/1263).
+
+A div is flagged when all of these hold:
+
+- it is a definition, example, theorem-type, remark or exercise div
+  (`#def-`, `#exm-`, `#thm-`, `#lem-`, `#cor-`, `#prp-`, `#rem-`, `#exr-`);
+- its text mentions a tree ("tree", "trees" or "dendrogram");
+- it holds a list nested three or more levels deep
+  (three distinct indentation widths among its list items);
+- it holds no figure: a Markdown image or `<img>` tag,
+  a div or chunk labelled `fig-`, an `@fig-` cross-reference,
+  or an include of a `_fig` subfile.
+
+Keep the list too when it adds information, and add the figure beside it.
+A justified exception carries a reason:
+an HTML comment `<!-- no-tree-figure: reason -->` inside the div exempts it.
+Use `paths-ignore` to exempt whole paths.
+
+## Scope
+
+Only a div that holds a line a pull request adds is reported,
+so existing trees are never reflagged.
+The whole file is parsed, since a div opens far above the changed line.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose,
+which measures how many existing trees are only lists.
+Every run prints how many lines, files and divs it examined.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow when a tree is only a list. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-tree-lists.yml in your repo.
+# Diff-scoped check: flags a def/exm/thm/rem/exr div that mentions a tree and
+# holds a list nested 3+ levels with no figure, when a PR adds a line to it.
+# Add a figure, or <!-- no-tree-figure: reason --> in the div.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check tree lists
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-tree-lists.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
+```
+
+See
+[`examples/check-tree-lists.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-tree-lists.yml)
+for the full caller stub.
