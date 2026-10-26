@@ -793,6 +793,15 @@ runs:
           bold case label, introduced by a sentence ending in a colon. Report
           it as a suggestion, never as blocking, and do not flag a single
           case or cases that depend on one another step by step.
+          (12) Semantic line breaks are clause-level: in prose lines the
+          diff adds or changes, each sentence starts a new line, and a
+          sentence of more than one clause (joined by a comma and "and",
+          "but", "so", "yet", "because" or "which", or by a semicolon or
+          colon) breaks after each clause. The `check-new-line-breaks`
+          regex check is looser than this rule, so a line it accepts can
+          still violate it; report each such line as a blocking finding
+          with a `path:line` anchor. Do not flag a short phrase set off by
+          a comma, a list, a link or a line inside a code fence.
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
