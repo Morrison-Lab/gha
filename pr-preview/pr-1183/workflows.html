@@ -583,6 +583,42 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/check-pr-size.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-size.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-pr-concerns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-concerns.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-def-commentary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-commentary.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-exm-figures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-exm-figures.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-def-title-synonyms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-title-synonyms.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-note-sheet-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-note-sheet-rows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-definite-antecedents.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-definite-antecedents.yml</span></a>
   </div>
@@ -920,7 +956,7 @@ cookieconsent.run({
 <tr class="even">
 <td><a href="./reference/check-bibliography-dois.html"><code>check-bibliography-dois.yml</code></a></td>
 <td>Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata</td>
-<td><code>exclude-keys</code>, <code>install-quarto</code>, <code>no-metadata-check</code></td>
+<td><code>exclude-keys</code>, <code>install-quarto</code>, <code>no-metadata-check</code>, <code>preinstalled-toolchain</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-formatting.html"><code>check-formatting.yml</code></a></td>
@@ -1078,8 +1114,38 @@ cookieconsent.run({
 <td><code>config</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="even">
+<td><a href="./reference/check-pr-concerns.html"><code>check-pr-concerns.yml</code></a></td>
+<td>Diff-scoped, blocking check that fails a PR mixing content and infrastructure paths</td>
+<td><code>content-paths</code>, <code>infra-paths</code>, <code>paths-ignore</code>, <code>exempt-label</code>, <code>fail</code></td>
+</tr>
+<tr class="odd">
+<td><a href="./reference/check-def-commentary.html"><code>check-def-commentary.yml</code></a></td>
+<td>Diff-scoped, blocking check that flags commentary written inside a <code>#def-</code> div (“It is not”, “Note that”, “Unlike” and similar) when a PR adds the line; commentary goes in a <code>#rem-</code> div</td>
+<td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
+</tr>
+<tr class="even">
+<td><a href="./reference/check-exm-figures.html"><code>check-exm-figures.yml</code></a></td>
+<td>Diff-scoped, blocking check that flags an example div (<code>#exm-</code>) with no figure, when a PR adds a line to it</td>
+<td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
+</tr>
+<tr class="odd">
 <td><a href="./reference/check-one-div-per-subfile.html"><code>check-one-div-per-subfile.yml</code></a></td>
-<td>Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile, solutions in their own <code>_sol</code> file)</td>
+<td>Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile; a proof stays with its claim and a solution with its exercise)</td>
+<td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
+</tr>
+<tr class="even">
+<td><a href="./reference/check-def-title-synonyms.html"><code>check-def-title-synonyms.yml</code></a></td>
+<td>Diff-scoped, warn-only check that flags a <code>#def-</code> div title listing synonyms with parentheses or “also called” instead of a comma list, primary term first</td>
+<td><code>globs</code>, <code>fail</code>, <code>whole-tree</code></td>
+</tr>
+<tr class="odd">
+<td><a href="./reference/check-pr-size.html"><code>check-pr-size.yml</code></a></td>
+<td>Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines; a sweep goes out as minimal batches</td>
+<td><code>max-files</code>, <code>max-lines</code>, <code>paths-ignore</code>, <code>exempt-label</code>, <code>fail</code></td>
+</tr>
+<tr class="even">
+<td><a href="./reference/check-note-sheet-rows.html"><code>check-note-sheet-rows.yml</code></a></td>
+<td>Diff-scoped check, warn-only for the one-concept rules and always blocking for prose and non-table lists, that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
@@ -1150,7 +1216,7 @@ cookieconsent.run({
 <tr class="even">
 <td><a href="./reference/spellcheck.html"><code>spellcheck.yml</code></a></td>
 <td>Spellcheck an R package’s prose – <code>DESCRIPTION</code>’s <code>Title</code>/<code>Description</code>, <code>man/*.Rd</code>, vignette sources, and root <code>README</code>/<code>NEWS</code>/<code>CHANGES</code>/<code>index</code> Markdown – with {spelling}, accepting the package’s own <code>inst/WORDLIST</code></td>
-<td><code>path</code>, <code>exclude</code>, <code>fail</code>, <code>additional-options</code>, <code>install-quarto</code></td>
+<td><code>path</code>, <code>exclude</code>, <code>fail</code>, <code>additional-options</code>, <code>install-quarto</code>, <code>preinstalled-toolchain</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-typos.html"><code>check-typos.yml</code></a></td>
@@ -1190,7 +1256,7 @@ cookieconsent.run({
 <tr class="even">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
 <td>Render a Quarto site and deploy it to GitHub Pages</td>
-<td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>setup-julia</code>, <code>julia-version</code>, <code>apt-packages</code>, <code>output-dir</code>, <code>render-profile</code>, <code>formats</code>, <code>per-file-formats</code>, <code>freeze-cache</code>, <code>deno-v8-options</code>, <code>checkout-submodules</code>, <code>pre-render-artifact</code>, <code>pre-render-artifact-path</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>timezone</code>, <code>timeout-minutes</code>, <code>deploy</code></td>
+<td><code>runs-on</code>, <code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>setup-julia</code>, <code>julia-version</code>, <code>preinstalled-toolchain</code>, <code>apt-packages</code>, <code>output-dir</code>, <code>render-profile</code>, <code>formats</code>, <code>per-file-formats</code>, <code>freeze-cache</code>, <code>freeze-cache-save-on-failure</code>, <code>deno-v8-options</code>, <code>checkout-submodules</code>, <code>pre-render-artifact</code>, <code>pre-render-artifact-path</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>timezone</code>, <code>timeout-minutes</code>, <code>deploy</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/report-failure.html"><code>report-failure.yml</code></a></td>
@@ -1200,12 +1266,12 @@ cookieconsent.run({
 <tr class="even">
 <td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
 <td>Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)</td>
-<td><code>path</code>, <code>r-version</code>, <code>r-packages</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>setup-julia</code>, <code>julia-version</code>, <code>submodules</code>, <code>render-profile</code>, <code>output-dir</code>, <code>formats</code>, <code>skip-docx</code>, <code>extra-preview-labels</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>timezone</code>, <code>timeout-minutes</code>, <code>detect-changed-chapters</code>, <code>changed-chapters-banner</code>, <code>highlight-changes</code>, <code>changed-chapters-glob</code>, <code>deployed-branch</code>, <code>deployed-subdir</code>, <code>changed-chapters-normalize-patterns</code>, <code>max-elements-for-pairwise</code>, <code>banner-index</code>, <code>docx-tracked-changes</code>, <code>docx-tracked-changes-glob</code></td>
+<td><code>runs-on</code>, <code>path</code>, <code>r-version</code>, <code>r-packages</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>setup-julia</code>, <code>julia-version</code>, <code>preinstalled-toolchain</code>, <code>submodules</code>, <code>render-profile</code>, <code>output-dir</code>, <code>formats</code>, <code>skip-docx</code>, <code>skip-formats</code>, <code>extra-preview-labels</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>timezone</code>, <code>timeout-minutes</code>, <code>detect-changed-chapters</code>, <code>changed-chapters-banner</code>, <code>highlight-changes</code>, <code>changed-chapters-glob</code>, <code>deployed-branch</code>, <code>deployed-subdir</code>, <code>changed-chapters-normalize-patterns</code>, <code>max-elements-for-pairwise</code>, <code>banner-index</code>, <code>docx-tracked-changes</code>, <code>docx-tracked-changes-glob</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
 <td>Deploy half: publish the artifact to <code>gh-pages</code> and comment the preview link</td>
-<td><code>pages-base-url</code>, <code>pages-base-path</code></td>
+<td><code>runs-on</code>, <code>pages-base-url</code>, <code>pages-base-path</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a></td>
@@ -1225,7 +1291,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
 <td>Read-only Claude PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
-<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>submodule-paths</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>use-ai-config</code>, <code>use-posit-skills</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reference-repos</code>, <code>reference-repos-token</code>, <code>report-cost</code>, <code>model</code>, <code>extra-secret-names</code>, <code>timeout-minutes</code></td>
+<td><code>runs-on</code>, <code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>submodule-paths</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>use-ai-config</code>, <code>use-posit-skills</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reference-repos</code>, <code>reference-repos-token</code>, <code>report-cost</code>, <code>model</code>, <code>extra-secret-names</code>, <code>timeout-minutes</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/claude-manage-project.html"><code>claude-manage-project.yml</code></a></td>
@@ -1319,9 +1385,10 @@ cookieconsent.run({
 </tr>
 </tbody>
 </table>
+<p><strong>Choosing the runner.</strong> Every <code>check-*</code> and <code>lint-*</code> workflow that takes no secrets, plus <code>check-secrets.yml</code>, <code>cleanup-pr-previews.yml</code> and <code>annotation-gate-run.yml</code>, accepts a <code>runs-on</code> input (default <code>ubuntu-latest</code>), so a private repository can run it on a self-hosted runner while GitHub-hosted minutes are unavailable. Never point a public repository at a self-hosted runner, because a pull request from a fork can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</p>
 <section id="versioning" class="level2">
 <h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
-<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>lint-changed-files.yml</code>, <code>check-new-line-breaks.yml</code>, <code>check-secrets.yml</code>, <code>check-junk-files.yml</code>, <code>lint-workflows.yml</code>, <code>spellcheck.yml</code>, <code>check-typos.yml</code>, <code>check-extra.yml</code>, <code>check-formatting.yml</code>, <code>claude-manage-project.yml</code>, <code>r-cmd-check.yml</code>, <code>check-code-similarity.yml</code>, and <code>check-one-function-per-file.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>check-dependency-updates.yml</code>, <code>check-duplicate-roxygen.yml</code>, <code>check-math-definitions.yml</code>, <code>check-merge-drops.yml</code>, <code>check-orphaned-images.yml</code>, <code>check-python-package.yml</code>, <code>check-quarto-book.yml</code>, <code>check-quarto-links.yml</code>, <code>check-source-overlap.yml</code>, <code>check-quarto-manuscript.yml</code>, <code>check-quarto-prose.yml</code>, <code>check-quarto-website.yml</code>, <code>check-r-package.yml</code>, <code>check-repo-hygiene.yml</code>, <code>check-typed-output.yml</code>, <code>check-informal-definitions.yml</code>, <code>check-literal-math-letters.yml</code>, <code>check-wikipedia-further-reading.yml</code>, <code>check-redundant-citations.yml</code>, <code>check-self-credits.yml</code>, <code>check-one-div-per-subfile.yml</code>, <code>check-definite-antecedents.yml</code>, <code>check-term-links.yml</code>, <code>check-paired-file-change.yml</code>, <code>annotation-gate.yml</code>, <code>annotation-gate-run.yml</code>, <code>check-local-macros.yml</code>, <code>check-fform-paren.yml</code>, <code>check-write-idiom.yml</code>, <code>check-dependency-graph.yml</code>, <code>cleanup-pr-previews.yml</code>, <code>opposition-research.yml</code>, <code>student-qmd.yml</code>, <code>summary.yml</code>, <code>update-quarto-extensions.yml</code>, and <code>update-snapshots.yml</code> only ever shipped at <code>@v3</code> (or moved to <code>@v3</code> for <code>cleanup-pr-previews.yml</code>, <code>summary.yml</code>, and <code>update-snapshots.yml</code>). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, and <code>claude-code-review.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, <code>cursor-code-review.yml</code>, <code>opencode-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>, <a href="https://github.com/Morrison-Lab/gha/issues/510">gha#510</a>, and <a href="https://github.com/Morrison-Lab/gha/issues/586">gha#586</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>bump-submodule.yml</code> and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>lint-changed-files.yml</code>, <code>check-new-line-breaks.yml</code>, <code>check-secrets.yml</code>, <code>check-junk-files.yml</code>, <code>lint-workflows.yml</code>, <code>spellcheck.yml</code>, <code>check-typos.yml</code>, <code>check-extra.yml</code>, <code>check-formatting.yml</code>, <code>claude-manage-project.yml</code>, <code>r-cmd-check.yml</code>, <code>check-code-similarity.yml</code>, and <code>check-one-function-per-file.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>check-dependency-updates.yml</code>, <code>check-duplicate-roxygen.yml</code>, <code>check-math-definitions.yml</code>, <code>check-merge-drops.yml</code>, <code>check-orphaned-images.yml</code>, <code>check-python-package.yml</code>, <code>check-quarto-book.yml</code>, <code>check-quarto-links.yml</code>, <code>check-source-overlap.yml</code>, <code>check-quarto-manuscript.yml</code>, <code>check-quarto-prose.yml</code>, <code>check-quarto-website.yml</code>, <code>check-r-package.yml</code>, <code>check-repo-hygiene.yml</code>, <code>check-typed-output.yml</code>, <code>check-informal-definitions.yml</code>, <code>check-literal-math-letters.yml</code>, <code>check-wikipedia-further-reading.yml</code>, <code>check-redundant-citations.yml</code>, <code>check-self-credits.yml</code>, <code>check-one-div-per-subfile.yml</code>, <code>check-exm-figures.yml</code>, <code>check-def-commentary.yml</code>, <code>check-pr-concerns.yml</code>, <code>check-pr-size.yml</code>, <code>check-def-title-synonyms.yml</code>, <code>check-note-sheet-rows.yml</code>, <code>check-definite-antecedents.yml</code>, <code>check-term-links.yml</code>, <code>check-paired-file-change.yml</code>, <code>annotation-gate.yml</code>, <code>annotation-gate-run.yml</code>, <code>check-local-macros.yml</code>, <code>check-fform-paren.yml</code>, <code>check-write-idiom.yml</code>, <code>check-dependency-graph.yml</code>, <code>cleanup-pr-previews.yml</code>, <code>opposition-research.yml</code>, <code>student-qmd.yml</code>, <code>summary.yml</code>, <code>update-quarto-extensions.yml</code>, and <code>update-snapshots.yml</code> only ever shipped at <code>@v3</code> (or moved to <code>@v3</code> for <code>cleanup-pr-previews.yml</code>, <code>summary.yml</code>, and <code>update-snapshots.yml</code>). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, and <code>claude-code-review.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, <code>cursor-code-review.yml</code>, <code>opencode-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>, <a href="https://github.com/Morrison-Lab/gha/issues/510">gha#510</a>, and <a href="https://github.com/Morrison-Lab/gha/issues/586">gha#586</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>bump-submodule.yml</code> and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
 </section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
