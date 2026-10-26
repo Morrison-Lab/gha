@@ -5,14 +5,14 @@ Keep warnings and non-output messages out of rendered code.
 
 The lab's rule (Ezra, 2026-10-26): code in the notes shows its output and
 nothing else, so a render prints no warning and no message. The commonest
-case is ggplot2's ``geom_smooth()`` using formula 'y ~ x'`` message, which
-disappears when the call names its ``formula``. Two checks, one per way the
-rule is broken:
+case is the message ggplot2 prints when ``geom_smooth()`` is not told its
+``method`` and ``formula``. Two checks, one per way the rule is broken:
 
 **Source lint** (``CCM_GLOBS``). Flags a call that is known to print a
 message unless it is given an argument:
 
-- ``geom_smooth()`` or ``stat_smooth()`` with no ``formula`` argument;
+- ``geom_smooth()`` or ``stat_smooth()`` without both a ``method`` and a
+  ``formula`` argument (ggplot2 prints a message for either default);
 - ``geom_histogram()`` or ``stat_bin()`` with none of ``bins``, ``binwidth``
   and ``breaks`` (the "using bins = 30" message).
 
@@ -63,15 +63,17 @@ DEFAULT_GLOBS = "*.qmd *.Rmd *.R"
 
 class Rule(NamedTuple):
     functions: Tuple[str, ...]
-    required: Tuple[str, ...]  # at least one of these arguments
+    required: Tuple[str, ...]  # arguments the call must name
+    all_of: bool  # True: every argument is needed; False: any one will do
     message: str
 
 
 RULES = (
-    Rule(("geom_smooth", "stat_smooth"), ("formula",),
-         "`{fn}()` with no `formula` prints \"`geom_smooth()` using formula "
-         "'y ~ x'\"; add `formula = y ~ x` (or the formula you mean)"),
-    Rule(("geom_histogram", "stat_bin"), ("bins", "binwidth", "breaks"),
+    Rule(("geom_smooth", "stat_smooth"), ("method", "formula"), True,
+         "`{fn}()` needs both `method` and `formula` named, or ggplot2 "
+         "prints \"`geom_smooth()` using formula = 'y ~ x'\" (or the "
+         "method); add `method = \"lm\", formula = y ~ x` or what you mean"),
+    Rule(("geom_histogram", "stat_bin"), ("bins", "binwidth", "breaks"), False,
          "`{fn}()` with no `bins`, `binwidth` or `breaks` prints "
          "\"`stat_bin()` using `bins = 30`\"; choose and name the bins"),
 )
@@ -160,12 +162,40 @@ def lint_text(text: str, added: Optional[Set[int]] = None
     for first, last, fn, args in call_spans(text):
         if added is not None and not any(first <= n <= last for n in added):
             continue
+        bare = strip_literals(args)
         for rule in RULES:
-            if fn in rule.functions and not any(
-                    re.search(rf"(?<![\w.]){a}\s*=(?!=)", args)
-                    for a in rule.required):
+            if fn not in rule.functions:
+                continue
+            named = [re.search(rf"(?<![\w.]){a}\s*=(?!=)", bare) is not None
+                     for a in rule.required]
+            if not (all(named) if rule.all_of else any(named)):
                 findings.append((first, rule.message.format(fn=fn)))
     return findings
+
+
+def strip_literals(args: str) -> str:
+    """Drop ``#`` comments and the contents of strings, so a commented-out
+    or quoted ``formula = ...`` does not count as an argument."""
+    out, i, quote = [], 0, ""
+    while i < len(args):
+        c = args[i]
+        if quote:
+            if c == "\\":
+                i += 1
+            elif c == quote:
+                quote = ""
+                out.append(c)
+        elif c in "\"'`":
+            quote = c
+            out.append(c)
+        elif c == "#":
+            nl = args.find("\n", i)
+            i = len(args) if nl < 0 else nl
+            continue
+        else:
+            out.append(c)
+        i += 1
+    return "".join(out)
 
 
 # -- Rendered output -----------------------------------------------------------
@@ -181,16 +211,16 @@ TAG_RE = re.compile(r"<[^>]+>")
 def scan_html(html: str) -> List[Tuple[int, str]]:
     findings = []
     lines = html.split("\n")
-    last_block = -2
+    last_block = -10
     for n, line in enumerate(lines, 1):
         if STDERR_RE.search(line):
             # The block's text follows its opening tag, here or on the next line.
-            snippet = TAG_RE.sub("", " ".join(lines[n - 1:n + 1])).strip()
+            snippet = TAG_RE.sub("", " ".join(lines[n - 1:n + 3])).strip()
             findings.append((n, "warning or message block in rendered "
                              f"output: {snippet[:100]}"))
             last_block = n
             continue
-        if n - last_block <= 1:
+        if n - last_block <= 3:
             continue  # the text of a block already reported
         plain = TAG_RE.sub("", line)
         for rx in TEXT_RES:

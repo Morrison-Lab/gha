@@ -24,12 +24,18 @@ def test_namespaced_and_stat_smooth():
 
 
 def test_nested_parens_and_string_parens():
-    assert lines('geom_smooth(aes(colour = f(x)), label = ")", formula = y ~ x)\n') == []
+    call = 'geom_smooth(aes(colour = f(x)), label = ")", method = "lm", formula = y ~ x)\n'
+    assert lines(call) == []
 
 
-def test_formula_inside_a_string_does_not_count_as_an_argument():
-    # Not an argument, but a conservative lint accepts it; document the limit.
-    assert lines('geom_smooth(label = "formula = y")\n') in ([], [1])
+def test_method_is_needed_too():
+    assert lines("geom_smooth(formula = y ~ x)\n") == [1]
+    assert lines("geom_smooth(method = 'lm')\n") == [1]
+
+
+def test_commented_out_or_quoted_arguments_do_not_count():
+    assert lines("geom_smooth(method = 'lm', # formula = y ~ x\n  se = FALSE)\n") == [1]
+    assert lines('geom_smooth(method = "lm", label = "formula = y")\n') == [1]
 
 
 def test_formula_word_boundary():
@@ -76,6 +82,13 @@ def test_added_lines():
 def test_scan_html_stderr_block():
     html = ('<div class="cell-output cell-output-stderr">\n'
             "<pre>`geom_smooth()` using formula = 'y ~ x'</pre></div>\n")
+    found = ccm.scan_html(html)
+    assert len(found) == 1 and "geom_smooth" in found[0][1]
+
+
+def test_scan_html_multiline_block_reported_once_with_text():
+    html = ('<div class="cell-output cell-output-stderr">\n<pre><code>\n'
+            "`geom_smooth()` using formula = 'y ~ x'\n</code></pre></div>\n")
     found = ccm.scan_html(html)
     assert len(found) == 1 and "geom_smooth" in found[0][1]
 
