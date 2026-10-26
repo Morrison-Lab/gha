@@ -95,9 +95,9 @@ SHORTCODE_RE = re.compile(r"\{\{<.*?>\}\}")
 EMPTY_PARENS_RE = re.compile(r"\(\s*(?:see|cf\.?|in)?\s*\)", re.IGNORECASE)
 # ", as in @x" or "(see @x)" after a complete clause only supports it.
 SUPPORT_TAIL_RE = re.compile(
-    r"(?:,|\()\s*(?:as in|as shown in|as for|see|cf\.?|compare|from)\s*\)?\s*(?=[.!?]?\s*$)",
+    r"(?:,|\()\s*(?:as in|as shown in|as for|see|cf\.?|compare|from)\s*\)?\s*(?=\s*$)",
     re.IGNORECASE)
-SENTENCE_END_RE =re.compile(r"[.!?](?:\s|$)")
+SENTENCE_END_RE = re.compile(r"[.!?](?:\s|$)")
 WORD_RE = re.compile(r"[A-Za-z0-9$\\][\w$\\'-]*")
 
 DANGLING = {
@@ -127,9 +127,9 @@ def first_sentence_problem(text: str) -> Optional[str]:
     flat = REF_RE.sub(" ", flat)
     flat = flat.replace("@ref", " ")
     flat = EMPTY_PARENS_RE.sub(" ", flat)
-    flat = SUPPORT_TAIL_RE.sub("", flat)
     m = SENTENCE_END_RE.search(flat)
     sentence = flat[:m.start()] if m else flat
+    sentence = SUPPORT_TAIL_RE.sub("", sentence)
     words = WORD_RE.findall(sentence)
     if len(words) < MIN_WORDS:
         return f"its first sentence has only {len(words)} word(s) besides the cross-reference"
