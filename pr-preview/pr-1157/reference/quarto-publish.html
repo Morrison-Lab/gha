@@ -618,6 +618,36 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-pr-size.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-size.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-pr-concerns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-concerns.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-def-commentary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-commentary.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-exm-figures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-exm-figures.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-def-title-synonyms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-title-synonyms.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-multipart-exercises.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-multipart-exercises.yml</span></a>
   </div>
@@ -966,58 +996,70 @@ cookieconsent.run({
 </thead>
 <tbody>
 <tr class="odd">
+<td><code>runs-on</code></td>
+<td>string</td>
+<td><code>'ubuntu-latest'</code></td>
+<td>Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo.</td>
+</tr>
+<tr class="even">
 <td><code>path</code></td>
 <td>string</td>
 <td><code>'.'</code></td>
 <td>Path in the caller repo to the Quarto project to render (the directory with <code>_quarto.yml</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>setup-r</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install R and project R dependencies before rendering (for R/knitr Quarto projects).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>r-packages</code></td>
 <td>string</td>
 <td><code>(long; see workflow file)</code></td>
 <td>r-lib/actions package specs installed when <code>setup-r</code> is true and <code>use-renv</code> is false. Defaults to <code>any::knitr</code> and <code>any::rmarkdown</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>use-renv</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Restore R dependencies with renv instead of <code>r-packages</code> (requires <code>setup-r</code>).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>install-package</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Run <code>R CMD INSTALL &lt;path&gt;</code> before rendering so package functions are available (requires <code>setup-r</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>setup-chrome</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install Chrome via <code>browser-actions/setup-chrome</code> before rendering (needed for revealjs/screenshots/mermaid).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>tinytex</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install TinyTeX (needed to render PDF outputs).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>setup-julia</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install Julia (<code>julia-actions/setup-julia</code>) before rendering, for pages that execute <code>{julia}</code> chunks; under knitr these run through the R package JuliaCall, so add <code>any::JuliaCall</code> to <code>r-packages</code> (with <code>setup-r</code>). The Julia depot is cached between runs via <code>julia-actions/cache</code>. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and <code>R_LD_LIBRARY_PATH</code> is set to R’s own <code>lib</code> directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. <code>@v3</code> and later.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>julia-version</code></td>
 <td>string</td>
 <td><code>'1'</code></td>
 <td>Julia version to install, in <code>setup-julia</code>’s <code>version</code> syntax. Only used when <code>setup-julia</code> is true. <code>@v3</code> and later.</td>
+</tr>
+<tr class="odd">
+<td><code>preinstalled-toolchain</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs <code>r-packages</code> with pak into the runner’s user library. With an empty <code>r-packages</code> nothing is installed. The runner must already have R with the pak and tinytex packages, Quarto, TinyTeX, Julia and (if needed) Chrome; <code>tinytex</code> is then ignored for the install. renv, the JuliaCall setup and the freeze cache still run.</td>
 </tr>
 <tr class="even">
 <td><code>apt-packages</code></td>
@@ -1190,27 +1232,28 @@ cookieconsent.run({
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-chrome: true      # install Chrome for revealjs/screenshots/mermaid</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   tinytex: true           # needed to render PDF outputs</span></span>
 <span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-julia: true       # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   julia-version: '1'</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''        # extra system packages (space-separated)</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)</span></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website # Quarto --profile to render with</span></span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM</span></span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)</span></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache: true      # cache Quarto _freeze across runs</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache-save-on-failure: true  # keep it when the render fails</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log</span></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timezone: America/Los_Angeles # export TZ for the render (e.g. for date: last-modified)</span></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 90 # raise the 45-minute render cap for a site that renders slowly</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact: demo-media       # inject a prior job's artifact before render</span></span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact-path: website/media</span></span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deploy: false           # render only (e.g. a build check); skips the gh-pages push</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #                           # (still grant contents: write; the deploy job is declared)</span></span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preinstalled-toolchain: true       # self-hosted runner with R, Quarto, TinyTeX, Julia installed</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   julia-version: '1'</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''        # extra system packages (space-separated)</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website # Quarto --profile to render with</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache: true      # cache Quarto _freeze across runs</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache-save-on-failure: true  # keep it when the render fails</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timezone: America/Los_Angeles # export TZ for the render (e.g. for date: last-modified)</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 90 # raise the 45-minute render cap for a site that renders slowly</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact: demo-media       # inject a prior job's artifact before render</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact-path: website/media</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deploy: false           # render only (e.g. a build check); skips the gh-pages push</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #                           # (still grant contents: write; the deploy job is declared)</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/quarto-publish.yml"><code>examples/quarto-publish.yml</code></a> for the full caller stub.</p>
 
 

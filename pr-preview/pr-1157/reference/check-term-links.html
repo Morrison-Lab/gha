@@ -618,6 +618,36 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-pr-size.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-size.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-pr-concerns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-pr-concerns.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-def-commentary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-commentary.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-exm-figures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-exm-figures.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-def-title-synonyms.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-def-title-synonyms.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-multipart-exercises.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-multipart-exercises.yml</span></a>
   </div>
@@ -962,6 +992,7 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="what-it-flags">What it flags</h2>
 <ul>
 <li><strong><code>unlinked-first-use</code>.</strong> The first occurrence of a known term in a passage is plain text. A passage is one div (between its fences), or one paragraph outside divs. An occurrence inside a link, or followed by <code>(@def-...)</code>, is linked. A term’s own definition div is skipped, and so is any other div in the file that holds that definition (such as a source callout). A paragraph outside divs is still checked. The plural of a term counts as the term, and the longest term wins, so “test set” is not also a use of “set”.</li>
+<li><strong><code>partial-link</code>.</strong> A link covers only part of a longer defined phrase, such as “logistic <a href="...">regression</a>” when “logistic regression” is defined. Link the whole phrase to its own definition.</li>
 <li><strong><code>no-definition</code>.</strong> A bold term in a passage that is not a definition div, and that matches no known term: it is introduced as technical and defined nowhere. Give it a <code>#def-</code> div and link to it. Bold function words (“not”, “once”) are ignored.</li>
 </ul>
 <p>It skips code fences and spans, math, HTML comments, YAML front matter, include shortcodes, headings, images, and the target of a link. <code>&lt;!-- check-term-links: allow --&gt;</code> exempts a line, and <code>&lt;!-- check-term-links: ignore-file --&gt;</code> a file.</p>
