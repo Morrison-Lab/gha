@@ -21,7 +21,7 @@ inputs:
       fetch-depth: 0); when the diff can't be computed (e.g. a shallow
       clone, or no base-ref given on a push run), the check is skipped with
       a warning rather than falling back to a whole-tree scan, which would
-      reflag every example the corpus already carries.
+      reflag every tree list the corpus already carries.
     default: ''
   whole-tree:
     description: >-
