@@ -29,8 +29,9 @@ What is not flagged:
 - any ``::: {.notation}`` div (a passage that discusses the notation itself,
   where a literal letter is the point);
 - a blockquote paragraph that opens with a cross mark (a counter-example of
-  what not to write), up to the next empty ``>`` line, a line that opens with
-  a check mark, or a non-quote line;
+  what not to write), or a cross-mark line that follows a check-mark
+  paragraph, up to the next empty ``>`` line, a line that opens with a check
+  mark, a change of quote nesting depth, or a non-quote line;
 - macro definitions (a math span that opens with ``\newcommand``, ``\def`` and
   the like), which are check 2's concern;
 - a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``,
@@ -493,7 +494,10 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             if text.startswith(BAD_EXAMPLE_MARK) and (quote_open or good_example):
                 bad_example, good_example = True, False
             elif text.startswith(GOOD_EXAMPLE_MARK):
-                bad_example, good_example = False, True
+                # only a check mark that opens the paragraph (or ends a
+                # counter-example) makes a check-mark paragraph
+                good_example = quote_open or bad_example
+                bad_example = False
             quote_open = False
 
         if not in_display and env is None:

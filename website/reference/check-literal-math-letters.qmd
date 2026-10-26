@@ -48,8 +48,9 @@ The check does not flag:
   including a div nested inside it;
 - a blockquote paragraph that opens with a cross mark (❌),
   a counter-example,
-  up to the next empty `>` line, a line that opens with a check mark (✅),
-  or a line outside the quote;
+  or a cross-mark line that follows a check-mark (✅) paragraph,
+  up to the next empty `>` line, a line that opens with a check mark,
+  a change of quote nesting depth, or a line outside the quote;
 - a math span that defines a macro
   (`\newcommand`, `\renewcommand`, `\providecommand`, `\def`,
   `\DeclareMathOperator`), which is check 2 of the issue;
