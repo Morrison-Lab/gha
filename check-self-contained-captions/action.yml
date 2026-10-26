@@ -1,0 +1,63 @@
+name: Check self-contained captions
+description: >-
+  Diff-scoped check that flags an example div (`#exm-`) with no figure,
+  when the diff adds a line to it. Nearly every example gets a figure of
+  its data, model or results (Ezra, 2026-10-23). A figure is an image, a
+  `fig-` labelled chunk or div, an `@fig-` reference or an include of a
+  `_fig` subfile; an `<!-- no-figure: reason -->` comment in the div is a
+  justified exception. Scoped to lines a diff adds (an added line whose
+  exact text was also deleted in the same diff counts as moved).
+  Blocking by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every example the corpus already carries.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an example div has no figure (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check self-contained captions
+      shell: bash
+      env:
+        SCC_BASE_REF: ${{ inputs.base-ref }}
+        SCC_WHOLE_TREE: ${{ inputs.whole-tree }}
+        SCC_GLOBS: ${{ inputs.globs }}
+        SCC_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        SCC_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-self-contained-captions.py"

@@ -34,6 +34,7 @@ updates:
       - "/check-pr-concerns"
       - "/check-def-commentary"
       - "/check-exm-figures"
+      - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
       - "/check-multipart-exercises"
       - "/check-note-sheet-rows"

@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-self-contained-captions.yml in your repo.
+# Diff-scoped check: flags an example div (#exm-) with no figure when a PR
+# adds a line to it. Add a figure, or <!-- no-figure: reason --> in the div.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check self-contained captions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-self-contained-captions.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
