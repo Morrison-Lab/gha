@@ -158,17 +158,21 @@ LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z0-9_^])([zF])(?![A-Za-z0-9_^(])")
 LOGODDS_SUFFIX = "[log-odds]"
 # The label strings of a plot in a code chunk: the strings inside ggplot2's
 # labs(), xlab(), ylab(), ggtitle(), expression() and scale_*(), matplotlib's
-# set_xlabel(), set_ylabel() and set_title(), and the value of a ``label``,
-# ``subtitle`` or ``caption`` argument.  Only strings are read; a bare symbol
-# in ``expression(paste("Log-odds ", z))`` is not.
+# set_xlabel(), set_ylabel(), set_title() and legend(), and the value of a
+# ``label``, ``subtitle``, ``caption``, ``title``, ``xlab``, ``ylab``, ``main``
+# or ``sub`` argument (base R plot() and plotly layout() included).
+# Only strings are read; a bare symbol in ``expression(paste("Log-odds ", z))``
+# is not.
 LABEL_CALLS = frozenset({
     "labs", "xlab", "ylab", "ggtitle", "expression",
     "set_xlabel", "set_ylabel", "set_title", "legend",
 })
-LABEL_ARGS = frozenset({"label", "subtitle", "caption", "title"})
+LABEL_ARGS = frozenset({
+    "label", "subtitle", "caption", "title", "xlab", "ylab", "main", "sub",
+})
 CODE_BRACES_RE = re.compile(r"\{[^{}]*\}")  # an f-string field is a value
 CODE_ESCAPED_QUOTE_RE = re.compile(r"\\([\"'\\])")
-CODE_ALLOW_RE = re.compile(r"#.*check-literal-math-letters: allow")
+CODE_ALLOW_RE = re.compile(r"check-literal-math-letters: allow")
 
 
 def _blank_text_args(seg: str) -> str:
@@ -431,37 +435,59 @@ def _div_is_notation(attrs: str) -> bool:
     return bool(NOTATION_CLASS_RE.search(QUOTED_RE.sub("", attrs)))
 
 
+def _label_tokens(body: str, in_label: bool) -> List[str]:
+    """Log-odds tokens in the text of one string, when it is a label."""
+    text = CODE_BRACES_RE.sub("", CODE_ESCAPED_QUOTE_RE.sub(r"\1", body))
+    if in_label and LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
+        return [m.group(1) + LOGODDS_SUFFIX for m in LOGODDS_LETTER_RE.finditer(text)]
+    return []
+
+
 def _scan_chunk_line(raw: str, state: dict) -> List[str]:
     """Log-odds tokens in the label strings of one line of a code chunk.
 
     ``state`` carries what earlier lines of the chunk left open: ``calls`` is
     the stack of (call name, enclosing argument) pairs, the name ``""`` for a
-    bare parenthesis, so a ``labs(``
-    that ends its line still covers the arguments below it, and ``arg`` is the
-    argument being read, so ``label =`` at the end of a line still labels the
-    string on the next.  A string counts as a label when it sits inside a label
-    call or is the value of a label argument.  Comments are skipped, and so is
-    ``{...}`` in a string (an f-string field).
+    bare parenthesis, so a ``labs(`` that ends its line still covers the
+    arguments below it; ``arg`` is the argument being read, so ``label =`` at
+    the end of a line still labels the string on the next; and ``open`` is a
+    string still unclosed at the end of the line, as (quote, is a label), so a
+    multi-line string is read on every line.  A string counts as a label when
+    it sits inside a label call or is the value of a label argument.  Comments
+    are skipped, and so is ``{...}`` in a string (an f-string field).  A
+    comment ``check-literal-math-letters: allow`` sets ``state["allow"]``; the
+    same words inside a string do not.
     """
     tokens: List[str] = []
     calls: List[Tuple[str, str]] = state["calls"]
     i, n = 0, len(raw)
+    if state.get("open"):
+        quote, in_label = state["open"]
+        j = 0
+        while j < n and not raw.startswith(quote, j):
+            j += 2 if raw[j] == "\\" else 1
+        tokens.extend(_label_tokens(raw[:j], in_label))
+        if j >= n:
+            return tokens
+        state["open"] = None
+        i = j + len(quote)
     while i < n:
         ch = raw[i]
         if ch == "#":
+            if CODE_ALLOW_RE.search(raw, i):
+                state["allow"] = True
             break
         if ch in "\"'":
             quote = ch * 3 if raw.startswith(ch * 3, i) else ch
             j = i + len(quote)
             while j < n and not raw.startswith(quote, j):
                 j += 2 if raw[j] == "\\" else 1
-            body = CODE_ESCAPED_QUOTE_RE.sub(r"\1", raw[i + len(quote):j])
-            text = CODE_BRACES_RE.sub("", body)
             in_label = state["arg"] in LABEL_ARGS or any(
                 c in LABEL_CALLS or c.startswith("scale_") or outer in LABEL_ARGS
                 for c, outer in calls)
-            if in_label and LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
-                tokens.extend(m.group(1) + LOGODDS_SUFFIX for m in LOGODDS_LETTER_RE.finditer(text))
+            tokens.extend(_label_tokens(raw[i + len(quote):j], in_label))
+            if j >= n and len(quote) == 3:
+                state["open"] = (quote, in_label)
             i = j + len(quote)
             continue
         if ch == "(":
@@ -510,9 +536,9 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                     and not m.group(2).strip()):
                 fence = None
             else:
-                if CODE_ALLOW_RE.search(raw):
-                    allow_through = lineno + 1  # this line and the next
                 code_tokens = _scan_chunk_line(raw, chunk_state)
+                if chunk_state.pop("allow", False):
+                    allow_through = lineno + 1  # this line and the next
                 if code_tokens and lineno > allow_through:
                     findings.append(Finding(lineno, tuple(code_tokens)))
             continue

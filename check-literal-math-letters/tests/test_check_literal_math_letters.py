@@ -657,7 +657,8 @@ def test_chunk_comparisons_are_not_labels(code):
 
 @pytest.mark.parametrize("code, expected", [
     ('fig.update_layout(title = "Log-odds z")', {2: ["z[log-odds]"]}),
-    ('plot(x, y, title = "Log-odds F")', {2: ["F[log-odds]"]}),
+    ('plot(x, y, xlab = "Log-odds F", main = "Log-odds z")', {2: ["F[log-odds]", "z[log-odds]"]}),
+    ('ax.set_title("""\nLog-odds F\n""")', {3: ["F[log-odds]"]}),
     ('labs(\n  x =\n    "Log-odds z"\n)', {4: ["z[log-odds]"]}),
     ('labs(x = paste0("Log-odds ", "z"))', {}),
     ('labs(x = paste0("Log-odds z", " (", u, ")"))', {2: ["z[log-odds]"]}),
@@ -667,6 +668,19 @@ def test_chunk_comparisons_are_not_labels(code):
 ])
 def test_chunk_label_args_continuations_and_concatenation(code, expected):
     assert flagged(_chunk(code)) == expected
+
+
+@pytest.mark.parametrize("code", [
+    'xlab("# check-literal-math-letters: allow Log-odds z")',
+    'labs(x = "#1", y = "check-literal-math-letters: allow Log-odds z")',
+])
+def test_chunk_hash_inside_a_string_is_not_a_comment(code):
+    assert flagged(_chunk(code)) == {2: ["z[log-odds]"]}
+
+
+def test_chunk_trailing_allow_comment_still_exempts():
+    code = 'labs(x = "#1")  # check-literal-math-letters: allow\nxlab("Log-odds z")'
+    assert flagged(_chunk(code)) == {}
 
 
 def test_chunk_allow_text_inside_a_string_does_not_exempt():
