@@ -1006,7 +1006,7 @@ cookieconsent.run({
 <li>any <code>::: {.notation}</code> div (also written <code>::: notation</code>), a passage that discusses the notation itself, including a div nested inside it;</li>
 <li>a blockquote paragraph that opens with a cross mark (❌), a counter-example, or a cross-mark line that follows a check-mark (✅) paragraph, up to the next empty <code>&gt;</code> line, a line that opens with a check mark, a change of quote nesting depth, or a line outside the quote;</li>
 <li>a math span that defines a macro (<code>\newcommand</code>, <code>\renewcommand</code>, <code>\providecommand</code>, <code>\def</code>, <code>\DeclareMathOperator</code>), which is check 2 of the issue;</li>
-<li>a line carrying, or following, <code>&lt;!-- check-literal-math-letters: allow --&gt;</code>, or a file carrying <code>&lt;!-- check-literal-math-letters: ignore-file --&gt;</code>.</li>
+<li>a line carrying, or following, <code>&lt;!-- check-literal-math-letters: allow --&gt;</code> (the comment may sit alone on a blockquote line), or a file carrying <code>&lt;!-- check-literal-math-letters: ignore-file --&gt;</code>.</li>
 </ul>
 <p>The check is strict: there is no allow-list for indices or dummy variables. The rule says to find the category first, so the check starts strict and the false-positive rate is measured (see below) before anyone decides to relax it.</p>
 <section id="scope" class="level2">
