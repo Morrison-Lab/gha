@@ -1,0 +1,1 @@
+- **Add `check-code-messages`**: a source lint flags `geom_smooth()`/`stat_smooth()` with no `formula` and `geom_histogram()`/`stat_bin()` with no `bins`, `binwidth` or `breaks` on added lines, and a rendered-output scan flags every Quarto `cell-output-stderr` block in a built site, so a render prints no warning or message (Ezra, 2026-10-26).

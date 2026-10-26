@@ -30,6 +30,7 @@ updates:
       - "/check-wikipedia-further-reading"
       - "/check-self-credits"
       - "/check-one-div-per-subfile"
+      - "/check-code-messages"
       - "/check-pr-size"
       - "/check-pr-concerns"
       - "/check-def-commentary"

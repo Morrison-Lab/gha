@@ -1708,6 +1708,67 @@ jobs:
         uses: ./check-def-title-synonyms
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-code-messages is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-code-messages@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly.
+  code-messages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-code-messages unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-code-messages/tests/ -v
+      - name: Stage a page with a message and a source file with a bare geom_smooth
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-ccm/_site
+          printf '%s\n' '<div class="cell-output cell-output-stderr">' '<pre>message</pre></div>' > _ci-ccm/_site/page.html
+          printf '%s\n' '```{r}' 'ggplot(d) + geom_smooth()' '```' > _ci-ccm/page.qmd
+          git add -f _ci-ccm/page.qmd
+      - name: Scan the staged page, expecting a failure
+        id: ccm-site-expected-failure
+        continue-on-error: true
+        uses: ./check-code-messages
+        with:
+          site-dir: _ci-ccm/_site
+          fail: 'true'
+      - name: Lint the staged source, expecting a failure
+        id: ccm-source-expected-failure
+        continue-on-error: true
+        uses: ./check-code-messages
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert both failing calls failed
+        shell: bash
+        env:
+          SITE: ${{ steps.ccm-site-expected-failure.outcome }}
+          SOURCE: ${{ steps.ccm-source-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$SITE" != "failure" ] || [ "$SOURCE" != "failure" ]; then
+            echo "::error::expected check-code-messages to fail twice, got site='$SITE' source='$SOURCE'"
+            exit 1
+          fi
+      - name: Check the staged files with the default fail (warn-only)
+        uses: ./check-code-messages
+        with:
+          site-dir: _ci-ccm/_site
+          whole-tree: 'true'
   # check-one-div-per-subfile is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-one-div-per-subfile@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The

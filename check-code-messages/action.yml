@@ -1,0 +1,58 @@
+name: Check code messages
+description: >-
+  Keeps warnings and non-output messages out of rendered code. The source lint
+  flags a `geom_smooth()` or `stat_smooth()` call with no `formula` argument,
+  and a `geom_histogram()` or `stat_bin()` call with no `bins`, `binwidth` or
+  `breaks`, on a call that spans a line the diff adds. The rendered-output scan
+  flags every Quarto `cell-output-stderr` block (where knitr, reticulate and
+  Jupyter put warnings and messages) in the HTML of a rendered site. Warn-only
+  by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against for the source lint. Needs the base commit
+      in history (checkout with fetch-depth: 0); when the diff cannot be
+      computed, the source lint is skipped with a warning.
+    default: ''
+  whole-tree:
+    description: Lint every tracked file the globs match in full; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files for the source lint.
+    default: '*.qmd *.Rmd *.R'
+  site-dir:
+    description: >-
+      Directory of rendered HTML to scan for messages (for example `_site`).
+      Empty skips the rendered-output scan. The scan always covers the whole
+      directory.
+    default: ''
+  site-ignore:
+    description: >-
+      Comma/newline-separated glob patterns, relative to `site-dir`, of pages
+      to skip.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a finding is reported (else non-blocking).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check code messages
+      shell: bash
+      env:
+        CCM_BASE_REF: ${{ inputs.base-ref }}
+        CCM_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CCM_GLOBS: ${{ inputs.globs }}
+        CCM_SITE_DIR: ${{ inputs.site-dir }}
+        CCM_SITE_IGNORE: ${{ inputs.site-ignore }}
+        CCM_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-code-messages.py"
