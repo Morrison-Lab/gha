@@ -4,6 +4,6 @@
   ([#1234](https://github.com/Morrison-Lab/gha/issues/1234)).
   A derivation cites a result div that follows the solution, not the solution itself.
   The exception is an exercise that asks students to prove the result before it is stated:
-  `<!-- check-solution-citations: allow -->` on the line, or a sentence reading "the solution to @exr-...", exempts it.
+  `<!-- check-solution-citations: allow -->` on the line, or a sentence reading "the solution (or answer) to @exr-slug", exempts `@sol-slug`.
   Like `check-def-commentary` it scopes to added lines and skips rather than scanning the whole tree without a base.
   Code fences, display math, HTML comments and inline code are not read.

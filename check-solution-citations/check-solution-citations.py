@@ -19,8 +19,9 @@ What is not counted, to avoid false positives:
 - lines inside code fences, display math (``$$``), HTML comments or inline code;
 - a line carrying ``<!-- check-solution-citations: allow -->``, the explicit
   mark for the exception above (the exercise asks for this proof);
-- a line that says "the solution to @exr-..." or "the answer to @exr-...", the lab's existing wording for a
-  result whose exercise asks for the proof;
+- a line that says "the solution to @exr-slug" or "the answer to @exr-slug", the lab's existing
+  wording for a result whose exercise asks for the proof; it excuses only
+  ``@sol-slug``, the solution that shares the exercise's slug;
 - a ``@sol-`` reference outside a proof or result div, such as in another
   solution, where solutions build on one another.
 
@@ -68,12 +69,15 @@ ADVICE = (
 )
 
 SOL_REF_RE = re.compile(r"@sol-[A-Za-z0-9_-]+")
-# "This is the solution (or answer) to @exr-x: see @sol-x" marks the exception.
-EXCEPTION_RE = re.compile(r"(?:solution|answer)\s+to\s+@exr-", re.IGNORECASE)
+# "This is the solution (or answer) to @exr-x: see @sol-x" marks the exception,
+# and only for the solution that shares the exercise's slug.
+EXCEPTION_RE = re.compile(r"(?:solution|answer)\s+to\s+\[?@exr-([A-Za-z0-9_-]+)", re.IGNORECASE)
 
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
-SCOPE_RE = re.compile(r"(?:^|[\s{.])proof\b|#(?:thm|lem|cor|prp)-")
+# Match the div's own class or id token, never text inside a quoted attribute.
+SCOPE_RE = re.compile(r"(?:^|[\s{])(?:\.?proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}]|$)")
+QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 
@@ -128,16 +132,18 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
         dm = DIV_RE.match(raw)
         if dm:
             if dm.group(2):
-                stack.append(bool(SCOPE_RE.search(dm.group(2))))
+                stack.append(bool(SCOPE_RE.search(QUOTED_RE.sub('', dm.group(2)))))
             elif stack:
                 stack.pop()
             continue
         if not any(stack) or ALLOW_MARKER in original:
             continue
         prose = CODE_SPAN_RE.sub(" ", raw)
-        hit = SOL_REF_RE.search(prose)
-        if hit and not EXCEPTION_RE.search(prose):
-            findings.append(Finding(idx + 1, hit.group(0)))
+        excused = {m.group(1) for m in EXCEPTION_RE.finditer(prose)}
+        for hit in SOL_REF_RE.finditer(prose):
+            if hit.group(0)[len("@sol-"):] not in excused:
+                findings.append(Finding(idx + 1, hit.group(0)))
+                break
     return findings
 
 
