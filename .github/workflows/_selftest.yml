@@ -2923,6 +2923,9 @@ jobs:
       - name: Run mention-filter job-split tests
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-mention-filter-tests.py
+      - name: Run find-fallback-verdict tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-find-fallback-verdict-tests.py
       - name: Run classify-push-failure tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh
