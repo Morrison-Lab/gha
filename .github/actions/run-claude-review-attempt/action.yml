@@ -766,7 +766,26 @@ runs:
           uses the semantic macros from `Morrison-Lab/macros`: no literal
           letters, no raw `\hat`, no bare `e^`. (7) Every multi-part
           exercise is split into separate exercises. (8) Nothing reveals an
-          answer to a graded item.
+          answer to a graded item. (9) No unjustified presupposition: a
+          definite noun phrase naming a specific dataset, model, estimator
+          or quantity ("the data", "the fitted model", "this estimator")
+          has an antecedent the reader has already met, in the same div or
+          earlier on the page, or links to the div that introduces it;
+          otherwise introduce it first, through the act of choosing or
+          creating it ("Let's simulate some data ... We call them the
+          synthetic data"), or write "a". Judge only phrases on lines the
+          diff adds or changes, but read unchanged context and earlier
+          subfiles to find the antecedent. Report it as a blocking finding
+          only when the phrase is in the first sentence of a div, section
+          or `exm-`/`exr-` opener, where the test is checkable; elsewhere
+          report it as a suggestion. Do not flag a generic or unique
+          referent ("the mean", "the normal distribution"), a term linked
+          to its definition, or a phrase the same sentence introduces.
+          (10) Report as a suggestion, never as blocking, wording that
+          asserts a result the page has not computed, proved or cited,
+          such as "the important features" before any importance is
+          shown; a statement the same div cites or proves is exempt.
+          Name the unmet referent or the asserted claim in the finding.
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
