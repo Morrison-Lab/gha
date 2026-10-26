@@ -1,1 +1,1 @@
-`check-literal-math-letters` flags a bare `z` or `F` in math on a line that names the log-odds or logit, in both modes, and suggests `\logodds` (lds#1411).
+- **`check-literal-math-letters` flags `z` and `F` for the log-odds** (lds#1411). A bare `z` or `F` in math on a line that names the log-odds or logit is reported in both modes, with `\logodds` as the suggested macro.
