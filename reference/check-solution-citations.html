@@ -990,6 +990,7 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="exceptions">Exceptions</h2>
 <p>The one exception is an exercise that asks students to prove a result before the result is stated. The result’s proof may then cite the solution that precedes it. The check does not flag:</p>
 <ul>
+<li>a <code>proof</code> div whose whole body is one line with one <code>@sol-</code> reference, such as “By <strong>?@sol-x</strong>.” That proof derives nothing itself and points at the solution of the exercise that asks for the result (<a href="https://github.com/Morrison-Lab/gha/issues/1251">#1251</a>). A second content line, display math, a code fence, a nested div or a second distinct reference makes the proof structured, and it is flagged. A one-line proof nested inside a result div is allowed on the same terms;</li>
 <li>a line carrying <code>&lt;!-- check-solution-citations: allow --&gt;</code>, the explicit mark for that exception;</li>
 <li>a line that says “the solution (or answer) to <strong>?@exr-slug</strong>”, the lab’s existing wording for a result whose exercise asks for the proof. It excuses only <code>@sol-slug</code>, the solution that shares the exercise’s slug;</li>
 <li>a <code>@sol-</code> reference outside a proof or result div, such as in another solution;</li>
