@@ -34,6 +34,7 @@ updates:
       - "/check-pr-concerns"
       - "/check-def-commentary"
       - "/check-solution-citations"
+      - "/check-exercise-before-result"
       - "/check-exm-figures"
       - "/check-def-title-synonyms"
       - "/check-multipart-exercises"

@@ -1,0 +1,63 @@
+---
+title: "check-exercise-before-result.yml"
+---
+
+Diff-scoped, blocking check that flags a result div added or edited
+without an exercise and its solution just before it.
+Every `#thm-`, `#lem-`, `#cor-` or `#prp-` div gets an exercise
+that asks for the result, then the solution,
+and the result div states what the solution showed.
+The matching citation rule is
+[check-solution-citations](check-solution-citations.qmd).
+This implements
+[gha#1242](https://github.com/Morrison-Lab/gha/issues/1242).
+
+## How it reads a chapter
+
+The check flattens each chapter
+(a `.qmd` file whose name does not start with an underscore)
+into a sequence of blocks, following `{{< include ... >}}` calls into their files.
+A block is an include or a top-level `::: {#xxx-...}` div.
+Its kind is the prefix of the included file name (`_exr-name.qmd`)
+or of the div id.
+Blank lines, slide breaks and HTML comments are skipped;
+a heading breaks adjacency.
+A result block passes when the two blocks before it
+are an exercise and then a solution.
+With several pairs in a row, only the last pair is read.
+
+## Scope
+
+Only a result whose source file has a line that a diff adds is reported:
+the included file for an include, the chapter itself for an inline div.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning.
+Set `whole-tree: true` to check every result,
+which measures how many existing results lack a pair.
+`<!-- check-exercise-before-result: allow -->` on the first line of a result
+exempts it, for a result that no exercise can precede.
+Includes are resolved against the including file's directory
+and then the chapter's directory,
+so an include written from a different root
+(such as a submodule's path) is not followed.
+
+## Usage
+
+Copy
+[`examples/check-exercise-before-result.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-exercise-before-result.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `paths-ignore` | empty | Comma- or newline-separated glob patterns to skip |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Check every result, not only changed ones |
+| `runs-on` | `ubuntu-latest` | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
+
+## Permissions
+
+The job needs `contents: read` only.
