@@ -190,7 +190,7 @@ INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?![\s$])(.+?)(?<![\s\\$])\$(?!\d)")
 QUOTE_RE = re.compile(r"^\s*>(.*)$")
 BAD_EXAMPLE_MARK = "❌"
 GOOD_EXAMPLE_MARK = "✅"
-NOTATION_CLASS_RE =re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
+NOTATION_CLASS_RE = re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
 # Anchored to the whole line, so a directive quoted in prose or a code span
 # is not obeyed.
 DIRECTIVE_RE = re.compile(

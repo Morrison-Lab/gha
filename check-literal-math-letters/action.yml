@@ -5,7 +5,8 @@ description: >-
   belongs (`\outvar` for `y`, `\predvar` for `x`, `\param` for `\theta`).
   Flags a standalone single Latin letter and any Greek command inside inline
   and display math. Skips code fences, code spans, HTML comments, text-like
-  commands such as `\text{}` and `\operatorname{}`, and any `.notation` div.
+  commands such as `\text{}` and `\operatorname{}`, any `.notation` div, and a blockquote
+  counter-example that opens with a cross mark.
   Scoped to lines a diff adds (an added line whose exact text was also deleted
   in the same diff counts as moved), so it never reflags a corpus's existing
   letters. Warn-only by default.

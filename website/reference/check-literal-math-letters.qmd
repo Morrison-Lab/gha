@@ -46,6 +46,10 @@ The check does not flag:
 - any `::: {.notation}` div (also written `::: notation`),
   a passage that discusses the notation itself,
   including a div nested inside it;
+- a blockquote paragraph that opens with a cross mark (❌),
+  a counter-example,
+  up to the next empty `>` line, a line that opens with a check mark (✅),
+  or a line outside the quote;
 - a math span that defines a macro
   (`\newcommand`, `\renewcommand`, `\providecommand`, `\def`,
   `\DeclareMathOperator`), which is check 2 of the issue;
