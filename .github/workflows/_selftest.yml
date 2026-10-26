@@ -2006,6 +2006,7 @@ jobs:
         uses: ./check-exercise-before-result
         with:
           whole-tree: 'true'
+          globs: '_ci-exercise-before-result/*.qmd'
       - name: Assert the failing call actually failed
         shell: bash
         env:
@@ -2024,6 +2025,7 @@ jobs:
         uses: ./check-exercise-before-result
         with:
           whole-tree: 'true'
+          globs: '_ci-exercise-before-result/*.qmd'
           paths-ignore: '_ci-exercise-before-result'
       - name: Check again with globs excluding the page
         uses: ./check-exercise-before-result
@@ -2034,6 +2036,7 @@ jobs:
         uses: ./check-exercise-before-result
         with:
           whole-tree: 'true'
+          globs: '_ci-exercise-before-result/*.qmd'
           fail: 'false'
       - name: Remove the staged page
         if: always()
