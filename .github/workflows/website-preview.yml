@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      actions: read  # needed to download the artifact built in this run
+      actions: read  # needed to list this run's artifacts
     steps:
       - name: Check artifact exists
         id: artifact
@@ -50,8 +50,8 @@ jobs:
         run: |
           set -euo pipefail
           count=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
-            --jq '[.artifacts[] | select(.name == "pr-preview-site")] | length')
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?name=pr-preview-site" \
+            --jq '.total_count')
           echo "found=$([ "$count" -gt 0 ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
       - name: Check out repository
@@ -64,7 +64,6 @@ jobs:
         with:
           name: pr-preview-site
           path: _preview_download/
-          github-token: ${{ github.token }}
 
       - name: Check equation renders
         if: steps.artifact.outputs.found == 'true' && hashFiles('_preview_download/site/**') != ''

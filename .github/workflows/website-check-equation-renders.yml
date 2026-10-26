@@ -3,7 +3,7 @@
 # crawls the extracted site for MathJax render errors.
 #
 # This leg only warns. A `workflow_run` run is recorded against the default
-# branch's sha whatever PR it checks, so a failure here turned main's commit
+# branch's sha, whatever PR it checks, so a failure here turned main's commit
 # red for a bad page in someone else's preview. The blocking check runs on the
 # PR head, in website-preview.yml's `check-equations` job.
 #
