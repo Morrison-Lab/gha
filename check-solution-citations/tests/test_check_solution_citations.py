@@ -89,7 +89,7 @@ def test_proof_in_a_quoted_attribute_is_not_a_scope():
 
 
 def test_an_email_address_is_not_a_solution_reference():
-    text = "::: proof\nWrite to help@sol-lab.org.\n:::"
+    text = "::: proof\nWrite to help@sol-lab (a handle).\n:::"
     assert hits(text) == []
 
 
