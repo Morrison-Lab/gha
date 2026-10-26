@@ -87,13 +87,16 @@ ADVICE = (
 )
 
 FLOAT_RE = re.compile(r"#(?:fig|tbl)-")
-EXEMPT_RE = re.compile(r"<!--\s*caption-ref:\s*(?!-->)\S")
+EXEMPT_RE = re.compile(r"<!--\s*caption-ref:\s*(?:(?!-->)\W)*\w")
 INLINE_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 CAPTION_OPTION_RE = re.compile(r"^\s*#\|\s*(fig|tbl)-cap:\s*(.*)$")
-PIPE_CAPTION_RE = re.compile(r"^:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
+PIPE_CAPTION_RE = re.compile(r"^\s*:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
 
-INLINE_CODE_RE = re.compile(r"`[^`]*`")
-LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+BLOCK_SCALAR_RE = re.compile(r"^[>|][+-]?\d*$")
+BLOCK_LINE_RE = re.compile(r"^\s*#\|\s{2,}(\S.*)$")
+INLINE_CODE_RE = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")
+LINK_RE = re.compile(
+    r"\[((?:[^\[\]]|\[[^\]]*\])*)\]\((?:[^()]|\([^)]*\))*\)")
 # Only a reference to a div or section counts; a bare citation key does not.
 REF_PREFIX = r"@(?:fig|tbl|exm|exr|def|thm|lem|cor|prp|rem|cnj|alg|lst|sec|eq|apx)-"
 BRACKET_REF_RE = re.compile(r"\[[^\]]*" + REF_PREFIX + r"[^\]]*\]")
@@ -130,6 +133,18 @@ class Caption(NamedTuple):
     start: int  # 1-based first line of the caption
     end: int    # 1-based last line of the caption
     text: str
+
+
+def _block_scalar_text(lines: List[str], idx: int) -> str:
+    """The text of a ``#| fig-cap: >`` block scalar: the more-indented
+    ``#|`` lines after the key, up to the next option or the chunk body."""
+    parts = []
+    for raw in lines[idx:]:
+        m = BLOCK_LINE_RE.match(raw)
+        if not m:
+            break
+        parts.append(m.group(1).strip())
+    return " ".join(parts)
 
 
 def first_sentence_problem(text: str, table: bool = False) -> Optional[str]:
@@ -181,6 +196,8 @@ def scan_floats(lines: List[str]) -> List[Tuple[int, int, str, Optional[Caption]
                 om = CAPTION_OPTION_RE.match(raw)
                 if om:
                     text = INLINE_COMMENT_RE.sub("", om.group(2)).strip().strip("\"'")
+                    if BLOCK_SCALAR_RE.match(text):
+                        text = _block_scalar_text(lines, idx + 1)
                     found.append((idx + 1, idx + 1, om.group(1) + "-cap chunk option",
                                   Caption(idx + 1, idx + 1, text)))
             continue

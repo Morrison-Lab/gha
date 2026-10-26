@@ -99,6 +99,32 @@ def test_exemption_needs_a_reason():
     assert flagged(fig(cap, "<!-- caption-ref: -->")) == [7]
 
 
+def test_an_exemption_of_only_punctuation_is_not_a_reason():
+    cap = "The symmetry of @exm-a."
+    assert flagged(fig(cap, "<!-- caption-ref: ---->")) == [7]
+    assert flagged(fig(cap, "<!-- caption-ref: - -->")) == [7]
+
+
+def test_an_indented_pipe_table_caption_is_found():
+    doc = "- item\n\n  | a | b |\n  |---|---|\n  | 1 | 2 |\n\n  : The symmetry of @exm-a. {#tbl-a}\n"
+    assert flagged(doc) == [7]
+
+
+def test_a_block_scalar_chunk_caption_is_read():
+    doc = "```{r}\n#| fig-cap: >\n#|   The symmetry of\n#|   @exm-a.\nplot(1)\n```\n"
+    assert flagged(doc) == [2]
+    plain = doc.replace("The symmetry of\n#|   @exm-a.", "A line plot of y against x\n#|   (@exm-a).")
+    assert flagged(plain) == []
+
+
+def test_double_backtick_code_and_urls_with_parentheses():
+    assert scc.first_sentence_problem("Shows `` `@exm-a` `` in code form here.") is None
+    cap = "[Norm](https://en.wikipedia.org/wiki/Norm_(mathematics)) of @exm-a."
+    assert scc.first_sentence_problem(cap) is not None
+    cap = "The [$E[X]$](https://example.org/x) values of the fitted model (@exm-a)."
+    assert scc.first_sentence_problem(cap) is None
+
+
 def test_nested_close_above_the_caption_means_no_caption():
     doc = "::: {#fig-a}\n\n::: {.panel-tabset}\ntext\n:::\n:::\n"
     assert flagged(doc) == []
