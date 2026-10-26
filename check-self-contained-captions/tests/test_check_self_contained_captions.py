@@ -120,6 +120,53 @@ def test_diff_scope_only_reports_floats_holding_a_kept_line():
     assert found == []
 
 
+def test_a_reference_in_a_later_sentence_does_not_flag_a_plain_first_sentence():
+    assert scc.first_sentence_problem("Fitted line. Compare @exm-a.") is None
+    assert flagged(fig("Fitted line. See @exm-a for the data.")) == []
+
+
+def test_only_the_ref_shortcode_counts_as_a_reference():
+    assert scc.first_sentence_problem("{{< var model_name >}} residuals.") is None
+    assert scc.first_sentence_problem("Output for {{< var model >}}.") is None
+    assert scc.first_sentence_problem("The symmetry of {{< ref exm-a >}}.") is not None
+
+
+def test_a_note_comment_after_the_caption_does_not_hide_it():
+    inline = fig("The symmetry of @exm-a. <!-- note -->")
+    assert flagged(inline) == [7]
+    own_line = fig("The symmetry of @exm-a.", "<!-- note -->")
+    assert flagged(own_line.replace("\n:::\n", "\n<!-- note -->\n:::\n")) == [7]
+
+
+def test_an_exemption_in_the_div_covers_a_chunk_option_caption():
+    chunk = "```{r}\n#| fig-cap: The slope at @exm-a\nplot(1)\n```\n"
+    assert flagged(chunk) == [2]
+    in_div = "::: {#fig-a}\n<!-- caption-ref: deliberate -->\n" + chunk + ":::\n"
+    assert flagged(in_div) == []
+    in_chunk = "```{r}\n#| fig-cap: The slope at @exm-a\n# <!-- caption-ref: ok -->\nplot(1)\n```\n"
+    assert flagged(in_chunk) == []
+
+
+@pytest.mark.parametrize("caption", [
+    "Height against weight for the cars (@exm-a and @exm-b).",
+    "Height against weight for the cars (see @exm-a, @exm-b)",
+    "Fig. 3 shows the estimated density; see @fig-a.",
+    "Comparison of the two models in @fig-a.",
+])
+def test_several_references_and_abbreviations_do_not_fool_the_check(caption):
+    assert scc.first_sentence_problem(caption) is None
+
+
+@pytest.mark.parametrize("caption", [
+    "Same as @fig-a, with an extra line added to it.",
+    "As in @fig-a, but with noise.",
+])
+def test_known_limit_a_long_pointer_with_extra_words_passes(caption):
+    # The heuristic counts words, so a sentence that points elsewhere but is
+    # long enough passes. Pinned so loosening or tightening it is a decision.
+    assert scc.first_sentence_problem(caption) is None
+
+
 # -- git: diff scoping end to end --------------------------------------------
 
 BAD = "::: {#fig-a}\nplot\n\nThe symmetry of @exm-a.\n:::\n"

@@ -88,7 +88,8 @@ ADVICE = (
 
 FLOAT_RE = re.compile(r"#(?:fig|tbl)-")
 EXEMPT_RE = re.compile(r"<!--\s*caption-ref:\s*(?!-->)\S")
-CAPTION_OPTION_RE = re.compile(r"^\s*#\|\s*(fig|tbl)-cap:\s*(.*)$")
+INLINE_COMMENT_RE = re.compile(r"<!--.*?-->")
+CAPTION_OPTION_RE =re.compile(r"^\s*#\|\s*(fig|tbl)-cap:\s*(.*)$")
 PIPE_CAPTION_RE = re.compile(r"^:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
 
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
@@ -97,12 +98,24 @@ LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 REF_PREFIX = r"@(?:fig|tbl|exm|exr|def|thm|lem|cor|prp|rem|cnj|alg|lst|sec|eq|apx)-"
 BRACKET_REF_RE = re.compile(r"\[[^\]]*" + REF_PREFIX + r"[^\]]*\]")
 REF_RE = re.compile(REF_PREFIX + r"[\w:.-]*\w")
+# Only the ref shortcode points to a div; {{< var x >}} and the like are text.
+REF_SHORTCODE_RE = re.compile(r"\{\{<\s*ref\b.*?>\}\}")
 SHORTCODE_RE = re.compile(r"\{\{<.*?>\}\}")
-EMPTY_PARENS_RE = re.compile(r"\(\s*(?:see|cf\.?|in)?\s*\)", re.IGNORECASE)
-# ", as in @x" or "(see @x)" after a complete clause only supports it.
-SUPPORT_TAIL_RE = re.compile(
-    r"(?:,|\()\s*(?:as in|as shown in|as for|see|cf\.?|compare|from)\s*\)?\s*(?=\s*$)",
+# What is left of a parenthetical once its references are removed, such as
+# "(see )", "(@a and @b)" -> "( and )" and "(see @a, @b)" -> "(see , )".
+EMPTY_PARENS_RE = re.compile(
+    r"\(\s*(?:(?:see|cf\.?|in|and|or|also|compare|from|e\.g\.)(?=[\s,;)])|[\s,;])*\)",
     re.IGNORECASE)
+# ", as in @x", "(see @x)" or a bare trailing " in @x" only supports a clause.
+SUPPORT_TAIL_RE = re.compile(
+    r"(?:(?:[,;]|\()\s*(?:as in|as shown in|as for|see|cf\.?|compare|from)"
+    r"|\s+in)\s*\)?\s*(?=\s*$)",
+    re.IGNORECASE)
+# A period after these does not end a sentence.
+ABBREV_RE = re.compile(
+    r"\b(?:Figs?|Tabs?|Eqs?|Secs?|No|vs|cf|et al|e\.g|i\.e)\.(?=\s)",
+    re.IGNORECASE)
+_DOT = "\x01"
 SENTENCE_END_RE = re.compile(r"[.!?](?:\s|$)")
 WORD_RE = re.compile(r"[A-Za-z0-9$\\][\w$\\'-]*")
 
@@ -123,18 +136,20 @@ def first_sentence_problem(text: str, table: bool = False) -> Optional[str]:
     """Why the caption's first sentence only points elsewhere, else None."""
     flat = " ".join(text.split())
     flat = INLINE_CODE_RE.sub(" ", flat)
-    flat = SHORTCODE_RE.sub("@ref", flat)
+    flat = REF_SHORTCODE_RE.sub("@ref", flat)
+    flat = SHORTCODE_RE.sub(" shortcode ", flat)
     flat = LINK_RE.sub(r"\1", flat)
-    had_ref = bool(BRACKET_REF_RE.search(flat) or REF_RE.search(flat)
-                   or "@ref" in flat)
-    if not had_ref:
-        return None
-    flat = BRACKET_REF_RE.sub(" ", flat)
-    flat = REF_RE.sub(" ", flat)
-    flat = flat.replace("@ref", " ")
-    flat = EMPTY_PARENS_RE.sub(" ", flat)
+    flat = ABBREV_RE.sub(lambda a: a.group(0)[:-1] + _DOT, flat)
     m = SENTENCE_END_RE.search(flat)
     sentence = flat[:m.start()] if m else flat
+    had_ref = bool(BRACKET_REF_RE.search(sentence) or REF_RE.search(sentence)
+                   or "@ref" in sentence)
+    if not had_ref:
+        return None
+    sentence = BRACKET_REF_RE.sub(" ", sentence)
+    sentence = REF_RE.sub(" ", sentence)
+    sentence = sentence.replace("@ref", " ")
+    sentence = EMPTY_PARENS_RE.sub(" ", sentence)
     sentence = SUPPORT_TAIL_RE.sub("", sentence)
     words = WORD_RE.findall(sentence)
     # A table caption is a noun-phrase title, so "Estimated coefficients for
@@ -165,7 +180,7 @@ def scan_floats(lines: List[str]) -> List[Tuple[int, int, str, Optional[Caption]
             else:
                 om = CAPTION_OPTION_RE.match(raw)
                 if om:
-                    text = om.group(2).strip().strip("\"'")
+                    text = INLINE_COMMENT_RE.sub("", om.group(2)).strip().strip("\"'")
                     found.append((idx + 1, idx + 1, om.group(1) + "-cap chunk option",
                                   Caption(idx + 1, idx + 1, text)))
             continue
@@ -198,28 +213,50 @@ def _is_boundary(line: str) -> bool:
 
 def _last_paragraph(lines: List[str], start: int, end: int) -> Optional[Caption]:
     """The paragraph just above the closing fence of lines[start-1:end]."""
+    # A comment closed on its own line is not prose, so a trailing note
+    # neither hides the caption above it nor becomes part of it.
+    clean = [INLINE_COMMENT_RE.sub("", s) for s in lines[:end]]
     i = end - 2  # 0-based index of the line above the closing fence
-    while i >= start and not lines[i].strip():
+    while i >= start and not clean[i].strip():
         i -= 1
     if i < start:
         return None
-    if _is_boundary(lines[i]):
+    if _is_boundary(clean[i]):
         return None
     j = i
-    while j - 1 >= start and lines[j - 1].strip() and not _is_boundary(lines[j - 1]):
+    while j - 1 >= start and clean[j - 1].strip() and not _is_boundary(clean[j - 1]):
         j -= 1
-    return Caption(j + 1, i + 1, " ".join(s.strip() for s in lines[j:i + 1]))
+    return Caption(j + 1, i + 1, " ".join(s.strip() for s in clean[j:i + 1]))
+
+
+def _option_scope(lines: List[str], floats, line: int) -> List[str]:
+    """Where an exemption for a chunk-option caption may sit: its own chunk,
+    or a ``#fig-``/``#tbl-`` div around it, as ``ADVICE`` tells the author."""
+    top = line - 1
+    while top > 0 and not ods.FENCE_RE.match(lines[top - 1]):
+        top -= 1
+    bottom = line
+    while bottom < len(lines) and not ods.FENCE_RE.match(lines[bottom]):
+        bottom += 1
+    scope = lines[top:bottom + 1]
+    for start, end, attrs, _cap in floats:
+        if not attrs.endswith("chunk option") and start <= line <= end:
+            scope = scope + lines[start - 1:end]
+    return scope
 
 
 def scan_file(lines: List[str], keep: Optional[Set[int]]):
     """Findings (start, attrs, reason) that hold a kept line, and captions seen."""
     findings = []
     seen = 0
-    for start, end, attrs, cap in scan_floats(lines):
+    floats = scan_floats(lines)
+    for start, end, attrs, cap in floats:
         if cap is None:
             continue
         seen += 1
         body = lines[start - 1:end]
+        if attrs.endswith("chunk option"):
+            body = _option_scope(lines, floats, start)
         if any(EXEMPT_RE.search(s) for s in body):
             continue
         reason = first_sentence_problem(cap.text, table="tbl" in attrs)
