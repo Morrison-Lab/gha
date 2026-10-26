@@ -109,35 +109,6 @@ cookieconsent.run({
 </script> 
   
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -981,7 +952,7 @@ window.Quarto = {
 
 
 <p>Diff-scoped, warn-only check that flags the title of a definition div that lists synonyms with parentheses or “also called”. The lab’s rule (Ezra, 2026-10-23) is that the title is a comma list with the primary term first, as in “Logistic function, sigmoid, expit”. This implements <a href="https://github.com/Morrison-Lab/psw/issues/338">psw#338</a>.</p>
-<p>A title is the first heading line inside a <code>#def-</code> div, or its <code>title=</code> attribute. The check reports a title on a line the pull request adds when it holds a parenthesis, “also called”, “also known as”, “a.k.a.”, “aka” or “or simply”. Math (<code>$...$</code>) and a parenthetical that contains math are ignored, so “Almost everywhere (<span class="math inline">\(\measure\)</span>-a.e.)” passes.</p>
+<p>A title is the first heading line inside a <code>#def-</code> div, or its <code>title=</code> attribute. The check reports a title on a line the pull request adds when it holds a parenthesis, “also called”, “also known as”, “a.k.a.”, “aka” or “or simply”. Math (<code>$...$</code>) and a parenthetical that contains math are ignored, so a title like <code>Almost everywhere ($\measure$-a.e.)</code> passes.</p>
 <p>An untouched title is never reflagged. With no base ref the check skips instead of scanning the whole tree; <code>whole-tree</code> measures a corpus.</p>
 <section id="usage" class="level2">
 <h2 class="anchored" data-anchor-id="usage">Usage</h2>

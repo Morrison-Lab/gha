@@ -3955,7 +3955,7 @@
     "href": "reference/check-def-title-synonyms.html",
     "title": "check-def-title-synonyms.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags the title of a definition div that lists synonyms with parentheses or “also called”. The lab’s rule (Ezra, 2026-10-23) is that the title is a comma list with the primary term first, as in “Logistic function, sigmoid, expit”. This implements psw#338.\nA title is the first heading line inside a #def- div, or its title= attribute. The check reports a title on a line the pull request adds when it holds a parenthesis, “also called”, “also known as”, “a.k.a.”, “aka” or “or simply”. Math ($...$) and a parenthetical that contains math are ignored, so “Almost everywhere (\\(\\measure\\)-a.e.)” passes.\nAn untouched title is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus.",
+    "text": "Diff-scoped, warn-only check that flags the title of a definition div that lists synonyms with parentheses or “also called”. The lab’s rule (Ezra, 2026-10-23) is that the title is a comma list with the primary term first, as in “Logistic function, sigmoid, expit”. This implements psw#338.\nA title is the first heading line inside a #def- div, or its title= attribute. The check reports a title on a line the pull request adds when it holds a parenthesis, “also called”, “also known as”, “a.k.a.”, “aka” or “or simply”. Math ($...$) and a parenthetical that contains math are ignored, so a title like Almost everywhere ($\\measure$-a.e.) passes.\nAn untouched title is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus.",
     "crumbs": [
       "Overview",
       "Reference",
