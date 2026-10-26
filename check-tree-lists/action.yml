@@ -26,7 +26,7 @@ inputs:
   whole-tree:
     description: >-
       Scan every tracked file the globs match, in full, instead of only the
-      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      lines added since base-ref. This mode measures a corpus; `base-ref` is
       ignored when this is 'true'.
     default: 'false'
   globs:

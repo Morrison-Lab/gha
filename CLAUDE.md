@@ -235,8 +235,8 @@ Model a new diff-scoped check on `check-exm-figures` or `check-tree-lists` (comp
 A new check also has to appear in these lists, or CI fails (gha#1264):
 
 - the read-only capability lists in `README.md` and `website/permissions.qmd`;
-- the `@v3` lists in `README.md` (two), `website/versioning.qmd` (two) and `website/workflows.qmd`, and the table row in `website/workflows.qmd`;
-- `.github/dependabot.yml`, `website/_quarto.yml`, and a `changelog.d/` fragment.
+- the `@v3` lists in `CLAUDE.md`, `README.md` (two), `website/versioning.qmd` (two) and `website/workflows.qmd`, and the table rows in `README.md` and `website/workflows.qmd`;
+- `.github/dependabot.yml`, `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
 
 A synthetic email address in a test needs a `# phi-allow` comment.
 When a check fails within seconds, read its `##[error]` lines with a log tail of 120 lines or more before calling it an infrastructure failure.
