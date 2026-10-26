@@ -766,7 +766,17 @@ runs:
           uses the semantic macros from `Morrison-Lab/macros`: no literal
           letters, no raw `\hat`, no bare `e^`. (7) Every multi-part
           exercise is split into separate exercises. (8) Nothing reveals an
-          answer to a graded item.
+          answer to a graded item. (9) No unjustified presupposition: a
+          definite noun phrase ("the data", "the model", "this estimator")
+          has an antecedent the reader has already met, in the same div or
+          earlier on the page, or links to the div that introduces it;
+          otherwise introduce it first, through the act of choosing or
+          creating it ("Let's simulate some data ... We call them the
+          synthetic data"), or write "a". Likewise, wording must not
+          presume a conclusion the text has not shown, such as that a
+          feature matters, that a model fits or that an effect exists;
+          hedge it or show the evidence first. Name the unmet referent or
+          the presumed claim in the finding.
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
