@@ -5,7 +5,7 @@ description: >-
   levels deep, and has no figure, when the diff adds a line to it. A tree
   is drawn as a diagram figure, not only written as nested bullets (Ezra,
   2026-10-26). A figure is an image, a `fig-` labelled chunk or div, an
-  `@fig-` reference or an include of a `_fig` subfile; an
+  `@fig-` reference or an include of a `_fig` subfile; a
   `<!-- no-tree-figure: reason -->` comment in the div is a justified
   exception. Scoped to lines a diff adds. Blocking by default.
 inputs:
