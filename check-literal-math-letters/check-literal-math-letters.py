@@ -165,8 +165,10 @@ LABEL_CALLS = frozenset({
     "labs", "xlab", "ylab", "ggtitle", "expression",
     "set_xlabel", "set_ylabel", "set_title", "legend",
 })
-LABEL_ARGS = frozenset({"label", "subtitle", "caption"})
+LABEL_ARGS = frozenset({"label", "subtitle", "caption", "title"})
 CODE_BRACES_RE = re.compile(r"\{[^{}]*\}")  # an f-string field is a value
+CODE_ESCAPED_QUOTE_RE = re.compile(r"\\([\"'\\])")
+CODE_ALLOW_RE = re.compile(r"#.*check-literal-math-letters: allow")
 
 
 def _blank_text_args(seg: str) -> str:
@@ -429,45 +431,50 @@ def _div_is_notation(attrs: str) -> bool:
     return bool(NOTATION_CLASS_RE.search(QUOTED_RE.sub("", attrs)))
 
 
-def _scan_chunk_line(raw: str, calls: List[str]) -> List[str]:
+def _scan_chunk_line(raw: str, state: dict) -> List[str]:
     """Log-odds tokens in the label strings of one line of a code chunk.
 
-    ``calls`` is the stack of call names still open from earlier lines
-    (``""`` for a bare parenthesis), so a ``labs(`` that ends its line still
-    covers the arguments on the lines below it.  A string counts as a label
-    when it sits inside a label call or is the value of a label argument.
-    Comments are skipped, and so is ``{...}`` in a string (an f-string field).
+    ``state`` carries what earlier lines of the chunk left open: ``calls`` is
+    the stack of (call name, enclosing argument) pairs, the name ``""`` for a
+    bare parenthesis, so a ``labs(``
+    that ends its line still covers the arguments below it, and ``arg`` is the
+    argument being read, so ``label =`` at the end of a line still labels the
+    string on the next.  A string counts as a label when it sits inside a label
+    call or is the value of a label argument.  Comments are skipped, and so is
+    ``{...}`` in a string (an f-string field).
     """
     tokens: List[str] = []
-    arg = ""  # name of the argument being read, as in ``x = "..."``
+    calls: List[Tuple[str, str]] = state["calls"]
     i, n = 0, len(raw)
     while i < n:
         ch = raw[i]
         if ch == "#":
             break
         if ch in "\"'":
-            j = i + 1
-            while j < n and raw[j] != ch:
+            quote = ch * 3 if raw.startswith(ch * 3, i) else ch
+            j = i + len(quote)
+            while j < n and not raw.startswith(quote, j):
                 j += 2 if raw[j] == "\\" else 1
-            text = CODE_BRACES_RE.sub("", raw[i + 1:j].replace("\\" + ch, ch))
-            in_label = arg in LABEL_ARGS or any(c in LABEL_CALLS or c.startswith("scale_") for c in calls)
+            body = CODE_ESCAPED_QUOTE_RE.sub(r"\1", raw[i + len(quote):j])
+            text = CODE_BRACES_RE.sub("", body)
+            in_label = state["arg"] in LABEL_ARGS or any(
+                c in LABEL_CALLS or c.startswith("scale_") or outer in LABEL_ARGS
+                for c, outer in calls)
             if in_label and LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
                 tokens.extend(m.group(1) + LOGODDS_SUFFIX for m in LOGODDS_LETTER_RE.finditer(text))
-            arg, i = "", j + 1
+            i = j + len(quote)
             continue
         if ch == "(":
             m = re.search(r"([A-Za-z_][\w.]*)\s*$", raw[:i])
-            calls.append(m.group(1).split(".")[-1] if m else "")
-            arg = ""
+            calls.append((m.group(1).split(".")[-1] if m else "", state["arg"]))
+            state["arg"] = ""
         elif ch == ")":
-            if calls:
-                calls.pop()
-            arg = ""
-        elif ch == "," :
-            arg = ""
-        elif ch == "=" and not raw.startswith("==", i):
+            state["arg"] = calls.pop()[1] if calls else ""
+        elif ch == ",":
+            state["arg"] = ""
+        elif ch == "=" and raw[i - 1:i] not in ("=", "!", "<", ">") and raw[i + 1:i + 2] != "=":
             m = re.search(r"([A-Za-z_]\w*)\s*$", raw[:i])
-            arg = m.group(1) if m else ""
+            state["arg"] = m.group(1) if m else ""
         i += 1
     return tokens
 
@@ -485,7 +492,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     env: Optional[str] = None
     divs: List[Div] = []
     allow_through = 0  # last line number covered by an `allow` directive
-    chunk_calls: List[str] = []  # calls left open in the current code chunk
+    chunk_state: dict = {"calls": [], "arg": ""}  # left open in the current chunk
     start = 0
 
     if lines and lines[0].strip() == "---":
@@ -503,16 +510,16 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                     and not m.group(2).strip()):
                 fence = None
             else:
-                if "check-literal-math-letters: allow" in raw:
+                if CODE_ALLOW_RE.search(raw):
                     allow_through = lineno + 1  # this line and the next
-                code_tokens = _scan_chunk_line(raw, chunk_calls)
+                code_tokens = _scan_chunk_line(raw, chunk_state)
                 if code_tokens and lineno > allow_through:
                     findings.append(Finding(lineno, tuple(code_tokens)))
             continue
         m = FENCE_RE.match(raw)
         if m and not in_display and env is None:
             fence = (m.group(1)[0], len(m.group(1)))
-            chunk_calls = []
+            chunk_state = {"calls": [], "arg": ""}
             continue
 
         directive = None if in_comment else DIRECTIVE_RE.match(raw)

@@ -653,3 +653,22 @@ def test_chunk_call_state_resets_between_chunks():
 ])
 def test_chunk_comparisons_are_not_labels(code):
     assert flagged(_chunk(code)) == {}
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('fig.update_layout(title = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('plot(x, y, title = "Log-odds F")', {2: ["F[log-odds]"]}),
+    ('labs(\n  x =\n    "Log-odds z"\n)', {4: ["z[log-odds]"]}),
+    ('labs(x = paste0("Log-odds ", "z"))', {}),
+    ('labs(x = paste0("Log-odds z", " (", u, ")"))', {2: ["z[log-odds]"]}),
+    ('ax.set_title("""Log-odds F""")', {2: ["F[log-odds]"]}),
+    # an escaped backslash ends the string, so the z after it is code
+    ('xlab("Log-odds \\\\" z")', {}),
+])
+def test_chunk_label_args_continuations_and_concatenation(code, expected):
+    assert flagged(_chunk(code)) == expected
+
+
+def test_chunk_allow_text_inside_a_string_does_not_exempt():
+    code = 'xlab("check-literal-math-letters: allow Log-odds z")'
+    assert flagged(_chunk(code)) == {2: ["z[log-odds]"]}
