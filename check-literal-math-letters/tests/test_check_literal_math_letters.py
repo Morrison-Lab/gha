@@ -553,6 +553,15 @@ def test_cross_mark_after_a_check_mark_line_starts_a_skip():
     assert flagged("> ✅ $x$\n> ❌ $y$\n") == {1: ["x"]}
 
 
+def test_cross_mark_after_a_multi_line_check_mark_paragraph_starts_a_skip():
+    doc = "> ✅ Let $x$ be\n> the input, $w$.\n> ❌ Let $y$ be the input.\n"
+    assert flagged(doc) == {1: ["x"], 2: ["w"]}
+
+
+def test_leaving_a_nested_quote_ends_the_skip():
+    assert flagged("> > ❌ $x$\n> $y$\n") == {2: ["y"]}
+
+
 # -- the log-odds symbol -----------------------------------------------------
 
 def test_z_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
