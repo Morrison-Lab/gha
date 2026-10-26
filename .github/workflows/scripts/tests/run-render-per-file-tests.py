@@ -20,6 +20,9 @@ import json, os, sys
 args = sys.argv[1:]
 log = os.environ["FAKE_QUARTO_LOG"]
 if args[0] == "inspect":
+    if os.environ.get("FAKE_QUARTO_INSPECT_FAIL"):
+        sys.stderr.write("ERROR: NotFound: readfile self/sub/self/sub/x.qmd\\n")
+        sys.exit(1)
     if args[1] == ".":
         files = [os.path.join(os.getcwd(), n) for n in ("a.qmd", "b.qmd", "c.qmd")]
         print(json.dumps({"files": {"input": files}}))
@@ -33,7 +36,8 @@ else:
 """
 
 
-def run(formats, fail_on=""):
+def run(formats, fail_on="", inspect_fails=False, files=None, config="",
+        extra_configs=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         fake = tmp / "bin" / "quarto"
@@ -42,12 +46,21 @@ def run(formats, fail_on=""):
         fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
         project = tmp / "proj"
         project.mkdir()
+        for name, text in (files or {}).items():
+            path = project / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        if config:
+            (project / "_quarto.yml").write_text(config, encoding="utf-8")
+        for name, text in (extra_configs or {}).items():
+            (project / name).write_text(text, encoding="utf-8")
         log = tmp / "log.txt"
         env = dict(
             os.environ,
             PATH=f"{fake.parent}{os.pathsep}{os.environ['PATH']}",
             FAKE_QUARTO_LOG=str(log),
             FAKE_QUARTO_FAIL=fail_on,
+            FAKE_QUARTO_INSPECT_FAIL="1" if inspect_fails else "",
         )
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(project), "_site", *formats],
@@ -73,6 +86,51 @@ def main():
     code, calls, _ = run(["pdf"], fail_on="a.qmd")
     if code == 0 or len(calls) != 2:
         errors.append(f"a failed file fails the run but the rest still render: {code} {calls}")
+
+    # `quarto inspect` fails on self-symlink includes (gha#1214): fall back to the
+    # render globs for the files and to the front matter for the formats.
+    files = {
+        "a.qmd": "---\ntitle: A\nformat:\n  html: default\n  pdf: default\n---\n",
+        "b.qmd": "---\ntitle: B\nformat:\n  html: default\n---\n",
+        "c.qmd": "---\ntitle: C\n---\n",
+        "skip.qmd": "---\ntitle: S\nformat: pdf\n---\n",
+        "_part.qmd": "---\nformat: pdf\n---\n",
+        "sub/d.qmd": "---\ntitle: D\nformat: [html, pdf]\n---\n",
+    }
+    config = ("project:\n  render:\n    - '*.qmd'\n    - 'sub/*.qmd'\n"
+              "    - '!skip.qmd'\nformat:\n  pdf: default\n")
+    code, calls, out = run(["pdf"], inspect_fails=True, files=files, config=config)
+    expected = ["render a.qmd --to pdf --output-dir _site",
+                "render c.qmd --to pdf --output-dir _site",
+                "render sub/d.qmd --to pdf --output-dir _site"]
+    if code != 0 or calls != expected:
+        errors.append(f"inspect failure: render-list fallback, got {code} {calls}")
+    if "readfile self/sub" not in out:
+        errors.append("a failed quarto inspect must show its stderr")
+
+    # With QUARTO_PROFILE unset, the `profile: default:` of _quarto.yml applies, so
+    # the website profile's `!references.qmd` keeps that page out (mds, gha#1214).
+    code, calls, out = run(
+        ["pdf"], inspect_fails=True,
+        files={"a.qmd": "---\nformat: pdf\n---\n",
+               "references.qmd": "---\nformat: pdf\n---\n"},
+        config="profile:\n  default: website\nformat:\n  pdf: default\n",
+        extra_configs={"_quarto-website.yml":
+                       "project:\n  render:\n    - '*.qmd'\n    - '!references.qmd'\n"})
+    if code != 0 or calls != ["render a.qmd --to pdf --output-dir _site"]:
+        errors.append(f"default profile must apply to the fallback, got {code} {calls}")
+
+    # A working `quarto inspect` must not need PyYAML (a runner image may lack it).
+    with tempfile.TemporaryDirectory() as blocker:
+        pathlib.Path(blocker, "yaml.py").write_text(
+            "raise ImportError('PyYAML is not installed')\n", encoding="utf-8")
+        os.environ["PYTHONPATH"] = blocker
+        try:
+            code, calls, out = run(["pdf"], config="format:\n  pdf: default\n")
+        finally:
+            del os.environ["PYTHONPATH"]
+    if code != 0 or len(calls) != 2:
+        errors.append(f"a working inspect must not import PyYAML, got {code} {calls} {out}")
 
     if errors:
         print("\n".join(errors))

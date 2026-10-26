@@ -1,0 +1,1 @@
+- `check-term-links` flags a link over only part of a longer defined phrase (`partial-link`), so the whole phrase is linked (gha#1219).

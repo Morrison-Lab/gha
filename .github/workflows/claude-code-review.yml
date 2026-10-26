@@ -44,6 +44,12 @@ name: Claude Code Review (reusable)
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: >-
+          Runner for every job in the workflow. Set a self-hosted label (for
+          example a private-runner group) only for a private repository.
+        type: string
+        default: 'ubuntu-latest'
       pr-number:
         description: PR number to review (set by claude.yml's workflow_dispatch; empty for pull_request runs).
         type: string
@@ -278,7 +284,7 @@ jobs:
     concurrency:
       group: claude-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 5
     permissions: {}
     steps:
@@ -307,7 +313,7 @@ jobs:
     concurrency:
       group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: false
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
     permissions:
       issues: write
@@ -607,7 +613,7 @@ jobs:
       # reviewer left to find the SHA itself was writing.
       REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -1653,7 +1659,7 @@ jobs:
     concurrency:
       group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: false
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 15
     permissions:
       pull-requests: write
@@ -2220,7 +2226,7 @@ jobs:
       (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
       fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
       fromJSON(needs.claude-review.outputs.cancelled || 'false')))
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
     permissions: {}
     steps:
@@ -2268,7 +2274,7 @@ jobs:
       fromJSON(needs.post-review.outputs.stale || 'false')) &&
       !(needs.claude-review.result == 'success' &&
       fromJSON(needs.claude-review.outputs.cancelled || 'false'))
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
     permissions: {}
     steps:

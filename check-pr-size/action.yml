@@ -1,0 +1,58 @@
+name: Check pull request size
+description: >-
+  Diff-scoped, blocking check that fails a pull request changing more than
+  10 files or 300 lines (added plus deleted). Every PR should be as small and
+  focused as it can be while completely solving its task; a sweep goes out as
+  minimal batches. Generated, lock, image and data paths are not counted. The
+  exemption label (`size-exempt` in the reusable workflow) lifts the cap.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against. On a pull request the reusable workflow
+      passes `HEAD^1`. Needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed the check is skipped
+      with a warning rather than measuring the whole tree.
+    default: ''
+  max-files:
+    description: Most files a PR may change.
+    default: '10'
+  max-lines:
+    description: Most lines (added plus deleted) a PR may change.
+    default: '300'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) not counted, in
+      addition to the built-in generated, lock, image and data paths.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  exempt:
+    description: >-
+      'true' when the PR carries the exemption label; an over-cap PR then
+      passes. The reusable workflow reads the label live through the API.
+    default: 'false'
+  fail:
+    description: >-
+      Fail the action when the PR is over the cap (else non-blocking).
+      Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check pull request size
+      shell: bash
+      env:
+        PRS_BASE_REF: ${{ inputs.base-ref }}
+        PRS_MAX_FILES: ${{ inputs.max-files }}
+        PRS_MAX_LINES: ${{ inputs.max-lines }}
+        PRS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        PRS_EXEMPT: ${{ inputs.exempt }}
+        PRS_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-pr-size.py"

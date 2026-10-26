@@ -1,0 +1,5 @@
+- Actions that ran `sudo apt-get` now work on a self-hosted runner with no passwordless sudo.
+- `check-ai-tells` skips its apt setting and `setup-r` there when R is already installed.
+- `check-source-overlap` installs poppler only when `pdftotext` is missing.
+- `lint-changed-files`, `lint-changed-lines` and `install-packages` skip apt when every package is installed.
+- Each stops with a message naming the missing packages instead of a password prompt.

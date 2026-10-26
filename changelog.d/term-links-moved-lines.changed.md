@@ -1,0 +1,1 @@
+- `check-term-links` treats an added line whose exact text the same diff also deletes as moved, not new, so splitting a file into several no longer reflags the first uses it already carried (gha#1176).

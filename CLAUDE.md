@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-multipart-exercises`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-multipart-exercises`, `check-def-title-synonyms`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-exm-figures`, `check-def-commentary`, `check-pr-size`, `check-pr-concerns`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -422,7 +422,10 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
   it takes the same diff model, but a touched exercise is judged whole and it blocks by default (`fail: true`);
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
   for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
-  It takes the same diff model as `check-one-div-per-subfile/` and is warn-only by default (`fail: false`);
+  It takes the same diff model as `check-one-div-per-subfile/`.
+  The one-concept rules are warn-only by default (`fail: false`).
+  Two prose rules always fail, whatever `fail` says (gha#1201): a sentence label or words outside math in a formula cell, and any paragraph outside a table, an inline list included.
+  They are the one deterministic exception to the warn-only default, because the lab's note-sheet rule is no prose and only tables or bullets for lists (Ezra, 2026-10-23);
   a label ending in `, ... form`, `version` or `case` names one concept in a second form and is allowed;
   `check-one-div-per-subfile/` (Python, stdlib only, gha#1092) bundles the composite action, script, and pytest suite
   for flagging a `_subfiles/_*.qmd` file that holds more than one top-level fenced div when a PR adds a line to it.

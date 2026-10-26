@@ -748,6 +748,26 @@ runs:
 
           ${{ inputs.reference-repos-guidance }}
 
+          **Morrison-Lab content rules (gha#1177).** Apply this paragraph
+          only when the repository belongs to the Morrison-Lab organization
+          and is a Quarto notes site (it has `_subfiles` directories or
+          `#def-` divs); otherwise ignore it. When the diff touches notes
+          content (`.qmd` or `.md` pages and their `_subfiles`), check it
+          against these rules and report each violation as a blocking
+          finding with a `path:line` anchor. Do not wave one through because
+          a CI check is warn-only or absent. (1) One div per subfile; a
+          theorem and its proof share a file. (2) One defined term per
+          `#def-`, `#thm-`, `#lem-`, `#cor-` or `#prp-` div; an alias stays in
+          the same div. (3) An example follows each abstract definition or
+          result. (4) No forward references: a term is defined before it is
+          used. (5) Every technical term is linked at first use in each div,
+          and prerequisites are linked to the Morrison-Lab mds (math), pds
+          (probability) or sds (statistics) notes, never restated. (6) Math
+          uses the semantic macros from `Morrison-Lab/macros`: no literal
+          letters, no raw `\hat`, no bare `e^`. (7) Every multi-part
+          exercise is split into separate exercises. (8) Nothing reveals an
+          answer to a graded item.
+
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
           content: calls to functions, methods, arguments, packages, or APIs

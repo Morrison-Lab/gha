@@ -45,6 +45,10 @@ a label such as "note" or "example".
   A paragraph outside divs is still checked.
   The plural of a term counts as the term, and the longest term wins, so
   "test set" is not also a use of "set".
+- **`partial-link`.**
+  A link covers only part of a longer defined phrase,
+  such as "logistic [regression](...)" when "logistic regression" is defined.
+  Link the whole phrase to its own definition.
 - **`no-definition`.**
   A bold term in a passage that is not a definition div, and that matches no
   known term: it is introduced as technical and defined nowhere.
