@@ -3511,7 +3511,7 @@
     "href": "reference/check-note-sheet-rows.html#inputs",
     "title": "check-note-sheet-rows.yml",
     "section": "Inputs",
-    "text": "Inputs\n\nglobs: space-separated git pathspecs of tracked files to check (default *note-sheet*.qmd).\npaths-ignore: comma- or newline-separated glob patterns to skip.\nfail: fail the workflow on a one-concept finding (default false, warning annotations only). The prose rules always fail, whatever fail says.\nwhole-tree: scan every matching file in full (default false).\npython-version: Python version to set up (default 3.x).\n\nThe prose rule is PSW’s “Give each concept in a note sheet its own row”.",
+    "text": "Inputs\n\nglobs: space-separated git pathspecs of tracked files to check (default *note-sheet*.qmd).\npaths-ignore: comma- or newline-separated glob patterns to skip.\nfail: fail the workflow on a one-concept finding (default false, warning annotations only). The prose rules always fail, whatever fail says.\nwhole-tree: scan every matching file in full (default false).\npython-version: Python version to set up (default 3.x).\nruns-on: runner label for the job (default ubuntu-latest). Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it.\n\nThe prose rule is PSW’s “Give each concept in a note sheet its own row”.",
     "crumbs": [
       "Overview",
       "Reference",

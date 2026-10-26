@@ -966,6 +966,7 @@ cookieconsent.run({
 <li><code>fail</code>: fail the workflow on a one-concept finding (default <code>false</code>, warning annotations only). The prose rules always fail, whatever <code>fail</code> says.</li>
 <li><code>whole-tree</code>: scan every matching file in full (default <code>false</code>).</li>
 <li><code>python-version</code>: Python version to set up (default <code>3.x</code>).</li>
+<li><code>runs-on</code>: runner label for the job (default <code>ubuntu-latest</code>). Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it.</li>
 </ul>
 <p>The prose rule is PSW’s “Give each concept in a note sheet its own row”.</p>
 
