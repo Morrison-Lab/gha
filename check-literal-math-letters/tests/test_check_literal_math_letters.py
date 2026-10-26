@@ -562,6 +562,10 @@ def test_mid_paragraph_check_mark_does_not_allow_a_following_cross_mark_skip():
     assert flagged("> Consider:\n> ✅ $x$\n> ❌ $y$\n") == {2: ["x"], 3: ["y"]}
 
 
+def test_cross_mark_after_two_check_mark_lines_starts_a_skip():
+    assert flagged("> ✅ $x$\n> ✅ $w$\n> ❌ $y$\n") == {1: ["x"], 2: ["w"]}
+
+
 def test_leaving_a_nested_quote_ends_the_skip():
     assert flagged("> > ❌ $x$\n> $y$\n") == {2: ["y"]}
 

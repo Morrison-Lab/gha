@@ -496,7 +496,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             elif text.startswith(GOOD_EXAMPLE_MARK):
                 # only a check mark that opens the paragraph (or ends a
                 # counter-example) makes a check-mark paragraph
-                good_example = quote_open or bad_example
+                good_example = quote_open or bad_example or good_example
                 bad_example = False
             quote_open = False
 
