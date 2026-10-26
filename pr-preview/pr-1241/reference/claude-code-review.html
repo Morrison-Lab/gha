@@ -636,6 +636,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-solution-citations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-solution-citations.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-exm-figures.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-exm-figures.yml</span></a>
   </div>
@@ -957,7 +963,10 @@ cookieconsent.run({
   <li><a href="#variables" id="toc-variables" class="nav-link" data-scroll-target="#variables">Variables</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#the-require-review-gate" id="toc-the-require-review-gate" class="nav-link" data-scroll-target="#the-require-review-gate">The <code>require-review</code> gate</a></li>
-  <li><a href="#the-require-clean-verdict-gate" id="toc-the-require-clean-verdict-gate" class="nav-link" data-scroll-target="#the-require-clean-verdict-gate">The <code>require-clean-verdict</code> gate</a></li>
+  <li><a href="#the-require-clean-verdict-gate" id="toc-the-require-clean-verdict-gate" class="nav-link" data-scroll-target="#the-require-clean-verdict-gate">The <code>require-clean-verdict</code> gate</a>
+  <ul class="collapse">
+  <li><a href="#fallback-review-on-a-quota-skip" id="toc-fallback-review-on-a-quota-skip" class="nav-link" data-scroll-target="#fallback-review-on-a-quota-skip">Fallback review on a quota skip</a></li>
+  </ul></li>
   <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
@@ -1266,6 +1275,18 @@ cookieconsent.run({
 </tr>
 </tbody>
 </table>
+<section id="fallback-review-on-a-quota-skip" class="level3">
+<h3 class="anchored" data-anchor-id="fallback-review-on-a-quota-skip">Fallback review on a quota skip</h3>
+<p>When the API quota is exhausted, <code>require-clean-verdict</code> goes green only if a clean separate-agent review of the current head is recorded as a PR comment. A comment counts when all of these hold:</p>
+<ul>
+<li>Its author is an owner, member or collaborator. The PR author’s own comment counts, because the lab’s agent sessions post under the account holder’s login.</li>
+<li>It carries the agent-authorship marker.</li>
+<li>It names the full head sha on a <code>Reviewed-Commit:</code> line.</li>
+<li>The marker and that line sit in the comment’s own prose. Text inside a code fence, a blockquote or an indented code block is ignored, so quoting a review does not record one.</li>
+<li>The classifier reads its verdict as clean.</li>
+</ul>
+<p>The newest such comment decides, and a push retires it (<a href="https://github.com/Morrison-Lab/gha/issues/1182">gha#1182</a>).</p>
+</section>
 </section>
 <section id="concurrency" class="level2">
 <h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
