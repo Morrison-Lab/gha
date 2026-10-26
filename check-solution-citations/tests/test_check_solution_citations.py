@@ -44,7 +44,30 @@ def test_regression_lds_logistic_symmetry_is_flagged():
     "::: {#cor-x}", "::: {#prp-x}",
 ])
 def test_each_scope_is_flagged(opener):
-    assert hits(f"{opener}\nBy @sol-a.\n:::") == [(2, "@sol-a")]
+    assert hits(f"{opener}\nFirst a step.\nBy @sol-a.\n:::") == [(3, "@sol-a")]
+
+
+def test_a_one_line_proof_pointing_at_one_solution_is_fine():
+    assert hits("::: proof\nBy @sol-a, part 1.\n:::") == []
+    assert hits("::: {.proof}\nBy @sol-a.\n:::") == []
+
+
+def test_a_one_line_proof_citing_two_solutions_is_flagged():
+    assert hits("::: proof\nBy @sol-a and @sol-b.\n:::") == [(2, "@sol-a")]
+
+
+def test_a_one_line_result_div_citing_a_solution_is_flagged():
+    assert hits("::: {#thm-x}\nBy @sol-a.\n:::") == [(2, "@sol-a")]
+
+
+def test_a_proof_with_its_own_steps_is_flagged():
+    assert hits("::: proof\nBy @sol-a.\nThen done.\n:::") == [(2, "@sol-a")]
+    assert hits("::: proof\n$$\nx = 1\n$$\nBy @sol-a.\n:::") == [(5, "@sol-a")]
+
+
+def test_a_proof_with_a_nested_div_is_flagged():
+    text = "::: proof\n::: {.callout-note}\nBy @sol-a.\n:::\n:::"
+    assert hits(text) == [(3, "@sol-a")]
 
 
 def test_a_reference_outside_proofs_and_results_is_fine():
@@ -74,8 +97,8 @@ def test_answer_to_exercise_wording_is_the_exception():
 
 
 def test_exception_wording_excuses_only_the_matching_slug():
-    text = "::: proof\nThis is the solution to @exr-x, not @sol-y.\n:::"
-    assert hits(text) == [(2, "@sol-y")]
+    text = "::: proof\nFirst.\nThis is the solution to @exr-x, not @sol-y.\n:::"
+    assert hits(text) == [(3, "@sol-y")]
 
 
 def test_exception_wording_reads_a_bracketed_crossref():
@@ -99,8 +122,8 @@ def test_unspaced_dashes_do_not_join_the_slug():
 
 
 def test_chained_classes_still_scope_the_div():
-    text = "::: {.proof.unlisted}\nSee @sol-a.\n:::"
-    assert hits(text) == [(2, "@sol-a")]
+    text = "::: {.proof.unlisted}\nFirst.\nSee @sol-a.\n:::"
+    assert hits(text) == [(3, "@sol-a")]
 
 
 def test_nested_div_inside_a_proof_is_read():
@@ -191,10 +214,10 @@ def test_run_check_exempts_a_moved_line(repo):
 
 
 def test_run_check_whole_tree_reads_existing_citations(repo):
-    (repo / "a.qmd").write_text("::: proof\nBy @sol-b.\n:::\n")
+    (repo / "a.qmd").write_text("::: proof\nFirst.\nBy @sol-b.\n:::\n")
     _git(repo, "commit", "-q", "-am", "citation")
     report = csc.run_check("", ["*.qmd"], [], True)
-    assert [(p, f.line) for p, f in report.findings] == [("a.qmd", 2)]
+    assert [(p, f.line) for p, f in report.findings] == [("a.qmd", 3)]
 
 
 def test_run_check_skips_an_unresolvable_base(repo):
