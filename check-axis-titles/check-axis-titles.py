@@ -36,7 +36,7 @@ A justified exception puts ``axis-title-ok: reason`` anywhere on the line
 (for example in a ``# axis-title-ok: ...`` comment). A comment with no reason
 does not exempt it. Whole paths are exempt through ``paths-ignore``.
 
-Design notes, in the model of ``check-exm-figures``, whose parsing and git
+Design notes, in the model of ``check-one-div-per-subfile``, whose parsing and git
 helpers this script imports rather than copies:
 
 - **Diff-scoped by default.** A title is reported only when its line is one the
