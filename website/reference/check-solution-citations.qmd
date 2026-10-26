@@ -28,7 +28,8 @@ The check does not flag:
   that asks for the result
   ([#1251](https://github.com/Morrison-Lab/gha/issues/1251)).
   A second content line, display math, a code fence, a nested div
-  or a second reference makes the proof structured, and it is flagged;
+  or a second distinct reference makes the proof structured, and it is flagged.
+  A one-line proof nested inside a result div is allowed on the same terms;
 - a line carrying `<!-- check-solution-citations: allow -->`,
   the explicit mark for that exception;
 - a line that says "the solution (or answer) to @exr-slug",

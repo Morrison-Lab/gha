@@ -65,6 +65,23 @@ def test_a_proof_with_its_own_steps_is_flagged():
     assert hits("::: proof\n$$\nx = 1\n$$\nBy @sol-a.\n:::") == [(5, "@sol-a")]
 
 
+def test_a_proof_with_a_code_fence_is_flagged():
+    text = "::: proof\n```r\nx <- 1\n```\nBy @sol-a.\n:::"
+    assert hits(text) == [(5, "@sol-a")]
+
+
+def test_a_proof_with_one_line_display_math_is_flagged():
+    assert hits("::: proof\n$$x = 1$$ By @sol-a.\n:::") == [(2, "@sol-a")]
+
+
+def test_repeating_one_solution_is_still_one_citation():
+    assert hits("::: proof\nBy @sol-a (specifically @sol-a).\n:::") == []
+
+
+def test_a_one_line_proof_inside_a_result_div_is_allowed():
+    assert hits("::: {#thm-x}\n::: proof\nBy @sol-a.\n:::\n:::") == []
+
+
 def test_a_proof_with_a_nested_div_is_flagged():
     text = "::: proof\n::: {.callout-note}\nBy @sol-a.\n:::\n:::"
     assert hits(text) == [(3, "@sol-a")]

@@ -133,10 +133,10 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
             if stack:
                 stack[-1][3] = True
             continue
+        if "$$" in raw and stack:
+            stack[-1][3] = True
         if raw.count("$$") % 2 == 1:
             in_math = not in_math
-            if stack:
-                stack[-1][3] = True
             continue
         if in_math:
             continue
@@ -160,7 +160,7 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
             continue
         prose = CODE_SPAN_RE.sub(" ", raw)
         excused = {m.group(1) for m in EXCEPTION_RE.finditer(prose)}
-        if len(SOL_REF_RE.findall(prose)) > 1:
+        if len(set(SOL_REF_RE.findall(prose))) > 1:
             several.add(idx)
         for hit in SOL_REF_RE.finditer(prose):
             if hit.group(0)[len("@sol-"):] not in excused:
