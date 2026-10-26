@@ -33,7 +33,7 @@ on:
         default: ''
       fail:
         description: >-
-          Fail the workflow when an example div has no figure
+          Fail the workflow when a caption only points to another div
           (else non-blocking). Defaults to true.
         type: boolean
         default: true

@@ -1,6 +1,7 @@
 # Copy to .github/workflows/check-self-contained-captions.yml in your repo.
-# Diff-scoped check: flags an example div (#exm-) with no figure when a PR
-# adds a line to it. Add a figure, or <!-- no-figure: reason --> in the div.
+# Diff-scoped check: flags a caption that only points to another div when a PR
+# adds a line to its float. Say what the float shows, or add
+# <!-- caption-ref: reason --> in the div.
 # Blocking by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check self-contained captions
