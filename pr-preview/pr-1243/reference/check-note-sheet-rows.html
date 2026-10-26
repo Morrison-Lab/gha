@@ -963,7 +963,7 @@ cookieconsent.run({
 <li>a row’s label is a sentence (it ends in <code>.</code>, <code>!</code> or <code>?</code>, or runs past six words), or a cell after the label has words outside math;</li>
 <li>a line outside a table is a paragraph, an inline list included. Headings, bold-only labels, link-only lines, div fences, table captions, bullets (with their indented continuation lines), images, blockquotes, raw HTML, HTML comments and the YAML front matter are allowed. Link text in a formula cell counts as words. Every list is a table or bullets, as on the <a href="https://morrison-lab.github.io/rme/chapters/exam-formula-sheet.html">rme exam formula sheet</a>.</li>
 </ul>
-<p>The check is diff-scoped: an added line whose exact text was also deleted in the same diff counts as moved. With no base ref, or when the diff cannot be computed, it skips with a warning instead of scanning the whole tree, unless <code>whole-tree</code> asks for that.</p>
+<p>The check is diff-scoped: an added line whose exact text was also deleted in the same diff counts as moved. With no base ref, or when the diff cannot be computed, it skips with a notice or warning instead of scanning the whole tree, unless <code>whole-tree</code> asks for that.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <ul>
@@ -972,6 +972,7 @@ cookieconsent.run({
 <li><code>fail</code>: fail the workflow on a one-concept finding (default <code>false</code>, warning annotations only). The prose rules always fail, whatever <code>fail</code> says.</li>
 <li><code>whole-tree</code>: scan every matching file in full (default <code>false</code>).</li>
 <li><code>python-version</code>: Python version to set up (default <code>3.x</code>).</li>
+<li><code>runs-on</code>: runner label for the job (default <code>ubuntu-latest</code>). Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it.</li>
 </ul>
 <p>The prose rule is PSW’s “Give each concept in a note sheet its own row”.</p>
 

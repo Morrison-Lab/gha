@@ -1268,7 +1268,7 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td>Red</td>
-<td>The review failed, produced a non-clean verdict (“Needs more work”, “Changes requested”, “Blocked”, or unaddressed findings), or never ran on this head because the API quota was exhausted or the default-branch workflow restore failed (<a href="https://github.com/Morrison-Lab/gha/issues/1019">gha#1019</a>). Blocks merging when configured as a required check.</td>
+<td>The review failed, produced a non-clean verdict (“Needs more work”, “Changes requested”, “Blocked”, or unaddressed findings), or never ran on this head because the API quota was exhausted or the default-branch workflow restore failed (<a href="https://github.com/Morrison-Lab/gha/issues/1019">gha#1019</a>). A quota skip is green instead when a clean fallback review of the current head is recorded on the PR: a separate-agent review comment from an owner, member or collaborator that carries the agent-authorship marker and names the head sha in a <code>Reviewed-Commit:</code> line (<a href="https://github.com/Morrison-Lab/gha/issues/1163">gha#1163</a>). Blocks merging when configured as a required check.</td>
 </tr>
 </tbody>
 </table>
