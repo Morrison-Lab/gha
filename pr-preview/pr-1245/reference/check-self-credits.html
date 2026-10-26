@@ -636,6 +636,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-solution-citations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-solution-citations.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-exm-figures.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-exm-figures.yml</span></a>
   </div>
@@ -981,7 +987,7 @@ cookieconsent.run({
 <p>The check flags two things on a line a pull request adds:</p>
 <ul>
 <li><strong>A citation of an own bibliography entry.</strong> An entry is own when its <code>url</code>, <code>doi</code>, <code>howpublished</code> or <code>note</code> contains one of the config’s <code>urls</code>, when its <code>author</code> or <code>editor</code> contains one of <code>authors</code>, or when its key is in <code>keys</code>. A key in <code>allow-keys</code> is never flagged: the group’s published paper or software, cited as the original publication or as a tool used. Both <code>[@key]</code> and a bare <code>@key</code> count.</li>
-<li><strong>A credit phrase beside an own site or name.</strong> A credit phrase is “adapted from”, “borrowed from”, “reproduced from”, “reprinted from”, “with permission from”, “courtesy of” or “credit to”, a <code>Source:</code> line (also in bold, emphasis or a list item), or a div titled <code>Source</code> (or classed <code>.source</code>). An own site or name is any entry of <code>urls</code> or <code>names</code>. The own site or name must sit in the same sentence as the credit phrase, on the same <code>Source:</code> line, or anywhere inside the <code>Source</code> div. A paragraph ends at a blank line, a heading or a list item. Front matter, inline code and code fences are skipped.</li>
+<li><strong>A credit phrase beside an own site or name.</strong> A credit phrase is “adapted from”, “borrowed from”, “reproduced from”, “reprinted from”, “with permission from”, “courtesy of”, “credit to”, “written by”, “built from” (also created, developed, maintained, designed, hosted, provided, made, powered or run, with “by” or “from”), “tooling by”, “template by”, “thanks to” or “acknowledge”, a <code>Source:</code> line (also in bold, emphasis or a list item), a div titled <code>Source</code> (or classed <code>.source</code>), or a section under an Acknowledgments or Acknowledgements heading (any own site or name there counts, with no phrase needed). An own site or name is any entry of <code>urls</code> or <code>names</code>. The own site or name must sit in the same sentence as the credit phrase, on the same <code>Source:</code> line, or anywhere inside the <code>Source</code> div. A paragraph ends at a blank line, a heading or a list item. Front matter, inline code and code fences are skipped.</li>
 </ul>
 <p>The check does not flag a link or a mention on its own (“for further reading, see the sds notes”), a credit to a person outside the group, a citation of an entry that is not own, a line matching an <code>allow-patterns</code> regular expression, a cross-reference, a code fence or a chunk option.</p>
 <section id="the-config-file" class="level2">
