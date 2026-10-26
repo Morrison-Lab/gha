@@ -5,7 +5,8 @@ description: >-
   cites a result div that follows the solution, not the solution itself.
   Scoped to lines a diff adds. Blocking by default. Escape hatch, for an
   exercise that asks students to prove the result: an HTML comment reading
-  `check-solution-citations: allow` on the line.
+  `check-solution-citations: allow` on the line, or a sentence reading
+  "the solution to @exr-slug" (which excuses only `@sol-slug`).
 inputs:
   python-version:
     description: Python version to set up.

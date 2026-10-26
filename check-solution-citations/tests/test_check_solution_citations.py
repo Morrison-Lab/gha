@@ -88,6 +88,21 @@ def test_proof_in_a_quoted_attribute_is_not_a_scope():
     assert hits(text) == []
 
 
+def test_an_email_address_is_not_a_solution_reference():
+    text = "::: proof\nWrite to help@sol-lab.org.\n:::"
+    assert hits(text) == []
+
+
+def test_unspaced_dashes_do_not_join_the_slug():
+    text = "::: proof\nThe solution to @exr-a---see @sol-a.\n:::"
+    assert hits(text) == []
+
+
+def test_chained_classes_still_scope_the_div():
+    text = "::: {.proof.unlisted}\nSee @sol-a.\n:::"
+    assert hits(text) == [(2, "@sol-a")]
+
+
 def test_nested_div_inside_a_proof_is_read():
     text = "::: proof\n::: {.callout-note}\nSee @sol-a.\n:::\n:::"
     assert hits(text) == [(3, "@sol-a")]

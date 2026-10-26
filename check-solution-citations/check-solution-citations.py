@@ -68,15 +68,17 @@ ADVICE = (
     "result, add <!-- check-solution-citations: allow --> to the line"
 )
 
-SOL_REF_RE = re.compile(r"@sol-[A-Za-z0-9_-]+")
+SOL_REF_RE = re.compile(r"(?<![A-Za-z0-9._-])@sol-[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)*")
 # "This is the solution (or answer) to @exr-x: see @sol-x" marks the exception,
 # and only for the solution that shares the exercise's slug.
-EXCEPTION_RE = re.compile(r"(?:solution|answer)\s+to\s+\[?@exr-([A-Za-z0-9_-]+)", re.IGNORECASE)
+EXCEPTION_RE = re.compile(
+    r"(?:solution|answer)s?\s+to\s+(?:Exercise\s+)?\[?-?@exr-([A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)*)",
+    re.IGNORECASE)
 
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 # Match the div's own class or id token, never text inside a quoted attribute.
-SCOPE_RE = re.compile(r"(?:^|[\s{])(?:\.?proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}]|$)")
+SCOPE_RE = re.compile(r"(?:^|[\s{])(?:\.?proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}.#]|$)")
 QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
