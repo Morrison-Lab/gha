@@ -605,3 +605,42 @@ def test_chunk_code_that_is_not_a_log_odds_label_passes(code):
 def test_chunk_label_allow_directive_is_honoured():
     text = _chunk('# <!-- check-literal-math-letters: allow -->\nxlab("Log-odds z")')
     assert flagged(text) == {}
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('ggplot(d) +\n  labs(\n    x = "Log-odds z",\n    y = "p"\n  )', {4: ["z[log-odds]"]}),
+    ('labs(subtitle = "Log-odds F")', {2: ["F[log-odds]"]}),
+    ('ylab("Logit z")', {2: ["z[log-odds]"]}),
+    ('ggtitle("Log-odds F")', {2: ["F[log-odds]"]}),
+    ('scale_x_continuous(name = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('ax.set_ylabel("Log-odds z")', {2: ["z[log-odds]"]}),
+    ('ax.set_title("Log-odds F")', {2: ["F[log-odds]"]}),
+    ('xlab("Log-odds \\"z\\"")', {2: ["z[log-odds]"]}),
+    ('xlab("Log-odds z"); ylab("Logit F")', {2: ["z[log-odds]", "F[log-odds]"]}),
+])
+def test_chunk_labels_in_each_call_shape_are_flagged(code, expected):
+    assert flagged(_chunk(code)) == expected
+
+
+@pytest.mark.parametrize("code", [
+    'd <- data.frame(name = "logit z", v = 1)',
+    '# labs(x = "Log-odds z")',
+    'x <- 1  # label = "log-odds z"',
+    'ax.set_xlabel(f"Log-odds {z}")',
+    'title <- "Log-odds z"',
+    'labs(\n  x = "Log-odds η"\n)\nnote <- "Log-odds z"',
+])
+def test_chunk_strings_outside_labels_or_in_comments_pass(code):
+    assert flagged(_chunk(code)) == {}
+
+
+def test_chunk_allow_exempts_its_own_line_and_the_next_only():
+    code = ('xlab("Log-odds z")  # check-literal-math-letters: allow\n'
+            'ylab("Log-odds z")\n'
+            'ggtitle("Log-odds z")')
+    assert flagged(_chunk(code)) == {4: ["z[log-odds]"]}
+
+
+def test_chunk_call_state_resets_between_chunks():
+    text = _chunk("labs(") + "\n\n" + _chunk('d <- c(label_text = "Log-odds z")')
+    assert flagged(text) == {}

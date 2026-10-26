@@ -25,8 +25,10 @@ What is not flagged:
   commands (``\label``, ``\tag``, ``\eqref``, ``\begin``, ``\end``, ...);
 - runs of two or more letters (``\sin`` written without a backslash is a
   different mistake, and ``x y`` written as ``xy`` is not a *single* letter);
-- code fences (except the label strings of a plot call, see below), code
-  spans, HTML comments and YAML front matter;
+- code fences, code spans, HTML comments and YAML front matter; the one
+  exception is the log-odds rule, which also reads the label strings of a plot
+  inside a code chunk (``labs()``, ``xlab()``, ``set_xlabel()``, ``label=`` and
+  the like, across lines, with comments skipped);
 - any ``::: {.notation}`` div (a passage that discusses the notation itself,
   where a literal letter is the point);
 - macro definitions (a math span that opens with ``\newcommand``, ``\def`` and
@@ -154,12 +156,17 @@ LOGODDS_CONTEXT_RE = re.compile(r"(?<!\\)\b(?:log[- ]?odds|logits?)\b", re.IGNOR
 LOGODDS_EXEMPT_RE = re.compile(r"\b(?:wald|quantiles?|statistics?|tests?|z-scores?)\b", re.IGNORECASE)
 LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z0-9_^])([zF])(?![A-Za-z0-9_^(])")
 LOGODDS_SUFFIX = "[log-odds]"
-# A label call in a code chunk: ggplot2 labs()/xlab()/ylab()/expression()/name=,
-# matplotlib set_xlabel()/set_ylabel()/label=.
-CODE_LABEL_RE = re.compile(
-    r"\b(?:labs|xlab|ylab|ggtitle|expression|set_xlabel|set_ylabel|set_title"
-    r"|scale_\w+|label|name|title)\s*[(=]")
-CODE_STRING_RE = re.compile(r"\"([^\"\n]*)\"|'([^'\n]*)'")
+# The label strings of a plot in a code chunk: the strings inside ggplot2's
+# labs(), xlab(), ylab(), ggtitle(), expression() and scale_*(), matplotlib's
+# set_xlabel(), set_ylabel() and set_title(), and the value of a ``label``,
+# ``subtitle`` or ``caption`` argument.  Only strings are read; a bare symbol
+# in ``expression(paste("Log-odds ", z))`` is not.
+LABEL_CALLS = frozenset({
+    "labs", "xlab", "ylab", "ggtitle", "expression",
+    "set_xlabel", "set_ylabel", "set_title", "legend",
+})
+LABEL_ARGS = frozenset({"label", "subtitle", "caption"})
+CODE_BRACES_RE = re.compile(r"\{[^{}]*\}")  # an f-string field is a value
 
 
 def _blank_text_args(seg: str) -> str:
@@ -422,14 +429,46 @@ def _div_is_notation(attrs: str) -> bool:
     return bool(NOTATION_CLASS_RE.search(QUOTED_RE.sub("", attrs)))
 
 
-def _code_label_tokens(raw: str) -> List[str]:
-    """Log-odds tokens in the label strings of one line of a code chunk."""
+def _scan_chunk_line(raw: str, calls: List[str]) -> List[str]:
+    """Log-odds tokens in the label strings of one line of a code chunk.
+
+    ``calls`` is the stack of call names still open from earlier lines
+    (``""`` for a bare parenthesis), so a ``labs(`` that ends its line still
+    covers the arguments on the lines below it.  A string counts as a label
+    when it sits inside a label call or is the value of a label argument.
+    Comments are skipped, and so is ``{...}`` in a string (an f-string field).
+    """
     tokens: List[str] = []
-    for sm in CODE_STRING_RE.finditer(raw):
-        text = sm.group(1) if sm.group(1) is not None else sm.group(2)
-        if LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
-            for lm in LOGODDS_LETTER_RE.finditer(text):
-                tokens.append(lm.group(1) + LOGODDS_SUFFIX)
+    arg = ""  # name of the argument being read, as in ``x = "..."``
+    i, n = 0, len(raw)
+    while i < n:
+        ch = raw[i]
+        if ch == "#":
+            break
+        if ch in "\"'":
+            j = i + 1
+            while j < n and raw[j] != ch:
+                j += 2 if raw[j] == "\\" else 1
+            text = CODE_BRACES_RE.sub("", raw[i + 1:j].replace("\\" + ch, ch))
+            in_label = arg in LABEL_ARGS or any(c in LABEL_CALLS or c.startswith("scale_") for c in calls)
+            if in_label and LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
+                tokens.extend(m.group(1) + LOGODDS_SUFFIX for m in LOGODDS_LETTER_RE.finditer(text))
+            arg, i = "", j + 1
+            continue
+        if ch == "(":
+            m = re.search(r"([A-Za-z_][\w.]*)\s*$", raw[:i])
+            calls.append(m.group(1).split(".")[-1] if m else "")
+            arg = ""
+        elif ch == ")":
+            if calls:
+                calls.pop()
+            arg = ""
+        elif ch == "," :
+            arg = ""
+        elif ch == "=" and not raw.startswith("==", i):
+            m = re.search(r"([A-Za-z_]\w*)\s*$", raw[:i])
+            arg = m.group(1) if m else ""
+        i += 1
     return tokens
 
 
@@ -446,6 +485,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     env: Optional[str] = None
     divs: List[Div] = []
     allow_through = 0  # last line number covered by an `allow` directive
+    chunk_calls: List[str] = []  # calls left open in the current code chunk
     start = 0
 
     if lines and lines[0].strip() == "---":
@@ -462,16 +502,17 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
                     and not m.group(2).strip()):
                 fence = None
-            elif "check-literal-math-letters: allow" in raw:
-                allow_through = lineno + 1  # a comment line in the chunk
-            elif lineno > allow_through and CODE_LABEL_RE.search(raw):
-                code_tokens = _code_label_tokens(raw)
-                if code_tokens:
+            else:
+                if "check-literal-math-letters: allow" in raw:
+                    allow_through = lineno + 1  # this line and the next
+                code_tokens = _scan_chunk_line(raw, chunk_calls)
+                if code_tokens and lineno > allow_through:
                     findings.append(Finding(lineno, tuple(code_tokens)))
             continue
         m = FENCE_RE.match(raw)
         if m and not in_display and env is None:
             fence = (m.group(1)[0], len(m.group(1)))
+            chunk_calls = []
             continue
 
         directive = None if in_comment else DIRECTIVE_RE.match(raw)
