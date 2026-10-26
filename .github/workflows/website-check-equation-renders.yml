@@ -2,6 +2,11 @@
 # Triggered when the build workflow finishes; downloads its artifact and
 # crawls the extracted site for MathJax render errors.
 #
+# This leg only warns. A `workflow_run` run is recorded against the default
+# branch's sha whatever PR it checks, so a failure here turned main's commit
+# red for a bad page in someone else's preview. The blocking check runs on the
+# PR head, in website-preview.yml's `check-equations` job.
+#
 # NOTE: the `workflows:` value below MUST match the `name:` of the build
 # workflow (website-preview.yml). `workflow_run` triggers only fire when this
 # file lives on the default branch.
@@ -20,3 +25,5 @@ jobs:
       contents: read
       actions: read
     uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v3
+    with:
+      fail: false
