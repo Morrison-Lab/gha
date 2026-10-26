@@ -29,11 +29,12 @@ on:
       workflow-id:
         description: >-
           A key for the finished run's workflow and triggering event, such as
-          github.event.workflow_run.workflow_id joined to its event.
-          When set, a gate still queued or running for an earlier run of the same
-          workflow on the same commit (a re-run or a later attempt) is
-          replaced by the newer one, so a burst of finishing runs cannot
-          flood a small self-hosted pool. Empty keeps one gate per run.
+          github.event.workflow_run.workflow_id joined to
+          github.event.workflow_run.event. When set, a gate still queued or
+          running for an earlier run of the same workflow and event on the
+          same commit (a re-run or a later attempt) is cancelled by the newer
+          one, so a burst of finishing runs cannot flood a small self-hosted
+          pool. When empty, each run keeps its own gate.
         type: string
         default: ''
       levels:

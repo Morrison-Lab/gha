@@ -116,7 +116,7 @@ A job-level `concurrency` group does this, named
 so a burst of finishing runs cannot flood a small self-hosted pool.
 The gate posts its check run in one call at the end,
 so a cancelled gate leaves none behind.
-Empty, the group falls back to the run id, which is unique,
+When empty, the group falls back to the run id, which is unique,
 and each run keeps its own gate.
 Do not name a caller-level `concurrency` group with the prefix
 `annotation-gate-run-`:
