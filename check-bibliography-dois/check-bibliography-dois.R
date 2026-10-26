@@ -181,8 +181,11 @@ validate_doi_url <- function(doi,
     # (psw#369 failed twice on one, in a file the PR did not touch).
     return(list(
       is_valid = TRUE,
-      warning = sprintf("DOI URL returned status %d after %d attempts (%s, not verified)", last_status_code, max_attempts,
-                        if (last_status_code == 429) "rate-limited" else "resolver unavailable"),
+      warning = if (last_status_code == 429) {
+        sprintf("DOI URL returned status %d after %d attempts (rate-limited, not verified)", last_status_code, max_attempts)
+      } else {
+        sprintf("DOI URL returned status %d after %d attempts (resolver unavailable, not verified)", last_status_code, max_attempts)
+      },
       error = NULL,
       status_code = last_status_code
     ))
