@@ -1,0 +1,56 @@
+name: Check proofs for solution citations
+description: >-
+  Diff-scoped check that flags a cross-reference to a solution (`@sol-`) inside
+  a `proof` div or a `#thm-`, `#lem-`, `#cor-` or `#prp-` div. A derivation
+  cites a result div that follows the solution, not the solution itself.
+  Scoped to lines a diff adds. Blocking by default. Escape hatch, for an
+  exercise that asks students to prove the result: an HTML comment reading
+  `check-solution-citations: allow` on the line, or a sentence reading
+  "the solution (or answer) to @exr-slug" (which excuses only `@sol-slug`).
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Needs the base commit in history (checkout with fetch-depth: 0); when
+      the diff can't be computed the check is skipped with a warning rather
+      than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a proof or result div cites a solution (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check proofs for solution citations
+      shell: bash
+      env:
+        CSC_BASE_REF: ${{ inputs.base-ref }}
+        CSC_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CSC_GLOBS: ${{ inputs.globs }}
+        CSC_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CSC_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-solution-citations.py"
