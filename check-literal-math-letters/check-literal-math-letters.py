@@ -216,7 +216,7 @@ ENV_BEGIN_RE = re.compile(
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?![\s$])(.+?)(?<![\s\\$])\$(?!\d)")
 # A blockquote paragraph that opens with the cross mark is a counter-example of
 # what not to write, so its raw letters are the point and are never flagged.
-QUOTE_RE = re.compile(r"^\s*>(.*)$")
+QUOTE_RE = re.compile(r"^\s*(?:>\s*)+(.*)$")
 BAD_EXAMPLE_MARK = "❌"
 GOOD_EXAMPLE_MARK = "✅"
 NOTATION_CLASS_RE = re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
@@ -437,6 +437,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     divs: List[Div] = []
     allow_through = 0  # last line number covered by an `allow` directive
     bad_example = False  # inside a blockquote paragraph that opens with a cross mark
+    quote_open = True  # the next quote line opens a paragraph or follows a check-mark line
     start = 0
 
     if lines and lines[0].strip() == "---":
@@ -468,15 +469,22 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             in_display = False
             env = None  # a blank line ends an unclosed environment, as for $$
             bad_example = False
+            quote_open = True
             continue
 
         quote = QUOTE_RE.match(line)
         if quote is None or not quote.group(1).strip():
             bad_example = False  # a non-quote line or an empty `>` ends the paragraph
-        elif quote.group(1).lstrip().startswith(BAD_EXAMPLE_MARK):
-            bad_example = True
-        elif quote.group(1).lstrip().startswith(GOOD_EXAMPLE_MARK):
-            bad_example = False
+            quote_open = True
+        else:
+            text = quote.group(1).lstrip()
+            if text.startswith(BAD_EXAMPLE_MARK) and quote_open:
+                bad_example = True
+            elif text.startswith(GOOD_EXAMPLE_MARK):
+                bad_example = False
+            # a cross mark starts a counter-example only when it opens the
+            # paragraph (or follows a check-mark line), not in mid-paragraph
+            quote_open = text.startswith(GOOD_EXAMPLE_MARK)
 
         if not in_display and env is None:
             dm = DIV_RE.match(line)

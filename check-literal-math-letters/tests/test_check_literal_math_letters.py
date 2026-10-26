@@ -536,6 +536,23 @@ def test_quote_without_a_cross_mark_is_still_checked():
     assert flagged("> Let $x$ be the input.\n") == {1: ["x"]}
 
 
+def test_empty_quote_line_ends_the_cross_mark_paragraph():
+    # no check mark follows, so only the empty `>` can reset the skip
+    assert flagged("> ❌ $x$\n>\n> $y$\n") == {3: ["y"]}
+
+
+def test_nested_quote_cross_mark_is_skipped_and_nested_blank_ends_it():
+    assert flagged("> > ❌ $x$\n> >\n> > $y$\n") == {3: ["y"]}
+
+
+def test_cross_mark_in_the_middle_of_a_paragraph_does_not_start_a_skip():
+    assert flagged("> Consider:\n> ❌ $x$\n") == {2: ["x"]}
+
+
+def test_cross_mark_after_a_check_mark_line_starts_a_skip():
+    assert flagged("> ✅ $x$\n> ❌ $y$\n") == {1: ["x"]}
+
+
 # -- the log-odds symbol -----------------------------------------------------
 
 def test_z_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
