@@ -1887,6 +1887,83 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-def-commentary || true
           rm -rf _ci-def-commentary
+  # check-solution-citations is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-solution-citations@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly.
+  solution-citations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-solution-citations unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-solution-citations/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-solution-citations
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no proofs, so stage a page whose proof
+      # cites a solution and assert that the blocking call really fails.
+      - name: Stage a proof that cites a solution
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-solution-citations
+          printf '%s\n' '::: proof' 'First a step.' 'By @sol-a.' ':::' > _ci-solution-citations/page.qmd
+          git add -f _ci-solution-citations/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: solution-citations-expected-failure
+        continue-on-error: true
+        uses: ./check-solution-citations
+        with:
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.solution-citations-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-solution-citations to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-solution-citations
+        with:
+          base-ref: ''
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-solution-citations
+        with:
+          whole-tree: 'true'
+          paths-ignore: '_ci-solution-citations'
+      - name: Check again with globs excluding the page
+        uses: ./check-solution-citations
+        with:
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Check again with fail off, expecting a pass
+        uses: ./check-solution-citations
+        with:
+          whole-tree: 'true'
+          fail: 'false'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-solution-citations || true
+          rm -rf _ci-solution-citations
   # check-exm-figures is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-exm-figures@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
@@ -2827,6 +2904,52 @@ jobs:
       - name: Run mention-filter job-split tests
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-mention-filter-tests.py
+      - name: Run find-fallback-verdict tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-find-fallback-verdict-tests.py
+      # The unit tests call the script directly, so they cannot see whether
+      # action.yml resolves its script paths and passes its inputs through
+      # (gha#196, gha#812). Two real `uses: ./` calls over a stubbed comments
+      # file, one per direction, prove it. The fixture is generated here so
+      # no committed review text is swept into other jobs' scans.
+      - name: Write find-fallback-verdict fixture
+        id: ffv-fixture
+        shell: bash
+        run: |
+          head=$(printf 'c%.0s' $(seq 40))
+          stale=$(printf 'd%.0s' $(seq 40))
+          body="Summary: fine.\n\n### Verdict: Ready for merge\n\nReviewed-Commit: ${head}\n\n---\n_Posted by Claude Code (AI agent) --- not written by a human._"
+          jq -n --arg b "$(printf "$body")" \
+            '[{body: $b, author_association: "MEMBER", created_at: "2026-10-22T20:00:00Z", html_url: "https://example.test/c/1"}]' \
+            > "$RUNNER_TEMP/ffv-comments.json"
+          echo "head=${head}" >> "$GITHUB_OUTPUT"
+          echo "stale=${stale}" >> "$GITHUB_OUTPUT"
+      - name: find-fallback-verdict finds a clean review of the head
+        id: ffv-found
+        uses: ./.github/actions/find-fallback-verdict
+        with:
+          repository: example/repo
+          pr-number: '1'
+          comments-file: ${{ runner.temp }}/ffv-comments.json
+          head-sha: ${{ steps.ffv-fixture.outputs.head }}
+      - name: find-fallback-verdict ignores a review of an older sha
+        id: ffv-stale
+        uses: ./.github/actions/find-fallback-verdict
+        with:
+          repository: example/repo
+          pr-number: '1'
+          comments-file: ${{ runner.temp }}/ffv-comments.json
+          head-sha: ${{ steps.ffv-fixture.outputs.stale }}
+      - name: Assert find-fallback-verdict outputs
+        shell: bash
+        env:
+          FOUND: ${{ steps.ffv-found.outputs.found }}
+          FOUND_URL: ${{ steps.ffv-found.outputs.url }}
+          STALE: ${{ steps.ffv-stale.outputs.found }}
+        run: |
+          [[ "$FOUND" == "true" ]] || { echo "::error::expected found=true, got '$FOUND'"; exit 1; }
+          [[ "$FOUND_URL" == "https://example.test/c/1" ]] || { echo "::error::wrong url '$FOUND_URL'"; exit 1; }
+          [[ "$STALE" == "false" ]] || { echo "::error::expected found=false for a stale sha, got '$STALE'"; exit 1; }
       - name: Run classify-push-failure tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh

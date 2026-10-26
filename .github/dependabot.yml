@@ -33,6 +33,7 @@ updates:
       - "/check-pr-size"
       - "/check-pr-concerns"
       - "/check-def-commentary"
+      - "/check-solution-citations"
       - "/check-exm-figures"
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"

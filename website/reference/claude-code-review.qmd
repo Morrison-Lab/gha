@@ -188,7 +188,27 @@ to enforce that only PRs with an affirmatively clean AI review verdict
 | ------ | --------------- |
 | Green | The review completed, was posted for the current PR head, and produced an affirmatively clean verdict ("Ready for merge"). |
 | Gray (skipped) | No review was due on this run (draft, fork, bot author, cancellation, or stale head). Does not block merging. |
-| Red | The review failed, produced a non-clean verdict ("Needs more work", "Changes requested", "Blocked", or unaddressed findings), or never ran on this head because the API quota was exhausted or the default-branch workflow restore failed ([gha#1019](https://github.com/Morrison-Lab/gha/issues/1019)). Blocks merging when configured as a required check. |
+| Red | The review failed, produced a non-clean verdict ("Needs more work", "Changes requested", "Blocked", or unaddressed findings), or never ran on this head because the API quota was exhausted or the default-branch workflow restore failed ([gha#1019](https://github.com/Morrison-Lab/gha/issues/1019)). A quota skip is green instead when a clean fallback review of the current head is recorded on the PR: a separate-agent review comment from an owner, member or collaborator that carries the agent-authorship marker and names the head sha in a `Reviewed-Commit:` line ([gha#1163](https://github.com/Morrison-Lab/gha/issues/1163)). Blocks merging when configured as a required check. |
+
+### Fallback review on a quota skip
+
+When the API quota is exhausted, `require-clean-verdict` goes green
+only if a clean separate-agent review of the current head is recorded
+as a PR comment.
+A comment counts when all of these hold:
+
+- Its author is an owner, member or collaborator.
+  The PR author's own comment counts, because the lab's agent sessions
+  post under the account holder's login.
+- It carries the agent-authorship marker.
+- It names the full head sha on a `Reviewed-Commit:` line.
+- The marker and that line sit in the comment's own prose.
+  Text inside a code fence, a blockquote or an indented code block
+  is ignored, so quoting a review does not record one.
+- The classifier reads its verdict as clean.
+
+The newest such comment decides, and a push retires it
+([gha#1182](https://github.com/Morrison-Lab/gha/issues/1182)).
 
 ## Concurrency
 

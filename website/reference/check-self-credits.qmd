@@ -22,9 +22,14 @@ The check flags two things on a line a pull request adds:
   Both `[@key]` and a bare `@key` count.
 - **A credit phrase beside an own site or name.**
   A credit phrase is "adapted from", "borrowed from", "reproduced from",
-  "reprinted from", "with permission from", "courtesy of" or "credit to",
+  "reprinted from", "with permission from", "courtesy of", "credit to",
+  "written by", "built from" (also created, developed, maintained,
+  designed, hosted, provided, made, powered or run, with "by" or "from"),
+  "tooling by", "template by", "thanks to" or "acknowledge",
   a `Source:` line (also in bold, emphasis or a list item),
-  or a div titled `Source` (or classed `.source`).
+  a div titled `Source` (or classed `.source`),
+  or a section under an Acknowledgments or Acknowledgements heading
+  (any own site or name there counts, with no phrase needed).
   An own site or name is any entry of `urls` or `names`.
   The own site or name must sit in the same sentence as the credit phrase,
   on the same `Source:` line, or anywhere inside the `Source` div.
