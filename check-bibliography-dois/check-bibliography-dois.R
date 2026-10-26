@@ -248,6 +248,8 @@ crossref_registered <- function(doi_identifier, http_get = GET) {
   tryCatch({
     code <- status_code(http_get(api_url, timeout(30), user_agent(USER_AGENT)))
     if (code == 200) TRUE else if (code == 429 || code >= 500) NA else FALSE
+  # A Crossref timeout or transport error stays FALSE (not registered): the
+  # conservative reading, so an unreachable network never passes a bad DOI.
   }, error = function(e) FALSE)
 }
 
