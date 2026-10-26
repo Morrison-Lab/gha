@@ -7,7 +7,8 @@ without an exercise and its solution just before it.
 Every `#thm-`, `#lem-`, `#cor-` or `#prp-` div gets an exercise
 that asks for the result, then the solution,
 and the result div states what the solution showed.
-The matching citation rule is [check-solution-citations](check-solution-citations.qmd).
+The matching citation rule is
+[check-solution-citations](check-solution-citations.qmd).
 This implements
 [gha#1242](https://github.com/Morrison-Lab/gha/issues/1242).
 
@@ -21,7 +22,8 @@ Its kind is the prefix of the included file name (`_exr-name.qmd`)
 or of the div id.
 Blank lines, slide breaks and HTML comments are skipped;
 a heading breaks adjacency.
-A result block passes when the two blocks before it are an exercise and then a solution.
+A result block passes when the two blocks before it
+are an exercise and then a solution.
 With several pairs in a row, only the last pair is read.
 
 ## Scope
