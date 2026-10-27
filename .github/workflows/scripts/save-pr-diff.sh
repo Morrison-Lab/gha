@@ -28,7 +28,15 @@ fi
 
 mkdir -p "$(dirname "$TARGET")"
 
-if gh pr diff "$PR_NUMBER" --repo "$REPO" > "$TARGET" && [ -s "$TARGET" ]; then
+# `gh pr diff` fails for a PR that changes more than 300 files (HTTP 406), so
+# fall back to the per-file patches from the files API, which reaches 3000 files.
+files_api_diff() {
+  gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[] |
+    "diff --git a/\(.previous_filename // .filename) b/\(.filename)\n--- a/\(.previous_filename // .filename)\n+++ b/\(.filename)\n\(.patch // "")"'
+}
+
+if { gh pr diff "$PR_NUMBER" --repo "$REPO" > "$TARGET" && [ -s "$TARGET" ]; } \
+  || { files_api_diff > "$TARGET" && [ -s "$TARGET" ]; }; then
   # Resolve to absolute path
   ABS_TARGET="$(cd "$(dirname "$TARGET")" && pwd)/$(basename "$TARGET")"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
@@ -40,5 +48,5 @@ else
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     echo "path=" >> "$GITHUB_OUTPUT"
   fi
-  echo "::warning::Could not save the PR diff to $TARGET; the reviewer will fall back to calling gh pr diff itself."
+  echo "::warning::Could not save the PR diff to $TARGET (gh pr diff and the files API both failed); the reviewer will fall back to calling gh pr diff itself."
 fi
