@@ -41,6 +41,8 @@ def flagged(body: str):
     "Explain why the line fits and then derive its variance.",
     "(a) Find the mean and then compare it with the median.",
     "Plot the data. Explain the trend.",
+    "Fit the model, then report the slope.",
+    "Compute the mean and also compare it with the median.",
 ])
 def test_two_asks_are_flagged(body):
     assert flagged(body) == [2]
@@ -165,8 +167,14 @@ def test_a_part_exemption_does_not_hide_the_next_part():
     assert flagged(body) == [5]
 
 
-def test_an_exercise_exemption_sits_on_the_opening_fence():
+def test_an_exercise_exemption_sits_on_the_line_before_the_opening_fence():
     text = "<!-- single-ask-ok: one task -->\n::: {#exr-a}\nCompute x. Then plot y.\nAlso find z. Then plot w.\n:::\n"
+    found, _ = sap.scan_file(text.split("\n"))
+    assert found == []
+
+
+def test_an_exercise_exemption_sits_on_the_opening_fence():
+    text = "::: {#exr-a}  <!-- single-ask-ok: one task -->\nCompute x. Then plot y.\nAlso find z. Then plot w.\n:::\n"
     found, _ = sap.scan_file(text.split("\n"))
     assert found == []
 

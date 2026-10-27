@@ -1,8 +1,8 @@
 # Copy to .github/workflows/check-single-ask-parts.yml in your repo.
 # Diff-scoped check: warns when a PR adds or revises an exercise part (a list
-# item or paragraph in an exr- div, outside its solution) that asks for more
+# item or paragraph in an exercise div (`#exr-`), outside its solution) that asks for more
 # than one thing, such as "Compute X, and compare it with Y". Each part asks
-# for one thing. <!-- single-ask-ok: reason --> exempts a part (or an exercise, on its opening fence).
+# for one thing. <!-- single-ask-ok: reason --> exempts a part, or an exercise when it sits on the opening fence or the line before it.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check single-ask parts
 

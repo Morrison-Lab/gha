@@ -23,7 +23,7 @@ The check does not count:
 - a part that carries `<!-- single-ask-ok: reason -->`
   on its first line or the line before it,
   or an exercise that carries it on its opening fence
-  or the line before that.
+  or on the line just before the fence.
 
 A part the pull request does not touch is never reported.
 With no base to diff against, the check skips
@@ -43,7 +43,7 @@ Known limits of the heuristic:
 | Input | Default | Meaning |
 | --- | --- | --- |
 | `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
-| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `paths-ignore` | none | Comma- or newline-separated globs to skip |
 | `fail` | `false` | Fail on a finding; `false` warns |
 | `whole-tree` | `false` | Scan every part, to measure a corpus |
 | `python-version` | `3.x` | Python version |
