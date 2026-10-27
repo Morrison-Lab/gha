@@ -1001,6 +1001,12 @@ cookieconsent.run({
 <li>a part that carries <code>&lt;!-- single-ask-ok: reason --&gt;</code> on its first line or the line before it, or an exercise that carries it on its opening fence or the line before that.</li>
 </ul>
 <p>A part the pull request does not touch is never reported. With no base to diff against, the check skips instead of scanning the whole tree. It is a heuristic, so it warns by default; <code>fail: true</code> makes it block.</p>
+<p>Known limits of the heuristic:</p>
+<ul>
+<li>a code block, display math or comment line in the middle of a list item splits the item into two parts;</li>
+<li>a <code>.sol</code> div opened inside a comment or code fence is still read as a solution;</li>
+<li>an unbalanced backtick around <code>--&gt;</code> in a comment can leave the comment open.</li>
+</ul>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
