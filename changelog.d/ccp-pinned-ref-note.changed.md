@@ -1,4 +1,5 @@
-- **`check-caller-permissions` reference page now says to run the check at the pinned refs.**
-  Running the script with `CCP_GHA_DIR` set to gha `main` reports grants that a caller's pinned
-  callee does not request, which led to speculative grants and a wrong review finding
+- **`check-caller-permissions` says where it read each callee, and warns when `CCP_GHA_DIR` overrides the pinned refs.**
+  Each call's output line names the ref and source.
+  A run against a local gha checkout, which can report grants the pinned callee does not request,
+  now prints a warning instead of passing for a normal run
   ([`lds#1468`](https://github.com/Morrison-Lab/lds/issues/1468)).

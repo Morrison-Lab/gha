@@ -176,6 +176,17 @@ def test_main_passes_a_good_caller(monkeypatch, tree):
     assert _main(monkeypatch, tree, caller(FULL)) == 0
 
 
+def test_override_warns_and_every_call_names_its_source(monkeypatch, tree, capsys):
+    assert _main(monkeypatch, tree, caller(FULL)) == 0
+    out = capsys.readouterr().out
+    assert "::warning::CCP_GHA_DIR=" in out
+    assert "ignoring the pinned ref v3" in out
+
+
+def test_source_label_names_the_pinned_ref_when_fetching():
+    assert ccp.source_label("v3", None) == "v3 on raw.githubusercontent.com"
+
+
 def test_main_missing_callee_fails_closed(monkeypatch, tree):
     gha, _ = tree
     (gha / ".github" / "workflows" / "c.yml").unlink()

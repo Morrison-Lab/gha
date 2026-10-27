@@ -27,14 +27,15 @@ exits 2 instead of passing.
 
 The callee is read at the ref the caller pins, so the result is only as good as
 that pin.
-Running the script by hand with `CCP_GHA_DIR` set to a checkout of gha `main`
-reads the newest definitions instead and reports grants that the pinned callee
-does not request (a `@v2` workflow that omits a permission `@v3` added, for
-example).
-Do not set `CCP_GHA_DIR` to answer "does this caller work today?";
-leave it unset, so the check fetches each callee at its pinned ref.
-Morrison-Lab/lds#1468 shows both failures: a grant added because a run against
-`main` reported it missing, and a review finding built on the same run.
+Each call's output line says where its callee was read from.
+Setting `CCP_GHA_DIR` to a local gha checkout reads that checkout instead and
+prints a warning that the pinned refs are ignored.
+A checkout of `main` reports grants that the pinned callee does not request
+(a `@v2` workflow that omits a permission `@v3` added, for example),
+so use the override for tests and offline runs, not to answer
+"does this caller work today?"
+(Morrison-Lab/lds#1468 shows both failures: a grant added because a run against
+`main` reported it missing, and a review finding built on the same run).
 
 ## Inputs
 
