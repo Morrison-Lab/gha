@@ -1,0 +1,145 @@
+"""Unit tests for check-single-ask-parts.
+
+Covers which parts are flagged, what is ignored (solutions, code, math,
+comments, the allow comment), diff scoping, the skip-not-fall-back guard, and
+the defaults the action, the reusable workflow and the script must agree on.
+
+The script's name has a hyphen, so load it by path.
+"""
+
+import importlib.util
+import subprocess
+from pathlib import Path
+
+import pytest
+
+_DIR = Path(__file__).resolve().parent.parent
+_spec = importlib.util.spec_from_file_location(
+    "check_single_ask_parts", _DIR / "check-single-ask-parts.py"
+)
+assert _spec is not None and _spec.loader is not None
+sap = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(sap)
+
+
+def exercise(body: str) -> str:
+    return "::: {#exr-a}\n" + body + "\n:::\n"
+
+
+def flagged(body: str):
+    """First line (1-based, in the whole document) of each flagged part."""
+    found, _ = sap.scan_file(exercise(body).split("\n"))
+    return [p.line for p in found]
+
+
+# -- what is flagged ---------------------------------------------------------
+
+@pytest.mark.parametrize("body", [
+    "1. Compute the slope exactly, and compare it with the fitted value.",
+    "Compute the mean. Then plot the residuals.",
+    "- Fit the model; then report the slope.",
+    "Explain why the line fits and then derive its variance.",
+    "(a) Find the mean and then compare it with the median.",
+    "Plot the data. Explain the trend.",
+])
+def test_two_asks_are_flagged(body):
+    assert flagged(body) == [2]
+
+
+def test_reports_the_first_line_of_the_part():
+    body = "Consider the data.\n\n1. Plot the data.\n2. Compute the slope, and compare it with 2."
+    assert flagged(body) == [5]
+
+
+def test_second_list_item_only_is_flagged():
+    body = "1. Plot the data.\n2. Compute x. Then compare y."
+    assert flagged(body) == [3]
+
+
+# -- what is compliant -------------------------------------------------------
+
+@pytest.mark.parametrize("body", [
+    "1. Compute the slope exactly.",
+    "Find the mean and the variance.",
+    "Show that the estimator is unbiased.",
+    "Consider the data. Compute the mean.",
+    "1. Plot the data.\n2. Compare the two fits.",
+    "Explain why the fit is poor, and why the residuals grow.",
+])
+def test_one_ask_is_not_flagged(body):
+    assert flagged(body) == []
+
+
+@pytest.mark.parametrize("body", [
+    "Prompt.\n\n::: {.sol}\nCompute x. Then plot y.\n:::",
+    "```r\ncompute(x); plot(y)\n```\nFind the mean.",
+    "<!-- Compute x. Then plot y. -->\nFind the mean.",
+    "<!-- single-ask-ok: one task -->\nCompute x. Then plot y.",
+    "Compute x. Then plot y. <!-- single-ask-ok: one task -->",
+    "$$\\text{compute } x, \\text{then plot } y$$\nFind x.",
+])
+def test_ignored(body):
+    assert flagged(body) == []
+
+
+def test_text_outside_an_exercise_is_ignored():
+    found, seen = sap.scan_file("Compute x. Then plot y.\n".split("\n"))
+    assert found == [] and seen == 0
+
+
+# -- diff scoping ------------------------------------------------------------
+
+def _git(cwd, *args):
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+
+@pytest.fixture
+def repo(tmp_path, monkeypatch):
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "user.email", "t@example.com")
+    _git(tmp_path, "config", "user.name", "t")
+    (tmp_path / "old.qmd").write_text(exercise("1. Compute x. Then plot y."))
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-q", "-m", "base")
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+def _run(base="HEAD", whole_tree=False):
+    return sap.run_check(base, ["*.qmd"], [], whole_tree)
+
+
+def test_old_part_is_not_reflagged(repo):
+    (repo / "new.qmd").write_text(exercise("1. Compute x."))
+    _git(repo, "add", ".")
+    assert _run().findings == []
+
+
+def test_added_part_is_flagged(repo):
+    (repo / "new.qmd").write_text(exercise("1. Compute x, and compare it with y."))
+    _git(repo, "add", ".")
+    assert _run().findings == [("new.qmd", 2, 2)]
+
+
+def test_editing_an_old_part_flags_it(repo):
+    (repo / "old.qmd").write_text(exercise("1. Compute z. Then plot y."))
+    _git(repo, "add", ".")
+    assert _run().findings == [("old.qmd", 2, 2)]
+
+
+def test_whole_tree_flags_old_part(repo):
+    assert _run(whole_tree=True).findings == [("old.qmd", 2, 2)]
+
+
+def test_no_base_skips(repo):
+    assert _run(base="").skipped
+
+
+# -- defaults agree ----------------------------------------------------------
+
+def test_default_is_warn_only():
+    assert sap._DEFAULT_FAIL is False
+    action = (_DIR / "action.yml").read_text()
+    workflow = (_DIR.parent / ".github/workflows/check-single-ask-parts.yml").read_text()
+    assert "default: 'false'" in action
+    assert "default: false" in workflow

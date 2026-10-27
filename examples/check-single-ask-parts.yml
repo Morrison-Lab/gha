@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-single-ask-parts.yml in your repo.
+# Diff-scoped check: warns when a PR adds or revises an exercise part (a list
+# item or paragraph in an exr- div, outside its solution) that asks for more
+# than one thing, such as "Compute X, and compare it with Y". Each part asks
+# for one thing. <!-- single-ask-ok: reason --> exempts one part.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check single-ask parts
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-single-ask-parts.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every part, not just those a PR touches
