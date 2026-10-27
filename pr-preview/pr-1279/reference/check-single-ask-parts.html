@@ -994,18 +994,18 @@ cookieconsent.run({
 
 
 <p>Diff-scoped check that warns when a pull request adds or revises an exercise part that asks for more than one thing. The lab’s rule (Ezra, 2026-10-27) is that each exercise part asks for one thing, and a part that asks for several is split into several parts, with the solution split the same way.</p>
-<p>A part is a list item or a paragraph in the body of an exercise div (<code>#exr-</code>), outside any nested <code>.sol</code> or <code>.solution</code> div. An ask is a clause that opens with an imperative verb the exercises use, such as Compute, Find, Show, Compare, Plot or Explain. The check reports a part with two or more asks: two such sentences, or one sentence whose clauses open with such a verb after “, and”, “, then”, “; then”, “and then” or “and also”.</p>
+<p>A part is a list item or a paragraph in the body of an exercise div (<code>#exr-</code>), outside any nested <code>.sol</code> or <code>.solution</code> div. An ask is a clause that opens with an imperative verb the exercises use, such as Compute, Find, Show, Compare, Plot or Explain. The check reports a part with two or more asks: two such sentences, or one sentence whose clauses open with such a verb after “, and”, “, then”, “;”, “and then” or “and also”, or after a bare “and” that is followed by such a verb.</p>
 <p>The check does not count:</p>
 <ul>
-<li>anything inside a code fence, an HTML comment, display math or inline math;</li>
+<li>anything inside a code fence, a code span, an HTML comment, display math or inline math;</li>
 <li>a part that carries <code>&lt;!-- single-ask-ok: reason --&gt;</code> on its first line or the line before it, or an exercise that carries it on its opening fence or on the line just before the fence.</li>
 </ul>
 <p>A part the pull request does not touch is never reported. With no base to diff against, the check skips instead of scanning the whole tree. It is a heuristic, so it warns by default; <code>fail: true</code> makes it block.</p>
 <p>Known limits of the heuristic:</p>
 <ul>
-<li>a code block, display math or comment line in the middle of a list item splits the item into two parts;</li>
-<li>a <code>.sol</code> div opened inside a comment or code fence is still read as a solution;</li>
-<li>an unbalanced backtick around <code>--&gt;</code> in a comment can leave the comment open.</li>
+<li>a blank line inside a list item splits the item into two parts, as Markdown does for a paragraph;</li>
+<li>an ask phrased without one of the listed verbs, such as “Why does …?”, is not counted;</li>
+<li>the verb list is English only.</li>
 </ul>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
