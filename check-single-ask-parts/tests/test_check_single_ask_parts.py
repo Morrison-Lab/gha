@@ -190,3 +190,14 @@ def test_double_dollar_in_a_code_span_is_not_display_math():
 
 def test_a_display_pair_on_one_line_keeps_the_prose_around_it():
     assert flagged("1. Compute $$\\hat\\beta$$, and compare it with $\\beta$.") == [2]
+
+
+def test_display_math_inside_a_paragraph_does_not_split_the_part():
+    body = "Compute the slope\n$$\nb = 2\n$$\nand compare it with the intercept."
+    assert flagged(body) == [2]
+
+
+def test_div_fences_inside_a_code_fence_do_not_open_a_solution():
+    body = "Plot the data.\n```\n::: {.sol}\n```\nExplain the trend."
+    found, _ = sap.scan_file(exercise(body).split("\n"))
+    assert [p.line for p in found] == [2]

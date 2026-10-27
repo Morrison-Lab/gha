@@ -15,8 +15,9 @@ the body of a fenced div whose id starts with ``exr-``, outside any nested
 What is an ask: a clause that opens with an imperative verb the exercises
 use (Compute, Find, Show, Compare, Plot, Explain, ...). A part is flagged
 when it holds two or more asks: two such sentences, or one sentence whose
-clauses after ", and", ", then", "; then", "and then" or "and also" open with
-such a verb. The finding sits on the first line of the part.
+clauses after ", and", ", then", ";", "and then", "and also", or a bare
+"and" before such a verb open with such a verb. The finding sits on the first
+line of the part.
 
 This is a heuristic, so it warns by default (``SAP_FAIL=true`` blocks).
 
@@ -31,9 +32,9 @@ Design notes, in the model of ``check-multipart-exercises``:
 
 - **Diff-scoped by default.** A part is reported when the diff adds a line
   inside it, so an old part the PR does not touch is never reflagged.
-- **Skip, not fall back.** With no base ref, or when the diff cannot be
-  computed, the check skips with a warning. ``SAP_WHOLE_TREE=true`` scans
-  the whole tree to measure the corpus.
+- **Skip, not fall back.** With no base ref the check skips quietly; when the
+  diff against a given base ref cannot be computed, it skips with a warning.
+  ``SAP_WHOLE_TREE=true`` scans the whole tree to measure the corpus.
 
 Configuration (environment variables, set by the composite action):
   SAP_BASE_REF      Git ref/SHA to diff against. Empty and not whole-tree =>
@@ -211,9 +212,24 @@ def drop_solutions(body: List[str]) -> List[str]:
     out: List[str] = []
     sol_depth: Optional[int] = None
     depth = 0
+    fence: Optional[Tuple[str, int]] = None
+    in_comment = False
     for raw in body:
-        dm = DIV_RE.match(raw)
         keep = sol_depth is None
+        # A ``:::`` inside a code fence or an HTML comment is not a div.
+        seen = raw
+        if fence is None:
+            seen, in_comment = strip_comments(raw, in_comment)
+        fm = FENCE_RE.match(seen)
+        dm = None
+        if fence is not None:
+            if (fm and fm.group(1)[0] == fence[0] and len(fm.group(1)) >= fence[1]
+                    and not fm.group(2).strip()):
+                fence = None
+        elif fm and not (fm.group(1)[0] == "`" and "`" in fm.group(2)):
+            fence = (fm.group(1)[0], len(fm.group(1)))
+        else:
+            dm = DIV_RE.match(seen)
         if dm:
             if dm.group(2):
                 if sol_depth is None and SOL_RE.search(dm.group(2)):
@@ -256,7 +272,7 @@ def find_parts(lines: List[str], ex: Exercise) -> List[Part]:
             continue
         if ITEM_RE.match(text):
             units.append([n, n, [ITEM_RE.sub("", text, count=1)]])
-        elif previous and units and previous == n - 1:
+        elif previous and units and all(lines[k - 1].strip() for k in range(previous + 1, n)):
             units[-1][1] = n
             units[-1][2].append(text.strip())  # type: ignore[union-attr]
         else:
