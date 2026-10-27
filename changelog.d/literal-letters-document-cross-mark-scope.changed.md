@@ -1,0 +1,1 @@
+- `check-literal-math-letters` documents the scope of its cross-mark skip: a cross mark after a check-mark paragraph also opens one, and the skip ends at a lazy continuation or a change of quote depth.
