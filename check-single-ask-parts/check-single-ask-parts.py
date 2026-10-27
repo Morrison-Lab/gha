@@ -98,6 +98,7 @@ CLAUSE_SPLIT_RE = re.compile(
     r"|\s+and\s+(?=" + ASK_VERB + r"\b)",
     re.IGNORECASE,
 )
+DISPLAY_PAIR_RE = re.compile(r"\$\$.*?\$\$")
 SENT_SPLIT_RE = re.compile(r"(?<=[.?!:])\s+(?=[A-Z])")
 
 
@@ -192,13 +193,15 @@ def body_text(lines: List[str]) -> List[Tuple[int, str]]:
         if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = (m.group(1)[0], len(m.group(1)))
             continue
-        plain = CODE_SPAN_RE.sub(" ", raw)
+        # A $$...$$ pair on one line is inline display math: blank it and
+        # keep the prose around it.
+        plain = DISPLAY_PAIR_RE.sub(" ", CODE_SPAN_RE.sub(" ", raw))
         if plain.count("$$") % 2:
             in_math = not in_math
             continue
-        if in_math or "$$" in plain:
+        if in_math:
             continue
-        text = INLINE_MATH_RE.sub(" ", CODE_SPAN_RE.sub(" ", raw))
+        text = INLINE_MATH_RE.sub(" ", plain)
         out.append((idx + 1, text))
     return out
 

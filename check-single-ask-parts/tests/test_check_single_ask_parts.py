@@ -178,3 +178,7 @@ def test_a_comment_with_a_code_span_keeps_the_later_spans():
 
 def test_double_dollar_in_a_code_span_is_not_display_math():
     assert flagged("Write `$$` and compute x. Then plot y.") == [2]
+
+
+def test_a_display_pair_on_one_line_keeps_the_prose_around_it():
+    assert flagged("1. Compute $$\\hat\\beta$$, and compare it with $\\beta$.") == [2]
