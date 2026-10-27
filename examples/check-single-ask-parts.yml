@@ -19,5 +19,6 @@ jobs:
     # with:
     #   globs: '*.qmd'                         # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   python-version: '3.x'                  # Python used to run the check
     #   fail: true                             # block instead of warn (defaults to false)
     #   whole-tree: true                       # scan every part, not just those a PR touches
