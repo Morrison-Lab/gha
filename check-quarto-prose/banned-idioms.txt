@@ -124,3 +124,8 @@ panning out
 a bit of a
 prediction rule
 prediction rules
+
+# A trailing parenthetical that lists definitions. Link each term in the
+# sentence that names it instead (psw, "Defining terms clearly").
+(definition:
+(definitions:
