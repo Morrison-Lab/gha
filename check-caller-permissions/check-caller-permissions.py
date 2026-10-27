@@ -18,7 +18,9 @@ cannot see, so that call is reported as unchecked and not as clean.
 
 Environment: CCP_WORKFLOWS_DIR (default .github/workflows), CCP_FAIL (default
 true), CCP_GHA_DIR (a local gha checkout to read callees from instead of
-fetching them, for tests and offline runs).
+fetching them, for tests and offline runs). By default each callee is fetched at
+the ref its caller pins; every call's line says where its callee was read from,
+and setting CCP_GHA_DIR prints a warning that the pinned refs are ignored.
 """
 
 from __future__ import annotations
@@ -59,6 +61,13 @@ def fetch_callee(name: str, ref: str, gha_dir: str | None) -> str:
         return resp.read().decode("utf-8")
 
 
+def source_label(ref: str, gha_dir: str | None) -> str:
+    """Say where a callee was read from, so an override cannot pass unnoticed."""
+    if gha_dir:
+        return f"local checkout {gha_dir}, ignoring the pinned ref {ref}"
+    return f"{ref} on raw.githubusercontent.com"
+
+
 def required_grants(callee_text: str, name: str) -> dict[str, str] | None:
     """The union of what the callee's jobs request, or None when unknown."""
     doc = load_yaml_str(callee_text, name)
@@ -94,7 +103,7 @@ def check_workflow(path: pathlib.Path, gha_dir: str | None):
         job_p = normalize_permissions_block(job.get("permissions"), f"{path}: job '{job_id}'")
         granted = job_p if job_p is not None else workflow_p
         required = required_grants(fetch_callee(name, ref, gha_dir), name)
-        where = f"{path}: job '{job_id}' calls {name}@{ref}"
+        where = f"{path}: job '{job_id}' calls {name}@{ref} (read from {source_label(ref, gha_dir)})"
         if granted is None:
             yield "unchecked", f"{where}: no permissions block at job or workflow level, so the grant is the repository default"
         elif required is None:
@@ -112,6 +121,11 @@ def main() -> int:
     fail = os.environ.get("CCP_FAIL", "true").lower() in ("true", "1", "yes")
     gha_dir = os.environ.get("CCP_GHA_DIR") or None
     counts = {"ok": 0, "unchecked": 0, "missing": 0}
+    if gha_dir:
+        print(
+            f"::warning::CCP_GHA_DIR={gha_dir} is set, so callees are read from that checkout "
+            "and not at the refs the callers pin. The result may not match what runs."
+        )
     try:
         for path in require_workflows(workflows_dir):
             for kind, line in check_workflow(path, gha_dir):
@@ -120,6 +134,8 @@ def main() -> int:
                     print(f"::error::{line}", file=sys.stderr)
                 elif kind == "unchecked":
                     print(f"::warning::{line}")
+                else:
+                    print(line)
     except (Discovery, Unparsable, OSError, urllib.error.URLError) as exc:
         print(f"::error::check-caller-permissions could not finish: {exc}", file=sys.stderr)
         return 2
