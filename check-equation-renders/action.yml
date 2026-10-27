@@ -22,7 +22,16 @@ runs:
       run: |
         set -euo pipefail
         npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund
-        npx --prefix "$GITHUB_ACTION_PATH" playwright install --with-deps chromium
+        # `--with-deps` installs system libraries through sudo, which a
+        # self-hosted runner without passwordless sudo refuses, so use it
+        # only where it can work; the runner must then carry the libraries.
+        deps=()
+        if [ "$(id -u)" -eq 0 ] || sudo -n true 2>/dev/null; then
+          deps=(--with-deps)
+        else
+          echo "No root or passwordless sudo: installing Chromium without system dependencies."
+        fi
+        npx --prefix "$GITHUB_ACTION_PATH" playwright install ${deps[@]+"${deps[@]}"} chromium
 
     - name: Check equation renders
       shell: bash
