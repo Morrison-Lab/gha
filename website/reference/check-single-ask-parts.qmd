@@ -34,10 +34,10 @@ It is a heuristic, so it warns by default;
 
 Known limits of the heuristic:
 
-- a code block, display math or comment line in the middle of a list item
-  splits the item into two parts;
-- a `.sol` div opened inside a comment or code fence is still read as a solution;
-- an unbalanced backtick around `-->` in a comment can leave the comment open.
+- a blank line inside a list item splits the item into two parts,
+  as Markdown does for a paragraph;
+- an ask phrased without one of the listed verbs, such as "Why does ...?", is not counted;
+- the verb list is English only.
 
 ## Inputs
 

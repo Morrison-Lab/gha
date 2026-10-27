@@ -197,10 +197,15 @@ def body_text(lines: List[str]) -> List[Tuple[int, str]]:
         # A $$...$$ pair on one line is inline display math: blank it and
         # keep the prose around it.
         plain = DISPLAY_PAIR_RE.sub(" ", CODE_SPAN_RE.sub(" ", raw))
-        if plain.count("$$") % 2:
-            in_math = not in_math
-            continue
-        if in_math:
+        if "$$" in plain:
+            # Pieces between the delimiters alternate display math and prose;
+            # keep the prose, which is outside the math at either end.
+            pieces = plain.split("$$")
+            plain = " ".join(p for i, p in enumerate(pieces)
+                             if (i % 2 == 0) != in_math)
+            if len(pieces) % 2 == 0:
+                in_math = not in_math
+        elif in_math:
             continue
         text = INLINE_MATH_RE.sub(" ", plain)
         out.append((idx + 1, text))
@@ -267,8 +272,12 @@ def find_parts(lines: List[str], ex: Exercise) -> List[Part]:
     previous = 0
     for n, text in body_text(drop_solutions(body)):
         n += ex.start
-        if not text.strip() or DIV_RE.match(text):
+        if DIV_RE.match(text):
             previous = 0
+            continue
+        if not text.strip():
+            # Math, code or a comment filled the line: the part goes on if no
+            # blank line separates it from the next prose line.
             continue
         if ITEM_RE.match(text):
             units.append([n, n, [ITEM_RE.sub("", text, count=1)]])
@@ -470,8 +479,12 @@ def main() -> int:
     report = run_check(base_ref, globs, ignores, whole_tree)
 
     if report.skipped:
-        reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
-        level = "::warning::" if base_ref else ""
+        if whole_tree:
+            reason, level = "could not list the tracked files", "::warning::"
+        elif base_ref:
+            reason, level = f"could not diff against '{base_ref}'", "::warning::"
+        else:
+            reason, level = "no base-ref given", ""
         print(
             f"{level}Skipping the single-ask part check for this run "
             f"({reason}; not falling back to a whole-tree scan, which would "

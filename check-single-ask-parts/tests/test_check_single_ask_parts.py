@@ -201,3 +201,27 @@ def test_div_fences_inside_a_code_fence_do_not_open_a_solution():
     body = "Plot the data.\n```\n::: {.sol}\n```\nExplain the trend."
     found, _ = sap.scan_file(exercise(body).split("\n"))
     assert [p.line for p in found] == [2]
+
+
+def test_inline_math_only_line_does_not_split_the_part():
+    body = "Compute the slope\n$$ b = 2 $$\nand compare it with the intercept."
+    assert flagged(body) == [2]
+
+
+def test_prose_next_to_an_opening_display_delimiter_is_kept():
+    body = "Plot the data, where $$\nb = 2\n$$ and explain the trend."
+    assert flagged(body) == [2]
+
+
+def test_prose_before_a_display_delimiter_counts():
+    body = "Compute the slope, and compare it with y $$\nb = 2\n$$"
+    assert flagged(body) == [2]
+
+
+def test_main_warns_only_when_a_diff_fails(repo, monkeypatch, capsys):
+    monkeypatch.setenv("SAP_BASE_REF", "")
+    sap.main()
+    assert "::warning::" not in capsys.readouterr().out
+    monkeypatch.setenv("SAP_BASE_REF", "no-such-ref")
+    sap.main()
+    assert "::warning::" in capsys.readouterr().out
