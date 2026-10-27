@@ -1,0 +1,1 @@
+- `save-pr-diff.sh` logs its files-API fallback as a plain line instead of a `::notice::` annotation, so annotation-gate no longer fails a PR over 300 files that the fallback handled (gha#1281).

@@ -34,10 +34,11 @@ mkdir -p "$(dirname "$TARGET")"
 # The saved diff is approximate: the headers are synthesized (no `index` line,
 # `a/` for added files), and a file the API returns no patch for, such as a
 # binary or oversized one, carries a marker line instead of a body. The API
-# caps at 3000 files, so a PR past that cap saves a partial diff; the notice
-# below makes the fallback visible in the log.
+# caps at 3000 files, so a PR past that cap saves a partial diff; the plain
+# log line below makes the fallback visible in the log. It is not a `::notice::`
+# annotation, because annotation-gate fails a head that carries one.
 files_api_diff() {
-  echo "::notice::gh pr diff failed or was empty; saving an approximate diff from the files API." >&2
+  echo "gh pr diff failed or was empty; saving an approximate diff from the files API." >&2
   gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[] |
     "diff --git a/\(.previous_filename // .filename) b/\(.filename)\n--- a/\(.previous_filename // .filename)\n+++ b/\(.filename)\n\(.patch // "[patch omitted by the files API]")"'
 }
