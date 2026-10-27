@@ -1,7 +1,7 @@
 - `check-single-ask-parts`:
   add a diff-scoped composite action and reusable workflow
-  that warns when a pull request adds or revises an exercise part
-  (a list item or paragraph in an `exr-` div, outside its solution)
+  that warns when a pull request adds or revises a part of an exercise div (`#exr-`),
+  meaning a list item or paragraph outside its solution,
   that asks for more than one thing, such as "Compute X, and compare it with Y".
   Each exercise part asks for one thing (Ezra, 2026-10-27).
   `<!-- single-ask-ok: reason -->` exempts a part.

@@ -8,7 +8,7 @@ The lab's rule (Ezra, 2026-10-27) is that each exercise part asks for one thing,
 and a part that asks for several is split into several parts,
 with the solution split the same way.
 
-A part is a list item or a paragraph in the body of an `exr-` div,
+A part is a list item or a paragraph in the body of an exercise div (`#exr-`),
 outside any nested `.sol` or `.solution` div.
 An ask is a clause that opens with an imperative verb the exercises use,
 such as Compute, Find, Show, Compare, Plot or Explain.
