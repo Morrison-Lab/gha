@@ -225,3 +225,37 @@ def test_main_warns_only_when_a_diff_fails(repo, monkeypatch, capsys):
     monkeypatch.setenv("SAP_BASE_REF", "no-such-ref")
     sap.main()
     assert "::warning::" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("middle", [
+    "$b = 2$",
+    "`b = 2`",
+    "<!-- note -->",
+])
+def test_a_filled_line_inside_a_paragraph_does_not_split_the_part(middle):
+    body = f"Compute the slope\n{middle}\nand compare it with the intercept."
+    assert flagged(body) == [2]
+
+
+def test_a_solution_without_blank_lines_ends_the_part():
+    body = "Compute the slope.\n::: {.sol}\nThe slope is 2.\n:::\nPlot the data."
+    assert flagged(body) == []
+
+
+def test_a_part_starting_with_math_is_reported_on_its_first_line():
+    body = "$f(x) = x^2$.\nCompute f, and compare it with g."
+    assert flagged(body) == [2]
+
+
+def test_a_line_that_closes_and_reopens_display_math_keeps_its_prose():
+    body = "Compute $$\na = 1\n$$ and compare it with y, $$\nb = 2\n$$"
+    assert flagged(body) == [2]
+
+
+def test_main_says_so_when_the_whole_tree_cannot_be_listed(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SAP_WHOLE_TREE", "true")
+    sap.main()
+    out = capsys.readouterr().out
+    assert "::warning::" in out
+    assert "not falling back" not in out

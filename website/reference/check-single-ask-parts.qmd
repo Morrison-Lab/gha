@@ -20,7 +20,8 @@ or after a bare "and" that is followed by such a verb.
 
 The check does not count:
 
-- anything inside a code fence, an HTML comment, display math or inline math;
+- anything inside a code fence, a code span, an HTML comment,
+  display math or inline math;
 - a part that carries `<!-- single-ask-ok: reason -->`
   on its first line or the line before it,
   or an exercise that carries it on its opening fence

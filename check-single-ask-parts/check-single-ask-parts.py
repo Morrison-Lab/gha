@@ -196,7 +196,9 @@ def body_text(lines: List[str]) -> List[Tuple[int, str]]:
             continue
         # A $$...$$ pair on one line is inline display math: blank it and
         # keep the prose around it.
-        plain = DISPLAY_PAIR_RE.sub(" ", CODE_SPAN_RE.sub(" ", raw))
+        plain = CODE_SPAN_RE.sub(" ", raw)
+        if not in_math:
+            plain = DISPLAY_PAIR_RE.sub(" ", plain)
         if "$$" in plain:
             # Pieces between the delimiters alternate display math and prose;
             # keep the prose, which is outside the math at either end.
@@ -270,18 +272,21 @@ def find_parts(lines: List[str], ex: Exercise) -> List[Part]:
         return []
     units: List[List[object]] = []  # [first line, last line, [chunks]]
     previous = 0
-    for n, text in body_text(drop_solutions(body)):
+    kept = drop_solutions(body)  # solution lines are blank, so they end a part
+
+    def filled(k: int) -> bool:
+        return bool(kept[k - ex.start - 1].strip())
+
+    for n, text in body_text(kept):
         n += ex.start
         if DIV_RE.match(text):
             previous = 0
             continue
-        if not text.strip():
-            # Math, code or a comment filled the line: the part goes on if no
-            # blank line separates it from the next prose line.
+        if not text.strip() and not filled(n):
             continue
         if ITEM_RE.match(text):
             units.append([n, n, [ITEM_RE.sub("", text, count=1)]])
-        elif previous and units and all(lines[k - 1].strip() for k in range(previous + 1, n)):
+        elif previous and units and all(filled(k) for k in range(previous + 1, n)):
             units[-1][1] = n
             units[-1][2].append(text.strip())  # type: ignore[union-attr]
         else:
@@ -480,8 +485,10 @@ def main() -> int:
 
     if report.skipped:
         if whole_tree:
-            reason, level = "could not list the tracked files", "::warning::"
-        elif base_ref:
+            print("::warning::Skipping the single-ask part check for this run "
+                  "(could not list the tracked files).")
+            return 0
+        if base_ref:
             reason, level = f"could not diff against '{base_ref}'", "::warning::"
         else:
             reason, level = "no base-ref given", ""
