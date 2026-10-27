@@ -85,7 +85,7 @@ def _git(cwd, *args):
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
+    _git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow: synthetic
     _git(tmp_path, "config", "user.name", "t")
     (tmp_path / "old.qmd").write_text("Grading (3 points): prose.\n")
     _git(tmp_path, "add", ".")
