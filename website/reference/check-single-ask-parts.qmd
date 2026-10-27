@@ -20,7 +20,8 @@ after ", and", ", then", "; then", "and then" or "and also".
 The check does not count:
 
 - anything inside a code fence, an HTML comment, display math or inline math;
-- a part that carries `<!-- single-ask-ok: reason -->` on its first line or the line before it,
+- a part that carries `<!-- single-ask-ok: reason -->`
+  on its first line or the line before it,
   or an exercise that carries it anywhere.
 
 A part the pull request does not touch is never reported.
