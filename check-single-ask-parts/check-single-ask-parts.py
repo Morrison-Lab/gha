@@ -87,6 +87,7 @@ ASK_VERB = r"(?:" + "|".join(ASK_VERBS) + r")"
 # A clause opening with an ask: "Compute ...", "First, compute ...", "then plot ...".
 ASK_RE = re.compile(
     r"^\s*(?:(?:first|next|then|finally|also|now|lastly|second|third)\b,?\s+)*"
+    + r"(?!write\s+for\b)"  # notation ("write $q$ for ..."), not an ask
     + ASK_VERB + r"\b",
     re.IGNORECASE,
 )
@@ -226,6 +227,7 @@ def drop_solutions(body: List[str]) -> List[str]:
 def count_asks(text: str) -> int:
     """Number of imperative asks in a part's prose."""
     asks = 0
+    text = re.sub(r"\bcompare\s+and\s+contrast\b", "compare", text, flags=re.IGNORECASE)
     for sentence in SENT_SPLIT_RE.split(text):
         for clause in CLAUSE_SPLIT_RE.split(sentence):
             if ASK_RE.match(clause):

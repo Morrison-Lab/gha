@@ -65,6 +65,8 @@ def test_second_list_item_only_is_flagged():
     "Consider the data. Compute the mean.",
     "1. Plot the data.\n2. Compare the two fits.",
     "Explain why the fit is poor, and why the residuals grow.",
+    "Compare and contrast the two figures.",
+    "Let $X$ have mass function $p$, and write $q_X$ for the variable that equals $q_k$.\nShow that the two are equal.",
 ])
 def test_one_ask_is_not_flagged(body):
     assert flagged(body) == []
