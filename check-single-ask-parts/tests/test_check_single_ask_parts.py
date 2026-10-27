@@ -230,7 +230,6 @@ def test_main_warns_only_when_a_diff_fails(repo, monkeypatch, capsys):
 @pytest.mark.parametrize("middle", [
     "$b = 2$",
     "`b = 2`",
-    "<!-- note -->",
 ])
 def test_a_filled_line_inside_a_paragraph_does_not_split_the_part(middle):
     body = f"Compute the slope\n{middle}\nand compare it with the intercept."
@@ -259,3 +258,13 @@ def test_main_says_so_when_the_whole_tree_cannot_be_listed(tmp_path, monkeypatch
     out = capsys.readouterr().out
     assert "::warning::" in out
     assert "not falling back" not in out
+
+
+def test_a_comment_line_ends_the_part_like_a_blank_line():
+    body = "Compute the slope\n<!-- note -->\nand compare it with the intercept."
+    assert flagged(body) == []
+
+
+def test_an_exemption_comment_before_a_part_is_not_its_first_line():
+    body = "<!-- single-ask-ok: one task -->\nCompute x, and compare it with y.\n\nPlot z. Then explain w."
+    assert flagged(body) == [5]

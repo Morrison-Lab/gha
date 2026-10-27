@@ -273,6 +273,12 @@ def find_parts(lines: List[str], ex: Exercise) -> List[Part]:
     units: List[List[object]] = []  # [first line, last line, [chunks]]
     previous = 0
     kept = drop_solutions(body)  # solution lines are blank, so they end a part
+    in_comment = False
+    for i, raw in enumerate(kept):
+        # A line holding only an HTML comment ends a part, as a blank line does.
+        bare, in_comment = strip_comments(raw, in_comment)
+        if raw.strip() and not bare.strip():
+            kept[i] = ""
 
     def filled(k: int) -> bool:
         return bool(kept[k - ex.start - 1].strip())

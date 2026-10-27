@@ -39,6 +39,9 @@ Known limits of the heuristic:
   as Markdown does for a paragraph;
 - an ask phrased without one of the listed verbs,
   such as "Why does ...?", is not counted;
+- a line that holds only an HTML comment ends a part, as a blank line does;
+- a display-math block with no blank line around it belongs to the paragraph
+  next to it, as in Markdown, so that paragraph's asks count together;
 - the verb list is English only.
 
 ## Inputs
