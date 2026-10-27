@@ -101,6 +101,21 @@ def test_indented_continuation_in_a_blockquote_keeps_the_block():
     assert flagged(text) == []
 
 
+def test_allow_comment_before_a_later_rubric_does_not_exempt_this_one():
+    text = "Grading (6 points): prose.\n\n<!-- rubric-ok: next one -->\nGrading (4 points): other."
+    assert flagged(text) == [1]
+
+
+def test_allow_word_on_a_comment_continuation_line_exempts():
+    text = "Grading (6 points): prose.\n<!--\nrubric-ok: holistic\n-->"
+    assert flagged(text) == []
+
+
+def test_indented_quote_prefix_with_unindented_text_ends_the_block():
+    text = "Grading (6 points): see\n  > other prose\n- [ ] 6 points: ok"
+    assert flagged(text) == [1]
+
+
 def test_unindented_quote_line_ends_the_block():
     text = "> Grading (6 points): see\n> other prose\n> - [ ] 6 points: ok"
     assert flagged(text) == [1]

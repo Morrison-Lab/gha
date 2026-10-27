@@ -77,7 +77,8 @@ MARKER_RE = re.compile(
 )
 TASK_RE = re.compile(r"^[ \t]*(?:>\s*)*[-*+]\s+\[[ xX]\]\s+\S")
 LIST_RE = re.compile(r"^[ \t]*(?:>\s*)*(?:[-*+]|\d{1,3}[.)])\s+")
-QUOTE_PREFIX_RE = re.compile(r"^(?:>[ ]?)+")
+QUOTE_PREFIX_RE = re.compile(r"^[ \t]*(?:>[ ]?)+")
+ALLOW_WORD_RE = re.compile(r"\brubric-ok\b", re.IGNORECASE)
 ALLOW_RE = re.compile(r"<!--\s*rubric-ok\b", re.IGNORECASE)
 
 
@@ -132,24 +133,31 @@ def find_rubrics(lines: List[str]) -> List[Rubric]:
         if text is None or not MARKER_RE.match(text):
             continue
         end = idx
-        comment_end = idx
+        gap = False
+        comment_lines = []
         has_list = bool(TASK_RE.match(text))
         for j in range(idx + 1, len(kept)):
             nxt = kept[j]
             if nxt is None:
                 break
             if not nxt.strip("> \t"):
-                if "<!--" in lines[j]:
-                    comment_end = j
+                if not lines[j].strip("> \t"):
+                    gap = True
+                elif not gap:
+                    # Comment-only line: part of the block unless a blank line came first.
+                    end = j
+                    comment_lines.append(j)
                 continue
+            gap = False
             if TASK_RE.match(nxt):
                 has_list = True
             elif not (LIST_RE.match(nxt) or QUOTE_PREFIX_RE.sub("", nxt)[:1] in (" ", "\t")):
                 break
             end = j
         before = lines[idx - 1] if idx else ""
-        allowed = bool(ALLOW_RE.search(before)) or any(
-            ALLOW_RE.search(lines[k]) for k in range(idx, max(end, comment_end) + 1))
+        allowed = (bool(ALLOW_RE.search(before))
+                   or any(ALLOW_RE.search(lines[k]) for k in range(idx, end + 1))
+                   or any(ALLOW_WORD_RE.search(lines[k]) for k in comment_lines))
         found.append(Rubric(idx + 1, end + 1, has_list, allowed))
     return found
 
