@@ -998,7 +998,7 @@ cookieconsent.run({
 <p>The check does not count:</p>
 <ul>
 <li>anything inside a code fence, an HTML comment, display math or inline math;</li>
-<li>a part that carries <code>&lt;!-- single-ask-ok: reason --&gt;</code> on its first line or the line before it, or an exercise that carries it on its opening fence or the line before that.</li>
+<li>a part that carries <code>&lt;!-- single-ask-ok: reason --&gt;</code> on its first line or the line before it, or an exercise that carries it on its opening fence or on the line just before the fence.</li>
 </ul>
 <p>A part the pull request does not touch is never reported. With no base to diff against, the check skips instead of scanning the whole tree. It is a heuristic, so it warns by default; <code>fail: true</code> makes it block.</p>
 <p>Known limits of the heuristic:</p>
@@ -1031,7 +1031,7 @@ cookieconsent.run({
 <tr class="even">
 <td><code>paths-ignore</code></td>
 <td>none</td>
-<td>Comma or newline separated globs to skip</td>
+<td>Comma- or newline-separated globs to skip</td>
 </tr>
 <tr class="odd">
 <td><code>fail</code></td>

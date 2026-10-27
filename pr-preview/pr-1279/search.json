@@ -16,7 +16,7 @@
     "href": "reference/check-single-ask-parts.html#inputs",
     "title": "check-single-ask-parts.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nGit pathspecs of tracked files to check (recursive)\n\n\npaths-ignore\nnone\nComma or newline separated globs to skip\n\n\nfail\nfalse\nFail on a finding; false warns\n\n\nwhole-tree\nfalse\nScan every part, to measure a corpus\n\n\npython-version\n3.x\nPython version",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nGit pathspecs of tracked files to check (recursive)\n\n\npaths-ignore\nnone\nComma- or newline-separated globs to skip\n\n\nfail\nfalse\nFail on a finding; false warns\n\n\nwhole-tree\nfalse\nScan every part, to measure a corpus\n\n\npython-version\n3.x\nPython version",
     "crumbs": [
       "Overview",
       "Reference",
