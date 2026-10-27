@@ -79,6 +79,7 @@ website:
           - reference/check-def-commentary.qmd
           - reference/check-solution-citations.qmd
           - reference/check-exercise-before-result.qmd
+          - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
           - reference/check-tree-lists.qmd
           - reference/check-visualization-figures.qmd
