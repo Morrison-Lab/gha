@@ -43,6 +43,7 @@ updates:
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
       - "/check-multipart-exercises"
+      - "/check-rubric-checklists"
       - "/check-note-sheet-rows"
       - "/check-definite-antecedents"
       - "/build-dependency-graph"
