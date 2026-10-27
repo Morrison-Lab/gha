@@ -1,0 +1,1 @@
+- `save-pr-diff.sh` falls back to the files API when `gh pr diff` fails on a PR over 300 files, and the review workflow now calls the `save-pr-diff` composite action instead of repeating the logic inline (gha#1280).
