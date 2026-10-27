@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Fail when a workflow calls a gha reusable workflow without the permissions it needs.
 
 A nested job cannot request more than its caller grants, so a caller that
