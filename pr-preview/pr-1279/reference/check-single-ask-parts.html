@@ -1005,6 +1005,8 @@ cookieconsent.run({
 <ul>
 <li>a blank line inside a list item splits the item into two parts, as Markdown does for a paragraph;</li>
 <li>an ask phrased without one of the listed verbs, such as “Why does …?”, is not counted;</li>
+<li>a line that holds only an HTML comment ends a part, as a blank line does;</li>
+<li>a display-math block with no blank line around it belongs to the paragraph next to it, as in Markdown, so that paragraph’s asks count together;</li>
 <li>the verb list is English only.</li>
 </ul>
 <section id="inputs" class="level2">
