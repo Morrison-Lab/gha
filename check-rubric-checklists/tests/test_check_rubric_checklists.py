@@ -79,6 +79,16 @@ def test_ignored(text):
     assert flagged(text) == []
 
 
+def test_single_line_comment_inside_a_rubric_does_not_end_it():
+    text = "Grading (6 points):\n<!-- editorial note -->\n- [ ] 6 points: ok"
+    assert flagged(text) == []
+
+
+def test_fence_inside_a_comment_does_not_hide_later_rubrics():
+    text = "<!--\n```\n-->\nGrading (6 points): prose."
+    assert flagged(text) == [4]
+
+
 # -- diff scoping ------------------------------------------------------------
 
 def _git(cwd, *args):

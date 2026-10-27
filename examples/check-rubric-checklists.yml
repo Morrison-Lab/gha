@@ -1,6 +1,6 @@
 # Copy to .github/workflows/check-rubric-checklists.yml in your repo.
 # Diff-scoped check: warns when a PR adds or revises a grading rubric (a line
-# opening with Grading, Rubric or Marking scheme) that has no task-list item
+# opening with Grading, Rubric, Marking scheme or Mark scheme) that has no task-list item
 # (- [ ] ...). Most STEM rubrics are checklists. <!-- rubric-ok: reason -->
 # exempts one rubric.
 # Only contents:read is needed (the default), so no permissions block is required.

@@ -87,6 +87,23 @@ class Rubric(NamedTuple):
     allowed: bool
 
 
+def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
+    """Remove HTML comment text from one line; say whether one stays open."""
+    if in_comment:
+        end = raw.find("-->")
+        if end < 0:
+            return "", True
+        raw = raw[end + 3:]
+    while True:
+        start = raw.find("<!--")
+        if start < 0:
+            return raw, False
+        end = raw.find("-->", start + 4)
+        if end < 0:
+            return raw[:start], True
+        raw = raw[:start] + raw[end + 3:]
+
+
 def find_rubrics(lines: List[str]) -> List[Rubric]:
     """Rubric blocks outside code fences."""
     fence: Optional[Tuple[str, int]] = None
@@ -95,14 +112,8 @@ def find_rubrics(lines: List[str]) -> List[Rubric]:
     for raw in lines:
         text = raw
         if fence is None:
-            if in_comment:
-                end = text.find("-->")
-                in_comment = end < 0
-                text = "" if end < 0 else text[end + 3:]
-            if not in_comment and "<!--" in text and "-->" not in text[text.find("<!--"):]:
-                text = text[:text.find("<!--")]
-                in_comment = True
-        m = FENCE_RE.match(raw)
+            text, in_comment = strip_comments(raw, in_comment)
+        m = FENCE_RE.match(raw if fence is not None else text)
         if fence is not None:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
                     and not m.group(2).strip()):
