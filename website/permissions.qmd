@@ -10,7 +10,8 @@ already include the right `permissions:` blocks; copy them as-is.
 
 ## Per-workflow grants
 
-- <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`, `check-bibliography-dois`,
+- <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`,
+  `check-code-messages`, `check-bibliography-dois`,
   `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`,
   `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-informal-definitions`, `check-junk-files`,
@@ -20,7 +21,9 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-def-title-synonyms`, `check-definite-antecedents`,
   `check-pr-concerns`,
   `check-pr-size`,
-  `check-exm-figures`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`,
+  `check-exm-figures`, `check-visualization-figures`, `check-tree-lists`, `check-self-contained-captions`,
+  `check-def-commentary`, `check-solution-citations`,
+  `check-exercise-before-result`,
   `check-term-links`, `check-paired-file-change`,
   `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `check-math-definitions`,
   `check-merge-drops`, `check-note-sheet-rows`,

@@ -46,6 +46,10 @@ input tables and a copy-paste example.
 | [`check-solution-citations.yml`](reference/check-solution-citations.qmd) | Diff-scoped, blocking check that flags a citation of a solution (`@sol-`) inside a proof or result div when a PR adds the line; a derivation cites a result div that follows the solution | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-exercise-before-result.yml`](reference/check-exercise-before-result.qmd) | Diff-scoped, blocking check that flags a result div (`#thm-`, `#lem-`, `#cor-`, `#prp-`) added or edited without an exercise and its solution just before it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-exm-figures.yml`](reference/check-exm-figures.qmd) | Diff-scoped, blocking check that flags an example div (`#exm-`) with no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-tree-lists.yml`](reference/check-tree-lists.qmd) | Diff-scoped, blocking check that flags a definition, example or other labelled div that mentions a tree, holds a list nested three or more levels deep and has no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-visualization-figures.yml`](reference/check-visualization-figures.qmd) | Diff-scoped, blocking check that flags a div that asks for a picture (a visual word in its title, or a sketch or plot request in an exercise prompt) but has no figure (an exercise may have it in its solution), when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-self-contained-captions.yml`](reference/check-self-contained-captions.qmd) | Diff-scoped, blocking check that flags a figure or table caption whose first sentence only points to another div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-code-messages.yml`](reference/check-code-messages.qmd) | Diff-scoped, warn-only check that flags a `geom_smooth()` or `stat_smooth()` call missing `method` or `formula`, and a `geom_histogram()` or `stat_bin()` call with no `bins`, `binwidth` or `breaks`, when a PR adds a line to it; the action also scans a rendered site for `cell-output-stderr` blocks | `globs`, `fail`, `whole-tree` |
 | [`check-one-div-per-subfile.yml`](reference/check-one-div-per-subfile.qmd) | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile; a proof stays with its claim and a solution with its exercise) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-multipart-exercises.yml`](reference/check-multipart-exercises.qmd) | Diff-scoped check that fails when a PR adds or revises an exercise div (`#exr-`) holding more than one part | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-def-title-synonyms.yml`](reference/check-def-title-synonyms.qmd) | Diff-scoped, warn-only check that flags a `#def-` div title listing synonyms with parentheses or "also called" instead of a comma list, primary term first | `globs`, `fail`, `whole-tree` |
@@ -56,7 +60,7 @@ input tables and a copy-paste example.
 | [`check-paired-file-change.yml`](reference/check-paired-file-change.qmd) | Fail a PR that changes a file matching `trigger-paths` without also changing a file matching `required-paths`, unless the PR carries the skip label (read live from the API) | `trigger-paths`, `required-paths`, `skip-label`, `message` |
 | [`check-term-links.yml`](reference/check-term-links.qmd) | Diff-scoped, blocking check that flags a defined technical term whose first use in a div or paragraph is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus's own `#def-` divs and links | `globs`, `paths-ignore`, `terms-file`, `allow-file`, `fail`, `whole-tree` |
 | [`annotation-gate.yml`](reference/annotation-gate.qmd) | Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job | `levels`, `allow-patterns`, `job-name` |
-| [`annotation-gate-run.yml`](reference/annotation-gate.qmd) | Gate a finished run from a `workflow_run` workflow and post the result as an `annotation-gate` check run, for repositories whose checks are spread over many workflow files | `run-id`, `head-sha`, `run-attempt`, `levels`, `allow-patterns` |
+| [`annotation-gate-run.yml`](reference/annotation-gate.qmd) | Gate a finished run from a `workflow_run` workflow and post the result as an `annotation-gate` check run, for repositories whose checks are spread over many workflow files | `run-id`, `head-sha`, `run-attempt`, `workflow-id`, `all-runs`, `levels`, `allow-patterns` |
 | [`check-fform-paren.yml`](reference/check-fform-paren.qmd) | Diff-scoped, warn-only check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where an f form `\namef{...}` is defined in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
 | [`check-dependency-graph.yml`](reference/check-dependency-graph.qmd) | Run the self-test of a notes repo's vendored `build_dependency_graph.py`, then build its definition and result graph and fail on a cycle | `script-dir`, `pages-dir`, `site`, `fail-on-cycle` |
 | [`check-write-idiom.yml`](reference/check-write-idiom.qmd) | Diff-scoped, warn-only check that flags a line opening with `Write the`, `Write a` or `Write an` (after an optional list marker and label), because "Write ..." hides whether to derive, express, state or give | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -138,8 +142,10 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
-`check-one-div-per-subfile.yml`, `check-multipart-exercises.yml`,
-`check-exm-figures.yml`, `check-def-commentary.yml`, `check-solution-citations.yml`,
+`check-one-div-per-subfile.yml`, `check-code-messages.yml`, `check-multipart-exercises.yml`,
+`check-exm-figures.yml`, `check-visualization-figures.yml`,
+`check-tree-lists.yml`, `check-self-contained-captions.yml`,
+`check-def-commentary.yml`, `check-solution-citations.yml`,
 `check-exercise-before-result.yml`,
 `check-pr-concerns.yml`,
 `check-pr-size.yml`,

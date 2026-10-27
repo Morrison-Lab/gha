@@ -15,9 +15,8 @@ from typing import Optional, Tuple
 # tests/ -> scripts/ -> workflows/ -> .github/ -> repo root
 REPO_ROOT = Path(__file__).resolve().parents[4]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "summary.yml"
-ACTION = (
-    "anthropics/claude-code-action@6b6870e649b5ff408753befeaee5fc7989d4e6a9"
-)
+# Any full commit SHA counts as pinned, so a Dependabot bump needs no edit here.
+ACTION_PIN = re.compile(r"anthropics/claude-code-action@[0-9a-f]{40}")
 
 
 def step_span(text: str, name: str) -> Optional[Tuple[int, int]]:
@@ -99,7 +98,7 @@ def check(workflow: Path) -> int:
         "names the Claude step": re.search(
             r"^\s+id: claude$", claude, re.M
         ) is not None,
-        "pins the claude-code-action SHA": ACTION in claude,
+        "pins the claude-code-action SHA": ACTION_PIN.search(claude) is not None,
         "passes the subscription token, not an API key": (
             "claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
             in claude
@@ -161,7 +160,7 @@ def run_self_test(workflow: Path) -> int:
         "claude id removed": ("Run Claude summary", "        id: claude\n", ""),
         "action SHA removed": (
             "Run Claude summary",
-            ACTION,
+            ACTION_PIN.search(baseline).group(0),
             "anthropics/claude-code-action@main",
         ),
         "oauth token removed": (

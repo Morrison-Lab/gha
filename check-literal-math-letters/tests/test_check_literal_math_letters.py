@@ -194,6 +194,16 @@ def test_allow_directive_covers_its_line_and_the_next():
     assert flagged(doc) == {3: ["x"]}
 
 
+def test_allow_directive_alone_on_a_quote_line_covers_the_next_line():
+    doc = "> <!-- check-literal-math-letters: allow -->\n> $y$\n> $x$\n"
+    assert flagged(doc) == {3: ["x"]}
+
+
+def test_ignore_file_directive_in_a_quote_is_not_obeyed():
+    doc = "> <!-- check-literal-math-letters: ignore-file -->\n> $y$\n"
+    assert flagged(doc) == {2: ["y"]}
+
+
 def test_ignore_file_directive():
     doc = "<!-- check-literal-math-letters: ignore-file -->\n$y$\n"
     assert flagged(doc) == {}

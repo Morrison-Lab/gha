@@ -49,7 +49,8 @@ The check does not flag:
 - a math span that defines a macro
   (`\newcommand`, `\renewcommand`, `\providecommand`, `\def`,
   `\DeclareMathOperator`), which is check 2 of the issue;
-- a line carrying, or following, `<!-- check-literal-math-letters: allow -->`,
+- a line carrying, or following, `<!-- check-literal-math-letters: allow -->`
+  (the comment may sit alone on a blockquote line),
   or a file carrying `<!-- check-literal-math-letters: ignore-file -->`.
 
 The check is strict:
