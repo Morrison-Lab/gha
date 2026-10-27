@@ -4,7 +4,7 @@ title: "check-rubric-checklists.yml"
 
 Diff-scoped check that warns when a pull request adds or revises
 a grading rubric that is not written as a checklist.
-The lab's default (Ezra, 2026-10-27) is that most STEM grading rubrics are checklists:
+The lab's default (Ezra, 2026-10-26) is that most STEM grading rubrics are checklists:
 one item per observable criterion,
 so a grader marks each item as earned or not.
 

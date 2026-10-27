@@ -435,7 +435,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `check-rubric-checklists/` (Python, stdlib only) bundles the composite action, script, and pytest suite
   for flagging a grading rubric (a line opening with `Grading`, `Rubric`, `Marking scheme` or `Mark scheme`) whose block holds no `- [ ]` task-list item;
   it takes the same diff model and is warn-only by default (`fail: false`),
-  because Ezra's rule (2026-10-27) is that *most* STEM rubrics are checklists, not all;
+  because Ezra's rule (2026-10-26) is that *most* STEM rubrics are checklists, not all;
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
   for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
   It takes the same diff model as `check-one-div-per-subfile/`.

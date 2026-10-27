@@ -33,6 +33,7 @@ def flagged(text: str):
 @pytest.mark.parametrize("text", [
     "Grading (10 points): (a) 5, one per shape; (b) 5.",
     "**Grading** (10 points): (a) 5.",
+    "***Grading***: (a) 5.",
     "> Rubric: two points for the shape.",
     "## Grading",
     "Marking scheme:\n\n- 2 points for the shape\n- 3 points for the sum",

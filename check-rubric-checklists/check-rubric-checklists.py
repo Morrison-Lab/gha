@@ -3,7 +3,7 @@
 r"""
 Flag a grading rubric that is not written as a checklist.
 
-The lab's default (Ezra, 2026-10-27): most STEM grading rubrics are
+The lab's default (Ezra, 2026-10-26): most STEM grading rubrics are
 checklists, one item per observable criterion, so a grader marks each item
 earned or not. A rubric written as a paragraph, such as
 "Grading (10 points): (a) 5, one per shape; (b) 5, two for ...", makes the
@@ -70,7 +70,7 @@ ADVICE = (
 
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 MARKER_RE = re.compile(
-    r"^[ \t]*(?:>\s*)*(?:#{1,6}\s+)?(?:\*\*|__|\*|_)?"
+    r"^[ \t]*(?:>\s*)*(?:#{1,6}\s+)?[*_]*"
     r"(?:Grading|Rubric|Marking\s+scheme|Mark\s+scheme)"
     r"(?=[*_]*\s*(?:\(|:|$))",
     re.IGNORECASE,
@@ -147,7 +147,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Rubric], int]:
 
 def format_message() -> str:
     return (f"This grading rubric is not a checklist; most STEM rubrics are "
-            f"(Ezra, 2026-10-27). Fix: {ADVICE}. "
+            f"(Ezra, 2026-10-26). Fix: {ADVICE}. "
             f"For a question with no separable criteria, add "
             f"<!-- rubric-ok: reason -->")
 

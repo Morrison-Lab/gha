@@ -3,7 +3,7 @@
   that warns when a pull request adds or revises a grading rubric
   (a line opening with `Grading`, `Rubric`, `Marking scheme` or `Mark scheme`)
   whose block holds no task-list item (`- [ ] ...`).
-  Most STEM grading rubrics are checklists (Ezra, 2026-10-27).
+  Most STEM grading rubrics are checklists (Ezra, 2026-10-26).
   Code fences and comments do not count;
   `<!-- rubric-ok: reason -->` exempts a rubric with no separable criteria.
   Like `check-multipart-exercises`, `check-rubric-checklists` scopes to touched rubrics
