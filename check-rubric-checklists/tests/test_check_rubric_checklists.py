@@ -89,6 +89,23 @@ def test_fence_inside_a_comment_does_not_hide_later_rubrics():
     assert flagged(text) == [4]
 
 
+def test_allow_comment_on_its_own_line_after_a_rubric_exempts_it():
+    text = "Grading (6 points): prose.\n<!-- rubric-ok: holistic -->"
+    assert flagged(text) == []
+
+
+def test_indented_continuation_in_a_blockquote_keeps_the_block():
+    text = "> Grading (6 points):\n>\n> - [ ] 3 points: first\n>   continued\n> - [ ] 3 points: second"
+    assert flagged(text) == []
+    text = "> Grading (6 points): see\n>   more\n> - [ ] 6 points: ok"
+    assert flagged(text) == []
+
+
+def test_unindented_quote_line_ends_the_block():
+    text = "> Grading (6 points): see\n> other prose\n> - [ ] 6 points: ok"
+    assert flagged(text) == [1]
+
+
 # -- diff scoping ------------------------------------------------------------
 
 def _git(cwd, *args):
