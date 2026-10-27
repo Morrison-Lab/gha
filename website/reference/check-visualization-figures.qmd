@@ -1,0 +1,106 @@
+---
+title: "check-visualization-figures.yml"
+---
+
+Diff-scoped, blocking check that flags a div that asks for a picture
+but has no figure.
+The lab's rule (Ezra, 2026-10-26) is that every div whose title mentions
+visualization (visualize, visualizing, visualization) has a corresponding
+figure, and that for an exercise the solution includes it.
+The trigger is wider than that one word,
+so the rule's own example, "Mark every zero-gradient point on a surface",
+is caught.
+A div asks for a picture when
+
+- its title, for an exercise or example, has a visual word:
+  `visuali[sz]*`, plot, sketch, draw, contour, picture, diagram,
+  or "mark" with point, curve, surface or region;
+- its title, for a definition, theorem, lemma, proposition, corollary or remark,
+  has `visuali[sz]*`
+  (a definition of a plot type gets its figure from the example that follows it);
+- its prompt, for an exercise, says sketch or visualize,
+  or plot as a verb, or draw a dendrogram, tree, diagram, picture, figure,
+  graph, contour, curve or line, outside its code fences.
+
+Words that name something else, such as graph, "draw a sample"
+and "draw conclusions", do not trigger it.
+A div's title is its `title="..."` attribute or the text of its first heading.
+A `#fig-` or `#sol-` div is the figure or the answer itself,
+never the subject.
+
+A figure is anything `check-exm-figures` counts:
+
+- a Markdown image or an `<img>` tag;
+- a div or chunk labelled `fig-`
+  (`{#fig-...}`, `#| label: fig-...`, `#| fig-cap:` or `#| fig-alt:`);
+- a cross-reference to a figure (`@fig-...`);
+- an include of a figure subfile (`{{< include ..._fig.qmd >}}`).
+
+For an exercise, the figure may also be in
+
+- a `#sol-<slug>` div in the same file, where `<slug>` is the exercise's id
+  without its `exr-` prefix, or
+- another file of the same exercise family in the same folder:
+  `_exr-a.qmd`, `_sol-a.qmd`, `_exr-a-part2.qmd` and `_sol-a-part2.qmd`
+  share the base name `a`, since a multi-part exercise shows its figure once.
+
+A false positive or a justified exception carries a reason:
+an HTML comment `<!-- no-figure: reason -->` inside the div exempts it.
+Use `paths-ignore` to exempt whole paths.
+
+## Scope
+
+Only a div that holds a line a pull request adds is reported,
+so existing divs are never reflagged.
+A changed solution file puts its exercise family in scope too,
+since removing the solution's figure leaves the exercise without one.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow when a visualization div has no figure. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on the runner ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-visualization-figures.yml in your repo.
+# Diff-scoped check: flags a div that asks for a picture (visualize, plot, sketch, ...)
+# but has no figure (an exercise may have it in its solution) when a PR adds a line to it.
+# Add a figure, or <!-- no-figure: reason --> in the div.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check visualization figures
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-visualization-figures.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
+```
+
+See
+[`examples/check-visualization-figures.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-visualization-figures.yml)
+for the full caller stub.

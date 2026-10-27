@@ -39,7 +39,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run the unit tests
@@ -923,7 +923,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-phi detector unit tests
@@ -941,7 +941,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: '3.x'
       - name: Run Antigravity runner unit tests
@@ -1008,7 +1008,7 @@ jobs:
           # than for anything about the code under test.
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       # The suite builds throwaway git repos and stubs each wrapped check, so
@@ -1053,7 +1053,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-new-line-breaks unit tests
@@ -1140,7 +1140,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-merge-drops unit tests
@@ -1167,7 +1167,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-typed-output unit tests
@@ -1289,7 +1289,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-informal-definitions unit tests
@@ -1428,7 +1428,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-literal-math-letters unit tests
@@ -1539,7 +1539,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-wikipedia-further-reading unit tests
@@ -1638,7 +1638,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-redundant-citations unit tests
@@ -1668,7 +1668,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-self-credits unit tests
@@ -1695,7 +1695,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-def-title-synonyms unit tests
@@ -1708,6 +1708,78 @@ jobs:
         uses: ./check-def-title-synonyms
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-code-messages is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-code-messages@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly.
+  code-messages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-code-messages unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-code-messages/tests/ -v
+      - name: Stage a page with a message and a source file with a bare geom_smooth
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-ccm/_site
+          printf '%s\n' '<div class="cell-output cell-output-stderr">' '<pre>message</pre></div>' > _ci-ccm/_site/page.html
+          printf '%s\n' '```{r}' 'ggplot(d) + geom_smooth()' '```' > _ci-ccm/page.qmd
+          git add -f _ci-ccm/page.qmd
+      - name: Scan the staged page, expecting a failure
+        id: ccm-site-expected-failure
+        continue-on-error: true
+        uses: ./check-code-messages
+        with:
+          site-dir: _ci-ccm/_site
+          fail: 'true'
+      - name: Lint the staged source, expecting a failure
+        id: ccm-source-expected-failure
+        continue-on-error: true
+        uses: ./check-code-messages
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert both failing calls failed
+        shell: bash
+        env:
+          SITE: ${{ steps.ccm-site-expected-failure.outcome }}
+          SOURCE: ${{ steps.ccm-source-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$SITE" != "failure" ] || [ "$SOURCE" != "failure" ]; then
+            echo "::error::expected check-code-messages to fail twice, got site='$SITE' source='$SOURCE'"
+            exit 1
+          fi
+      - name: Assert the findings name the right problems, not a crash
+        shell: bash
+        env:
+          CCM_SITE_DIR: _ci-ccm/_site
+          CCM_WHOLE_TREE: 'true'
+        run: |
+          set -uo pipefail
+          out=$(python3 check-code-messages/check-code-messages.py)
+          echo "$out"
+          grep -q 'file=_ci-ccm/page.qmd,line=2::`geom_smooth()` needs both' <<< "$out"
+          grep -q 'cell-output-stderr\|warning or message block' <<< "$out"
+      - name: Check the staged files with the default fail (warn-only)
+        uses: ./check-code-messages
+        with:
+          site-dir: _ci-ccm/_site
+          whole-tree: 'true'
   # check-one-div-per-subfile is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-one-div-per-subfile@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
@@ -1724,7 +1796,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-one-div-per-subfile unit tests
@@ -1824,7 +1896,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-def-commentary unit tests
@@ -1901,7 +1973,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-solution-citations unit tests
@@ -1978,7 +2050,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-exercise-before-result unit tests
@@ -2044,6 +2116,64 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-exercise-before-result || true
           rm -rf _ci-exercise-before-result
+  # check-caller-permissions is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-caller-permissions@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the comparison; the calls below prove action.yml wires
+  # each input through and that a real callee is fetched at its pinned ref.
+  caller-permissions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-caller-permissions unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1 pyyaml
+          python3 -m pytest check-caller-permissions/tests/ -v
+      - name: Stage callers with and without the cleanup grant
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-ccp-bad _ci-ccp-good
+          call='    uses: Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v3'
+          printf '%s\n' 'on: push' 'jobs:' '  cleanup:' '    permissions:' \
+            '      contents: write' '      pull-requests: read' "$call" > _ci-ccp-bad/cleanup.yml
+          printf '%s\n' 'on: push' 'jobs:' '  cleanup:' '    permissions:' \
+            '      contents: write' '      pull-requests: read' '      actions: read' "$call" > _ci-ccp-good/cleanup.yml
+      - name: Check the caller with the full grant
+        uses: ./check-caller-permissions
+        with:
+          workflows-dir: _ci-ccp-good
+      - name: Check the caller missing actions read, expecting a failure
+        id: ccp-expected-failure
+        continue-on-error: true
+        uses: ./check-caller-permissions
+        with:
+          workflows-dir: _ci-ccp-bad
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.ccp-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-caller-permissions to fail on a caller missing a grant, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check the same caller warn-only
+        uses: ./check-caller-permissions
+        with:
+          workflows-dir: _ci-ccp-bad
+          fail: 'false'
   # check-exm-figures is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-exm-figures@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
@@ -2060,7 +2190,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-exm-figures unit tests
@@ -2158,6 +2288,296 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-exm || true
           rm -rf _ci-exm
+  # check-visualization-figures is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-visualization-figures@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the figure rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  visualization-figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-visualization-figures unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-visualization-figures/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-visualization-figures
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no visualization divs, so stage one with no figure and assert
+      # that the blocking call really fails.
+      - name: Stage a visualization div with no figure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-viz
+          printf '%s\n' '::: {#exr-a}' '#### Visualize the cost' ':::' > _ci-viz/page.qmd
+          git add -f _ci-viz/page.qmd
+      - name: Check the staged div, expecting a failure
+        id: viz-expected-failure
+        continue-on-error: true
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.viz-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-visualization-figures to fail on a staged div, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is blocking, so the same finding must fail with no fail input.
+      - name: Check the staged div with the default fail
+        id: viz-default-failure
+        continue-on-error: true
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.viz-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: viz-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-visualization-figures
+        with:
+          base-ref: HEAD
+          fail: 'true'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.viz-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged div, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-visualization-figures
+        with:
+          base-ref: ''
+          fail: 'true'
+      # Each of these must pass over the same staged subfile, so each proves
+      # its input reached the script.
+      - name: Check again with the div exempted through paths-ignore
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-viz'
+      - name: Check again with globs excluding the div
+        uses: ./check-visualization-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged div
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-viz || true
+          rm -rf _ci-viz
+
+  # check-tree-lists is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-tree-lists@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the tree rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  tree-lists:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-tree-lists unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-tree-lists/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-tree-lists
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no tree lists, so stage one with no figure and assert
+      # that the blocking call really fails.
+      - name: Stage a tree written as a list
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-tls
+          printf '%s\n' '::: {#exm-a}' 'A tree:' '' '- a' '    - b' '        - c' ':::' > _ci-tls/page.qmd
+          git add -f _ci-tls/page.qmd
+      - name: Check the staged tree, expecting a failure
+        id: tls-expected-failure
+        continue-on-error: true
+        uses: ./check-tree-lists
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.tls-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-tree-lists to fail on a staged tree, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is blocking, so the same finding must fail with no fail input.
+      - name: Check the staged tree with the default fail
+        id: tls-default-failure
+        continue-on-error: true
+        uses: ./check-tree-lists
+        with:
+          whole-tree: 'true'
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.tls-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: tls-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-tree-lists
+        with:
+          base-ref: HEAD
+          fail: 'true'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.tls-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged tree, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-tree-lists
+        with:
+          base-ref: ''
+          fail: 'true'
+      # Each of these must pass over the same staged subfile, so each proves
+      # its input reached the script.
+      - name: Check again with the tree exempted through paths-ignore
+        uses: ./check-tree-lists
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-tls'
+      - name: Check again with globs excluding the tree
+        uses: ./check-tree-lists
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged tree
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-tls || true
+          rm -rf _ci-tls
+  # check-self-contained-captions is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-self-contained-captions@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  self-contained-captions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-self-contained-captions unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-self-contained-captions/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-self-contained-captions
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - name: Stage a caption that only points to an example
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-scc
+          printf '%s\n' '::: {#fig-a}' 'plot' '' 'The symmetry of @exm-a.' ':::' > _ci-scc/page.qmd
+          git add -f _ci-scc/page.qmd
+      - name: Check the staged caption, expecting a failure
+        id: scc-expected-failure
+        continue-on-error: true
+        uses: ./check-self-contained-captions
+        with:
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.scc-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-self-contained-captions to fail on a staged caption, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with the caption exempted through paths-ignore
+        uses: ./check-self-contained-captions
+        with:
+          whole-tree: 'true'
+          paths-ignore: '_ci-scc'
+      - name: Remove the staged caption
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-scc || true
+          rm -rf _ci-scc
   # check-note-sheet-rows is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-note-sheet-rows@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly.
@@ -2172,7 +2592,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-note-sheet-rows unit tests
@@ -2250,7 +2670,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-multipart-exercises unit tests
@@ -2323,7 +2743,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-definite-antecedents unit tests
@@ -2352,7 +2772,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-term-links unit tests
@@ -2465,7 +2885,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-local-macros unit tests
@@ -2612,7 +3032,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-fform-paren unit tests
@@ -2732,7 +3152,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-write-idiom unit tests
@@ -4489,7 +4909,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run inject-canonical-urls unit tests
@@ -6438,7 +6858,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-typos unit tests
@@ -6466,7 +6886,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run the unit tests
@@ -6559,7 +6979,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run the unit tests
@@ -6820,7 +7240,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run the changed-chapters unit tests
@@ -7154,7 +7574,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-pr-size unit tests
@@ -7229,7 +7649,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.x'
       - name: Run check-pr-concerns unit tests

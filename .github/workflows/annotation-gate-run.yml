@@ -26,6 +26,25 @@ on:
         description: Its commit, github.event.workflow_run.head_sha.
         type: string
         required: true
+      workflow-id:
+        description: >-
+          A key for the finished run's workflow and triggering event, such as
+          github.event.workflow_run.workflow_id joined to
+          github.event.workflow_run.event. When set, a gate still queued or
+          running for an earlier run of the same workflow and event on the
+          same commit (a re-run or a later attempt) is cancelled by the newer
+          one, so a burst of finishing runs cannot flood a small self-hosted
+          pool. When empty, each run keeps its own gate.
+        type: string
+        default: ''
+      all-runs:
+        description: >-
+          Gate every workflow's latest completed run on `head-sha` in this one
+          job and post one check run, so the caller can use a concurrency
+          group per commit and a burst of finishing runs queues one gate
+          instead of one per workflow. `run-id` is then unused.
+        type: boolean
+        default: false
       levels:
         description: Comma list of annotation levels to enforce (notice, warning, failure).
         type: string
@@ -41,6 +60,11 @@ jobs:
   annotation-gate-run:
     runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
+    # The group name differs from any a caller sets at workflow level: a job
+    # that shares its caller's group is cancelled as a deadlock.
+    concurrency:
+      group: annotation-gate-run-${{ inputs.head-sha }}-${{ inputs.all-runs && 'all' || inputs.workflow-id || inputs.run-id }}
+      cancel-in-progress: true
     permissions:
       actions: read
       checks: write
@@ -52,5 +76,6 @@ jobs:
           run-id: ${{ inputs.run-id }}
           run-attempt: ${{ inputs.run-attempt }}
           head-sha: ${{ inputs.head-sha }}
+          all-runs: ${{ inputs.all-runs }}
           levels: ${{ inputs.levels }}
           allow-patterns: ${{ inputs.allow-patterns }}

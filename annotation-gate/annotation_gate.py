@@ -14,6 +14,12 @@ message matches an allow pattern. Environment:
                       skipped as the gate's own, and the result is also posted
                       as a check run named `annotation-gate` on GATE_HEAD_SHA
                       (needs `checks: write`)
+  GATE_ALL_RUNS       "true", with GATE_HEAD_SHA: gate the latest completed run of
+                      every workflow and event on that commit in one pass,
+                      skipping the caller's own workflow (GITHUB_WORKFLOW), and
+                      post one check run. One commit-wide check-run listing
+                      gives each job's annotation count, so a job with none
+                      costs no request.
   GITHUB_API_URL      defaults to https://api.github.com
   GITHUB_JOB          the gate's own job id; it and `<caller> / <id>` are skipped
   GATE_JOB_NAME       optional extra name prefix to skip
@@ -107,6 +113,44 @@ def paged(url, token, key=None):
         page += 1
 
 
+def latest_runs(runs, own_workflow):
+    """The newest completed run of each (workflow, event), skipping own_workflow.
+
+    A run still queued or in progress is left out: its completion fires its own
+    gate, which re-evaluates the whole commit.
+    """
+    newest = {}
+    for run in runs:
+        if run.get("status") != "completed" or run.get("name") == own_workflow:
+            continue
+        key = (run["workflow_id"], run["event"])
+        if key not in newest or run["run_number"] > newest[key]["run_number"]:
+            newest[key] = run
+    return sorted(newest.values(), key=lambda run: run["id"])
+
+
+def annotation_counts(base, repo, token, sha):
+    """Map check run id -> annotation count for every check run on the commit."""
+    url = f"{base}/repos/{repo}/commits/{sha}/check-runs?filter=latest"
+    return {c["id"]: (c.get("output") or {}).get("annotations_count", 1) for c in paged(url, token, "check_runs")}
+
+
+def gate_jobs(base, repo, token, run_id, attempt, own_job, gate, counts):
+    """Annotations of every job in one run attempt: (annotations, jobs checked)."""
+    annotations, checked = [], 0
+    jobs_url = f"{base}/repos/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs"
+    for job in paged(jobs_url, token, "jobs"):
+        if is_gate_job(job["name"], own_job, gate):
+            continue
+        checked += 1
+        if counts.get(job["id"], 1) == 0:
+            continue
+        url = f"{base}/repos/{repo}/check-runs/{job['id']}/annotations"
+        for ann in paged(url, token):
+            annotations.append((job["name"], ann))
+    return annotations, checked
+
+
 def main():
     token = os.environ["GITHUB_TOKEN"]
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -116,28 +160,34 @@ def main():
     head_sha = os.environ.get("GATE_HEAD_SHA", "")
     base = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     gate = os.environ.get("GATE_JOB_NAME", "")
-    own_job = "" if target_run else os.environ.get("GITHUB_JOB", "")
+    own_job = "" if target_run or os.environ.get("GATE_ALL_RUNS") == "true" else os.environ.get("GITHUB_JOB", "")
     levels = parse_levels(os.environ.get("GATE_LEVELS", ",".join(LEVELS_ALL)))
     allow = split_lines(os.environ.get("GATE_DEFAULT_ALLOW")) + split_lines(os.environ.get("GATE_ALLOW"))
 
-    jobs_url = f"{base}/repos/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs"
+    all_runs = os.environ.get("GATE_ALL_RUNS") == "true"
+    if all_runs and not head_sha:
+        print("::error::all-runs needs head-sha, the commit to gate.")
+        return 2
+    if all_runs:
+        runs = paged(f"{base}/repos/{repo}/actions/runs?head_sha={head_sha}", token, "workflow_runs")
+        targets = [(r["id"], r["run_attempt"]) for r in latest_runs(runs, os.environ.get("GITHUB_WORKFLOW", ""))]
+        counts = annotation_counts(base, repo, token, head_sha)
+    else:
+        targets, counts = [(run_id, attempt)], {}
     annotations, checked = [], 0
-    for job in paged(jobs_url, token, "jobs"):
-        if is_gate_job(job["name"], own_job, gate):
-            continue
-        checked += 1
-        url = f"{base}/repos/{repo}/check-runs/{job['id']}/annotations"
-        for ann in paged(url, token):
-            annotations.append((job["name"], ann))
+    for target_id, target_attempt in targets:
+        found, n = gate_jobs(base, repo, token, target_id, target_attempt, own_job, gate, counts)
+        annotations += found
+        checked += n
 
     bad = find_violations(annotations, levels, allow)
-    print(f"annotation-gate: {checked} job(s), {len(annotations)} annotation(s), {len(bad)} not allowed.")
+    print(f"annotation-gate: {len(targets)} run(s), {checked} job(s), {len(annotations)} annotation(s), {len(bad)} not allowed.")
     lines = []
     for job, ann in bad:
         message = (ann.get("message") or "").replace("\n", " ")[:300]
         print(f"::error title=Unallowed {ann['annotation_level']} annotation::[{job}] {message}")
         lines.append(f"- {ann['annotation_level']} in `{job}`: {message}")
-    if target_run and head_sha:
+    if (target_run or all_runs) and head_sha:
         summary = "\n".join(lines) or f"{len(annotations)} annotation(s) in {checked} job(s), all allowed."
         post_check_run(base, repo, token, head_sha, not bad, summary)
     if bad:
