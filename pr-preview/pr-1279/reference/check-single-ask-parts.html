@@ -994,7 +994,7 @@ cookieconsent.run({
 
 
 <p>Diff-scoped check that warns when a pull request adds or revises an exercise part that asks for more than one thing. The lab’s rule (Ezra, 2026-10-27) is that each exercise part asks for one thing, and a part that asks for several is split into several parts, with the solution split the same way.</p>
-<p>A part is a list item or a paragraph in the body of an <code>exr-</code> div, outside any nested <code>.sol</code> or <code>.solution</code> div. An ask is a clause that opens with an imperative verb the exercises use, such as Compute, Find, Show, Compare, Plot or Explain. The check reports a part with two or more asks: two such sentences, or one sentence whose clauses after “, and”, “, then”, “; then”, “and then” or “and also” open with such a verb.</p>
+<p>A part is a list item or a paragraph in the body of an <code>exr-</code> div, outside any nested <code>.sol</code> or <code>.solution</code> div. An ask is a clause that opens with an imperative verb the exercises use, such as Compute, Find, Show, Compare, Plot or Explain. The check reports a part with two or more asks: two such sentences, or one sentence whose clauses open with such a verb after “, and”, “, then”, “; then”, “and then” or “and also”.</p>
 <p>The check does not count:</p>
 <ul>
 <li>anything inside a code fence, an HTML comment, display math or inline math;</li>
