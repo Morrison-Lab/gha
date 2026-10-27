@@ -1,7 +1,7 @@
 name: Check rubric checklists
 description: >-
   Diff-scoped check that flags a grading rubric (a line opening with
-  "Grading", "Rubric" or "Marking scheme") whose block holds no task-list
+  "Grading", "Rubric", "Marking scheme" or "Mark scheme") whose block holds no task-list
   item (`- [ ] ...`), when the diff adds a line inside it. Most STEM rubrics
   are checklists (Ezra, 2026-10-27). Code fences and comments do not count;
   `<!-- rubric-ok: reason -->` exempts a rubric. Warns by default.
@@ -20,7 +20,7 @@ inputs:
   whole-tree:
     description: >-
       Scan every tracked file the globs match, in full, instead of only
-      touched rubrics. Use it to measure a corpus; `base-ref` is ignored.
+      touched rubrics. Set to true to measure a corpus; `base-ref` is ignored.
     default: 'false'
   globs:
     description: >-

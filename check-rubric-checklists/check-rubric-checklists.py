@@ -72,7 +72,7 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 MARKER_RE = re.compile(
     r"^[ \t]*(?:>\s*)*(?:#{1,6}\s+)?(?:\*\*|__|\*|_)?"
     r"(?:Grading|Rubric|Marking\s+scheme|Mark\s+scheme)"
-    r"(?=\s*(?:\(|:|\*|_|$))",
+    r"(?=[*_]*\s*(?:\(|:|$))",
     re.IGNORECASE,
 )
 TASK_RE = re.compile(r"^[ \t]*(?:>\s*)*[-*+]\s+\[[ xX]\]\s+\S")

@@ -433,7 +433,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   for failing a PR that adds or revises an `exr-` div holding more than one part (list items in one marker style, or inline "(a) first, (b) second");
   it takes the same diff model, but a touched exercise is judged whole and it blocks by default (`fail: true`);
   `check-rubric-checklists/` (Python, stdlib only) bundles the composite action, script, and pytest suite
-  for flagging a grading rubric (a line opening with `Grading`, `Rubric` or `Marking scheme`) whose block holds no `- [ ]` task-list item;
+  for flagging a grading rubric (a line opening with `Grading`, `Rubric`, `Marking scheme` or `Mark scheme`) whose block holds no `- [ ]` task-list item;
   it takes the same diff model and is warn-only by default (`fail: false`),
   because Ezra's rule (2026-10-27) is that *most* STEM rubrics are checklists, not all;
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite

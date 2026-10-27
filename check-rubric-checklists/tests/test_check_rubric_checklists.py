@@ -69,6 +69,8 @@ def test_checklist_after_stray_prose_is_not_in_the_block():
     "<!--\nGrading (6 points): prose.\n-->",
     "<!-- rubric-ok: one holistic judgment -->\nGrading (6 points): prose.",
     "Grading (6 points): prose. <!-- rubric-ok: holistic -->",
+    "**Grading** is described in the syllabus.",
+    "*Rubric* items are listed below.",
     "The grading scale is posted online.",
     "Gradings of the sample were mixed.",
 ])
