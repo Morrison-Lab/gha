@@ -618,6 +618,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-code-messages.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-code-messages.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-pr-size.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-pr-size.yml</span></a>
   </div>
@@ -648,8 +654,32 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-caller-permissions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-caller-permissions.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-exm-figures.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-exm-figures.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-tree-lists.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-tree-lists.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-visualization-figures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-visualization-figures.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-self-contained-captions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-self-contained-captions.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1040,9 +1070,12 @@ cookieconsent.run({
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">run-id</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.id }}</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">run-attempt</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.run_attempt }}</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">head-sha</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.head_sha }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">head-sha</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.head_sha }}</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">workflow-id</span><span class="kw">:</span><span class="at"> ${{ github.event.workflow_run.workflow_id }}-${{ github.event.workflow_run.event }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>It takes the same <code>levels</code> and <code>allow-patterns</code> inputs. It also takes a <code>runs-on</code> input (default <code>ubuntu-latest</code>), for a private repository that runs it on a self-hosted runner. Grant <code>checks: write</code>; the job posts one check run per gated run.</p>
-<p>Each gated run posts its own check run named <code>annotation-gate</code>. When several workflows finish on one commit, the commit carries several checks of that name, and a failing one blocks a required check. <code>annotation-gate-run.yml</code> holds <code>checks: write</code>, so it is not in the read-only list on the permissions page. It calls the action at <code>@v3</code>, so it gates the right run only once <code>v3</code> has slid past the commit that added these inputs; before that the unknown inputs are ignored and the gate checks its own run. See <code>examples/annotation-gate-run.yml</code> for the stub to copy.</p>
+<p><code>workflow-id</code> is optional. It is any string that names the workflow and the event that triggered it, so a <code>push</code> run and a <code>pull_request</code> run of one workflow on the same commit keep separate gates; the example joins <code>workflow_id</code> and <code>event</code>. When set, a gate still queued or running for an earlier run of the same workflow and event on the same commit (a re-run or a later attempt) is cancelled when a newer one starts. A job-level <code>concurrency</code> group does this, named <code>annotation-gate-run-&lt;head-sha&gt;-&lt;workflow-id&gt;</code>, so a burst of finishing runs cannot flood a small self-hosted pool. The gate posts its check run in one call at the end, so a cancelled gate leaves none behind. When empty, the group falls back to the run id, which is unique, and each run keeps its own gate. Do not name a caller-level <code>concurrency</code> group with the prefix <code>annotation-gate-run-</code>: a job that shares its caller’s group is cancelled as a deadlock.</p>
+<p><code>all-runs: true</code> replaces the per-run gate with one gate per commit. The job lists the commit’s workflow runs, takes the newest completed run of each workflow and event, leaves out the caller’s own workflow, gates all of them and posts a single <code>annotation-gate</code> check run. A run still in progress is left out; its completion starts the next gate, which re-checks the whole commit. Pair it with a workflow-level <code>concurrency</code> group per commit (<code>annotation-gate-&lt;head-sha&gt;</code>, <code>cancel-in-progress: true</code>), so a burst of finishing runs queues one gate that does the work, not one per workflow. One commit-wide check-run listing gives each job’s annotation count, so a job without annotations costs no request. The commit then carries one <code>annotation-gate</code> check, not one per workflow.</p>
+<p>Without <code>all-runs</code>, each gated run posts its own check run named <code>annotation-gate</code>. When several workflows finish on one commit, the commit carries several checks of that name, and a failing one blocks a required check. <code>annotation-gate-run.yml</code> holds <code>checks: write</code>, so it is not in the read-only list on the permissions page. It calls the action at <code>@v3</code>, so it gates the right run only once <code>v3</code> has slid past the commit that added these inputs; before that the unknown inputs are ignored and the gate checks its own run. See <code>examples/annotation-gate-run.yml</code> for the stub to copy.</p>
 
 
 </section>
