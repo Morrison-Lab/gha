@@ -1,0 +1,41 @@
+name: Check caller permissions
+description: >-
+  Fail when a workflow in this repository calls a Morrison-Lab/gha reusable
+  workflow from a job that does not grant the permissions the reusable
+  workflow's jobs request. GitHub rejects such a call at startup
+  (`startup_failure`) before any step runs, so a scheduled caller stops
+  silently (Morrison-Lab/lds#1468); this check catches it at pull-request
+  time. It fetches each callee at the ref the caller pins and compares the
+  union of its jobs' permissions with the calling job's grant (or the
+  workflow-level block). A call with no block at either level is reported as
+  unchecked, since the repository default is not visible here.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  workflows-dir:
+    description: Directory holding the caller workflows.
+    default: '.github/workflows'
+  fail:
+    description: >-
+      Fail the action when a caller lacks a required grant (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install PyYAML
+      shell: bash
+      run: python3 -m pip install --quiet pyyaml
+
+    - name: Check caller permissions
+      shell: bash
+      env:
+        CCP_WORKFLOWS_DIR: ${{ inputs.workflows-dir }}
+        CCP_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-caller-permissions.py"
