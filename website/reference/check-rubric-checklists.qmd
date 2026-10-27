@@ -5,12 +5,15 @@ title: "check-rubric-checklists.yml"
 Diff-scoped check that warns when a pull request adds or revises
 a grading rubric that is not written as a checklist.
 The lab's default (Ezra, 2026-10-27) is that most STEM grading rubrics are checklists:
-one item per observable criterion, so a grader marks each item as earned or not.
+one item per observable criterion,
+so a grader marks each item as earned or not.
 
-A rubric is a line that opens with `Grading`, `Rubric`, `Marking scheme` or `Mark scheme`,
+A rubric is a line that opens with `Grading`, `Rubric`,
+`Marking scheme` or `Mark scheme`,
 bare, bolded, in a blockquote or as a heading,
 followed by `(`, `:` or the end of the line.
-Its block is that line plus the blank lines, list items and indented lines after it.
+Its block is that line plus the blank lines, list items
+and indented lines after it.
 The check reports a rubric whose block holds no task-list item (`- [ ] ...`).
 
 The check does not count:
@@ -23,7 +26,8 @@ The check does not count:
 A rubric the pull request does not touch is never reported.
 With no base to diff against, the check skips
 instead of scanning the whole tree.
-It warns by default, because the rule is a default for most rubrics, not an absolute one;
+It warns by default,
+because the rule is a default for most rubrics, not an absolute one;
 `fail: true` makes it block.
 
 ## Inputs

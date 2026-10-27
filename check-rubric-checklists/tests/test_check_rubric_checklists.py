@@ -132,9 +132,39 @@ def test_no_base_skips(repo):
 
 # -- defaults agree ----------------------------------------------------------
 
+def _fail_default(path):
+    import yaml
+    doc = yaml.safe_load(path.read_text())
+    inputs = doc["inputs"] if "inputs" in doc else doc[True]["workflow_call"]["inputs"]
+    return inputs["fail"]["default"]
+
+
 def test_default_is_warn_only():
     assert rcl._DEFAULT_FAIL is False
-    action = (_DIR / "action.yml").read_text()
-    workflow = (_DIR.parent / ".github/workflows/check-rubric-checklists.yml").read_text()
-    assert "default: 'false'" in action
-    assert "default: false" in workflow
+    assert str(_fail_default(_DIR / "action.yml")).lower() == "false"
+    workflow = _DIR.parent / ".github/workflows/check-rubric-checklists.yml"
+    assert str(_fail_default(workflow)).lower() == "false"
+
+
+# -- exit codes --------------------------------------------------------------
+
+def _main(monkeypatch, fail):
+    monkeypatch.setenv("RCL_BASE_REF", "HEAD")
+    monkeypatch.setenv("RCL_GLOBS", "*.qmd")
+    if fail is None:
+        monkeypatch.delenv("RCL_FAIL", raising=False)
+    else:
+        monkeypatch.setenv("RCL_FAIL", fail)
+    return rcl.main()
+
+
+def test_warns_with_exit_0_by_default(repo, monkeypatch):
+    (repo / "new.qmd").write_text("Grading (3 points): prose.\n")
+    _git(repo, "add", ".")
+    assert _main(monkeypatch, None) == 0
+
+
+def test_fails_with_exit_1_when_asked(repo, monkeypatch):
+    (repo / "new.qmd").write_text("Grading (3 points): prose.\n")
+    _git(repo, "add", ".")
+    assert _main(monkeypatch, "true") == 1
