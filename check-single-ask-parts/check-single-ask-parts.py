@@ -24,7 +24,8 @@ What is not counted:
 
 - text inside a code fence, an HTML comment, display math or inline math;
 - a part that carries ``<!-- single-ask-ok: <reason> -->`` on its first line
-  or the line before it, or an exercise that carries it anywhere.
+  or the line before it, or an exercise that carries it on its opening
+  fence or the line before that.
 
 Design notes, in the model of ``check-multipart-exercises``:
 
@@ -120,7 +121,8 @@ def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
             return "", True
         raw = raw[end + 3:]
     spans: List[str] = []
-    raw = CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
+    raw = CODE_SPAN_RE.sub(
+        lambda m: spans.append(m.group(0)) or f"\0{len(spans) - 1}\0", raw)
     while True:
         start = raw.find("<!--")
         end = raw.find("-->", start + 4) if start >= 0 else -1
@@ -131,8 +133,7 @@ def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
     opened = start >= 0
     if opened:
         raw = raw[:start]
-    it = iter(spans)
-    return re.sub("\0", lambda _: next(it), raw), opened
+    return re.sub("\0(\\d+)\0", lambda m: spans[int(m.group(1))], raw), opened
 
 
 def find_exercises(lines: List[str]) -> List[Exercise]:
@@ -191,10 +192,11 @@ def body_text(lines: List[str]) -> List[Tuple[int, str]]:
         if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = (m.group(1)[0], len(m.group(1)))
             continue
-        if raw.count("$$") % 2:
+        plain = CODE_SPAN_RE.sub(" ", raw)
+        if plain.count("$$") % 2:
             in_math = not in_math
             continue
-        if in_math or "$$" in raw:
+        if in_math or "$$" in plain:
             continue
         text = INLINE_MATH_RE.sub(" ", CODE_SPAN_RE.sub(" ", raw))
         out.append((idx + 1, text))
@@ -238,7 +240,9 @@ def count_asks(text: str) -> int:
 def find_parts(lines: List[str], ex: Exercise) -> List[Part]:
     """Parts of one exercise that hold two or more asks."""
     body = lines[ex.start:max(ex.end - 1, ex.start)]
-    if any(ALLOW_RE.search(line) for line in body):
+    fence = lines[ex.start - 1]
+    before_fence = lines[ex.start - 2] if ex.start >= 2 else ""
+    if ALLOW_RE.search(fence) or ALLOW_RE.search(before_fence):
         return []
     units: List[List[object]] = []  # [first line, last line, [chunks]]
     previous = 0

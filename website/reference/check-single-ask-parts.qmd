@@ -22,7 +22,8 @@ The check does not count:
 - anything inside a code fence, an HTML comment, display math or inline math;
 - a part that carries `<!-- single-ask-ok: reason -->`
   on its first line or the line before it,
-  or an exercise that carries it anywhere.
+  or an exercise that carries it on its opening fence
+  or the line before that.
 
 A part the pull request does not touch is never reported.
 With no base to diff against, the check skips

@@ -158,3 +158,23 @@ def _input_block(text: str, name: str) -> str:
             break
         block.append(line)
     return "\n".join(block)
+
+
+def test_a_part_exemption_does_not_hide_the_next_part():
+    body = "<!-- single-ask-ok: one task -->\n1. Compute x. Then plot y.\n\n2. Compute x. Then plot y."
+    assert flagged(body) == [5]
+
+
+def test_an_exercise_exemption_sits_on_the_opening_fence():
+    text = "<!-- single-ask-ok: one task -->\n::: {#exr-a}\nCompute x. Then plot y.\nAlso find z. Then plot w.\n:::\n"
+    found, _ = sap.scan_file(text.split("\n"))
+    assert found == []
+
+
+def test_a_comment_with_a_code_span_keeps_the_later_spans():
+    text, _ = sap.strip_comments("<!-- `a` --> Compute `b`", False)
+    assert text == " Compute `b`"
+
+
+def test_double_dollar_in_a_code_span_is_not_display_math():
+    assert flagged("Write `$$` and compute x. Then plot y.") == [2]
