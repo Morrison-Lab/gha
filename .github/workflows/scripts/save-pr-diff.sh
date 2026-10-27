@@ -30,9 +30,16 @@ mkdir -p "$(dirname "$TARGET")"
 
 # `gh pr diff` fails for a PR that changes more than 300 files (HTTP 406), so
 # fall back to the per-file patches from the files API, which reaches 3000 files.
+#
+# The saved diff is approximate: the headers are synthesized (no `index` line,
+# `a/` for added files), and a file the API returns no patch for, such as a
+# binary or oversized one, carries a marker line instead of a body. The API
+# caps at 3000 files, so a PR past that cap saves a partial diff; the notice
+# below makes the fallback visible in the log.
 files_api_diff() {
+  echo "::notice::gh pr diff failed or was empty; saving an approximate diff from the files API." >&2
   gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[] |
-    "diff --git a/\(.previous_filename // .filename) b/\(.filename)\n--- a/\(.previous_filename // .filename)\n+++ b/\(.filename)\n\(.patch // "")"'
+    "diff --git a/\(.previous_filename // .filename) b/\(.filename)\n--- a/\(.previous_filename // .filename)\n+++ b/\(.filename)\n\(.patch // "[patch omitted by the files API]")"'
 }
 
 if { gh pr diff "$PR_NUMBER" --repo "$REPO" > "$TARGET" && [ -s "$TARGET" ]; } \
