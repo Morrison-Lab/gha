@@ -36,7 +36,8 @@ Known limits of the heuristic:
 
 - a blank line inside a list item splits the item into two parts,
   as Markdown does for a paragraph;
-- an ask phrased without one of the listed verbs, such as "Why does ...?", is not counted;
+- an ask phrased without one of the listed verbs,
+  such as "Why does ...?", is not counted;
 - the verb list is English only.
 
 ## Inputs
