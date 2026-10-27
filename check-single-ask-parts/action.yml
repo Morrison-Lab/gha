@@ -11,7 +11,7 @@ inputs:
     default: '3.x'
   base-ref:
     description: >-
-      Git ref/SHA to diff against; only rubrics with a line added since this
+      Git ref/SHA to diff against; only exercise parts with a line added since this
       ref are checked. On a pull request the reusable workflow passes `HEAD^1`.
       Diff mode needs the base commit in history (checkout with fetch-depth:
       0); when the diff can't be computed, or no base-ref is given on a push

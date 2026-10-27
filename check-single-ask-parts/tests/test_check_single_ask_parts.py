@@ -143,5 +143,18 @@ def test_default_is_warn_only():
     assert sap._DEFAULT_FAIL is False
     action = (_DIR / "action.yml").read_text()
     workflow = (_DIR.parent / ".github/workflows/check-single-ask-parts.yml").read_text()
-    assert "default: 'false'" in action
-    assert "default: false" in workflow
+    assert "default: 'false'" in _input_block(action, "fail")
+    assert "default: false" in _input_block(workflow, "fail")
+
+
+def _input_block(text: str, name: str) -> str:
+    """The lines of one input, from its `name:` key to the next input."""
+    lines = text.split("\n")
+    start = next(i for i, l in enumerate(lines) if l.strip() == f"{name}:" and l.startswith(("  ", "      ")))
+    indent = len(lines[start]) - len(lines[start].lstrip())
+    block = [lines[start]]
+    for line in lines[start + 1:]:
+        if line.strip() and len(line) - len(line.lstrip()) <= indent:
+            break
+        block.append(line)
+    return "\n".join(block)

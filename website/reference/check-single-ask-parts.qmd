@@ -14,8 +14,8 @@ An ask is a clause that opens with an imperative verb the exercises use,
 such as Compute, Find, Show, Compare, Plot or Explain.
 The check reports a part with two or more asks:
 two such sentences,
-or one sentence whose clauses after ", and", ", then", "; then", "and then" or "and also"
-open with such a verb.
+or one sentence whose clauses open with such a verb
+after ", and", ", then", "; then", "and then" or "and also".
 
 The check does not count:
 
