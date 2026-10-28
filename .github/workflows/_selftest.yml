@@ -3164,6 +3164,126 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-fform-paren || true
           rm -rf _ci-fform-paren
+  # check-macro-expansions is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-macro-expansions@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the scanner and both scopes; the composite calls below prove
+  # action.yml wires each input through to the script.
+  macro-expansions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-macro-expansions unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-macro-expansions/tests/ -v
+      # This repo has no latex-macros submodule, so the default macros file is
+      # missing and the call must skip with a warning rather than fail.
+      - name: Check this PR's added lines, expecting a skip
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Stage a macros file and a page that writes a name followed by the
+      # paren macro, then assert that the blocking call really fails.
+      - name: Stage a macros file and a page spelling out a macro expansion
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-macro-expansions
+          printf '%s\n' '\providecommand{\sumin}{\sum_{i=1}^n}' > _ci-macro-expansions/macros.qmd
+          printf '%s\n' 'Take $\sum_{i=1}^n y_i$ here.' > _ci-macro-expansions/page.qmd
+          git add -f _ci-macro-expansions/macros.qmd _ci-macro-expansions/page.qmd
+      # Warn-only is the default: the same page must not fail the job.
+      - name: Check the staged page, warn-only by default
+        uses: ./check-macro-expansions
+        with:
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      - name: Check the staged page, expecting a failure
+        id: macro-expansions-expected-failure
+        continue-on-error: true
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.macro-expansions-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-macro-expansions to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-macro-expansions failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the working-tree-aware scope examines it and the call must fail. Were
+      # base-ref dropped, the call would skip and pass, so this failure proves
+      # base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: macro-expansions-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          base-ref: HEAD
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.macro-expansions-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (warning, exit 0). Were
+      # the skip a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          base-ref: ''
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+          paths-ignore: '_ci-macro-expansions'
+      - name: Check again with globs excluding the page
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-macro-expansions || true
+          rm -rf _ci-macro-expansions
   # check-write-idiom is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-write-idiom@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit

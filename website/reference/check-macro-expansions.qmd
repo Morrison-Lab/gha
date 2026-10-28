@@ -1,0 +1,137 @@
+---
+title: "check-macro-expansions.yml"
+---
+
+Diff-scoped, warn-only check that flags math which writes out by hand
+what a shared macro already says.
+It is [gha#1218](https://github.com/Morrison-Lab/gha/issues/1218),
+the check behind the rule in psw's
+[concise expressions](https://morrison-lab.github.io/psw/chapters/notation/concise-expressions.html)
+page.
+Two cases motivated it:
+the left side of the bias--variance decomposition written as
+`\E{\paren{\newoutvar - \predvalf{\newpredval}}^2}`
+where `\E{\sqf{\prederrf{\predvalf{\newpredval}}}}` names the same prediction error
+([mlg#193](https://github.com/Morrison-Lab/mlg/pull/193)),
+and a hand-built squared bias where `\sqf{\biassymf{...}}` exists
+([mlg#192](https://github.com/Morrison-Lab/mlg/pull/192)).
+
+## What it flags
+
+The check reads the macros file (`macros-file`,
+default `latex-macros/macros.qmd`) and builds a table of expansions
+from every single-line `\providecommand`, `\newcommand`, `\renewcommand` or `\def`
+whose body is structured enough to recognise.
+Inside `$...$` and `$$...$$` math on a line a pull request adds,
+in `.qmd`, `.Rmd` and `.md` files,
+text that matches a macro's expansion is reported with the macro that names it.
+For example, `\sum_{i=1}^n` is reported as `\sumin`,
+and `\tp{X} W X` as `\qform`.
+
+- A `#1`, `#2`, ... in a body is a wildcard for a macro, a letter or a number,
+  with an optional subscript.
+  A `#1` that appears twice must match the same text both times,
+  so `\tp{X} W Z` is not a quadratic form.
+- Whitespace and braces between tokens do not matter,
+  so `\sum_{ i = 1 }^{ n }` matches too.
+- Several macros with one expansion are reported together
+  (`\sumin or \sumto`).
+  When matches overlap, the longest one is reported.
+- A body is *structured enough* when it has at least four tokens
+  (commands, symbols, words and placeholders, not braces) and is not an alias of other macros.
+  A lone font wrapper such as `\mathcal{H}` or `\operatorname{rank}` has two tokens and is never flagged,
+  because the same glyphs are often a different concept.
+  `\begin{aligned}` is likewise not flagged.
+
+## What it does not flag
+
+- a line that already uses the macro (for that macro);
+- the line that defines a macro;
+- text outside math;
+- a code fence or code span, an HTML comment, or YAML front matter;
+- a line carrying, or following, `<!-- check-macro-expansions: allow -->`,
+  the opt-out for a derivation that rewrites the chunk on purpose;
+- a macro named in `exclude`.
+  The default excludes `hist`,
+  whose body `\bar{#1}_{#2}` is also how a plain sample mean is written,
+  so the table cannot tell the two apart.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing hits are not reflagged on every unrelated edit.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose,
+for example to count the hits a repository still carries
+before turning `fail` on.
+
+Every run prints how many lines, files and expansions it examined.
+
+## Limitations
+
+- An expression split across lines is not found.
+- The table cannot tell whether a hit is the concept the macro names.
+  `\bar{x}_1` may be a sample mean or a treatment history.
+  Mark a deliberate case with the `allow` comment, or list the macro in `exclude`.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `macros-file`    | string  | `'latex-macros/macros.qmd'` | Path of the macros file whose single-line macro definitions give the expansions. A missing file skips the check with a warning. |
+| `exclude`        | string  | `'hist'` | Comma- or newline-separated macro names (no backslash) never flagged. |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `submodules`     | string  | `'true'` | Passed to `actions/checkout`, so the `latex-macros` submodule is available. |
+| `submodule-paths` | string  | `''`     | Whitespace-separated submodule paths to initialize instead of `submodules`, for a repository with a private submodule beside the public one this check needs. |
+| `fail`           | boolean | `false` | Fail the workflow when math spells out a macro's expansion. Warn-only by default. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-macro-expansions.yml in your repo.
+# Diff-scoped check: flags math on lines a PR adds that writes out by hand what a shared macro
+# already says (such as `\sum_{i=1}^n` where `\sumin` exists in the latex-macros submodule's macros.qmd).
+# Warn-only by default. Skips with a warning when the macros file is missing.
+# Mark a derivation step that rewrites the chunk on purpose with `<!-- check-macro-expansions: allow -->`.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check math that spells out a macro expansion
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-macro-expansions.yml@v3
+    # with:
+    #   macros-file: 'latex-macros/macros.qmd'  # where the macros are defined
+    #   exclude: 'hist'                         # macro names (no backslash) never flagged
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # block instead of warn (defaults to false)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-macro-expansions.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-macro-expansions.yml)
+for the full caller stub.
