@@ -993,7 +993,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped check that fails when a pull request adds a solution paragraph that opens with a bare “Yes.” or “No.”. The lab’s rule (Ezra, 2026-10-28) is that a yes-or-no answer says what it means in the question’s own terms, as in “No: it’s not possible that the advanced network has a test error of 0.25.”</p>
+<p>Diff-scoped check that fails when a pull request adds a solution paragraph that opens with a bare “Yes.” or “No.”. The lab’s rule (Ezra, 2026-10-28) is that a yes-or-no answer says what it means in the question’s own words, as in “No: it’s not possible that the advanced network has a test error of 0.25.”</p>
 <p>The check looks inside a solution div (<code>#sol-...</code>, <code>.sol</code>, <code>.solution</code> or <code>.answer</code>) for a paragraph or list item that begins with Yes or No, bare or in bold or italics, followed by a period, an exclamation mark or nothing. “No: …”, “No, …” and “No other notes” pass. Code fences and HTML comments are skipped.</p>
 <p>An untouched answer is never reflagged. With no base ref the check skips instead of scanning the whole tree; <code>whole-tree</code> measures a corpus.</p>
 <section id="usage" class="level2">
@@ -1029,7 +1029,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>whole-tree</code></td>
 <td><code>false</code></td>
-<td>Scan every solution, not only a pull request’s additions</td>
+<td>Scan every solution, not only a PR’s additions</td>
 </tr>
 <tr class="even">
 <td><code>runs-on</code></td>

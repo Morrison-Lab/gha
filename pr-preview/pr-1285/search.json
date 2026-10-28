@@ -5647,7 +5647,7 @@
     "href": "reference/check-bare-yes-no.html",
     "title": "check-bare-yes-no.yml",
     "section": "",
-    "text": "Diff-scoped check that fails when a pull request adds a solution paragraph that opens with a bare “Yes.” or “No.”. The lab’s rule (Ezra, 2026-10-28) is that a yes-or-no answer says what it means in the question’s own terms, as in “No: it’s not possible that the advanced network has a test error of 0.25.”\nThe check looks inside a solution div (#sol-..., .sol, .solution or .answer) for a paragraph or list item that begins with Yes or No, bare or in bold or italics, followed by a period, an exclamation mark or nothing. “No: …”, “No, …” and “No other notes” pass. Code fences and HTML comments are skipped.\nAn untouched answer is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus.",
+    "text": "Diff-scoped check that fails when a pull request adds a solution paragraph that opens with a bare “Yes.” or “No.”. The lab’s rule (Ezra, 2026-10-28) is that a yes-or-no answer says what it means in the question’s own words, as in “No: it’s not possible that the advanced network has a test error of 0.25.”\nThe check looks inside a solution div (#sol-..., .sol, .solution or .answer) for a paragraph or list item that begins with Yes or No, bare or in bold or italics, followed by a period, an exclamation mark or nothing. “No: …”, “No, …” and “No other notes” pass. Code fences and HTML comments are skipped.\nAn untouched answer is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -5671,7 +5671,7 @@
     "href": "reference/check-bare-yes-no.html#inputs",
     "title": "check-bare-yes-no.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every solution, not only a pull request’s additions\n\n\nruns-on\nubuntu-latest\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every solution, not only a PR’s additions\n\n\nruns-on\nubuntu-latest\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
     "crumbs": [
       "Overview",
       "Reference",
