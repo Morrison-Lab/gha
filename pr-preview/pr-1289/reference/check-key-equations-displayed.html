@@ -1006,7 +1006,7 @@ cookieconsent.run({
 <li>it contains a relation (<code>=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>\le</code>, <code>\ge</code>, <code>\neq</code> or <code>\approx</code>), ends its sentence, and follows “yields”, “gives”, “implies”, “so”, “thus”, “hence”, “therefore” or “forces”, or the next line opens with “So”, “Hence”, “Therefore” or “Thus”.</li>
 </ul>
 <p>It misses a key equation with no cue word, and it may flag a minor step. Put <code>&lt;!-- inline-ok --&gt;</code> on the line to accept an inline equation. Code fences, inline code and HTML comments are skipped, and an equation split over two lines is not seen.</p>
-<p>An untouched line is never reflagged. With no base ref the check skips instead of scanning the whole tree; <code>whole-tree</code> measures a corpus.</p>
+<p>An untouched line is never reflagged. With no base ref, as on a <code>push</code> event, the check skips instead of scanning the whole tree; <code>whole-tree</code> measures a corpus.</p>
 <section id="usage" class="level2">
 <h2 class="anchored" data-anchor-id="usage">Usage</h2>
 <p>Copy <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-key-equations-displayed.yml"><code>examples/check-key-equations-displayed.yml</code></a> to <code>.github/workflows/</code> in your repository.</p>
