@@ -27,7 +27,7 @@ scope. The parser is line-based so the action needs no YAML package: it reads
 an inline list (``["/"]``) or a block list (``- "/"``) after the key.
 
 Configuration (environment variables, set by the composite action):
-  CSS_GLOBS          Space-separated git pathspecs (default: '_quarto*.yml').
+  CSS_GLOBS          Space-separated git pathspecs (default: '_quarto*.yml */_quarto*.yml').
   CSS_PATHS_IGNORE   Comma/newline-separated glob patterns to skip.
   CSS_FAIL           "false" => warn only; default "true".
 """
