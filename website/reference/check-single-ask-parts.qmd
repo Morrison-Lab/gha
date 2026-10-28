@@ -5,7 +5,7 @@ title: "check-single-ask-parts.yml"
 Diff-scoped check that warns when a pull request adds or revises
 an exercise part that asks for more than one thing.
 The lab's rule (Ezra, 2026-10-27) is that each exercise part asks for one thing,
-and a part that asks for several is split into several parts,
+and a part that asks for several things is split into several parts,
 with the solution split the same way.
 
 A part is a list item or a paragraph in the body of an exercise div (`#exr-`),

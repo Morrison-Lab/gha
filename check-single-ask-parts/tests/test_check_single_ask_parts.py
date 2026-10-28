@@ -203,7 +203,7 @@ def test_div_fences_inside_a_code_fence_do_not_open_a_solution():
     assert [p.line for p in found] == [2]
 
 
-def test_inline_math_only_line_does_not_split_the_part():
+def test_display_math_on_one_line_does_not_split_the_part():
     body = "Compute the slope\n$$ b = 2 $$\nand compare it with the intercept."
     assert flagged(body) == [2]
 
@@ -238,6 +238,11 @@ def test_a_filled_line_inside_a_paragraph_does_not_split_the_part(middle):
 
 def test_a_solution_without_blank_lines_ends_the_part():
     body = "Compute the slope.\n::: {.sol}\nThe slope is 2.\n:::\nPlot the data."
+    assert flagged(body) == []
+
+
+def test_a_solution_class_div_ends_the_part():
+    body = "Compute the slope.\n::: {.solution}\nThe slope is 2.\n:::\nPlot the data."
     assert flagged(body) == []
 
 
