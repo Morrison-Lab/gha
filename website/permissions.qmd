@@ -22,7 +22,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-key-equations-displayed`, `check-definite-antecedents`,
   `check-pr-concerns`,
   `check-pr-size`,
-  `check-caller-permissions`, `check-exm-figures`,
+  `check-caller-permissions`, `check-exm-figures`, `check-axis-titles`,
   `check-visualization-figures`, `check-tree-lists`,
   `check-self-contained-captions`,
   `check-def-commentary`, `check-solution-citations`,

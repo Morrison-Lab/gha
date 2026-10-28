@@ -17,6 +17,8 @@
 #   PR_NUMBER          the pull request number
 #   GITHUB_PAT         a token for the GitHub API (gh::gh)
 #   LINT_FAIL          "false" to warn instead of failing (default: fail)
+#   LINT_FILE_PATTERN  regex of repo-relative paths to lint (default: R files)
+#   LINT_LMS           "true" to lint with lms::default_linters(nested_calls = TRUE)
 #   GITHUB_ACTION_PATH the composite action's path (to source added-lines.R)
 
 action_path <- Sys.getenv("GITHUB_ACTION_PATH")
@@ -30,6 +32,15 @@ if (nzchar(action_path)) {
 repo <- Sys.getenv("GITHUB_REPOSITORY")
 pr <- Sys.getenv("PR_NUMBER")
 fail <- !identical(tolower(Sys.getenv("LINT_FAIL", "true")), "false")
+file_pattern <- Sys.getenv("LINT_FILE_PATTERN", DEFAULT_LINT_FILE_PATTERN)
+use_lms <- identical(tolower(Sys.getenv("LINT_LMS", "false")), "true")
+# With lms the lab's linters (including the no-nested-calls rules) replace the
+# repository's own linter list; its exclusions in .lintr.R still apply.
+linters <- if (use_lms) {
+  lms::default_linters(nested_calls = TRUE)
+} else {
+  NULL # lintr then uses the linters configured in .lintr.R
+}
 if (repo == "" || pr == "") {
   stop("GITHUB_REPOSITORY and PR_NUMBER must both be set.")
 }
@@ -39,7 +50,7 @@ files <- gh::gh(sprintf("GET /repos/%s/pulls/%s/files", repo, pr), .limit = Inf)
 changed <- list()
 for (f in files) {
   path <- f$filename
-  if (!grepl("[.][Rr]$", path)) next
+  if (!is_lint_target(path, file_pattern)) next
   if (identical(f$status, "removed")) next
   if (!file.exists(path)) next
   lines <- added_lines(f$patch)
@@ -49,7 +60,7 @@ for (f in files) {
 }
 
 if (length(changed) == 0) {
-  cat("No changed R lines to lint.\n")
+  cat("No changed lines to lint.\n")
   quit(status = 0)
 }
 
@@ -57,7 +68,7 @@ lints <- list()
 for (path in names(changed)) {
   on_changed <- Filter(
     function(l) l$line_number %in% changed[[path]],
-    lintr::lint(path)
+    lintr::lint(path, linters = linters)
   )
   lints <- c(lints, on_changed)
 }

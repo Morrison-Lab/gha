@@ -81,6 +81,7 @@ website:
           - reference/check-exercise-before-result.qmd
           - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
+          - reference/check-axis-titles.qmd
           - reference/check-tree-lists.qmd
           - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd

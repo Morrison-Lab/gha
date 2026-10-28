@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-axis-titles.yml in your repo.
+# Diff-scoped check: flags an axis title made only of a symbol or expression
+# ("x", "f(x)") when a PR adds it. Name the quantity in plain words, or add axis-title-ok: reason.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check axis titles
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-axis-titles.yml@v3
+    # with:
+    #   globs: '*.qmd *.Rmd *.R *.py'      # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
