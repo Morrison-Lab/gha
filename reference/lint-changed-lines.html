@@ -1128,7 +1128,7 @@ cookieconsent.run({
 <td><code>file-pattern</code></td>
 <td>string</td>
 <td><code>'[.][Rr]$'</code></td>
-<td>Regular expression matched against each changed file’s path; only matching files are linted. Use <code>'[.]([Rr]\|[Rr]md\|qmd)$'</code> to also lint the R chunks in Quarto and R Markdown documents.</td>
+<td>Regular expression matched against each changed file’s path; only matching files are linted. Use <code>'[.]([Rr]\|[Rr]md\|[Qq]md)$'</code> to also lint the R chunks in Quarto and R Markdown documents.</td>
 </tr>
 <tr class="even">
 <td><code>lms-ref</code></td>
@@ -1170,7 +1170,7 @@ cookieconsent.run({
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: ''      # extra R deps (gh + lintr always installed)</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: false  # skip R CMD INSTALL for a non-package repo</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false             # warn instead of failing on lints</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   file-pattern: '[.]([Rr]|[Rr]md|qmd)$'  # also lint R chunks in .qmd/.Rmd</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   file-pattern: '[.]([Rr]|[Rr]md|[Qq]md)$'  # also lint R chunks in .qmd/.Rmd</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   lms-ref: &lt;commit SHA of Morrison-Lab/psc&gt;  # lint with lms::default_linters(nested_calls = TRUE)</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-changed-lines.yml</code>).</p>
