@@ -1,0 +1,40 @@
+name: Check bare yes/no answers
+description: >-
+  Diff-scoped check that flags a solution paragraph that opens with a bare
+  "Yes." or "No." instead of saying what the answer means in the question's
+  own terms, when the diff adds the line (Ezra, 2026-10-28). Fails by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only added lines are checked. Needs the base
+      commit in history (fetch-depth: 0). Without it the check is skipped.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked matching file in full; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  fail:
+    description: Fail the action on a finding (else warnings only).
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check bare yes/no answers
+      shell: bash
+      env:
+        BYN_BASE_REF: ${{ inputs.base-ref }}
+        BYN_WHOLE_TREE: ${{ inputs.whole-tree }}
+        BYN_GLOBS: ${{ inputs.globs }}
+        BYN_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-bare-yes-no.py"

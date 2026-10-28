@@ -42,6 +42,7 @@ updates:
       - "/check-visualization-figures"
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
+      - "/check-bare-yes-no"
       - "/check-multipart-exercises"
       - "/check-rubric-checklists"
       - "/check-note-sheet-rows"
