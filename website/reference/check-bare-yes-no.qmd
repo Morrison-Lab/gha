@@ -1,0 +1,33 @@
+---
+title: "check-bare-yes-no.yml"
+---
+
+Diff-scoped check that fails when a pull request adds a solution paragraph
+that opens with a bare "Yes." or "No.".
+The lab's rule (Ezra, 2026-10-28) is that a yes-or-no answer says what it means
+in the question's own terms, as in "No: it's not possible that the advanced network has a test error of 0.25."
+
+The check looks inside a solution div (`#sol-...`, `.sol`, `.solution` or `.answer`)
+for a paragraph or list item that begins with Yes or No, bare or in bold or italics,
+followed by a period, an exclamation mark or nothing.
+"No: ...", "No, ..." and "No other notes" pass.
+Code fences and HTML comments are skipped.
+
+An untouched answer is never reflagged.
+With no base ref the check skips instead of scanning the whole tree;
+`whole-tree` measures a corpus.
+
+## Usage
+
+Copy [`examples/check-bare-yes-no.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-bare-yes-no.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every solution, not only a pull request's additions |
+| `runs-on` | `ubuntu-latest` | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
