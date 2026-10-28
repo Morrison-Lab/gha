@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 r"""
 Flag a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S.
 

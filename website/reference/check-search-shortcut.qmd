@@ -2,11 +2,14 @@
 title: "check-search-shortcut.yml"
 ---
 
-Blocking check that flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S.
-Quarto's `website.search.keyboard-shortcut` (`book.search.keyboard-shortcut` for a book)
+Blocking check that flags a Quarto site
+whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S.
+Quarto's `website.search.keyboard-shortcut`
+(`book.search.keyboard-shortcut` for a book)
 defaults to `["f", "/", "s"]`.
 Its script listens for `keyup` and never checks a modifier key,
-so the keyup that follows Ctrl/Cmd-F (find in page) or Ctrl/Cmd-S (save) opens site search too.
+so the keyup that follows Ctrl/Cmd-F (find in page)
+or Ctrl/Cmd-S (save) opens site search too.
 The lab's rule (Ezra, 2026-10-28) is that every Quarto site keeps only `"/"`.
 This implements
 [gha#1287](https://github.com/Morrison-Lab/gha/issues/1287).
@@ -22,9 +25,11 @@ A project directory is flagged when either of these holds:
 - it defines a site (a `website:` or `book:` key in a `_quarto*.yml` file)
   and no `_quarto*.yml` file there sets `keyboard-shortcut`,
   so the default applies;
-- any `keyboard-shortcut` in the directory lists something other than exactly `"/"`.
+- any `keyboard-shortcut` in the directory
+  lists something other than exactly `"/"`.
 
-Set `search: false` directly under `website:` or `book:` to turn the site search off,
+Set `search: false` directly under `website:` or `book:`
+to turn the site search off,
 which also turns this check off for that project.
 A `search: false` deeper in the file, such as a sidebar's, does not.
 
