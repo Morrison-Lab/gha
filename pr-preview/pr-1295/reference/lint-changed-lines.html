@@ -97,11 +97,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   "type": "overlay",
   "limit": 50,
   "keyboard-shortcut": [
-    "f",
-    "/",
-    "s"
+    "/"
   ],
-  "show-item-context": false,
   "language": {
     "search-no-results-text": "No results",
     "search-matching-documents-text": "matching documents",
@@ -678,6 +675,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-search-shortcut.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-search-shortcut.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-visualization-figures.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-visualization-figures.yml</span></a>
   </div>
@@ -1125,7 +1128,7 @@ cookieconsent.run({
 <td><code>file-pattern</code></td>
 <td>string</td>
 <td><code>'[.][Rr]$'</code></td>
-<td>Regular expression matched against each changed file’s path; only matching files are linted. Use <code>'[.]([Rr]\|[Rr]md\|qmd)$'</code> to also lint the R chunks in Quarto and R Markdown documents.</td>
+<td>Regular expression matched against each changed file’s path; only matching files are linted. Use <code>'[.]([Rr]\|[Rr]md\|[Qq]md)$'</code> to also lint the R chunks in Quarto and R Markdown documents.</td>
 </tr>
 <tr class="even">
 <td><code>lms-ref</code></td>
