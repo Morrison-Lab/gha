@@ -74,4 +74,24 @@ check("multiple hunks", added_lines(p4), c(1L, 6L))
 p5 <- "@@ -1 +1,2 @@\n keep\n+added2\n\\ No newline at end of file"
 check("no-newline marker ignored", added_lines(p5), 2L)
 
-cat("\nAll added_lines tests passed.\n")
+# is_lint_target(): which changed files get linted.
+qmd_pattern <- "[.]([Rr]|[Rr]md|qmd)$"
+
+# The default pattern keeps the historical behaviour: R source files only.
+check("default matches .R", is_lint_target("R/a.R"), TRUE)
+check("default matches .r", is_lint_target("R/a.r"), TRUE)
+check("default skips .qmd", is_lint_target("chapters/a.qmd"), FALSE)
+check("default skips .Rmd", is_lint_target("a.Rmd"), FALSE)
+
+# An empty pattern falls back to the default rather than matching everything.
+check("empty pattern is the default (R)", is_lint_target("a.R", ""), TRUE)
+check("empty pattern is the default (qmd)", is_lint_target("a.qmd", ""), FALSE)
+
+# A document pattern adds Quarto and R Markdown but still anchors the extension.
+check("document pattern matches .qmd", is_lint_target("a.qmd", qmd_pattern), TRUE)
+check("document pattern matches .Rmd", is_lint_target("a.Rmd", qmd_pattern), TRUE)
+check("document pattern matches .R", is_lint_target("a.R", qmd_pattern), TRUE)
+check("document pattern skips .md", is_lint_target("a.md", qmd_pattern), FALSE)
+check("document pattern skips .qmd.bak", is_lint_target("a.qmd.bak", qmd_pattern), FALSE)
+
+cat("\nAll added_lines and is_lint_target tests passed.\n")
