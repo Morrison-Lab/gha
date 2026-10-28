@@ -51,6 +51,7 @@ input tables and a copy-paste example.
 | [`check-visualization-figures.yml`](reference/check-visualization-figures.qmd) | Diff-scoped, blocking check that flags a div that asks for a picture (a visual word in its title, or a sketch or plot request in an exercise prompt) but has no figure (an exercise may have it in its solution), when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-self-contained-captions.yml`](reference/check-self-contained-captions.qmd) | Diff-scoped, blocking check that flags a figure or table caption whose first sentence only points to another div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-code-messages.yml`](reference/check-code-messages.qmd) | Diff-scoped, warn-only check that flags a `geom_smooth()` or `stat_smooth()` call missing `method` or `formula`, and a `geom_histogram()` or `stat_bin()` call with no `bins`, `binwidth` or `breaks`, when a PR adds a line to it; the action also scans a rendered site for `cell-output-stderr` blocks | `globs`, `fail`, `whole-tree` |
+| [`check-axis-titles.yml`](reference/check-axis-titles.qmd) | Diff-scoped, blocking check that flags an axis title made only of a symbol or expression, when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-one-div-per-subfile.yml`](reference/check-one-div-per-subfile.qmd) | Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile; a proof stays with its claim and a solution with its exercise) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-multipart-exercises.yml`](reference/check-multipart-exercises.qmd) | Diff-scoped check that fails when a PR adds or revises an exercise div (`#exr-`) holding more than one part | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-rubric-checklists.yml`](reference/check-rubric-checklists.qmd) | Diff-scoped check that warns when a PR adds or revises a grading rubric (`Grading`, `Rubric`, `Marking scheme`, `Mark scheme`) with no task-list item (`- [ ] ...`) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -69,7 +70,7 @@ input tables and a copy-paste example.
 | [`check-dependency-graph.yml`](reference/check-dependency-graph.qmd) | Run the self-test of a notes repo's vendored `build_dependency_graph.py`, then build its definition and result graph and fail on a cycle | `script-dir`, `pages-dir`, `site`, `fail-on-cycle` |
 | [`check-write-idiom.yml`](reference/check-write-idiom.qmd) | Diff-scoped, warn-only check that flags a line opening with `Write the`, `Write a` or `Write an` (after an optional list marker and label), because "Write ..." hides whether to derive, express, state or give | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`lint-qmd.yml`](reference/lint-qmd.qmd)                                 | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length`                                                                                                                   |
-| [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd)               | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally                                                                                                | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`                                                              |
+| [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd)               | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally                                                                                                | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`, `file-pattern`, `lms-ref`                                                              |
 | [`lint-changed-files.yml`](reference/lint-changed-files.qmd)               | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope`                                                                                                                                         | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`                                      |
 | [`lint-workflows.yml`](reference/lint-workflows.qmd)                       | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions                                                                                                              | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail`                                                                         |
 | [`spellcheck.yml`](reference/spellcheck.qmd)                               | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto`, `preinstalled-toolchain`                                                                                               |
@@ -149,6 +150,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-one-div-per-subfile.yml`, `check-code-messages.yml`, `check-multipart-exercises.yml`,
 `check-rubric-checklists.yml`,
 `check-caller-permissions.yml`, `check-exm-figures.yml`, `check-visualization-figures.yml`,
+`check-axis-titles.yml`,
 `check-tree-lists.yml`, `check-self-contained-captions.yml`,
 `check-def-commentary.yml`, `check-solution-citations.yml`,
 `check-exercise-before-result.yml`,
@@ -268,6 +270,11 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   lines a pull request adds or modifies (not whole changed files), so lint rules
   can be adopted or tightened incrementally: new and edited code must comply
   while untouched legacy code is left alone.
+  `file-pattern` widens the files
+  linted to Quarto and R Markdown documents, whose R chunks lintr lints, and
+  `lms-ref` installs the shared `lms` package and lints with
+  `lms::default_linters(nested_calls = TRUE)`, the lab's linters including the
+  no-nested-calls rules.
 - `lint-changed-files.yml` runs [lintr](https://lintr.r-lib.org/) at one of
   three scopes selected by `scope`: the files a pull request changed (default),
   a whole package (`lintr::lint_package()`), or a whole project

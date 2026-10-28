@@ -49,6 +49,23 @@ on:
         description: Fail the workflow when a lint is found on a changed line.
         type: boolean
         default: true
+      file-pattern:
+        description: >-
+          Regular expression matched against each changed file's path; only
+          matching files are linted. The default lints R source files only;
+          use '[.]([Rr]|[Rr]md|qmd)$' to also lint R chunks in Quarto and
+          R Markdown documents.
+        type: string
+        default: '[.][Rr]$'
+      lms-ref:
+        description: >-
+          Commit SHA (or tag) of Morrison-Lab/psc to install the lms package
+          from. When set, changed lines are linted with
+          lms::default_linters(nested_calls = TRUE) instead of the linters in
+          the repository's .lintr.R (its exclusions still apply). Empty keeps
+          the repository's own linters.
+        type: string
+        default: ''
 
 jobs:
   lint-changed-lines:
@@ -79,3 +96,5 @@ jobs:
           extra-packages: ${{ inputs.extra-packages }}
           install-package: ${{ inputs.install-package }}
           fail: ${{ inputs.fail }}
+          file-pattern: ${{ inputs.file-pattern }}
+          lms-ref: ${{ inputs.lms-ref }}
