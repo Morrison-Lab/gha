@@ -46,7 +46,7 @@ inputs:
     description: >-
       Regular expression matched against each changed file's repo-relative
       path; only matching files are linted. The default lints R source files
-      only. Use '[.]([Rr]|[Rr]md|qmd)$' to also lint the R chunks in Quarto and
+      only. Use '[.]([Rr]|[Rr]md|[Qq]md)$' to also lint the R chunks in Quarto and
       R Markdown documents.
     default: '[.][Rr]$'
   lms-ref:
