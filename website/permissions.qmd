@@ -18,6 +18,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`,
   `check-self-credits`,
   `check-one-div-per-subfile`, `check-multipart-exercises`, `check-rubric-checklists`,
+  `check-single-ask-parts`,
   `check-def-title-synonyms`, `check-bare-yes-no`,
   `check-key-equations-displayed`, `check-definite-antecedents`,
   `check-pr-concerns`,

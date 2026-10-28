@@ -90,6 +90,7 @@ website:
           - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd
           - reference/check-rubric-checklists.qmd
+          - reference/check-single-ask-parts.qmd
           - reference/check-note-sheet-rows.qmd
           - reference/check-definite-antecedents.qmd
           - reference/check-paired-file-change.qmd

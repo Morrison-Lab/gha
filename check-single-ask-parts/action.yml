@@ -1,0 +1,57 @@
+name: Check single-ask parts
+description: >-
+  Diff-scoped check that flags a part of an exercise div (`#exr-`), meaning a list item or
+  paragraph outside its solution, that holds two or more asks, such as "Compute
+  X, and compare it with Y", when the diff adds a line inside it. Each exercise
+  part asks for one thing (Ezra, 2026-10-27). Heuristic, so it warns by default;
+  `<!-- single-ask-ok: reason -->` exempts a part.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only exercise parts with a line added since this
+      ref are checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Diff mode needs the base commit in history (checkout with fetch-depth:
+      0); when the diff can't be computed, or no base-ref is given on a push
+      run, the check is skipped rather than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only
+      touched parts. Set to true to measure a corpus; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check (recursive by
+      default).
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a part holds more than one ask. Defaults to 'false'
+      (warning annotations only), because the check is a heuristic
+      and can misread a compound ask that is one task.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check single-ask parts
+      shell: bash
+      env:
+        SAP_BASE_REF: ${{ inputs.base-ref }}
+        SAP_WHOLE_TREE: ${{ inputs.whole-tree }}
+        SAP_GLOBS: ${{ inputs.globs }}
+        SAP_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        SAP_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-single-ask-parts.py"

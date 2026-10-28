@@ -48,6 +48,7 @@ updates:
       - "/check-key-equations-displayed"
       - "/check-multipart-exercises"
       - "/check-rubric-checklists"
+      - "/check-single-ask-parts"
       - "/check-note-sheet-rows"
       - "/check-definite-antecedents"
       - "/build-dependency-graph"
