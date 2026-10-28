@@ -5,7 +5,13 @@ description: >-
   belongs (`\outvar` for `y`, `\predvar` for `x`, `\param` for `\theta`).
   Flags a standalone single Latin letter and any Greek command inside inline
   and display math. Skips code fences, code spans, HTML comments, text-like
-  commands such as `\text{}` and `\operatorname{}`, and any `.notation` div.
+  commands such as `\text{}` and `\operatorname{}`, any `.notation` div, and a blockquote
+  counter-example that opens with a cross mark.
+  The cross mark must be the first character after `>`, and it opens a skip only
+  as the first line of a quote paragraph or right after a check-mark paragraph.
+  The skip ends at an empty `>` line, a blank line, a non-quote line (a lazy
+  continuation without `>` counts), a line that opens with a check mark, or any
+  change of quote nesting depth.
   Scoped to lines a diff adds (an added line whose exact text was also deleted
   in the same diff counts as moved), so it never reflags a corpus's existing
   letters. Warn-only by default.
@@ -63,7 +69,7 @@ runs:
   using: composite
   steps:
     - name: Set up Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: ${{ inputs.python-version }}
 

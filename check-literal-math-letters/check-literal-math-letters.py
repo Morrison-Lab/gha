@@ -25,13 +25,21 @@ What is not flagged:
   commands (``\label``, ``\tag``, ``\eqref``, ``\begin``, ``\end``, ...);
 - runs of two or more letters (``\sin`` written without a backslash is a
   different mistake, and ``x y`` written as ``xy`` is not a *single* letter);
-- code fences, code spans, HTML comments and YAML front matter;
+- code fences, code spans, HTML comments and YAML front matter; the one
+  exception is the log-odds rule, which also reads the label strings of a plot
+  inside a code chunk (``labs()``, ``xlab()``, ``set_xlabel()``, ``label=`` and
+  the like, across lines, with comments skipped);
 - any ``::: {.notation}`` div (a passage that discusses the notation itself,
   where a literal letter is the point);
-- macro definitions (a math span that opens with ``\newcommand``, ``\def`` and
+- a blockquote paragraph that opens with a cross mark (a counter-example of
+  what not to write), or a cross-mark line that follows a check-mark
+  paragraph, up to the next empty ``>`` line, a line that opens with a check
+  mark, a change of quote nesting depth, or a non-quote line;
+- macro definitions (a math span that opens with ``\newcommand``, ``\def``, and
   the like), which are check 2's concern;
-- a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``,
-  and a file carrying ``<!-- check-literal-math-letters: ignore-file -->``.
+- a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``
+  (which may sit alone on a blockquote line), and a file carrying
+  ``<!-- check-literal-math-letters: ignore-file -->``.
 
 Strict by design: there is no allow-list for indices or dummy variables. The
 rule says to find the category first, and the false-positive rate is measured
@@ -140,6 +148,62 @@ GREEK_SUGGESTIONS = {
     "varepsilon": r"\eps if this is the error term",
     "mu": r"\mean if this is the population mean",
 }
+# A line that names the log-odds (or logit) and writes it as a bare `z` or
+# `F` in math. The course symbol is \logodds (eta); the notes once used `F`
+# and `z` for it. `z` and `F` have no suggestion above, so this rule runs in
+# both modes (Ezra, 2026-10-26, lds#1411). It is deliberately narrow:
+# a letter that is a subscript, superscript, applied function (`F(x)`, `F^{-1}`),
+# part of a longer symbol (`x_z`, `z_i`), or inside a `\text{}`/`\mathrm{}`
+# argument is skipped, and so is a line that names a Wald statistic, a
+# quantile or a test, where `z` and `F` are the standard symbols.
+# `\logodds` itself is not context: the boundary and lookbehind exclude it.
+LOGODDS_CONTEXT_RE = re.compile(r"(?<!\\)\b(?:log[- ]?odds|logits?)\b", re.IGNORECASE)
+LOGODDS_EXEMPT_RE = re.compile(r"\b(?:wald|quantiles?|statistics?|tests?|z-scores?)\b", re.IGNORECASE)
+LOGODDS_LETTER_RE = re.compile(r"(?<![\\A-Za-z0-9_^])([zF])(?![A-Za-z0-9_^(])")
+LOGODDS_SUFFIX = "[log-odds]"
+# The label strings of a plot in a code chunk: the strings inside ggplot2's
+# labs(), xlab(), ylab(), ggtitle(), expression() and scale_*(), matplotlib's
+# set_xlabel(), set_ylabel(), set_title() and legend(), and the value of a
+# ``label``, ``subtitle``, ``caption``, ``title``, ``xlab``, ``ylab``, ``main``
+# or ``sub`` argument (base R plot() and plotly layout() included).
+# Only strings are read; a bare symbol in ``expression(paste("Log-odds ", z))``
+# is not.
+LABEL_CALLS = frozenset({
+    "labs", "xlab", "ylab", "ggtitle", "expression",
+    "set_xlabel", "set_ylabel", "set_title", "legend",
+})
+LABEL_ARGS = frozenset({
+    "label", "subtitle", "caption", "title", "xlab", "ylab", "main", "sub",
+})
+# Calls whose ``label``, ``title`` and similar arguments are plot text.  Any
+# other call (``data.frame(label = ...)``, ``tibble(title = ...)``) is not.
+PLOT_CALLS = frozenset({
+    "plot", "title", "mtext", "axis", "text", "annotate", "legend", "layout",
+    "update_layout", "update_xaxes", "update_yaxes", "guides", "guide_legend",
+    "guide_colorbar", "guide_colourbar", "figure", "subplots", "suptitle",
+    "annotate_figure", "text_box", "bar", "barh", "scatter", "hist", "errorbar",
+})
+CODE_WORD_RE = re.compile(r"[\w.$@]+")
+CODE_ARG_NAME_RE = re.compile(r"(?<![\w.$@])([A-Za-z_]\w*)\s*$")
+CODE_BRACES_RE = re.compile(r"\{[^{}]*\}")  # an f-string field is a value
+CODE_ESCAPED_QUOTE_RE = re.compile(r"\\([\"'\\])")
+CODE_ALLOW_RE = re.compile(r"check-literal-math-letters: allow")
+
+
+def _blank_text_args(seg: str) -> str:
+    """``seg`` with the braced argument of each text-like command blanked."""
+    out: List[str] = []
+    i, n = 0, len(seg)
+    while i < n:
+        m = re.compile(r"\\([A-Za-z]+)\*?").match(seg, i)
+        if m and m.group(1) in SKIP_ARG_COMMANDS:
+            j = _skip_group(seg, m.end())
+            out.append(" " * (j - i))
+            i = j
+        else:
+            out.append(seg[i])
+            i += 1
+    return "".join(out)
 # Literal Greek characters map to the command they spell.
 UNICODE_GREEK = {
     "\u03b1": "alpha", "\u03b2": "beta", "\u03b3": "gamma", "\u03b4": "delta", "\u03b5": "varepsilon",
@@ -182,11 +246,21 @@ ENV_BEGIN_RE = re.compile(
     r"^\s*\\begin\{(" + "|".join(DISPLAY_ENVIRONMENTS) + r")\*?\}"
 )
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?![\s$])(.+?)(?<![\s\\$])\$(?!\d)")
+# A blockquote paragraph that opens with the cross mark is a counter-example of
+# what not to write, so its raw letters are the point and are never flagged.
+QUOTE_RE = re.compile(r"^\s*((?:>\s*)+)(.*)$")
+BAD_EXAMPLE_MARK = "❌"
+GOOD_EXAMPLE_MARK = "✅"
 NOTATION_CLASS_RE = re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
 # Anchored to the whole line, so a directive quoted in prose or a code span
 # is not obeyed.
 DIRECTIVE_RE = re.compile(
     r"^\s*<!--\s*check-literal-math-letters:\s*([a-z-]+)\s*-->\s*$"
+)
+# An `allow` directive may also sit alone on a blockquote line. Only `allow`:
+# a quoted `ignore-file` is still not obeyed, so a guide can show it as text.
+QUOTED_ALLOW_RE = re.compile(
+    r"^\s*(?:>\s*)+<!--\s*check-literal-math-letters:\s*allow\s*-->\s*$"
 )
 QUOTED_RE = re.compile(r"\"[^\"]*\"|'[^']*'")
 
@@ -386,6 +460,93 @@ def _div_is_notation(attrs: str) -> bool:
     return bool(NOTATION_CLASS_RE.search(QUOTED_RE.sub("", attrs)))
 
 
+def _label_tokens(body: str, in_label: bool) -> List[str]:
+    """Log-odds tokens in the text of one string, when it is a label."""
+    text = CODE_BRACES_RE.sub("", CODE_ESCAPED_QUOTE_RE.sub(r"\1", body))
+    if in_label and LOGODDS_CONTEXT_RE.search(text) and not LOGODDS_EXEMPT_RE.search(text):
+        return [m.group(1) + LOGODDS_SUFFIX for m in LOGODDS_LETTER_RE.finditer(text)]
+    return []
+
+
+def _scan_chunk_line(raw: str, state: dict) -> List[str]:
+    """Log-odds tokens in the label strings of one line of a code chunk.
+
+    ``state`` carries what earlier lines of the chunk left open: ``calls`` is
+    the stack of (call name, enclosing argument) pairs, the name ``""`` for a
+    bare parenthesis, so a ``labs(`` that ends its line still covers the
+    arguments below it; ``arg`` is the argument being read, so ``label =`` at
+    the end of a line still labels the string on the next; and ``open`` is a
+    triple-quoted string still unclosed at the end of the line, as (quote, is a
+    label), so it is read on every line; an ordinary quote is not carried over.
+    A ``label``-like argument counts only in a plot call (``PLOT_CALLS``,
+    ``geom_*``, ``scale_*`` or a label call) and ends at the first value that
+    is not a string or a call.  A string counts as a label when
+    it sits inside a label call or is the value of a label argument.  Comments
+    are skipped, and so is ``{...}`` in a string (an f-string field).  A
+    comment ``check-literal-math-letters: allow`` sets ``state["allow"]``; the
+    same words inside a string do not.
+    """
+    tokens: List[str] = []
+    calls: List[Tuple[str, str]] = state["calls"]
+    i, n = 0, len(raw)
+    if state.get("open"):
+        quote, in_label = state["open"]
+        j = 0
+        while j < n and not raw.startswith(quote, j):
+            j += 2 if raw[j] == "\\" else 1
+        tokens.extend(_label_tokens(raw[:j], in_label))
+        if j >= n:
+            return tokens
+        state["open"] = None
+        i = j + len(quote)
+    while i < n:
+        ch = raw[i]
+        if ch == "#":
+            if CODE_ALLOW_RE.search(raw, i):
+                state["allow"] = True
+            break
+        if ch in "\"'":
+            quote = ch * 3 if raw.startswith(ch * 3, i) else ch
+            j = i + len(quote)
+            while j < n and not raw.startswith(quote, j):
+                j += 2 if raw[j] == "\\" else 1
+            in_label = state["arg"] in LABEL_ARGS or any(
+                c in LABEL_CALLS or c.startswith("scale_") or outer in LABEL_ARGS
+                for c, outer in calls)
+            tokens.extend(_label_tokens(raw[i + len(quote):j], in_label))
+            if j >= n and len(quote) == 3:
+                state["open"] = (quote, in_label)
+            state["arg"] = ""
+            i = j + len(quote)
+            continue
+        if ch.isalnum() or ch in "_$@":
+            # a value that is neither a string nor a call ends the argument
+            word = CODE_WORD_RE.match(raw, i)
+            i = word.end()
+            rest = raw[i:].lstrip()
+            if not rest.startswith(("(", '"', "'")):
+                state["arg"] = ""
+            continue
+        if ch == "(":
+            m = re.search(r"([A-Za-z_][\w.]*)\s*$", raw[:i])
+            calls.append((m.group(1).split(".")[-1] if m else "", state["arg"]))
+            state["arg"] = ""
+        elif ch == ")":
+            state["arg"] = calls.pop()[1] if calls else ""
+        elif ch == ",":
+            state["arg"] = ""
+        elif ch == "=" and raw[i - 1:i] not in ("=", "!", "<", ">") and raw[i + 1:i + 2] != "=":
+            m = CODE_ARG_NAME_RE.search(raw[:i])
+            inner = calls[-1][0] if calls else None
+            plotty = inner is not None and (
+                inner in LABEL_CALLS or inner in PLOT_CALLS
+                or inner.startswith(("scale_", "geom_")))
+            name = m.group(1) if m else ""
+            state["arg"] = name if plotty and name in LABEL_ARGS else ""
+        i += 1
+    return tokens
+
+
 def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     """Findings (one per line) and the number of math spans scanned."""
     if _has_ignore_file(lines):
@@ -399,6 +560,11 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     env: Optional[str] = None
     divs: List[Div] = []
     allow_through = 0  # last line number covered by an `allow` directive
+    bad_example = False  # inside a blockquote paragraph that opens with a cross mark
+    good_example = False  # inside a blockquote paragraph that opens with a check mark
+    quote_open = True  # the next quote line opens a paragraph
+    quote_depth = 0  # nesting depth of the previous quote line
+    chunk_state: dict = {"calls": [], "arg": ""}  # left open in the current chunk
     start = 0
 
     if lines and lines[0].strip() == "---":
@@ -415,21 +581,56 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
                     and not m.group(2).strip()):
                 fence = None
+            else:
+                code_tokens = _scan_chunk_line(raw, chunk_state)
+                if chunk_state.pop("allow", False):
+                    allow_through = lineno + 1  # this line and the next
+                if code_tokens and lineno > allow_through:
+                    findings.append(Finding(lineno, tuple(code_tokens)))
             continue
         m = FENCE_RE.match(raw)
         if m and not in_display and env is None:
             fence = (m.group(1)[0], len(m.group(1)))
+            chunk_state = {"calls": [], "arg": ""}
             continue
 
         directive = None if in_comment else DIRECTIVE_RE.match(raw)
-        if directive and directive.group(1) == "allow":
+        if (directive and directive.group(1) == "allow") or (
+                not in_comment and QUOTED_ALLOW_RE.match(raw)):
             allow_through = lineno + 1
 
         line, in_comment = _mask_html_comments(raw, in_comment)
         if not line.strip():
             in_display = False
             env = None  # a blank line ends an unclosed environment, as for $$
+            bad_example = good_example = False
+            quote_open = True
+            quote_depth = 0
             continue
+
+        quote = QUOTE_RE.match(line)
+        if quote is None or not quote.group(2).strip():
+            # a non-quote line or an empty `>` ends the paragraph
+            bad_example = good_example = False
+            quote_open = True
+            quote_depth = 0
+        else:
+            text = quote.group(2).lstrip()
+            depth = quote.group(1).count(">")
+            if depth != quote_depth:  # entering or leaving a nested quote
+                bad_example = good_example = False
+                quote_open = True
+            quote_depth = depth
+            # a cross mark starts a counter-example only when it opens the
+            # paragraph or follows a check-mark paragraph, not in mid-paragraph
+            if text.startswith(BAD_EXAMPLE_MARK) and (quote_open or good_example):
+                bad_example, good_example = True, False
+            elif text.startswith(GOOD_EXAMPLE_MARK):
+                # only a check mark that opens the paragraph (or ends a
+                # counter-example) makes a check-mark paragraph
+                good_example = quote_open or bad_example or good_example
+                bad_example = False
+            quote_open = False
 
         if not in_display and env is None:
             dm = DIV_RE.match(line)
@@ -478,12 +679,19 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                     pos, in_display = j + 2, True
 
         math = [seg for seg in math if seg.strip()]
-        if any(d.notation for d in divs) or lineno <= allow_through:
+        if any(d.notation for d in divs) or lineno <= allow_through or bad_example:
             continue
         tokens: List[str] = []
         for seg in math:
             spans += 1
             tokens.extend(scan_math(seg))
+        if LOGODDS_CONTEXT_RE.search(line) and not LOGODDS_EXEMPT_RE.search(line):
+            for seg in math:
+                for lm in LOGODDS_LETTER_RE.finditer(_blank_text_args(seg)):
+                    letter = lm.group(1)
+                    if letter in tokens:  # the generic token says it already
+                        tokens.remove(letter)
+                    tokens.append(letter + LOGODDS_SUFFIX)
         if tokens:
             findings.append(Finding(lineno, tuple(tokens)))
     return findings, spans
@@ -494,6 +702,10 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
 def _describe(token: str) -> str:
     if token.startswith("\\") and token[1:] in DEPRECATED:
         return f"{token} is deprecated -> {DEPRECATED[token[1:]]}"
+    if token.endswith(LOGODDS_SUFFIX):
+        letter = token[0]
+        return (f"{letter} -> \\logodds if this is the log-odds "
+                f"(the course symbol is eta, not {letter})")
     if token.startswith("\\"):
         suggestion = GREEK_SUGGESTIONS.get(token[1:])
     else:

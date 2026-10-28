@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-solution-citations.yml in your repo.
+# Diff-scoped, blocking check: flags a cross-reference to a solution (`@sol-`)
+# inside a `proof` div or a `#thm-`, `#lem-`, `#cor-` or `#prp-` div when a PR
+# adds the line. A derivation cites a result div that follows the solution.
+# Only contents:read is needed.
+name: Check proofs for solution citations
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-solution-citations.yml@v3
+    # with:
+    #   globs: '*.qmd'                          # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every proof, not just a PR's additions

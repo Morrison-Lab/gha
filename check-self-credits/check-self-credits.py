@@ -256,9 +256,15 @@ CITE_RE = re.compile(r"(?<![\w/#=&?.\-])@([A-Za-z_][\w:.\-]*\w|[A-Za-z_])")
 CREDIT_RE = re.compile(
     r"\b(?:adapted|borrowed|reproduced|reprinted)\s+(?:\w+\s+)?from\b|"
     r"\bwith\s+permission\s+from\b|\bcourtesy\s+of\b|"
-    r"\bcredit(?:s|ed)?\s+(?:to|goes)\b",
+    r"\bcredit(?:s|ed)?\s+(?:to|goes)\b|"
+    r"\b(?:written|created|developed|maintained|designed|hosted|provided|"
+    r"built|made|powered|run)\s+(?:\w+\s+)?(?:by|from)\b|"
+    r"\b(?:tooling|template|templates|infrastructure)\s+by\b|"
+    r"\bthanks\s+to\b|\backnowledg(?:e|es|ed|ing|ment|ments|ement|ements)\b",
     re.IGNORECASE,
 )
+ACK_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+acknowledg(?:e)?ments?\b",
+                            re.IGNORECASE)
 SOURCE_LINE_RE = re.compile(
     r"^\s*(?:>\s*)?(?:[-*+]\s+)?[*_]*Source[*_]*:", re.IGNORECASE)
 SOURCE_DIV_RE = re.compile(
@@ -320,6 +326,7 @@ def scan_file(lines: List[str], cfg: Config, own: Set[str]
     # Paragraph = consecutive prose lines; a Source div is its own context.
     para: List[Tuple[int, str]] = []
     divs: List[Tuple[int, bool]] = []  # (colon count, is Source div)
+    in_ack = False  # under an Acknowledgments heading
     examined = 0
 
     def flush() -> None:
@@ -327,7 +334,7 @@ def scan_file(lines: List[str], cfg: Config, own: Set[str]
         if not para:
             return
         examined += 1
-        in_source = any(is_src for _c, is_src in divs)
+        in_source = in_ack or any(is_src for _c, is_src in divs)
         text = "\n".join(t for _n, t in para)
         starts, pos = [], 0
         for _n, t in para:
@@ -405,6 +412,8 @@ def scan_file(lines: List[str], cfg: Config, own: Set[str]
             continue
         if not raw.strip() or HEADING_RE.match(raw):
             flush()
+            if HEADING_RE.match(raw):
+                in_ack = bool(ACK_HEADING_RE.match(raw))
             continue
         if any(rx.search(raw) for rx in cfg.allow_patterns):
             continue

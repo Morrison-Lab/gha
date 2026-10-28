@@ -225,9 +225,21 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-multipart-exercises`, `check-def-title-synonyms`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-exm-figures`, `check-axis-titles`, `check-def-commentary`, `check-pr-size`, `check-pr-concerns`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-def-title-synonyms`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
+
+### Adding a new check
+
+Model a new diff-scoped check on `check-exm-figures` or `check-tree-lists` (composite action, script, tests, reusable workflow, example stub, reference page).
+A new check also has to appear in these lists, or CI fails (gha#1264):
+
+- the read-only capability lists in `README.md` and `website/permissions.qmd`;
+- the `@v3` lists in `CLAUDE.md`, `README.md` (two), `website/versioning.qmd` (two) and `website/workflows.qmd`, and the table rows in `README.md` and `website/workflows.qmd`;
+- `.github/dependabot.yml`, `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
+
+A synthetic email address in a test needs a `# phi-allow` comment.
+When a check fails within seconds, read its `##[error]` lines with a log tail of 120 lines or more before calling it an infrastructure failure.
 
 ### Layout
 
@@ -420,6 +432,10 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
   `check-multipart-exercises/` (Python, stdlib only, gha#1156) bundles the composite action, script, and pytest suite
   for failing a PR that adds or revises an `exr-` div holding more than one part (list items in one marker style, or inline "(a) first, (b) second");
   it takes the same diff model, but a touched exercise is judged whole and it blocks by default (`fail: true`);
+  `check-rubric-checklists/` (Python, stdlib only) bundles the composite action, script, and pytest suite
+  for flagging a grading rubric (a line opening with `Grading`, `Rubric`, `Marking scheme` or `Mark scheme`) whose block holds no `- [ ]` task-list item;
+  it takes the same diff model and is warn-only by default (`fail: false`),
+  because Ezra's rule (2026-10-26) is that *most* STEM rubrics are checklists, not all;
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
   for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
   It takes the same diff model as `check-one-div-per-subfile/`.
@@ -5592,6 +5608,14 @@ is possible and the gate falls back to the raw count, classifying such a run
 exactly as it is classified today.
 That direction is deliberate, since assuming unnamed denials were ours would
 weaken the gha#198 gate on evidence we do not have.
+
+## A new content check must catch the example that motivated it
+
+When a rule comes with an example (Ezra's `exr-surface-stationary-points` for `check-visualization-figures`, 2026-10-26),
+the check's tests include that example verbatim, and the first whole-tree run must flag it.
+A trigger written from the rule's wording alone missed its own example,
+because the title said "Mark every zero-gradient point on a surface" and never "visualization".
+If the check misses the example, the trigger is too narrow: broaden it, then sweep the whole tree and fix what it newly finds.
 
 ## Never just theorize -- investigate empirically
 

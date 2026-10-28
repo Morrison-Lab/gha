@@ -1,0 +1,43 @@
+name: Check caller permissions (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ubuntu-latest
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      workflows-dir:
+        description: Directory holding the caller workflows.
+        type: string
+        default: '.github/workflows'
+      fail:
+        description: >-
+          Fail the workflow when a caller lacks a required grant
+          (else non-blocking). Defaults to true.
+        type: boolean
+        default: true
+
+jobs:
+  check-caller-permissions:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check caller permissions
+        uses: Morrison-Lab/gha/check-caller-permissions@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          workflows-dir: ${{ inputs.workflows-dir }}
+          fail: ${{ inputs.fail }}

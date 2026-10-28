@@ -50,6 +50,14 @@ inputs:
       With `run-id`, also post the result as a check run named `annotation-gate`
       on this commit, so it shows on the pull request. Needs `checks: write`.
     default: ''
+  all-runs:
+    description: >-
+      With `head-sha`, gate the latest completed run of every workflow and
+      event on that commit in one pass and post one `annotation-gate` check
+      run, instead of one per finished run. Pair it with a concurrency group
+      per commit, so a burst of finishing runs leaves one gate. A run still in
+      progress is left out; its own completion starts the next gate.
+    default: 'false'
   token:
     description: Token granted actions read and checks read, plus checks write with `head-sha`.
     default: ${{ github.token }}
@@ -67,4 +75,5 @@ runs:
         GATE_RUN_ID: ${{ inputs.run-id }}
         GATE_RUN_ATTEMPT: ${{ inputs.run-attempt }}
         GATE_HEAD_SHA: ${{ inputs.head-sha }}
+        GATE_ALL_RUNS: ${{ inputs.all-runs }}
       run: python3 "$GITHUB_ACTION_PATH/annotation_gate.py"

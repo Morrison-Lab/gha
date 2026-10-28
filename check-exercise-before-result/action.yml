@@ -1,0 +1,54 @@
+name: Check result divs for a preceding exercise
+description: >-
+  Diff-scoped check that flags a `#thm-`, `#lem-`, `#cor-` or `#prp-` div that
+  is added or edited without an exercise and its solution just before it, read
+  from the include order of the chapter. Blocking by default. Escape hatch: an
+  HTML comment reading `check-exercise-before-result: allow` on the first line
+  of the result.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Needs the base commit in history (checkout with fetch-depth: 0); when
+      the diff can't be computed the check is skipped with a warning rather
+      than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a changed result div has no preceding pair (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check result divs for a preceding exercise
+      shell: bash
+      env:
+        CEB_BASE_REF: ${{ inputs.base-ref }}
+        CEB_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CEB_GLOBS: ${{ inputs.globs }}
+        CEB_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CEB_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-exercise-before-result.py"

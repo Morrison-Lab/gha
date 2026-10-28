@@ -1,0 +1,80 @@
+---
+title: "check-caller-permissions.yml"
+---
+
+Whole-tree, blocking check that a workflow calls each `Morrison-Lab/gha`
+reusable workflow from a job that grants what the callee's jobs request.
+
+A nested job cannot request more than its caller grants.
+When a caller omits a permission, GitHub rejects the call at startup
+(`startup_failure`) before any step runs, so the called workflow cannot warn,
+and a scheduled caller stops with nothing but a failed run
+(`Morrison-Lab/lds#1468`: the weekly preview cleanup lacked `actions: read`
+and pruned nothing for a week).
+This check runs in the consumer repository and fails the pull request instead.
+
+For each `uses: Morrison-Lab/gha/.github/workflows/<name>@<ref>` job, it fetches
+that workflow at `<ref>` and takes the union of what its jobs request,
+the same union `audit_callee_permissions.py` uses.
+The caller's grant is the calling job's `permissions:` block, or the
+workflow-level block when the job has none.
+A call is reported as unchecked, with a warning, when the caller has no block
+at either level (the grant is then the repository default, which the check
+cannot see) or when a callee job has no block (what it needs is unknown).
+Local `./` calls and other owners' workflows are not examined.
+An unparsable workflow, an unreachable callee or an empty workflows directory
+exits 2 instead of passing.
+
+The callee is read at the ref the caller pins, so the result is only as good as
+that pin.
+Each call's output line says where its callee was read from.
+Setting `CCP_GHA_DIR` to a local gha checkout reads that checkout instead and
+prints a warning that the pinned refs are ignored.
+A checkout of `main` reports grants that the pinned callee does not request
+(a workflow pinned at `@v2` that omits a permission `@v3` added, for example),
+so use the override for tests and offline runs, not to answer
+"does this caller work today?"
+(`Morrison-Lab/lds#1468` shows both failures: a grant added because a run against
+`main` reported it missing, and a review finding built on the same run).
+
+## Inputs
+
+| Input          | Type    | Default               | Description |
+| -------------- | ------- | --------------------- | ----------- |
+| `workflows-dir` | string | `'.github/workflows'` | Directory holding the caller workflows. |
+| `fail`         | boolean | `true`                | Fail the workflow when a caller lacks a required grant. Set `false` for warning annotations only. |
+| `python-version` | string | `'3.x'`              | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+The callee is fetched anonymously from `raw.githubusercontent.com`, so the
+runner needs outbound access to it.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-caller-permissions.yml in your repo.
+name: Check caller permissions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-caller-permissions.yml@v3
+    # with:
+    #   workflows-dir: .github/workflows   # where the callers live
+    #   fail: true                         # set false to warn only (defaults to true)
+```
+
+See
+[`examples/check-caller-permissions.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-caller-permissions.yml)
+for the full caller stub.

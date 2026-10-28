@@ -9,6 +9,7 @@ The script's name has a hyphen, so load it by path.
 """
 
 import importlib.util
+import re
 import subprocess
 from pathlib import Path
 
@@ -174,7 +175,18 @@ def test_defaults_agree_with_action():
     action = (_DIR / "action.yml").read_text(encoding="utf-8")
     assert f"default: '{nsr.DEFAULT_GLOBS}'" in action
     assert nsr._DEFAULT_FAIL is False
-    assert "default: 'false'" in action
+    workflow = (_DIR.parent / ".github" / "workflows"
+                / "check-note-sheet-rows.yml").read_text(encoding="utf-8")
+    for text in (action, workflow):
+        block = re.search(r"^( +)fail:\n((?:\1 .*\n)+)", text, re.MULTILINE)
+        assert block is not None
+        assert re.search(r"default: '?false'?$", block.group(2), re.MULTILINE)
+
+
+def test_variant_suffix_does_not_hide_a_joined_label():
+    assert reasons("| Sample MSE, matrix form | $\\frac{1}{n}$ |") == []
+    assert reasons("| Bias and variance, matrix form | $b$ |") == [
+        "the label joins two concepts"]
 
 
 def test_header_row_not_flagged():
@@ -230,6 +242,20 @@ def test_no_base_ref_skips(tmp_path, monkeypatch):
     _repo(tmp_path, BAD + "\n", BAD + "\n" + GOOD + "\n")
     monkeypatch.chdir(tmp_path)
     assert nsr.run_check("", [nsr.DEFAULT_GLOBS], [], False).skipped
+
+
+def test_unresolvable_base_ref_skips(tmp_path, monkeypatch):
+    _repo(tmp_path, BAD + "\n", BAD + "\n" + GOOD + "\n")
+    monkeypatch.chdir(tmp_path)
+    assert nsr.run_check("no-such-ref", [nsr.DEFAULT_GLOBS], [], False).skipped
+
+
+def test_moved_row_is_not_reported(tmp_path, monkeypatch):
+    other = "| Other | $y$ |"
+    _repo(tmp_path, BAD + "\n" + other + "\n", other + "\n" + BAD + "\n")
+    monkeypatch.chdir(tmp_path)
+    report = nsr.run_check("HEAD^1", [nsr.DEFAULT_GLOBS], [], False)
+    assert report.findings == []
 
 
 def test_paths_ignore(tmp_path, monkeypatch):

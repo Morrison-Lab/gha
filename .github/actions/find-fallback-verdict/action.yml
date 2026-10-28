@@ -1,0 +1,65 @@
+name: Find fallback review verdict
+description: >-
+  Reports whether a PR carries a recorded fallback review verdict for its
+  current head: a clean separate-agent review comment, posted by a repository
+  owner, member or collaborator, that names the head sha. Used by the
+  `require-clean-verdict` job of claude-code-review.yml when the Claude review
+  could not run because its API quota was exhausted (gha#1163). A composite
+  action rather than a checked-out script because the reusable workflow runs in
+  the consumer's checkout, which does not contain this repository's script tree
+  (gha#812).
+
+inputs:
+  repository:
+    description: owner/name of the repository holding the PR.
+    required: true
+  pr-number:
+    description: Pull request number.
+    required: true
+  github-token:
+    description: "Token with `pull-requests: read`. Unused when `comments-file` is set."
+    required: false
+    default: ''
+  comments-file:
+    description: >-
+      Path to a JSON array of PR comments, read instead of the API. For
+      selftests only, so the composite can run for real with no network.
+    required: false
+    default: ''
+  head-sha:
+    description: "Full head sha to match. Read from the API when empty."
+    required: false
+    default: ''
+
+outputs:
+  found:
+    description: "\"true\" when a qualifying fallback verdict exists for the current head."
+    value: ${{ steps.find.outputs.found }}
+  url:
+    description: Link to the qualifying comment, empty when none.
+    value: ${{ steps.find.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Find
+      id: find
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        COMMENTS_FILE: ${{ inputs.comments-file }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+      run: |
+        set -euo pipefail
+        head_sha="${HEAD_SHA:-$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.head.sha')}"
+        comments_file="$COMMENTS_FILE"
+        if [[ -z "$comments_file" ]]; then
+          comments_file="${RUNNER_TEMP}/fallback-verdict-comments.json"
+          gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments?per_page=100" \
+            | jq -s 'add // []' > "$comments_file"
+        fi
+        python3 "$GITHUB_ACTION_PATH/../../workflows/scripts/find-fallback-verdict.py" \
+          "$comments_file" "$head_sha" \
+          "$GITHUB_ACTION_PATH/../../workflows/scripts/classify-review-verdict.sh"

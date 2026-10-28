@@ -194,6 +194,16 @@ def test_allow_directive_covers_its_line_and_the_next():
     assert flagged(doc) == {3: ["x"]}
 
 
+def test_allow_directive_alone_on_a_quote_line_covers_the_next_line():
+    doc = "> <!-- check-literal-math-letters: allow -->\n> $y$\n> $x$\n"
+    assert flagged(doc) == {3: ["x"]}
+
+
+def test_ignore_file_directive_in_a_quote_is_not_obeyed():
+    doc = "> <!-- check-literal-math-letters: ignore-file -->\n> $y$\n"
+    assert flagged(doc) == {2: ["y"]}
+
+
 def test_ignore_file_directive():
     doc = "<!-- check-literal-math-letters: ignore-file -->\n$y$\n"
     assert flagged(doc) == {}
@@ -515,3 +525,253 @@ def test_load_deprecated_reads_the_use_instruction(tmp_path):
 def test_load_deprecated_missing_file_yields_no_rules(tmp_path, capsys):
     assert lml.load_deprecated(str(tmp_path / "absent.tsv")) == {}
     assert "Could not read" in capsys.readouterr().out
+
+
+def test_cross_mark_counter_example_is_skipped_but_check_mark_line_is_flagged():
+    doc = "> ❌ Let $x$ be the input.\n>\n> ✅ Let $x$ be the input.\n"
+    assert flagged(doc) == {3: ["x"]}
+
+
+def test_cross_mark_paragraph_continues_over_quote_lines_until_a_check_mark():
+    doc = "> ❌ Let $x$ be\n> the input, $y$.\n> ✅ Let $w$ be it.\n"
+    assert flagged(doc) == {3: ["w"]}
+
+
+def test_cross_mark_skip_ends_at_a_blank_line_and_a_non_quote_line():
+    doc = "> ❌ $x$\n\n$y$\n\n> ❌ $x$\nafter $z$\n"
+    assert flagged(doc) == {3: ["y"], 6: ["z"]}
+
+
+def test_quote_without_a_cross_mark_is_still_checked():
+    assert flagged("> Let $x$ be the input.\n") == {1: ["x"]}
+
+
+def test_empty_quote_line_ends_the_cross_mark_paragraph():
+    # no check mark follows, so only the empty `>` can reset the skip
+    assert flagged("> ❌ $x$\n>\n> $y$\n") == {3: ["y"]}
+
+
+def test_nested_quote_cross_mark_is_skipped_and_nested_blank_ends_it():
+    assert flagged("> > ❌ $x$\n> >\n> > $y$\n") == {3: ["y"]}
+
+
+def test_cross_mark_in_the_middle_of_a_paragraph_does_not_start_a_skip():
+    assert flagged("> Consider:\n> ❌ $x$\n") == {2: ["x"]}
+
+
+def test_cross_mark_after_a_check_mark_line_starts_a_skip():
+    assert flagged("> ✅ $x$\n> ❌ $y$\n") == {1: ["x"]}
+
+
+def test_cross_mark_after_a_multi_line_check_mark_paragraph_starts_a_skip():
+    doc = "> ✅ Let $x$ be\n> the input, $w$.\n> ❌ Let $y$ be the input.\n"
+    assert flagged(doc) == {1: ["x"], 2: ["w"]}
+
+
+def test_mid_paragraph_check_mark_does_not_allow_a_following_cross_mark_skip():
+    assert flagged("> Consider:\n> ✅ $x$\n> ❌ $y$\n") == {2: ["x"], 3: ["y"]}
+
+
+def test_cross_mark_after_two_check_mark_lines_starts_a_skip():
+    assert flagged("> ✅ $x$\n> ✅ $w$\n> ❌ $y$\n") == {1: ["x"], 2: ["w"]}
+
+
+def test_leaving_a_nested_quote_ends_the_skip():
+    assert flagged("> > ❌ $x$\n> $y$\n") == {2: ["y"]}
+
+
+# -- the log-odds symbol -----------------------------------------------------
+
+def test_z_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
+    got = flagged("If the log-odds of an event are $z$, its probability is p.")
+    assert got == {1: ["z[log-odds]"]}
+
+
+def test_f_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
+    got = flagged("It passes through one half at $F = 0$ on the log-odds axis.")
+    assert got == {1: ["F[log-odds]"]}
+
+
+def test_z_without_log_odds_context_passes_in_precise_mode(known_mode):
+    assert flagged("The Wald statistic is $z = b / s$.") == {}
+
+
+def test_logodds_macro_is_not_flagged_in_precise_mode(known_mode):
+    assert flagged(r"The log-odds are $\logodds = 0$.") == {}
+
+
+def test_log_odds_message_names_the_macro(known_mode):
+    msg = lml.format_message(("z[log-odds]",))
+    assert r"\logodds" in msg
+
+
+@pytest.mark.parametrize("text", [
+    "The Wald $z$ for the logit slope.",
+    "The logit is $F^{-1}(p)$ and the quantile is $z_{\\alpha/2}$.",
+    "The log-odds $\\mathrm{F}$ and $\\text{F-test}$ differ.",
+    "Let $a_z$ be the log-odds.",
+    r"The score is $\logodds$ and the other value is $z_i$.",
+    "The logits are $z_i$ and $z1$.",
+    "The log-odds follow $F(t)$.",
+    "The log odds are $\\zeta$.",
+])
+def test_log_odds_rule_leaves_correct_notation_alone(known_mode, text):
+    assert flagged(text) == {}
+
+
+def test_log_odds_rule_covers_logit_and_plurals(known_mode):
+    assert flagged("The logits are $z$.") == {1: ["z[log-odds]"]}
+    assert flagged("The log odds are $F$.") == {1: ["F[log-odds]"]}
+
+
+def test_log_odds_macro_alone_is_not_context(known_mode):
+    assert flagged(r"The score is $\logodds$ and $z = 2$.") == {}
+
+
+def test_log_odds_rule_runs_in_default_mode_without_double_reporting():
+    assert flagged("The log-odds are $z$.") == {1: ["z[log-odds]"]}
+
+
+def test_log_odds_message_hides_the_internal_tag():
+    assert "[log-odds]" not in lml.format_message(("F[log-odds]",))
+
+
+# -- log-odds labels in code chunks -------------------------------------------
+
+def _chunk(code):
+    return "```{r}\n" + code + "\n```"
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('ggplot(d) + labs(x = "Log-odds F", y = "p")', ["F[log-odds]"]),
+    ('xlab("Log-odds z")', ["z[log-odds]"]),
+    ('ax.set_xlabel("Log-odds z")', ["z[log-odds]"]),
+    ('plt.plot(x, y, label="logit z = 0")', ["z[log-odds]"]),
+])
+def test_log_odds_letter_in_a_chunk_label_is_flagged(code, expected):
+    got = flagged(_chunk(code))
+    assert got == {2: expected}
+
+
+@pytest.mark.parametrize("code", [
+    'labs(x = "Log-odds η")',
+    'labs(x = "Score z")',
+    'labs(x = "Wald z, log-odds test")',
+    'lde_pts$z <- seq(-6, 6)  # log-odds z',
+    'plogis(sg_z)',
+    'labs(x = "Log-odds F(x)")',
+])
+def test_chunk_code_that_is_not_a_log_odds_label_passes(code):
+    assert flagged(_chunk(code)) == {}
+
+
+def test_chunk_label_allow_directive_is_honoured():
+    text = _chunk('# <!-- check-literal-math-letters: allow -->\nxlab("Log-odds z")')
+    assert flagged(text) == {}
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('ggplot(d) +\n  labs(\n    x = "Log-odds z",\n    y = "p"\n  )', {4: ["z[log-odds]"]}),
+    ('labs(subtitle = "Log-odds F")', {2: ["F[log-odds]"]}),
+    ('ylab("Logit z")', {2: ["z[log-odds]"]}),
+    ('ggtitle("Log-odds F")', {2: ["F[log-odds]"]}),
+    ('scale_x_continuous(name = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('ax.set_ylabel("Log-odds z")', {2: ["z[log-odds]"]}),
+    ('ax.set_title("Log-odds F")', {2: ["F[log-odds]"]}),
+    ('xlab("Log-odds \\"z\\"")', {2: ["z[log-odds]"]}),
+    ('xlab("Log-odds z"); ylab("Logit F")', {2: ["z[log-odds]", "F[log-odds]"]}),
+])
+def test_chunk_labels_in_each_call_shape_are_flagged(code, expected):
+    assert flagged(_chunk(code)) == expected
+
+
+@pytest.mark.parametrize("code", [
+    'd <- data.frame(name = "logit z", v = 1)',
+    '# labs(x = "Log-odds z")',
+    'x <- 1  # label = "log-odds z"',
+    'ax.set_xlabel(f"Log-odds {z}")',
+    'title <- "Log-odds z"',
+    'labs(\n  x = "Log-odds η"\n)\nnote <- "Log-odds z"',
+])
+def test_chunk_strings_outside_labels_or_in_comments_pass(code):
+    assert flagged(_chunk(code)) == {}
+
+
+def test_chunk_allow_exempts_its_own_line_and_the_next_only():
+    code = ('xlab("Log-odds z")  # check-literal-math-letters: allow\n'
+            'ylab("Log-odds z")\n'
+            'ggtitle("Log-odds z")')
+    assert flagged(_chunk(code)) == {4: ["z[log-odds]"]}
+
+
+def test_chunk_call_state_resets_between_chunks():
+    text = _chunk("labs(") + "\n\n" + _chunk('d <- c(label_text = "Log-odds z")')
+    assert flagged(text) == {}
+
+
+@pytest.mark.parametrize("code", [
+    'if (label == "Log-odds z") 1',
+    'df[df$col == "log-odds z", ] |> labs(x = "Score")',
+    'filter(name != "Log-odds F")',
+])
+def test_chunk_comparisons_are_not_labels(code):
+    assert flagged(_chunk(code)) == {}
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('fig.update_layout(title = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('plot(x, y, xlab = "Log-odds F", main = "Log-odds z")', {2: ["F[log-odds]", "z[log-odds]"]}),
+    ('ax.set_title("""\nLog-odds F\n""")', {3: ["F[log-odds]"]}),
+    ('labs(\n  x =\n    "Log-odds z"\n)', {4: ["z[log-odds]"]}),
+    ('labs(x = paste0("Log-odds ", "z"))', {}),
+    ('labs(x = paste0("Log-odds z", " (", u, ")"))', {2: ["z[log-odds]"]}),
+    ('ax.set_title("""Log-odds F""")', {2: ["F[log-odds]"]}),
+    # an escaped backslash ends the string, so the z after it is code
+    ('xlab("Log-odds \\\\" z")', {}),
+])
+def test_chunk_label_args_continuations_and_concatenation(code, expected):
+    assert flagged(_chunk(code)) == expected
+
+
+@pytest.mark.parametrize("code", [
+    'd <- data.frame(label = "logit z")',
+    'tibble(title = "logit z")',
+    'label = "logit z"',
+    'title = 1\nx <- "Log-odds z"',
+    'theme(plot.title = "logit z")',
+    'df$label = "logit z"',
+    'labs(x = foo(data.frame(name = 1)))\nnote <- "logit z"',
+])
+def test_chunk_label_like_arguments_outside_plot_calls_pass(code):
+    assert flagged(_chunk(code)) == {}
+
+
+@pytest.mark.parametrize("code, expected", [
+    ('plt.legend(title="Logit z")', {2: ["z[log-odds]"]}),
+    ('expression("Log-odds F")', {2: ["F[log-odds]"]}),
+    ('legend("top", legend = "logit z")', {2: ["z[log-odds]"]}),
+    ('labs(caption = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('plot(x, y, sub = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('labs(x = paste0("a", f(1)), y = "Log-odds z")', {2: ["z[log-odds]"]}),
+    ('plot(x, main = f"Log-odds z")', {2: ["z[log-odds]"]}),
+])
+def test_chunk_more_label_shapes_are_flagged(code, expected):
+    assert flagged(_chunk(code)) == expected
+
+
+@pytest.mark.parametrize("code", [
+    'xlab("# check-literal-math-letters: allow Log-odds z")',
+    'labs(x = "#1", y = "check-literal-math-letters: allow Log-odds z")',
+])
+def test_chunk_hash_inside_a_string_is_not_a_comment(code):
+    assert flagged(_chunk(code)) == {2: ["z[log-odds]"]}
+
+
+def test_chunk_trailing_allow_comment_still_exempts():
+    code = 'labs(x = "#1")  # check-literal-math-letters: allow\nxlab("Log-odds z")'
+    assert flagged(_chunk(code)) == {}
+
+
+def test_chunk_allow_text_inside_a_string_does_not_exempt():
+    code = 'xlab("check-literal-math-letters: allow Log-odds z")'
+    assert flagged(_chunk(code)) == {2: ["z[log-odds]"]}
