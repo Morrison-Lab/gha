@@ -1,9 +1,10 @@
 # Copy to .github/workflows/check-bare-yes-no.yml in your repo.
-# Diff-scoped check: flags the title of a #def- div that lists synonyms with
-# parentheses or "also called" when a PR adds the title line. Titles are a
-# comma list with the primary term first: "Logistic function, sigmoid, expit".
-# Warn-only by default. Only contents:read is needed.
-name: Check definition title synonyms
+# Diff-scoped check: fails when a PR adds a solution paragraph (inside a #sol-
+# div or a .sol, .solution or .answer div) that opens with a bare "Yes." or
+# "No." An answer says what it means in the question's own words:
+# "No: it's not possible that the advanced network has a test error of 0.25."
+# Blocking by default. Only contents:read is needed.
+name: Check bare yes/no answers
 
 on:
   push:
@@ -17,5 +18,5 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-bare-yes-no.yml@v3
     # with:
     #   globs: '*.qmd'        # pathspecs to check
-    #   fail: true            # block instead of warn (defaults to false)
-    #   whole-tree: true      # scan every title, not just a PR's additions
+    #   fail: false           # warn only (defaults to true)
+    #   whole-tree: true      # scan every solution, not just a PR's additions

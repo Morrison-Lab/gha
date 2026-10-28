@@ -78,7 +78,24 @@ def test_code_and_comments_are_skipped():
 
 
 def test_only_a_paragraph_opening_is_checked():
-    assert flagged(sol("The answer is no.\nNo. A new paragraph.")) == [3]
+    assert flagged(sol("The answer is no.\n\nNo. A new paragraph.")) == [4]
+
+
+def test_a_wrapped_continuation_line_is_not_flagged():
+    assert flagged(sol("The answer is\nNo. It continues.")) == []
+
+
+def test_a_list_item_is_an_opener_without_a_blank_line():
+    assert flagged(sol("a. First.\nb. No. Second.")) == [3]
+
+
+def test_class_names_must_match_exactly():
+    assert flagged(sol("No.", "{.solution-notes}")) == []
+    assert flagged(sol("No.", "{.answer-key}")) == []
+
+
+def test_emphasis_runs_match_in_linear_time():
+    assert flagged(sol("No" + "*" * 5000 + "x")) == []
 
 
 def test_added_lines_scopes_the_diff():
@@ -87,10 +104,14 @@ def test_added_lines_scopes_the_diff():
 
 
 def test_defaults_agree_across_script_action_and_workflow():
+    def input_block(text: str, name: str) -> str:
+        start = text.index(f"\n      {name}:" if "workflow_call" in text else f"\n  {name}:")
+        return text[start:].split("\n\n")[0]
+
     action = (_DIR / "action.yml").read_text()
     workflow = (_DIR.parent / ".github/workflows/check-bare-yes-no.yml").read_text()
-    assert byn._flag("BYN_FAIL_UNSET_FOR_TEST", True) is True
-    assert "default: 'true'" in action
-    assert "default: '*.qmd'" in action
-    assert "default: true" in workflow
-    assert "default: '*.qmd'" in workflow
+    assert byn._flag("BYN_FAIL", True) is True  # the script's default, with the variable unset
+    assert "default: 'true'" in input_block(action, "fail")
+    assert "default: true" in input_block(workflow, "fail")
+    assert "default: '*.qmd'" in input_block(action, "globs")
+    assert "default: '*.qmd'" in input_block(workflow, "globs")

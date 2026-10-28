@@ -38,11 +38,14 @@ ADVICE = ('follow it with what the answer means, for example '
 
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
-SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)\b")
-# After optional quote, list marker and emphasis: Yes/No then end or punctuation.
+SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
+# A list marker opening a line: "- ", "1. ", "a. ", "(a) ".
+MARKER_RE = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:[-*+]|\d{1,2}[.)]|\(?[a-z][.)]|\([a-z]\))[ \t]+")
+# Yes/No, then end or a period or exclamation mark, after optional quote,
+# list marker and emphasis. Character classes keep the match linear.
 BARE_RE = re.compile(
-    r"^[ \t]*(?:>\s*)*(?:(?:[-*+]|\d{1,2}[.)]|\(?[a-z][.)]|\([a-z]\))\s+)?"
-    r"(?:\*\*|__|\*|_)*(?:Yes|No)(?:\*\*|__|\*|_)*(?:[.!](?:\*\*|__|\*|_)*(?:\s|$)|$)"
+    r"^[ \t]*(?:>[ \t]*)*(?:(?:[-*+]|\d{1,2}[.)]|\(?[a-z][.)]|\([a-z]\))[ \t]+)?"
+    r"[*_]*(?:Yes|No)[*_]*(?:[.!][*_]*(?:\s|$)|$)"
 )
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
@@ -54,23 +57,29 @@ def bare_answers(lines: List[str]) -> List[Tuple[int, str]]:
     in_comment = False
     depth = 0
     sol_depth: Optional[int] = None
+    opens = True  # the previous line was blank or a div fence
     for idx, raw in enumerate(lines):
         if in_comment:
             in_comment = "-->" not in raw
+            opens = True
             continue
-        if raw.lstrip().startswith("<!--") and "-->" not in raw:
-            in_comment = True
+        if raw.lstrip().startswith("<!--"):
+            in_comment = "-->" not in raw
+            opens = True
             continue
         fm = FENCE_RE.match(raw)
         if fence is not None:
             if fm and fm.group(1)[0] == fence:
                 fence = None
+            opens = True
             continue
         if fm:
             fence = fm.group(1)[0]
+            opens = True
             continue
         dm = DIV_RE.match(raw)
         if dm:
+            opens = True
             if dm.group(2):
                 if sol_depth is None and SOL_RE.search(dm.group(2)):
                     sol_depth = depth
@@ -80,8 +89,9 @@ def bare_answers(lines: List[str]) -> List[Tuple[int, str]]:
                 if sol_depth is not None and depth == sol_depth:
                     sol_depth = None
             continue
-        if sol_depth is not None and BARE_RE.match(raw):
+        if sol_depth is not None and (opens or MARKER_RE.match(raw)) and BARE_RE.match(raw):
             found.append((idx + 1, raw.strip()))
+        opens = not raw.strip()
     return found
 
 
