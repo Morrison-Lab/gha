@@ -41,6 +41,8 @@ Must be triggered by `pull_request` (the changed-line set comes from the PR).
 | `extra-packages`     | string  | `''`    | Extra R packages to install (space- or comma-separated; passed to `setup-r-dependencies`, or installed from CRAN under `use-renv: true`). `gh` and `lintr` are always installed. |
 | `install-package`    | boolean | `true`  | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Set `false` for a repo that is not an installable R package. |
 | `fail`               | boolean | `true`  | Fail the workflow when a lint is found on a changed line (rather than warn only).                                                                                 |
+| `file-pattern`       | string  | `'[.][Rr]$'` | Regular expression matched against each changed file's path; only matching files are linted. Use `'[.]([Rr]\|[Rr]md\|qmd)$'` to also lint the R chunks in Quarto and R Markdown documents. |
+| `lms-ref`            | string  | `''`    | Commit SHA (or tag) of `Morrison-Lab/psc` to install the `lms` package from. When set, changed lines are linted with `lms::default_linters(nested_calls = TRUE)` instead of the linters in the repository's `.lintr.R`; the exclusions in `.lintr.R` still apply. |
 | `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
@@ -70,6 +72,8 @@ jobs:
     #   extra-packages: ''      # extra R deps (gh + lintr always installed)
     #   install-package: false  # skip R CMD INSTALL for a non-package repo
     #   fail: false             # warn instead of failing on lints
+    #   file-pattern: '[.]([Rr]|[Rr]md|qmd)$'  # also lint R chunks in .qmd/.Rmd
+    #   lms-ref: <commit SHA of Morrison-Lab/psc>  # lint with lms::default_linters(nested_calls = TRUE)
     #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 

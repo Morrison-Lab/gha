@@ -81,6 +81,7 @@ website:
           - reference/check-exercise-before-result.qmd
           - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
+          - reference/check-axis-titles.qmd
           - reference/check-tree-lists.qmd
           - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd
@@ -96,6 +97,7 @@ website:
           - reference/annotation-gate.qmd
           - reference/check-local-macros.qmd
           - reference/check-fform-paren.qmd
+          - reference/check-macro-expansions.qmd
           - reference/check-write-idiom.qmd
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd

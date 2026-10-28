@@ -17,3 +17,16 @@ if (!is.na(rpkg_file) && file.exists(rpkg_file)) {
 }
 
 
+# Decide whether a changed file is one lint-changed-lines should lint.
+#
+# `pattern` is an extended regular expression matched against the repo-relative
+# path (default: R source files only). A Quarto or R Markdown pattern such as
+# `[.]([Rr]|[Rr]md|qmd)$` makes lintr lint the R chunks inside those documents.
+DEFAULT_LINT_FILE_PATTERN <- "[.][Rr]$"
+
+is_lint_target <- function(path, pattern = DEFAULT_LINT_FILE_PATTERN) {
+  if (!nzchar(pattern)) {
+    pattern <- DEFAULT_LINT_FILE_PATTERN
+  }
+  grepl(pattern, path)
+}

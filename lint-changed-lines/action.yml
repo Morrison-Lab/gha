@@ -42,6 +42,22 @@ inputs:
   fail:
     description: Fail the action when a lint is found on a changed line (not just warn).
     default: 'true'
+  file-pattern:
+    description: >-
+      Regular expression matched against each changed file's repo-relative
+      path; only matching files are linted. The default lints R source files
+      only. Use '[.]([Rr]|[Rr]md|qmd)$' to also lint the R chunks in Quarto and
+      R Markdown documents.
+    default: '[.][Rr]$'
+  lms-ref:
+    description: >-
+      Commit SHA (or tag) of Morrison-Lab/psc to install the lms package from.
+      When set, changed lines are linted with
+      lms::default_linters(nested_calls = TRUE), the lab's linters including the
+      no-nested-calls rules, instead of the linters in the repository's
+      .lintr.R; the exclusions in .lintr.R still apply. Empty (default) keeps
+      the repository's own linters.
+    default: ''
 runs:
   using: composite
   steps:
@@ -121,10 +137,26 @@ runs:
       shell: bash
       run: R CMD INSTALL "${{ inputs.path }}"
 
+    - name: Install lms (shared linter configuration)
+      if: inputs.lms-ref != ''
+      shell: Rscript {0}
+      env:
+        GITHUB_PAT: ${{ github.token }}
+        LMS_REF: ${{ inputs.lms-ref }}
+      run: |
+        if (!requireNamespace("remotes", quietly = TRUE)) {
+          install.packages("remotes", repos = "https://cloud.r-project.org")
+        }
+        remotes::install_github(
+          paste0("Morrison-Lab/psc/lms@", Sys.getenv("LMS_REF"))
+        )
+
     - name: Lint lines changed by this PR
       shell: bash
       env:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         GITHUB_PAT: ${{ github.token }}
         LINT_FAIL: ${{ inputs.fail }}
+        LINT_FILE_PATTERN: ${{ inputs.file-pattern }}
+        LINT_LMS: ${{ inputs.lms-ref != '' }}
       run: Rscript "$GITHUB_ACTION_PATH/lint-changed-lines.R"

@@ -1,0 +1,80 @@
+name: Check math that spells out a shared macro's expansion
+description: >-
+  Diff-scoped check that flags math in `.qmd`, `.Rmd` and `.md` files that
+  writes out by hand what a shared macro already says, such as
+  `\sum_{i=1}^n` where `\sumin` exists. The expansions are read from the
+  single-line `\providecommand`, `\newcommand`, `\renewcommand` and `\def`
+  definitions of a macros file (default `latex-macros/macros.qmd`) whose body is
+  structured enough to recognise (at least four tokens, not an alias); a
+  missing file skips the check with a warning. A `#1` in a body becomes a
+  wildcard. Skips code fences and spans, HTML comments, front matter, a line
+  that already uses the macro, a macro's own definition, and a line carrying,
+  or following, `<!-- check-macro-expansions: allow -->`. Scoped to lines a
+  diff adds (an added line whose exact text was also deleted in the same diff
+  counts as moved). Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every use the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  macros-file:
+    description: >-
+      Path of the macros file whose single-line macro definitions give the
+      expansions. When the file is missing the check is skipped with a
+      warning.
+    default: 'latex-macros/macros.qmd'
+  exclude:
+    description: >-
+      Comma/newline-separated macro names (no backslash) never flagged. The
+      default drops `hist`, whose body `\bar{#1}_{#2}` is also how a plain
+      sample mean is written, so the table cannot tell the two apart.
+    default: 'hist'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an expansion is found (else non-blocking).
+      Defaults to 'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Check math that spells out a shared macro's expansion
+      shell: bash
+      env:
+        CME_BASE_REF: ${{ inputs.base-ref }}
+        CME_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CME_MACROS_FILE: ${{ inputs.macros-file }}
+        CME_EXCLUDE: ${{ inputs.exclude }}
+        CME_GLOBS: ${{ inputs.globs }}
+        CME_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CME_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-macro-expansions.py"
