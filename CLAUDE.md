@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-single-ask-parts`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -436,6 +436,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   for flagging a grading rubric (a line opening with `Grading`, `Rubric`, `Marking scheme` or `Mark scheme`) whose block holds no `- [ ]` task-list item;
   it takes the same diff model and is warn-only by default (`fail: false`),
   because Ezra's rule (2026-10-26) is that *most* STEM rubrics are checklists, not all;
+  `check-single-ask-parts/` (Python, stdlib only, gha#1278) bundles the composite action, script, and pytest suite
+  for flagging a part of an exercise div (`#exr-`), meaning a list item or paragraph outside its `.sol` div, that holds two or more imperative asks;
+  it takes the same diff model and is warn-only by default (`fail: false`) because it is a heuristic (Ezra, 2026-10-27);
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
   for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
   It takes the same diff model as `check-one-div-per-subfile/`.

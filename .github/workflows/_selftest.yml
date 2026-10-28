@@ -2939,6 +2939,34 @@ jobs:
           git rm -q -r --cached --ignore-unmatch _ci-multipart || true
           rm -rf _ci-multipart
 
+  # check-single-ask-parts is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-single-ask-parts@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  single-ask-parts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-single-ask-parts unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-single-ask-parts/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-single-ask-parts
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+
   # check-rubric-checklists is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-rubric-checklists@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
