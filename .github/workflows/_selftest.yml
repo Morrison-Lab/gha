@@ -6517,6 +6517,10 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-audit-callee-permissions-tests.py
 
+      - name: Run slide readiness audit unit tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-audit-slide-readiness-tests.py
+
       # claude-code-review.yml is exempt from the v2 comparison because it
       # reinstates checks: read as a breaking change for @v3 (gha#833).
       # cleanup-pr-previews.yml is exempt from the v2 comparison because it

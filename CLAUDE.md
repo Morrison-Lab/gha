@@ -27,6 +27,8 @@ Guidance for Claude Code when working in this repository.
   Every check run on that exact commit is green or skipped, with none pending,
   read from the paginated check-runs endpoint rather than `gh pr checks`.
   "Merged work that consumers need" is the motivation, not the gate.
+  `slide-major-tag.yml` enforces this bar itself through `audit_slide_readiness.py`,
+  which exempts Dependabot updater runs (not tests of the commit) and the slide job.
 
 - **Require that no independent review on the commits being slid is still pending.**
   And no review this session requested or is waiting on for the PRs that
