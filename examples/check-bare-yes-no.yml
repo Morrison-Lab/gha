@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-bare-yes-no.yml in your repo.
+# Diff-scoped check: fails when a PR adds a solution paragraph (inside a #sol-
+# div or a .sol, .solution or .answer div) that opens with a bare "Yes." or
+# "No." An answer says what it means in the question's own words:
+# "No: it's not possible that the advanced network has a test error of 0.25."
+# Blocking by default. Only contents:read is needed.
+name: Check bare yes/no answers
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-bare-yes-no.yml@v3
+    # with:
+    #   globs: '*.qmd'        # pathspecs to check
+    #   fail: false           # warn only (defaults to true)
+    #   whole-tree: true      # scan every solution, not just a PR's additions
