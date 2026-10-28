@@ -56,6 +56,7 @@ input tables and a copy-paste example.
 | [`check-rubric-checklists.yml`](reference/check-rubric-checklists.qmd) | Diff-scoped check that warns when a PR adds or revises a grading rubric (`Grading`, `Rubric`, `Marking scheme`, `Mark scheme`) with no task-list item (`- [ ] ...`) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-single-ask-parts.yml`](reference/check-single-ask-parts.qmd) | Diff-scoped, warn-only check that flags a part of an exercise div (`#exr-`), meaning a list item or paragraph outside its solution, that asks for more than one thing; each part asks for one thing | `globs`, `paths-ignore`, `python-version`, `fail`, `whole-tree` |
 | [`check-def-title-synonyms.yml`](reference/check-def-title-synonyms.qmd) | Diff-scoped, warn-only check that flags a `#def-` div title listing synonyms with parentheses or "also called" instead of a comma list, primary term first | `globs`, `fail`, `whole-tree` |
+| [`check-bare-yes-no.yml`](reference/check-bare-yes-no.qmd) | Diff-scoped check that fails when a PR adds a solution paragraph opening with a bare "Yes." or "No." instead of saying what the answer means in the question's terms | `globs`, `fail`, `whole-tree` |
 | [`check-pr-size.yml`](reference/check-pr-size.qmd) | Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines; a sweep goes out as minimal batches | `max-files`, `max-lines`, `paths-ignore`, `exempt-label`, `fail` |
 | [`check-note-sheet-rows.yml`](reference/check-note-sheet-rows.qmd) | Diff-scoped check, warn-only for the one-concept rules and always blocking for prose and non-table lists, that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree`, `runs-on` |
 | [`check-definite-antecedents.yml`](reference/check-definite-antecedents.qmd) | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -154,6 +155,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-pr-concerns.yml`,
 `check-pr-size.yml`,
 `check-def-title-synonyms.yml`,
+`check-bare-yes-no.yml`,
 `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
 `check-term-links.yml`, `check-paired-file-change.yml`,
 `annotation-gate.yml`,

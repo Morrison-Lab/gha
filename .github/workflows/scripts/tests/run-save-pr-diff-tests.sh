@@ -5,6 +5,7 @@
 #   2. empty output (gh succeeds with 0 bytes -> file removed, path empty)
 #   3. command failure (gh fails non-zero -> file removed, path empty)
 #   4. partial failure (gh writes bytes then fails -> file removed, path empty)
+#   4b. PR over 300 files (gh pr diff fails, the files API succeeds -> file present)
 # Mutation tests:
 #   5. removing rm -f causes partial failure test to fail
 #   6. removing -s emptiness check causes empty output test to fail
@@ -56,7 +57,20 @@ if [ "\$1" = "pr" ] && [ "\$2" = "diff" ]; then
       echo "incomplete diff line"
       exit 1
       ;;
+    too_large)
+      echo "HTTP 406: the diff exceeded the maximum number of files (300)" >&2
+      exit 1
+      ;;
   esac
+fi
+if [ "\$1" = "api" ] && [ "$stub_mode" = "too_large" ]; then
+  echo "diff --git a/foo b/foo"
+  echo "--- a/foo"
+  echo "+++ b/foo"
+  echo "@@ -1 +1 @@"
+  echo "-old"
+  echo "+new"
+  exit 0
 fi
 exit 1
 STUB
@@ -114,6 +128,7 @@ run_case "successful diff save" "success" "present" "true"
 run_case "empty diff output" "empty" "absent" "false"
 run_case "gh diff failure" "failure" "absent" "false"
 run_case "partial bytes then failure" "partial_failure" "absent" "false"
+run_case "PR over 300 files falls back to the files API" "too_large" "present" "true"
 
 echo "save-pr-diff: examined $((PASS + FAIL)) cases, $FAIL failed."
 if [ "$FAIL" -ne 0 ]; then
