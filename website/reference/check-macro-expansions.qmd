@@ -38,8 +38,10 @@ and `\tp{X} W X` as `\qform`.
   (`\sumin or \sumto`).
   When matches overlap, the longest one is reported.
 - A body is *structured enough* when it has at least four tokens
-  (commands, symbols, words and placeholders, not braces) and is not an alias of other macros.
-  A lone font wrapper such as `\mathcal{H}` or `\operatorname{rank}` has two tokens and is never flagged,
+  (commands, symbols, words and placeholders, not braces)
+  and is not an alias of other macros.
+  A lone font wrapper such as `\mathcal{H}` or `\operatorname{rank}`
+  has two tokens and is never flagged,
   because the same glyphs are often a different concept.
   `\begin{aligned}` is likewise not flagged.
 
