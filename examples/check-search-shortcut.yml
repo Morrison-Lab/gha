@@ -19,6 +19,6 @@ jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-search-shortcut.yml@v3
     # with:
-    #   globs: '_quarto*.yml'                 # config files to read (recursive)
+    #   globs: '_quarto*.yml */_quarto*.yml'  # config files to read
     #   paths-ignore: 'docs/**'               # skip known-noisy paths
     #   fail: true                            # set false to warn only (defaults to true)

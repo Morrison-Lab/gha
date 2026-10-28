@@ -39,7 +39,7 @@ import sys
 from collections import defaultdict
 from typing import Dict, List, NamedTuple, Optional
 
-DEFAULT_GLOBS = "_quarto*.yml"
+DEFAULT_GLOBS = "_quarto*.yml */_quarto*.yml"
 DEFAULT_IGNORE = "_extensions/**"
 ALLOWED = ["/"]
 

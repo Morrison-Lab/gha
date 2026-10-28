@@ -101,3 +101,12 @@ def test_run_over_git_repo(tmp_path, monkeypatch):
     assert len(css.run(["_quarto*.yml"], [])) == 1
     (tmp_path / "_quarto.yml").write_text(GOOD)
     assert css.run(["_quarto*.yml"], []) == []
+
+
+def test_default_globs_reach_a_nested_config(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "_quarto.yml").write_text("website:\n  title: x\n")
+    subprocess.run(["git", "add", "docs/_quarto.yml"], check=True)
+    assert len(css.run(css.DEFAULT_GLOBS.split(), [])) == 1

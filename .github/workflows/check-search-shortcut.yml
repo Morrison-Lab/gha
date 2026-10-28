@@ -16,10 +16,11 @@ on:
         default: '3.x'
       globs:
         description: >-
-          Space-separated git pathspecs of tracked files to check (recursive
-          by default).
+          Space-separated git pathspecs of tracked files to check. A
+          literal-prefix pathspec is root-anchored, so the default adds
+          `*/_quarto*.yml` for subdirectories.
         type: string
-        default: '_quarto*.yml'
+        default: '_quarto*.yml */_quarto*.yml'
       paths-ignore:
         description: >-
           Comma/newline-separated glob patterns (relative paths) to skip.

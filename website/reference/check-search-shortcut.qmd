@@ -40,7 +40,7 @@ It reads an inline list (`["/"]`) or a block list (`- "/"`).
 
 | Input          | Type    | Default           | Description |
 | -------------- | ------- | ----------------- | ----------- |
-| `globs`        | string  | `'_quarto*.yml'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `globs`        | string  | `'_quarto*.yml */_quarto*.yml'` | Space-separated git pathspecs of tracked files to check. A literal-prefix pathspec is root-anchored, so the default adds `*/_quarto*.yml` for subdirectories. |
 | `paths-ignore` | string  | `''`              | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
 | `fail`         | boolean | `true`            | Fail the workflow when a site opens search on f or s. Set `false` for warning annotations only. |
 | `python-version` | string | `'3.x'`          | Python version to set up. |
@@ -74,7 +74,7 @@ jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-search-shortcut.yml@v3
     # with:
-    #   globs: '_quarto*.yml'                 # config files to read (recursive)
+    #   globs: '_quarto*.yml */_quarto*.yml'  # config files to read
     #   paths-ignore: 'docs/**'               # skip known-noisy paths
     #   fail: true                            # set false to warn only (defaults to true)
 ```
