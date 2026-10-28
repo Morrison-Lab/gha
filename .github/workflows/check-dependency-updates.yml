@@ -85,7 +85,7 @@ jobs:
       - name: Run Claude Dependency Auditor
         id: claude
         if: steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
-        uses: anthropics/claude-code-action@16f9f71ab9c490faf367f94dd294897edc25be33 # v1.0.261
+        uses: anthropics/claude-code-action@925afb53776cf1a2b738c6bdbed37b4d4000ef13 # v1.0.262
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_REPO: ${{ inputs.target-repo }}
