@@ -23,7 +23,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-pr-concerns`,
   `check-pr-size`,
   `check-caller-permissions`, `check-exm-figures`, `check-axis-titles`,
-  `check-visualization-figures`, `check-tree-lists`,
+  `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`,
   `check-self-contained-captions`,
   `check-def-commentary`, `check-solution-citations`,
   `check-exercise-before-result`,

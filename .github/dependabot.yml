@@ -41,6 +41,7 @@ updates:
       - "/check-exm-figures"
       - "/check-axis-titles"
       - "/check-tree-lists"
+      - "/check-search-shortcut"
       - "/check-visualization-figures"
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"

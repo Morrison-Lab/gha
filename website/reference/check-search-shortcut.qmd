@@ -1,0 +1,84 @@
+---
+title: "check-search-shortcut.yml"
+---
+
+Blocking check that flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S.
+Quarto's `website.search.keyboard-shortcut` (`book.search.keyboard-shortcut` for a book)
+defaults to `["f", "/", "s"]`.
+Its script listens for `keyup` and never checks a modifier key,
+so the keyup that follows Ctrl/Cmd-F (find in page) or Ctrl/Cmd-S (save) opens site search too.
+The lab's rule (Ezra, 2026-10-28) is that every Quarto site keeps only `"/"`.
+This implements
+[gha#1287](https://github.com/Morrison-Lab/gha/issues/1287).
+
+```yaml
+website:
+  search:
+    keyboard-shortcut: ["/"]
+```
+
+A project directory is flagged when either of these holds:
+
+- it defines a site (a `website:` or `book:` key in a `_quarto*.yml` file)
+  and no `_quarto*.yml` file there sets `keyboard-shortcut`,
+  so the default applies;
+- any `keyboard-shortcut` in the directory lists something other than exactly `"/"`.
+
+Set `search: false` directly under `website:` or `book:` to turn the site search off,
+which also turns this check off for that project.
+A `search: false` deeper in the file, such as a sidebar's, does not.
+
+## Scope
+
+The check reads the matching config files whole,
+because they are small and a missing setting has no line a diff could add.
+Files under `_extensions/` are always skipped.
+The parser is line-based, so the action needs no YAML package.
+It reads an inline list (`["/"]`) or a block list (`- "/"`).
+
+## Inputs
+
+| Input          | Type    | Default           | Description |
+| -------------- | ------- | ----------------- | ----------- |
+| `globs`        | string  | `'_quarto*.yml'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`              | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`            | Fail the workflow when a site opens search on f or s. Set `false` for warning annotations only. |
+| `python-version` | string | `'3.x'`          | Python version to set up. |
+| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-search-shortcut.yml in your repo.
+# Flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S: a
+# website: or book: with no keyboard-shortcut, or a keyboard-shortcut that
+# lists more than "/". Fix: under website: (or book:) add
+#   search:
+#     keyboard-shortcut: ["/"]
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check site search shortcut
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-search-shortcut.yml@v3
+    # with:
+    #   globs: '_quarto*.yml'                 # config files to read (recursive)
+    #   paths-ignore: 'docs/**'               # skip known-noisy paths
+    #   fail: true                            # set false to warn only (defaults to true)
+```
+
+See
+[`examples/check-search-shortcut.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-search-shortcut.yml)
+for the full caller stub.
