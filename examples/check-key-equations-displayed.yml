@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-key-equations-displayed.yml in your repo.
+# Diff-scoped heuristic check: fails when a PR adds an inline equation in a proof
+# (a .proof, proof or prf- div) that restates a displayed equation of the theorem
+# or ends a concluding sentence (yields, gives, so, hence, ...). A key equation
+# goes in display math. Add <!-- inline-ok --> to a line to accept it inline.
+# Blocking by default. Only contents:read is needed.
+name: Check key equations are displayed
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-key-equations-displayed.yml@v3
+    # with:
+    #   globs: '*.qmd'        # pathspecs to check
+    #   fail: false           # warn only (defaults to true)
+    #   whole-tree: true      # scan every proof, not just a PR's additions

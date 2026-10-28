@@ -1,0 +1,46 @@
+---
+title: "check-key-equations-displayed.yml"
+---
+
+Diff-scoped check that fails when a pull request adds an inline equation
+in a proof that should be in display math.
+The lab's rule (Ezra, 2026-10-28) is that a key equation goes in a display, never inline.
+A key equation is a theorem's conclusion,
+an equation a proof builds toward,
+or an equation a later step refers to.
+
+This is a partial heuristic, because no script can know which equation a reader should remember.
+It looks only inside a proof div (`.proof`, `proof` or an id starting `prf-`)
+and flags an inline equation in two cases:
+
+- it restates a displayed equation (`$$ ... $$`) of the same file,
+  which is the parent theorem's statement in a one-div-per-file layout;
+- it contains a relation (`=`, `<`, `>`, `\le`, `\ge`, `\neq` or `\approx`),
+  ends its sentence,
+  and follows "yields", "gives", "implies", "so", "thus", "hence", "therefore" or "forces",
+  or the next line opens with "So", "Hence", "Therefore" or "Thus".
+
+It misses a key equation with no cue word, and it may flag a minor step.
+Put `<!-- inline-ok -->` on the line to accept an inline equation.
+Code fences, inline code and HTML comments are skipped,
+and an equation split over two lines is not seen.
+
+An untouched line is never reflagged.
+With no base ref the check skips instead of scanning the whole tree;
+`whole-tree` measures a corpus.
+
+## Usage
+
+Copy
+[`examples/check-key-equations-displayed.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-key-equations-displayed.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every proof, not only a PR's additions |
+| `runs-on` | `ubuntu-latest` | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
