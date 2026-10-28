@@ -134,7 +134,7 @@ def _git(cwd, *args):
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
+    _git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow: synthetic test address
     _git(tmp_path, "config", "user.name", "t")
     (tmp_path / "exr.qmd").write_text(div("exr-a", "Q.") + div("exr-a-part2", "R."))
     (tmp_path / "sol.qmd").write_text(div("sol-a", "(a) x\n\n(b) y"))

@@ -60,7 +60,7 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ID_RE = re.compile(r"#((?:exr|sol)-[A-Za-z0-9_-]+)")
 PART_RE = re.compile(r"-part\d+$")
 ALLOW_RE = re.compile(r"<!--\s*split-solutions-ok\b", re.IGNORECASE)
-COMMENT_RE = re.compile(r"<!--.*?-->")
+COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
 MARKER_RE = re.compile(
     r"^[ \t]*(?:>\s*)*(?:\*\*|__)?"
     r"(?:\((?P<paren>[A-Za-z]|[ivx]{2,}|\d{1,2})\)|(?P<dot>[a-z]|\d{1,2})(?P<end>[.)]))"

@@ -12,9 +12,11 @@ which reads only the exercise side.
 This implements
 [gha#1290](https://github.com/Morrison-Lab/gha/issues/1290).
 
-A *group* is the set of `#exr-` divs that share a slug once a trailing `-partK` is removed.
+A *group* is the set of `#exr-` divs that share a slug
+once a trailing `-partK` is removed.
 A group with two or more exercises is *split*.
-The ids may sit in different subfiles, so the check indexes every file the globs match.
+The ids may sit in different subfiles, so the check indexes
+every file the globs match.
 In a split group it reports:
 
 - an exercise with no `#sol-` of the same slug;
