@@ -38,6 +38,7 @@ updates:
       - "/check-exercise-before-result"
       - "/check-caller-permissions"
       - "/check-exm-figures"
+      - "/check-axis-titles"
       - "/check-tree-lists"
       - "/check-visualization-figures"
       - "/check-self-contained-captions"
