@@ -11,7 +11,6 @@ The script's name has a hyphen, so load it by path.
 """
 
 import importlib.util
-import re
 import subprocess
 from pathlib import Path
 
@@ -223,8 +222,8 @@ def test_action_and_script_agree_on_defaults():
     action = _inputs(_DIR / "action.yml")
     assert "latex-macros/macros.qmd" in action
     assert cme.DEFAULT_MACROS_FILE == "latex-macros/macros.qmd"
-    assert re.search(r"fail:\n\s+description:.*\n(?:\s+.*\n)*?\s+default: 'false'",
-                     action)
+    fail_input = action.split("\n  fail:\n", 1)[1].split("\nruns:", 1)[0]
+    assert fail_input.rstrip().endswith("default: 'false'")
     assert cme._DEFAULT_FAIL is False
     for var in ("CME_BASE_REF", "CME_WHOLE_TREE", "CME_MACROS_FILE", "CME_GLOBS",
                 "CME_PATHS_IGNORE", "CME_EXCLUDE", "CME_FAIL"):
