@@ -23,6 +23,7 @@ updates:
       - "/check-duplicate-roxygen"
       - "/check-extra"
       - "/check-fform-paren"
+      - "/check-macro-expansions"
       - "/check-write-idiom"
       - "/check-formatting"
       - "/check-informal-definitions"
