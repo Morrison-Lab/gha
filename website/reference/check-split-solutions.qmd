@@ -1,0 +1,53 @@
+---
+title: "check-split-solutions.yml"
+---
+
+Diff-scoped check that fails a pull request which touches a split exercise
+whose solution was not split with it.
+The lab's rule (Ezra, 2026-10-28) is that a solution is split
+the way its exercise is: one `#sol-` per `#exr-`,
+each with the slug of its exercise.
+It complements [check-multipart-exercises](check-multipart-exercises.qmd),
+which reads only the exercise side.
+This implements
+[gha#1290](https://github.com/Morrison-Lab/gha/issues/1290).
+
+A *group* is the set of `#exr-` divs that share a slug once a trailing `-partK` is removed.
+A group with two or more exercises is *split*.
+The ids may sit in different subfiles, so the check indexes every file the globs match.
+In a split group it reports:
+
+- an exercise with no `#sol-` of the same slug;
+- a `#sol-` with no exercise of that slug;
+- a solution that labels parts:
+  two lettered list items in one marker style (`(a)`/`(b)`, `a.`/`b.`),
+  or a line opening "Part 2:".
+  A numbered list is not flagged, because it can be the answer itself;
+- a solution that holds a figure chunk (`#| label: fig-...` or `#| fig-cap`)
+  when its own exercise does not ask for a plot
+  but a sibling exercise does.
+  This is the case of `#sol-lab-boston-simple`,
+  whose figure answered the plot exercises two parts later.
+
+Code, display math and HTML comments are not read for part labels.
+A solution that holds `<!-- split-solutions-ok: reason -->` is exempt.
+
+A group is reported when the pull request adds a line inside any of its divs.
+With no base to diff against, the check skips
+instead of scanning the whole tree.
+It fails by default; `fail: false` gives warning annotations only.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `true` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Report every split group, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+
+## Usage
+
+Copy `examples/check-split-solutions.yml` to
+`.github/workflows/check-split-solutions.yml`.

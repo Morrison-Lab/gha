@@ -88,6 +88,7 @@ website:
           - reference/check-def-title-synonyms.qmd
           - reference/check-bare-yes-no.qmd
           - reference/check-multipart-exercises.qmd
+          - reference/check-split-solutions.qmd
           - reference/check-rubric-checklists.qmd
           - reference/check-note-sheet-rows.qmd
           - reference/check-definite-antecedents.qmd

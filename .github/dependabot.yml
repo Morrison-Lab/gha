@@ -45,6 +45,7 @@ updates:
       - "/check-def-title-synonyms"
       - "/check-bare-yes-no"
       - "/check-multipart-exercises"
+      - "/check-split-solutions"
       - "/check-rubric-checklists"
       - "/check-note-sheet-rows"
       - "/check-definite-antecedents"
