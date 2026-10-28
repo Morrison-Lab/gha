@@ -87,6 +87,7 @@ website:
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
           - reference/check-bare-yes-no.qmd
+          - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd
           - reference/check-rubric-checklists.qmd
           - reference/check-note-sheet-rows.qmd

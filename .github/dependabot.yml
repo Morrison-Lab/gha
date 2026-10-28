@@ -45,6 +45,7 @@ updates:
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
       - "/check-bare-yes-no"
+      - "/check-key-equations-displayed"
       - "/check-multipart-exercises"
       - "/check-rubric-checklists"
       - "/check-note-sheet-rows"
