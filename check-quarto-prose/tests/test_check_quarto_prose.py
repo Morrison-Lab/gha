@@ -946,3 +946,25 @@ def test_added_line_numbers_survive_header_lookalikes(repo: Path) -> None:
     _commit(repo, "plus line")
     added = cqp._added_line_numbers(base, ["*.qmd"], cwd=str(repo))
     assert added == {"page.qmd": {3}}
+
+
+# ------------------------------------------- definitions in a parenthetical
+
+
+@pytest.mark.parametrize("opener", ["(definitions:", "(definition:", "(Definitions:"])
+def test_definitions_parenthetical_is_flagged(opener: str) -> None:
+    text = f"The error has three terms {opener} [bias](#def-bias), [variance](#def-variance))."
+    assert rules(scan(text)) == [(cqp.RULE_IDIOM, 1)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The error is the sum of its [bias](#def-bias) and its [variance](#def-variance).",
+        "Bias (see @def-bias) and variance (see @def-variance) add.",
+        "A definition: a term is a word with a technical meaning.",
+        "The `(definitions:` opener is flagged by the check.",
+    ],
+)
+def test_terms_linked_in_the_sentence_pass(text: str) -> None:
+    assert rules(scan(text)) == []

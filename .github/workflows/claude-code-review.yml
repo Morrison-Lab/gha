@@ -886,26 +886,9 @@ jobs:
       - name: Save the PR diff for the reviewer
         id: prdiff
         if: steps.selfmod.outputs.self_mod != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          DIFF_NAME: .claude-review-pr.diff
-        run: |
-          set -uo pipefail
-          target="$GITHUB_WORKSPACE/$DIFF_NAME"
-          if gh pr diff "$PR_NUMBER" --repo "$REPO" > "$target" && [ -s "$target" ]; then
-            # ABSOLUTE, because Claude Code's Read tool requires an absolute
-            # `file_path`. A workspace-relative path would cost the reviewer a
-            # resolution step to reach the file this whole change exists to put
-            # in front of it (gha#567 review).
-            echo "path=$target" >> "$GITHUB_OUTPUT"
-            echo "Saved the PR diff for the reviewer: $target ($(wc -c < "$target") bytes)."
-          else
-            rm -f "$target"
-            echo "path=" >> "$GITHUB_OUTPUT"
-            echo "::warning::Could not save the PR diff to $target; the reviewer will fall back to calling gh pr diff itself."
-          fi
+        uses: Morrison-Lab/gha/.github/actions/save-pr-diff@v3
+        with:
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
 
       # Snapshot the PR head SHA and open/merged state for the prompt
       # (gha#295). Clearing requested reviewers lives on gather-context

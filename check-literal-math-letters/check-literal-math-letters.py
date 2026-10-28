@@ -31,6 +31,10 @@ What is not flagged:
   the like, across lines, with comments skipped);
 - any ``::: {.notation}`` div (a passage that discusses the notation itself,
   where a literal letter is the point);
+- a blockquote paragraph that opens with a cross mark (a counter-example of
+  what not to write), or a cross-mark line that follows a check-mark
+  paragraph, up to the next empty ``>`` line, a line that opens with a check
+  mark, a change of quote nesting depth, or a non-quote line;
 - macro definitions (a math span that opens with ``\newcommand``, ``\def``, and
   the like), which are check 2's concern;
 - a line carrying, or following, ``<!-- check-literal-math-letters: allow -->``
@@ -242,6 +246,11 @@ ENV_BEGIN_RE = re.compile(
     r"^\s*\\begin\{(" + "|".join(DISPLAY_ENVIRONMENTS) + r")\*?\}"
 )
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?![\s$])(.+?)(?<![\s\\$])\$(?!\d)")
+# A blockquote paragraph that opens with the cross mark is a counter-example of
+# what not to write, so its raw letters are the point and are never flagged.
+QUOTE_RE = re.compile(r"^\s*((?:>\s*)+)(.*)$")
+BAD_EXAMPLE_MARK = "❌"
+GOOD_EXAMPLE_MARK = "✅"
 NOTATION_CLASS_RE = re.compile(r"(?:^|[\s{])\.?notation(?=[\s}]|$)")
 # Anchored to the whole line, so a directive quoted in prose or a code span
 # is not obeyed.
@@ -551,6 +560,10 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     env: Optional[str] = None
     divs: List[Div] = []
     allow_through = 0  # last line number covered by an `allow` directive
+    bad_example = False  # inside a blockquote paragraph that opens with a cross mark
+    good_example = False  # inside a blockquote paragraph that opens with a check mark
+    quote_open = True  # the next quote line opens a paragraph
+    quote_depth = 0  # nesting depth of the previous quote line
     chunk_state: dict = {"calls": [], "arg": ""}  # left open in the current chunk
     start = 0
 
@@ -590,7 +603,34 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
         if not line.strip():
             in_display = False
             env = None  # a blank line ends an unclosed environment, as for $$
+            bad_example = good_example = False
+            quote_open = True
+            quote_depth = 0
             continue
+
+        quote = QUOTE_RE.match(line)
+        if quote is None or not quote.group(2).strip():
+            # a non-quote line or an empty `>` ends the paragraph
+            bad_example = good_example = False
+            quote_open = True
+            quote_depth = 0
+        else:
+            text = quote.group(2).lstrip()
+            depth = quote.group(1).count(">")
+            if depth != quote_depth:  # entering or leaving a nested quote
+                bad_example = good_example = False
+                quote_open = True
+            quote_depth = depth
+            # a cross mark starts a counter-example only when it opens the
+            # paragraph or follows a check-mark paragraph, not in mid-paragraph
+            if text.startswith(BAD_EXAMPLE_MARK) and (quote_open or good_example):
+                bad_example, good_example = True, False
+            elif text.startswith(GOOD_EXAMPLE_MARK):
+                # only a check mark that opens the paragraph (or ends a
+                # counter-example) makes a check-mark paragraph
+                good_example = quote_open or bad_example or good_example
+                bad_example = False
+            quote_open = False
 
         if not in_display and env is None:
             dm = DIV_RE.match(line)
@@ -639,7 +679,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                     pos, in_display = j + 2, True
 
         math = [seg for seg in math if seg.strip()]
-        if any(d.notation for d in divs) or lineno <= allow_through:
+        if any(d.notation for d in divs) or lineno <= allow_through or bad_example:
             continue
         tokens: List[str] = []
         for seg in math:

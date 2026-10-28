@@ -79,12 +79,15 @@ website:
           - reference/check-def-commentary.qmd
           - reference/check-solution-citations.qmd
           - reference/check-exercise-before-result.qmd
+          - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
           - reference/check-tree-lists.qmd
           - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
+          - reference/check-bare-yes-no.qmd
           - reference/check-multipart-exercises.qmd
+          - reference/check-rubric-checklists.qmd
           - reference/check-note-sheet-rows.qmd
           - reference/check-definite-antecedents.qmd
           - reference/check-paired-file-change.qmd

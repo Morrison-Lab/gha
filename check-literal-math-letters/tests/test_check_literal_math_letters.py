@@ -527,6 +527,59 @@ def test_load_deprecated_missing_file_yields_no_rules(tmp_path, capsys):
     assert "Could not read" in capsys.readouterr().out
 
 
+def test_cross_mark_counter_example_is_skipped_but_check_mark_line_is_flagged():
+    doc = "> ❌ Let $x$ be the input.\n>\n> ✅ Let $x$ be the input.\n"
+    assert flagged(doc) == {3: ["x"]}
+
+
+def test_cross_mark_paragraph_continues_over_quote_lines_until_a_check_mark():
+    doc = "> ❌ Let $x$ be\n> the input, $y$.\n> ✅ Let $w$ be it.\n"
+    assert flagged(doc) == {3: ["w"]}
+
+
+def test_cross_mark_skip_ends_at_a_blank_line_and_a_non_quote_line():
+    doc = "> ❌ $x$\n\n$y$\n\n> ❌ $x$\nafter $z$\n"
+    assert flagged(doc) == {3: ["y"], 6: ["z"]}
+
+
+def test_quote_without_a_cross_mark_is_still_checked():
+    assert flagged("> Let $x$ be the input.\n") == {1: ["x"]}
+
+
+def test_empty_quote_line_ends_the_cross_mark_paragraph():
+    # no check mark follows, so only the empty `>` can reset the skip
+    assert flagged("> ❌ $x$\n>\n> $y$\n") == {3: ["y"]}
+
+
+def test_nested_quote_cross_mark_is_skipped_and_nested_blank_ends_it():
+    assert flagged("> > ❌ $x$\n> >\n> > $y$\n") == {3: ["y"]}
+
+
+def test_cross_mark_in_the_middle_of_a_paragraph_does_not_start_a_skip():
+    assert flagged("> Consider:\n> ❌ $x$\n") == {2: ["x"]}
+
+
+def test_cross_mark_after_a_check_mark_line_starts_a_skip():
+    assert flagged("> ✅ $x$\n> ❌ $y$\n") == {1: ["x"]}
+
+
+def test_cross_mark_after_a_multi_line_check_mark_paragraph_starts_a_skip():
+    doc = "> ✅ Let $x$ be\n> the input, $w$.\n> ❌ Let $y$ be the input.\n"
+    assert flagged(doc) == {1: ["x"], 2: ["w"]}
+
+
+def test_mid_paragraph_check_mark_does_not_allow_a_following_cross_mark_skip():
+    assert flagged("> Consider:\n> ✅ $x$\n> ❌ $y$\n") == {2: ["x"], 3: ["y"]}
+
+
+def test_cross_mark_after_two_check_mark_lines_starts_a_skip():
+    assert flagged("> ✅ $x$\n> ✅ $w$\n> ❌ $y$\n") == {1: ["x"], 2: ["w"]}
+
+
+def test_leaving_a_nested_quote_ends_the_skip():
+    assert flagged("> > ❌ $x$\n> $y$\n") == {2: ["y"]}
+
+
 # -- the log-odds symbol -----------------------------------------------------
 
 def test_z_for_the_log_odds_is_flagged_in_precise_mode(known_mode):
