@@ -68,6 +68,18 @@ jobs:
       contents: write
       pull-requests: read
       actions: read
+    # Turn off any git credential helper the runner's own global config sets.
+    # A self-hosted runner can set credential.helper=cache in its user's
+    # ~/.gitconfig; when that home is on a network filesystem the cache
+    # daemon's socket can go stale, and a git call that stores the push
+    # credential then dies with "unable to connect to cache daemon: Stale file
+    # handle" (Morrison-Lab/lds run 40653511896). The push authenticates
+    # with the job token, not a helper, and an empty credential.helper resets
+    # git's helper list.
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: credential.helper
+      GIT_CONFIG_VALUE_0: ""
     steps:
       - name: Check out gh-pages branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
