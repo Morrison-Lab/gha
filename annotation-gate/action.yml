@@ -58,6 +58,18 @@ inputs:
       per commit, so a burst of finishing runs leaves one gate. A run still in
       progress is left out; its own completion starts the next gate.
     default: 'false'
+  defer-while-running:
+    description: >-
+      With `all-runs`, exit without gating or posting a check run while another
+      workflow's run on the commit is still queued or in progress. That run's
+      completion starts its own gate, so the last to finish gates the commit
+      and the earlier ones do no API work. A check run posted by an earlier
+      gate stays until then. Turn it on only when the caller triggers on
+      `workflow_run` for every workflow (`workflows: ["*"]`): with a narrower
+      list, the deferring gate can wait on a run that starts no gate and leave
+      the commit ungated. Off by default, because a quick failure is then
+      reported only when the slowest workflow on the commit finishes.
+    default: 'false'
   token:
     description: Token granted actions read and checks read, plus checks write with `head-sha`.
     default: ${{ github.token }}
@@ -76,4 +88,5 @@ runs:
         GATE_RUN_ATTEMPT: ${{ inputs.run-attempt }}
         GATE_HEAD_SHA: ${{ inputs.head-sha }}
         GATE_ALL_RUNS: ${{ inputs.all-runs }}
+        GATE_DEFER_WHILE_RUNNING: ${{ inputs.defer-while-running }}
       run: python3 "$GITHUB_ACTION_PATH/annotation_gate.py"

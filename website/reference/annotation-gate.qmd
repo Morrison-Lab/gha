@@ -135,6 +135,17 @@ One commit-wide check-run listing gives each job's annotation count,
 so a job without annotations costs no request.
 The commit then carries one `annotation-gate` check, not one per workflow.
 
+`defer-while-running: true` (with `all-runs`, default `false`) makes a gate exit
+without gating or posting a check run while another workflow's run on the commit
+is still queued or in progress.
+That run's completion starts its own gate, so the last to finish gates the commit
+and earlier gates do no API work.
+Turn it on only when the caller triggers on `workflow_run` for every workflow,
+as the example stub does with `workflows: ["*"]`:
+with a narrower `workflows:` list, a deferring gate can wait on a run that never
+starts a gate, and the commit goes ungated.
+A quick failure is reported only when the slowest workflow on the commit finishes.
+
 Without `all-runs`, each gated run posts its own check run named `annotation-gate`.
 When several workflows finish on one commit, the commit carries several checks
 of that name, and a failing one blocks a required check.

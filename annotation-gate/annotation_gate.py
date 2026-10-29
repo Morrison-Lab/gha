@@ -129,6 +129,11 @@ def latest_runs(runs, own_workflow):
     return sorted(newest.values(), key=lambda run: run["id"])
 
 
+def unfinished_runs(runs, own_workflow):
+    """Runs other than own_workflow still queued or in progress."""
+    return [r for r in runs if r.get("name") != own_workflow and r.get("status") in ("queued", "in_progress")]
+
+
 def annotation_counts(base, repo, token, sha):
     """Map check run id -> annotation count for every check run on the commit."""
     url = f"{base}/repos/{repo}/commits/{sha}/check-runs?filter=latest"
@@ -169,8 +174,13 @@ def main():
         print("::error::all-runs needs head-sha, the commit to gate.")
         return 2
     if all_runs:
-        runs = paged(f"{base}/repos/{repo}/actions/runs?head_sha={head_sha}", token, "workflow_runs")
-        targets = [(r["id"], r["run_attempt"]) for r in latest_runs(runs, os.environ.get("GITHUB_WORKFLOW", ""))]
+        runs = list(paged(f"{base}/repos/{repo}/actions/runs?head_sha={head_sha}", token, "workflow_runs"))
+        own = os.environ.get("GITHUB_WORKFLOW", "")
+        waiting = unfinished_runs(runs, own)
+        if os.environ.get("GATE_DEFER_WHILE_RUNNING") == "true" and waiting:
+            print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
+            return 0
+        targets = [(r["id"], r["run_attempt"]) for r in latest_runs(runs, own)]
         counts = annotation_counts(base, repo, token, head_sha)
     else:
         targets, counts = [(run_id, attempt)], {}
