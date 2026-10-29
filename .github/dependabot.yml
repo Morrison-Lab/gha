@@ -53,6 +53,7 @@ updates:
       - "/check-split-solutions"
       - "/check-restated-results"
       - "/check-extracted-lemmas"
+      - "/check-definition-equations"
       - "/check-format-output-files"
       - "/check-rubric-checklists"
       - "/check-single-ask-parts"
