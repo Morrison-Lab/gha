@@ -1,0 +1,45 @@
+---
+title: "check-extracted-lemmas.yml"
+---
+
+Diff-scoped, warn-only heuristic check for the lab's rule (Ezra, 2026-10-29)
+to extract a lemma wherever feasible:
+a general fact that does not depend on its setting
+goes in its own `#lem-` div, on the site that owns the topic,
+and the proof, solution or example that uses it links to the lemma.
+
+The check reads the body of
+
+- each `#sol-` and `#exm-` div, and
+- the proof of each `#thm-`, `#lem-`, `#cor-` or `#prp-` div
+  (a `.proof` div nested in it or directly after it).
+
+A body is flagged when a sentence of its prose says "for any", "for every" or "for all"
+and also holds inline math,
+and the body cites no result
+(`@thm-`, `@lem-`, `@cor-`, `@prp-`, or a link to a `#thm-`, `#lem-`, `#cor-` or `#prp-` anchor).
+A theorem's own statement is not read, since a theorem is meant to be general.
+The check follows `{{< include >}}` lines,
+so it reads a page in the order a reader sees it.
+A body that holds `<!-- lemma-ok: reason -->` is exempt.
+
+A body is checked when the pull request adds a line inside it.
+With no base to diff against, the check skips instead of scanning the whole tree,
+so existing content is fixed when someone edits it anyway.
+It warns by default; `fail: true` blocks.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Check every body, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
+
+## Usage
+
+Copy `examples/check-extracted-lemmas.yml` to
+`.github/workflows/check-extracted-lemmas.yml`.

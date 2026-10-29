@@ -98,6 +98,7 @@ website:
           - reference/check-multipart-exercises.qmd
           - reference/check-split-solutions.qmd
           - reference/check-restated-results.qmd
+          - reference/check-extracted-lemmas.qmd
           - reference/check-format-output-files.qmd
           - reference/check-rubric-checklists.qmd
           - reference/check-single-ask-parts.qmd

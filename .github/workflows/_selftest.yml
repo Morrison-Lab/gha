@@ -3135,6 +3135,74 @@ jobs:
           git rm -q -r --cached --ignore-unmatch _ci-restated-results || true
           rm -rf _ci-restated-results
 
+  # check-extracted-lemmas is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-extracted-lemmas@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  extracted-lemmas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-extracted-lemmas unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-extracted-lemmas/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-extracted-lemmas
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no solutions, so stage one that states a general fact with no lemma
+      # and assert that the check warns by default and blocks with fail on.
+      - name: Stage a solution that states a general fact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-extracted-lemmas
+          printf '%s\n' '::: {#sol-a}' 'For any real $x$, $x^2 \ge 0$.' ':::' > _ci-extracted-lemmas/page.qmd
+          git add -f _ci-extracted-lemmas/page.qmd
+      - name: Check the staged solution, expecting a warning only
+        uses: ./check-extracted-lemmas
+        with:
+          whole-tree: 'true'
+      - name: Check again with fail on, expecting a failure
+        id: extracted-lemmas-expected-failure
+        continue-on-error: true
+        uses: ./check-extracted-lemmas
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.extracted-lemmas-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-extracted-lemmas with fail on to fail on a solution stating a general fact, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-extracted-lemmas
+        with:
+          base-ref: ''
+      - name: Remove the staged solution
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-extracted-lemmas || true
+          rm -rf _ci-extracted-lemmas
+
   # check-rubric-checklists is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-rubric-checklists@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.

@@ -58,6 +58,7 @@ input tables and a copy-paste example.
 | [`check-multipart-exercises.yml`](reference/check-multipart-exercises.qmd) | Diff-scoped check that fails when a PR adds or revises an exercise div (`#exr-`) holding more than one part | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-split-solutions.yml`](reference/check-split-solutions.qmd) | Diff-scoped check that fails when a PR touches a split exercise whose solution is not split with it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-restated-results.yml`](reference/check-restated-results.qmd) | Diff-scoped, warn-only heuristic check that flags a derivation solution (`#sol-` whose exercise asks to derive, prove, show or solve and whose solution displays an equation) when a PR edits it and no `#thm-`, `#lem-`, `#cor-` or `#prp-` div restates the result after the exercise | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-extracted-lemmas.yml`](reference/check-extracted-lemmas.qmd) | Diff-scoped, warn-only heuristic check that flags a solution, example or proof that states a general fact ("for any", "for every" or "for all" with math) when a PR edits it and it cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-format-output-files.yml`](reference/check-format-output-files.qmd) | Fails when a Quarto page lacks an `output-file` for a format that a per-format publish renders | `formats`, `globs`, `paths-ignore`, `fail` |
 | [`check-rubric-checklists.yml`](reference/check-rubric-checklists.qmd) | Diff-scoped check that warns when a PR adds or revises a grading rubric (`Grading`, `Rubric`, `Marking scheme`, `Mark scheme`) with no task-list item (`- [ ] ...`) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-single-ask-parts.yml`](reference/check-single-ask-parts.qmd) | Diff-scoped, warn-only check that flags a part of an exercise div (`#exr-`), meaning a list item or paragraph outside its solution, that asks for more than one thing; each part asks for one thing | `globs`, `paths-ignore`, `python-version`, `fail`, `whole-tree` |
@@ -164,7 +165,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
 `check-one-div-per-subfile.yml`, `check-code-messages.yml`, `check-multipart-exercises.yml`,
 `check-rubric-checklists.yml`, `check-single-ask-parts.yml`, `check-split-solutions.yml`,
-`check-restated-results.yml`,
+`check-restated-results.yml`, `check-extracted-lemmas.yml`,
 `check-format-output-files.yml`,
 `check-caller-permissions.yml`, `check-exm-figures.yml`, `check-visualization-figures.yml`,
 `check-axis-titles.yml`,
