@@ -124,8 +124,10 @@ else `ubuntu-latest`),
 so a private repository that sets `CI_RUNNER` to its self-hosted label
 runs every gha job there
 while GitHub-hosted minutes are unavailable.
-Leave `CI_RUNNER` unset, at the repository and the organization level,
-in every public repository.
+gha ignores `CI_RUNNER` for a public repository's events
+(it reads `github.event.repository.private`),
+but leave it unset at the repository and the organization level
+in every public repository anyway.
 Never point a public repository at a self-hosted runner,
 because a pull request from a fork can run arbitrary code on it
 ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).

@@ -156,7 +156,8 @@ plus `check-secrets.yml`, `cleanup-pr-previews.yml` and `annotation-gate-run.yml
 accepts a `runs-on` input (default empty: the caller's `CI_RUNNER` variable if set, else `ubuntu-latest`),
 so a private repository that sets `CI_RUNNER` to its self-hosted label runs every gha job there
 while GitHub-hosted minutes are unavailable.
-Leave `CI_RUNNER` unset, at the repository and the organization level, in every public repository.
+gha ignores `CI_RUNNER` for a public repository's events (it reads `github.event.repository.private`),
+but leave it unset at the repository and the organization level in every public repository anyway.
 The build workflows `preview.yml`, `preview-deploy.yml` and `quarto-publish.yml`
 accept it too, for every job they run.
 Never point a public repository at a self-hosted runner,
