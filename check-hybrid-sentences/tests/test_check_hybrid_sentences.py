@@ -29,6 +29,11 @@ def test_words_then_math_condition_is_flagged():
     assert len(out) == 1 and "hybrid" in out[0]
 
 
+def test_comma_before_connective_is_flagged():
+    assert msgs("The risk is zero, and $x = 1$.")
+    assert msgs("The risk is zero, if and only if $x = 1$.")
+
+
 def test_math_condition_then_words_is_flagged():
     assert len(msgs("We have $f = g$ and the risk is zero everywhere.")) == 1
 

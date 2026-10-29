@@ -328,6 +328,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         if base is None or not base.strip():
             return Report([], True)
         diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                         "--src-prefix=a/", "--dst-prefix=b/",
                          base.strip(), "--", *globs])
         if diff is None:
             return Report([], True)
