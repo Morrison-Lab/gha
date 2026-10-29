@@ -118,7 +118,7 @@ runs:
           codename <- character(0)
           if (Sys.info()[["sysname"]] == "Linux" && file.exists(os_release)) {
             release <- grep("^VERSION_CODENAME=", readLines(os_release), value = TRUE)
-            codename <- sub("^VERSION_CODENAME=", "", release)
+            codename <- gsub("^VERSION_CODENAME=|[\"']", "", release)
           }
           if (length(codename) == 1 && nzchar(codename)) {
             repos <- c(CRAN = sprintf("https://packagemanager.posit.co/cran/__linux__/%s/latest", codename))
