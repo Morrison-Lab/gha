@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-avoided-words.yml in your repo.
+# Diff-scoped check: flags a line a PR adds that uses "above"/"below" for a place in
+# the document, "just"/"easy"/"easily", or a time-relative word such as "currently".
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check avoided words
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-avoided-words.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # block instead of warn (defaults to false)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
