@@ -183,6 +183,13 @@ def _run_git(args: List[str]) -> Optional[str]:
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 
+# The one `git diff` invocation every diff-scoped check uses. Fixed prefixes:
+# diff.mnemonicPrefix would print `w/` and make every touched file read as
+# missing (gha#1355, gha#1357).
+GIT_DIFF_ARGS = ["diff", "-U0", "--no-color", "--no-ext-diff", "--no-textconv",
+                 "--src-prefix=a/", "--dst-prefix=b/"]
+
+
 _C_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13,
               '"': 34, "\\": 92}
 
@@ -348,11 +355,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         base = _run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, 0, True)
-        # Fixed prefixes: diff.mnemonicPrefix would print `w/` and make every
-        # touched file read as missing.
-        diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
-                         "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/",
-                         base.strip(), "--", *globs])
+        diff = _run_git([*GIT_DIFF_ARGS, base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, 0, True)
         added, deleted = parse_diff(diff)
