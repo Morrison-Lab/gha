@@ -1,0 +1,41 @@
+---
+title: "check-div-ids.yml"
+---
+
+Diff-scoped, warn-only check that flags a fenced div
+with a theorem-type class but no id with the matching prefix.
+Quarto and the lab's `callouty-theorem` and `custom-callout` extensions
+build a callout, a number and a cross-reference target from the id,
+so a div written `::: {.remark}` renders as a plain block quote
+([lds#1600](https://github.com/Morrison-Lab/lds/pull/1600)).
+
+| Class | Needs an id starting |
+| --- | --- |
+| `.definition` | `#def-` |
+| `.theorem` | `#thm-` |
+| `.lemma` | `#lem-` |
+| `.corollary` | `#cor-` |
+| `.proposition` | `#prp-` |
+| `.remark` | `#rem-` |
+| `.example` | `#exm-` |
+| `.exercise` | `#exr-` |
+
+The check reports a div when the pull request adds its opening line.
+It does not look inside code fences, HTML comments or blockquotes,
+and it reports nothing for a div that was already in the file.
+Other classes on the div, such as `.notes`, are fine.
+
+With no base ref, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to measure a corpus.
+
+## Inputs
+
+- `globs`: git pathspecs of files to check (default `*.qmd`).
+- `paths-ignore`: glob patterns to skip.
+- `fail`: block instead of warn (default false).
+- `whole-tree`: scan every matching file, not only a pull request's additions.
+
+## Example
+
+[`examples/check-div-ids.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-div-ids.yml)
