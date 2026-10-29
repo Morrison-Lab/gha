@@ -62,11 +62,8 @@ ul.task-list li input[type="checkbox"] {
   "type": "overlay",
   "limit": 50,
   "keyboard-shortcut": [
-    "f",
-    "/",
-    "s"
+    "/"
   ],
-  "show-item-context": false,
   "language": {
     "search-no-results-text": "No results",
     "search-matching-documents-text": "matching documents",
@@ -643,6 +640,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/check-search-shortcut.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-search-shortcut.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-visualization-figures.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-visualization-figures.yml</span></a>
   </div>
@@ -667,6 +670,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/check-key-equations-displayed.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-key-equations-displayed.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-multipart-exercises.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-multipart-exercises.yml</span></a>
   </div>
@@ -681,6 +690,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="./reference/check-rubric-checklists.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-rubric-checklists.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-single-ask-parts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-single-ask-parts.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -723,6 +738,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="./reference/check-fform-paren.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-fform-paren.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-macro-expansions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-macro-expansions.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1221,44 +1242,54 @@ cookieconsent.run({
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
+<td><a href="./reference/check-search-shortcut.html"><code>check-search-shortcut.yml</code></a></td>
+<td>Blocking check that flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S: a <code>_quarto*.yml</code> project that sets no <code>keyboard-shortcut</code>, or any <code>keyboard-shortcut</code> that lists more than <code>"/"</code></td>
+<td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
+</tr>
+<tr class="even">
 <td><a href="./reference/check-visualization-figures.html"><code>check-visualization-figures.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a div that asks for a picture (a visual word in its title, or a sketch or plot request in an exercise prompt) but has no figure (an exercise may have it in its solution), when a PR adds a line to it</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-self-contained-captions.html"><code>check-self-contained-captions.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a figure or table caption whose first sentence only points to another div</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-code-messages.html"><code>check-code-messages.yml</code></a></td>
 <td>Diff-scoped, warn-only check that flags a <code>geom_smooth()</code> or <code>stat_smooth()</code> call missing <code>method</code> or <code>formula</code>, and a <code>geom_histogram()</code> or <code>stat_bin()</code> call with no <code>bins</code>, <code>binwidth</code> or <code>breaks</code>, when a PR adds a line to it; the action also scans a rendered site for <code>cell-output-stderr</code> blocks</td>
 <td><code>globs</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-axis-titles.html"><code>check-axis-titles.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags an axis title made only of a symbol or expression, when a PR adds it</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-one-div-per-subfile.html"><code>check-one-div-per-subfile.yml</code></a></td>
 <td>Diff-scoped, warn-only check that flags a subfile holding more than one top-level div, when a PR adds a line to it (one div per subfile; a proof stays with its claim and a solution with its exercise)</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-multipart-exercises.html"><code>check-multipart-exercises.yml</code></a></td>
 <td>Diff-scoped check that fails when a PR adds or revises an exercise div (<code>#exr-</code>) holding more than one part</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-split-solutions.html"><code>check-split-solutions.yml</code></a></td>
 <td>Diff-scoped check that fails when a PR touches a split exercise whose solution is not split with it</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-rubric-checklists.html"><code>check-rubric-checklists.yml</code></a></td>
 <td>Diff-scoped check that warns when a PR adds or revises a grading rubric (<code>Grading</code>, <code>Rubric</code>, <code>Marking scheme</code>, <code>Mark scheme</code>) with no task-list item (<code>- [ ] ...</code>)</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
+</tr>
+<tr class="even">
+<td><a href="./reference/check-single-ask-parts.html"><code>check-single-ask-parts.yml</code></a></td>
+<td>Diff-scoped, warn-only check that flags a part of an exercise div (<code>#exr-</code>), meaning a list item or paragraph outside its solution, that asks for more than one thing; each part asks for one thing</td>
+<td><code>globs</code>, <code>paths-ignore</code>, <code>python-version</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-def-title-synonyms.html"><code>check-def-title-synonyms.yml</code></a></td>
@@ -1271,49 +1302,59 @@ cookieconsent.run({
 <td><code>globs</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
+<td><a href="./reference/check-key-equations-displayed.html"><code>check-key-equations-displayed.yml</code></a></td>
+<td>Diff-scoped heuristic check that fails when a PR adds an inline equation in a proof that restates a displayed equation of the theorem or ends a concluding sentence; a key equation goes in display math</td>
+<td><code>globs</code>, <code>fail</code>, <code>whole-tree</code></td>
+</tr>
+<tr class="even">
 <td><a href="./reference/check-pr-size.html"><code>check-pr-size.yml</code></a></td>
 <td>Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines; a sweep goes out as minimal batches</td>
 <td><code>max-files</code>, <code>max-lines</code>, <code>paths-ignore</code>, <code>exempt-label</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-note-sheet-rows.html"><code>check-note-sheet-rows.yml</code></a></td>
 <td>Diff-scoped check, warn-only for the one-concept rules and always blocking for prose and non-table lists, that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code>, <code>runs-on</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-definite-antecedents.html"><code>check-definite-antecedents.yml</code></a></td>
 <td>Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291)</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-local-macros.html"><code>check-local-macros.yml</code></a></td>
 <td>Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (<code>\newcommand</code>, <code>\def</code>, <code>\DeclareMathOperator</code>), allowing a <code>macros-override.*</code> file to redefine only macros the library already has</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>override-files</code>, <code>library</code>, <code>submodules</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-paired-file-change.html"><code>check-paired-file-change.yml</code></a></td>
 <td>Fail a PR that changes a file matching <code>trigger-paths</code> without also changing a file matching <code>required-paths</code>, unless the PR carries the skip label (read live from the API)</td>
 <td><code>trigger-paths</code>, <code>required-paths</code>, <code>skip-label</code>, <code>message</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-term-links.html"><code>check-term-links.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a defined technical term whose first use in a div or paragraph is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus’s own <code>#def-</code> divs and links</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>terms-file</code>, <code>allow-file</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/annotation-gate.html"><code>annotation-gate.yml</code></a></td>
 <td>Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job</td>
 <td><code>levels</code>, <code>allow-patterns</code>, <code>job-name</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/annotation-gate.html"><code>annotation-gate-run.yml</code></a></td>
 <td>Gate a finished run from a <code>workflow_run</code> workflow and post the result as an <code>annotation-gate</code> check run, for repositories whose checks are spread over many workflow files</td>
 <td><code>run-id</code>, <code>head-sha</code>, <code>run-attempt</code>, <code>workflow-id</code>, <code>all-runs</code>, <code>levels</code>, <code>allow-patterns</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-fform-paren.html"><code>check-fform-paren.yml</code></a></td>
 <td>Diff-scoped, warn-only check that flags <code>\name\paren{...}</code> (or <code>\sb{</code>, <code>\cb{</code>) where an f form <code>\namef{...}</code> is defined in the macros file (default <code>latex-macros/macros.qmd</code>)</td>
 <td><code>macros-file</code>, <code>globs</code>, <code>paths-ignore</code>, <code>submodules</code>, <code>fail</code>, <code>whole-tree</code></td>
+</tr>
+<tr class="odd">
+<td><a href="./reference/check-macro-expansions.html"><code>check-macro-expansions.yml</code></a></td>
+<td>Diff-scoped, warn-only check that flags math that writes out by hand what a shared macro already says, such as <code>\sum_{i=1}^n</code> where <code>\sumin</code> exists, using the expansions in the macros file (default <code>latex-macros/macros.qmd</code>)</td>
+<td><code>macros-file</code>, <code>exclude</code>, <code>globs</code>, <code>paths-ignore</code>, <code>submodules</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/check-dependency-graph.html"><code>check-dependency-graph.yml</code></a></td>
@@ -1520,7 +1561,7 @@ cookieconsent.run({
 <p><strong>Choosing the runner.</strong> Every <code>check-*</code> and <code>lint-*</code> workflow that takes no secrets, plus <code>check-secrets.yml</code>, <code>cleanup-pr-previews.yml</code> and <code>annotation-gate-run.yml</code>, accepts a <code>runs-on</code> input (default <code>ubuntu-latest</code>), so a private repository can run it on a self-hosted runner while GitHub-hosted minutes are unavailable. Never point a public repository at a self-hosted runner, because a pull request from a fork can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</p>
 <section id="versioning" class="level2">
 <h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
-<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>lint-changed-files.yml</code>, <code>check-new-line-breaks.yml</code>, <code>check-secrets.yml</code>, <code>check-junk-files.yml</code>, <code>lint-workflows.yml</code>, <code>spellcheck.yml</code>, <code>check-typos.yml</code>, <code>check-extra.yml</code>, <code>check-formatting.yml</code>, <code>claude-manage-project.yml</code>, <code>r-cmd-check.yml</code>, <code>check-code-similarity.yml</code>, and <code>check-one-function-per-file.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>check-dependency-updates.yml</code>, <code>check-duplicate-roxygen.yml</code>, <code>check-math-definitions.yml</code>, <code>check-merge-drops.yml</code>, <code>check-orphaned-images.yml</code>, <code>check-python-package.yml</code>, <code>check-quarto-book.yml</code>, <code>check-quarto-links.yml</code>, <code>check-source-overlap.yml</code>, <code>check-quarto-manuscript.yml</code>, <code>check-quarto-prose.yml</code>, <code>check-quarto-website.yml</code>, <code>check-r-package.yml</code>, <code>check-repo-hygiene.yml</code>, <code>check-typed-output.yml</code>, <code>check-informal-definitions.yml</code>, <code>check-literal-math-letters.yml</code>, <code>check-wikipedia-further-reading.yml</code>, <code>check-redundant-citations.yml</code>, <code>check-self-credits.yml</code>, <code>check-one-div-per-subfile.yml</code>, <code>check-code-messages.yml</code>, <code>check-multipart-exercises.yml</code>, <code>check-split-solutions.yml</code>, <code>check-rubric-checklists.yml</code>, <code>check-caller-permissions.yml</code>, <code>check-exm-figures.yml</code>, <code>check-visualization-figures.yml</code>, <code>check-axis-titles.yml</code>, <code>check-tree-lists.yml</code>, <code>check-self-contained-captions.yml</code>, <code>check-def-commentary.yml</code>, <code>check-solution-citations.yml</code>, <code>check-exercise-before-result.yml</code>, <code>check-pr-concerns.yml</code>, <code>check-pr-size.yml</code>, <code>check-def-title-synonyms.yml</code>, <code>check-bare-yes-no.yml</code>, <code>check-note-sheet-rows.yml</code>, <code>check-definite-antecedents.yml</code>, <code>check-term-links.yml</code>, <code>check-paired-file-change.yml</code>, <code>annotation-gate.yml</code>, <code>annotation-gate-run.yml</code>, <code>check-local-macros.yml</code>, <code>check-fform-paren.yml</code>, <code>check-write-idiom.yml</code>, <code>check-dependency-graph.yml</code>, <code>cleanup-pr-previews.yml</code>, <code>opposition-research.yml</code>, <code>student-qmd.yml</code>, <code>summary.yml</code>, <code>update-quarto-extensions.yml</code>, and <code>update-snapshots.yml</code> only ever shipped at <code>@v3</code> (or moved to <code>@v3</code> for <code>cleanup-pr-previews.yml</code>, <code>summary.yml</code>, and <code>update-snapshots.yml</code>). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, and <code>claude-code-review.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, <code>cursor-code-review.yml</code>, <code>opencode-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>, <a href="https://github.com/Morrison-Lab/gha/issues/510">gha#510</a>, and <a href="https://github.com/Morrison-Lab/gha/issues/586">gha#586</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>bump-submodule.yml</code> and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>lint-changed-files.yml</code>, <code>check-new-line-breaks.yml</code>, <code>check-secrets.yml</code>, <code>check-junk-files.yml</code>, <code>lint-workflows.yml</code>, <code>spellcheck.yml</code>, <code>check-typos.yml</code>, <code>check-extra.yml</code>, <code>check-formatting.yml</code>, <code>claude-manage-project.yml</code>, <code>r-cmd-check.yml</code>, <code>check-code-similarity.yml</code>, and <code>check-one-function-per-file.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>check-dependency-updates.yml</code>, <code>check-duplicate-roxygen.yml</code>, <code>check-math-definitions.yml</code>, <code>check-merge-drops.yml</code>, <code>check-orphaned-images.yml</code>, <code>check-python-package.yml</code>, <code>check-quarto-book.yml</code>, <code>check-quarto-links.yml</code>, <code>check-source-overlap.yml</code>, <code>check-quarto-manuscript.yml</code>, <code>check-quarto-prose.yml</code>, <code>check-quarto-website.yml</code>, <code>check-r-package.yml</code>, <code>check-repo-hygiene.yml</code>, <code>check-typed-output.yml</code>, <code>check-informal-definitions.yml</code>, <code>check-literal-math-letters.yml</code>, <code>check-wikipedia-further-reading.yml</code>, <code>check-redundant-citations.yml</code>, <code>check-self-credits.yml</code>, <code>check-one-div-per-subfile.yml</code>, <code>check-code-messages.yml</code>, <code>check-multipart-exercises.yml</code>, <code>check-rubric-checklists.yml</code>, <code>check-single-ask-parts.yml</code>, <code>check-split-solutions.yml</code>, <code>check-caller-permissions.yml</code>, <code>check-exm-figures.yml</code>, <code>check-visualization-figures.yml</code>, <code>check-axis-titles.yml</code>, <code>check-tree-lists.yml</code>, <code>check-search-shortcut.yml</code>, <code>check-self-contained-captions.yml</code>, <code>check-def-commentary.yml</code>, <code>check-solution-citations.yml</code>, <code>check-exercise-before-result.yml</code>, <code>check-pr-concerns.yml</code>, <code>check-pr-size.yml</code>, <code>check-def-title-synonyms.yml</code>, <code>check-bare-yes-no.yml</code>, <code>check-key-equations-displayed.yml</code>, <code>check-note-sheet-rows.yml</code>, <code>check-definite-antecedents.yml</code>, <code>check-term-links.yml</code>, <code>check-paired-file-change.yml</code>, <code>annotation-gate.yml</code>, <code>annotation-gate-run.yml</code>, <code>check-local-macros.yml</code>, <code>check-fform-paren.yml</code>, <code>check-macro-expansions.yml</code>, <code>check-write-idiom.yml</code>, <code>check-dependency-graph.yml</code>, <code>cleanup-pr-previews.yml</code>, <code>opposition-research.yml</code>, <code>student-qmd.yml</code>, <code>summary.yml</code>, <code>update-quarto-extensions.yml</code>, and <code>update-snapshots.yml</code> only ever shipped at <code>@v3</code> (or moved to <code>@v3</code> for <code>cleanup-pr-previews.yml</code>, <code>summary.yml</code>, and <code>update-snapshots.yml</code>). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, and <code>claude-code-review.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, <code>cursor-code-review.yml</code>, <code>opencode-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>, <a href="https://github.com/Morrison-Lab/gha/issues/510">gha#510</a>, and <a href="https://github.com/Morrison-Lab/gha/issues/586">gha#586</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>bump-submodule.yml</code> and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
 </section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
@@ -1540,7 +1581,7 @@ cookieconsent.run({
 <li><p><code>lint-yaml.yml</code> runs <a href="https://yamllint.readthedocs.io/en/stable/">yamllint</a> over tracked YAML with a bundled config, plus a check that flags long <code>run:</code> script blocks as decomposition candidates.</p></li>
 <li><p><code>lint-markdown.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint-cli2">markdownlint-cli2</a> over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.</p></li>
 <li><p><code>lint-qmd.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint">markdownlint</a> over the prose sections of tracked <code>.qmd</code> Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.</p></li>
-<li><p><code>lint-changed-lines.yml</code> runs <a href="https://lintr.r-lib.org/">lintr</a> over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone. <code>file-pattern</code> widens the files linted to Quarto and R Markdown documents, whose R chunks lintr lints, and <code>lms-ref</code> installs the shared <code>lms</code> package and lints with <code>lms::default_linters(nested_calls = TRUE)</code>, the lab’s linters including the no-nested-calls rules.</p></li>
+<li><p><code>lint-changed-lines.yml</code> runs <a href="https://lintr.r-lib.org/">lintr</a> over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone. <code>file-pattern</code> extends the check to Quarto and R Markdown documents, linting their R chunks, and <code>lms-ref</code> installs the shared <code>lms</code> package and lints with <code>lms::default_linters(nested_calls = TRUE)</code>, the lab’s linters including the no-nested-calls rules.</p></li>
 <li><p><code>lint-changed-files.yml</code> runs <a href="https://lintr.r-lib.org/">lintr</a> at one of three scopes selected by <code>scope</code>: the files a pull request changed (default), a whole package (<code>lintr::lint_package()</code>), or a whole project (<code>lintr::lint_dir()</code>). lintr is installed from CRAN, not GitHub HEAD.</p></li>
 <li><p><code>check-formatting.yml</code> runs <code>air format --check -- &lt;path&gt;</code> via <a href="https://github.com/posit-dev/setup-air">posit-dev/setup-air</a>. <a href="https://posit-dev.github.io/air/">Air</a> is Posit’s R formatter, a Rust binary, so there is no R session to start. It complements <code>lint-changed-lines.yml</code>: Air settles layout, lintr decides the rest of R style. Check-only – it never rewrites the branch. Adopting it in a repo that is not already Air-formatted is a large first-pass diff; commit an <code>air.toml</code> first (empty is enough), run <code>air format</code> and commit that rewrite on its own, then enable the check.</p></li>
 <li><p><code>check-phi.yml</code> scans for content that looks like protected health information; see <a href="#phi-scanning">below</a>.</p></li>
