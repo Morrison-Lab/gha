@@ -50,6 +50,7 @@ updates:
       - "/check-key-equations-displayed"
       - "/check-multipart-exercises"
       - "/check-split-solutions"
+      - "/check-restated-results"
       - "/check-format-output-files"
       - "/check-rubric-checklists"
       - "/check-single-ask-parts"
