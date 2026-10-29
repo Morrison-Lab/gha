@@ -26,7 +26,8 @@ so it reads a page in the order a reader sees it.
 A body that holds `<!-- lemma-ok: reason -->` is exempt.
 
 A body is checked when the pull request adds a line inside it.
-With no base to diff against, the check skips instead of scanning the whole tree,
+With no base to diff against,
+the check skips instead of scanning the whole tree,
 so existing content is fixed when someone edits it anyway.
 It warns by default; `fail: true` blocks.
 
