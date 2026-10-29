@@ -1,21 +1,16 @@
 name: Check format output files
 description: >-
   Fails when a Quarto page lacks an `output-file` for a format that a
-  per-format publish renders with `quarto render --to FORMAT`. `--to` renders
-  every page, even one whose front matter omits the format, under the default
-  name, so a page without a `revealjs` entry has its HTML replaced by a slide
-  deck (mds `linear-algebra.html`, 2026-10-28). Each page with front matter
-  must list every format in `formats` under `format:`, each with an
-  `output-file`. Subfiles (names starting with `_`) are skipped. Blocking by
-  default.
+  per-format publish renders with `quarto render --to FORMAT`: `--to`
+  renders every page under the default name, so a page without a
+  `revealjs` entry has its HTML replaced by a slide deck (mds
+  `linear-algebra.html`, 2026-10-28). Blocking by default.
 inputs:
   python-version:
     description: Python version to set up.
     default: '3.x'
   formats:
-    description: >-
-      Space-separated formats the repository's publish renders with
-      `--to`; every page must name an `output-file` for each.
+    description: Space-separated formats rendered with `--to`; each needs an `output-file`.
     default: 'revealjs pdf docx'
   globs:
     description: Space-separated git pathspecs of tracked files to check.
@@ -26,8 +21,7 @@ inputs:
       `_extensions/**` is always skipped.
     default: ''
   fail:
-    description: >-
-      Fail the action on a finding (else non-blocking). Defaults to 'true'.
+    description: Fail the action on a finding (else non-blocking).
     default: 'true'
 runs:
   using: composite

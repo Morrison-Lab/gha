@@ -3,12 +3,10 @@
 r"""
 Flag a Quarto page that a per-format render would write over another format.
 
-A publish that renders ``formats: 'html revealjs docx'`` runs
-``quarto render --to FORMAT --no-clean`` once per format. ``--to`` renders
-every page, even one whose front matter does not list FORMAT, and names the
-output after the page. A page with no ``revealjs`` entry therefore writes its
-deck to ``<stem>.html``, replacing the notes page (mds
-``linear-algebra.html`` served a slide deck on 2026-10-28).
+``quarto render --to FORMAT`` renders every page, even one whose front
+matter does not list FORMAT, and names the output after the page. A page
+with no ``revealjs`` entry therefore writes its deck to ``<stem>.html``,
+replacing the notes page (mds ``linear-algebra.html``, 2026-10-28).
 
 For each page with front matter, and each format in ``CFO_FORMATS``
 (default ``revealjs pdf docx``), the page must:
@@ -16,16 +14,9 @@ For each page with front matter, and each format in ``CFO_FORMATS``
 - list the format under ``format:``; and
 - give that entry an ``output-file`` (so it cannot reuse the HTML name).
 
-A page with no ``format:`` key is flagged too, since it takes the project
-defaults and so has no ``output-file``. Set ``CFO_FORMATS`` to the formats the
-repository's publish renders with ``--to``. Pages whose names start with ``_``
-(subfiles) and ``_extensions/**`` are skipped.
-
-Configuration (environment variables, set by the composite action):
-  CFO_GLOBS          Space-separated git pathspecs (default: '*.qmd').
-  CFO_FORMATS        Space-separated formats to require (default: 'revealjs pdf docx').
-  CFO_PATHS_IGNORE   Comma/newline-separated glob patterns to skip.
-  CFO_FAIL           "false" => warn only; default "true".
+A page with front matter but no ``format:`` key is flagged too. Pages whose
+names start with ``_`` (subfiles) and ``_extensions/**`` are skipped.
+``action.yml`` sets the ``CFO_*`` environment variables the script reads.
 """
 
 import fnmatch

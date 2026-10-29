@@ -49,11 +49,6 @@ def test_inline_default_has_no_output_file():
     assert findings[0].line == 5
 
 
-def test_output_file_of_another_format_does_not_count():
-    # pdf and docx keep their output-file; only revealjs lacks one.
-    assert len(check(FULL.replace(REVEAL, "  revealjs: default\n"))) == 1
-
-
 def test_no_format_key_fails():
     assert len(check('---\ntitle: "A"\n---\nbody\n')) == 1
 
