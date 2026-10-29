@@ -90,7 +90,7 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.sender.type != 'Bot'
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     # Sized for up to ~1-2 candidate attempts at the default 30m watch-timeout
     # (gha#729) plus run-polling overhead (gha#570). If configuring more agents
     # or larger watch-timeouts, note that the fixed 60-minute job budget bounds

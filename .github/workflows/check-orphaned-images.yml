@@ -9,7 +9,7 @@ on:
           private repository; never for a public one, whose pull requests
           can run arbitrary code on it.
         type: string
-        default: ubuntu-latest
+        default: ''
       paths:
         description: Space-separated git pathspecs to look for images in.
         type: string
@@ -39,7 +39,7 @@ on:
 
 jobs:
   check-orphaned-images:
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read

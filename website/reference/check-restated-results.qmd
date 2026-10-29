@@ -44,7 +44,7 @@ It warns by default; `fail: true` blocks.
 | `fail` | `false` | Fail on a finding; `false` warns |
 | `whole-tree` | `false` | Check every derivation solution, to measure a corpus |
 | `python-version` | `3.x` | Python version |
-| `runs-on` | `ubuntu-latest` | Runner label; a self-hosted label only for a private repository |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
 
 ## Usage
 

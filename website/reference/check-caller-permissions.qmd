@@ -44,7 +44,7 @@ so use the override for tests and offline runs, not to answer
 | `workflows-dir` | string | `'.github/workflows'` | Directory holding the caller workflows. |
 | `fail`         | boolean | `true`                | Fail the workflow when a caller lacks a required grant. Set `false` for warning annotations only. |
 | `python-version` | string | `'3.x'`              | Python version to set up. |
-| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it. |
 
 ## Permissions
 

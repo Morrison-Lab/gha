@@ -9,7 +9,7 @@ on:
           private repository; never for a public one, whose pull requests
           can run arbitrary code on it.
         type: string
-        default: ubuntu-latest
+        default: ''
       scope:
         description: >-
           What to lint: changed-files (only files this PR changed; requires a
@@ -67,7 +67,7 @@ on:
 
 jobs:
   lint-changed-files:
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     # Whole-tree package/project lint can exceed the 20-minute
     # lint-changed-lines budget; 30 is still a hang-catch, not a tight SLA.
     timeout-minutes: 30

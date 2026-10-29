@@ -49,7 +49,7 @@ on:
           Runner for every job in the workflow. Set a self-hosted label (for
           example a private-runner group) only for a private repository.
         type: string
-        default: 'ubuntu-latest'
+        default: ''
       pr-number:
         description: PR number to review (set by claude.yml's workflow_dispatch; empty for pull_request runs).
         type: string
@@ -284,7 +284,7 @@ jobs:
     concurrency:
       group: claude-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions: {}
     steps:
@@ -313,7 +313,7 @@ jobs:
     concurrency:
       group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: false
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       issues: write
@@ -613,7 +613,7 @@ jobs:
       # reviewer left to find the SHA itself was writing.
       REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}
 
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -1642,7 +1642,7 @@ jobs:
     concurrency:
       group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: false
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:
       pull-requests: write
@@ -2209,7 +2209,7 @@ jobs:
       (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
       fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
       fromJSON(needs.claude-review.outputs.cancelled || 'false')))
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions: {}
     steps:
@@ -2240,7 +2240,7 @@ jobs:
       always() &&
       needs.claude-review.result == 'success' &&
       fromJSON(needs.claude-review.outputs.quota_exhausted || 'false')
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       pull-requests: read
@@ -2288,7 +2288,7 @@ jobs:
       fromJSON(needs.post-review.outputs.stale || 'false')) &&
       !(needs.claude-review.result == 'success' &&
       fromJSON(needs.claude-review.outputs.cancelled || 'false'))
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions: {}
     steps:

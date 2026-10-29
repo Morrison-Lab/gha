@@ -33,7 +33,7 @@ on:
 
 jobs:
   check-multipart-exercises:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

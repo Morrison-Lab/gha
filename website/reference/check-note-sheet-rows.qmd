@@ -56,7 +56,8 @@ unless `whole-tree` asks for that.
   The prose rules always fail, whatever `fail` says.
 - `whole-tree`: scan every matching file in full (default `false`).
 - `python-version`: Python version to set up (default `3.x`).
-- `runs-on`: runner label for the job (default `ubuntu-latest`).
+- `runs-on`: runner label for the job
+  (default: the caller's `CI_RUNNER` variable, else `ubuntu-latest`).
   Use a self-hosted label only for a private repository;
   never for a public one, whose pull requests can run arbitrary code on it.
 

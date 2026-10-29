@@ -46,7 +46,7 @@ on:
 
 jobs:
   check-math-definitions:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

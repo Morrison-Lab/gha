@@ -9,7 +9,7 @@ on:
           private repository; never for a public one, whose pull requests
           can run arbitrary code on it.
         type: string
-        default: ubuntu-latest
+        default: ''
       script-dir:
         description: >-
           Directory holding the vendored `build_dependency_graph.py`, with its
@@ -35,7 +35,7 @@ on:
 
 jobs:
   check-dependency-graph:
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read

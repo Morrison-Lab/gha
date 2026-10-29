@@ -49,7 +49,7 @@ It reads an inline list (`["/"]`) or a block list (`- "/"`).
 | `paths-ignore` | string  | `''`              | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
 | `fail`         | boolean | `true`            | Fail the workflow when a site opens search on f or s. Set `false` for warning annotations only. |
 | `python-version` | string | `'3.x'`          | Python version to set up. |
-| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 

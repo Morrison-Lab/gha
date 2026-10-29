@@ -232,10 +232,12 @@ on:
           "Bash(gh api -X:*),Bash(gh api --method:*),Bash(gh api graphql:*),Bash(git push:*),Bash(git push --force:*),Bash(git push -f:*),Bash(git push --delete:*),Bash(git push -d:*),Bash(git push --mirror:*),Bash(git push --tags:*),Bash(git push --all:*),Bash(git push origin:*),Bash(git push -u origin:*)"
       runs-on:
         description: >-
-          Runner for the agent job. The mention-filter job always uses
-          ubuntu-latest, so a quoted mention never bills a larger runner.
+          Runner for the agent job. The mention-filter job ignores this input
+          and uses the caller's CI_RUNNER variable, else ubuntu-latest, so a
+          quoted mention never bills a larger runner and a private repository
+          with CI_RUNNER set never needs hosted minutes for the filter.
         type: string
-        default: 'ubuntu-latest'
+        default: ''
       report-cost:
         description: >-
           Surface the run's dollar cost (total_cost_usd from
@@ -331,7 +333,9 @@ jobs:
   # strip Markdown -- so a quoted or code-span mention still starts THIS job.
   # That is the accepted residual: one short runner, no checkout of the
   # caller, no write-scoped secrets, no `inputs.runs-on` (a consumer may have
-  # pointed that at a large runner for the agent). detect-bot-mention reuses
+  # pointed that at a large runner for the agent). It runs on the caller's
+  # `CI_RUNNER` variable, else ubuntu-latest, so a private repository on a
+  # self-hosted runner needs no hosted minutes for it. detect-bot-mention reuses
   # the #342 stripper rather than approximating CommonMark in the expression
   # language, and `claude` below starts only when this job's `proceed` output
   # is true.
@@ -367,7 +371,7 @@ jobs:
       (github.event_name == 'issues' && github.event.action == 'assigned' && contains(fromJSON(inputs.dispatch-on-assignee), github.event.assignee.login)) ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -467,7 +471,7 @@ jobs:
       group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
       cancel-in-progress: false
 
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: write       # push branches / commits

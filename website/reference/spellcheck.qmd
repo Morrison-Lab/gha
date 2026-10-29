@@ -44,7 +44,7 @@ and commit the result.
 | `fail`               | string | `'true'`      | Whether to fail the job on misspelled words (`'true'`, `'false'`).   |
 | `additional-options` | string | `'--vanilla'` | Options passed to `Rscript`. Pass `''` to let R read its profiles.   |
 | `install-quarto`     | string | `'false'`     | Whether dependency setup installs Quarto.                            |
-| `runs-on`            | string | `ubuntu-latest` | Runner label for the job.                                          |
+| `runs-on`            | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job.                                          |
 | `preinstalled-toolchain` | boolean | `false` | The runner already provides R with pak and has no sudo, as a self-hosted runner does. Skips the R setup steps (`install-quarto` then has no effect) and installs {spelling} with pak if it is missing. |
 
 ## Permissions
