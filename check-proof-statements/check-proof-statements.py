@@ -49,14 +49,15 @@ ALLOW_RE = re.compile(r"<!--\s*check-proof-statements:\s*allow\s*-->")
 NEVER_RE = re.compile(r"(?!x)x")
 
 DIV_RE = re.compile(r"^\s*(:{3,})\s*(.*?)\s*:*\s*$")
-HIDDEN_RE = re.compile(
-    r"(?:\.content-hidden\b[^}]*\bwhen-format\s*=\s*[\"'][^\"']*\brevealjs\b"
-    r"|\.content-visible\b[^}]*\bunless-format\s*=\s*[\"'][^\"']*\brevealjs\b)")
-PROOF_RE = re.compile(r"(?:^|[\s{])(?:\.proof\b|proof\b(?!-)|#prf-|\.proof-)")
-THEOREM_RE = re.compile(r"#(?:thm|lem|cor|prp)-")
+KEY_VALUE_RE = re.compile(r"""([\w-]+)\s*=\s*("[^"]*"|'[^']*'|[^\s}]+)""")
+THEOREM_ID_RE = re.compile(r"(?:thm|lem|cor|prp)-")
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+)\s*>\}\}")
 PROOF_FILE_RE = re.compile(r"(?:^|[/_])(?:prf|proof)[-_.]")
-INLINE_MATH_RE = re.compile(r"\$\$.*?\$\$|\$[^$]*\$")
+INLINE_MATH_RE = re.compile(r"\$[^$]*\$")
+# Text that is not prose: link targets, autolinks and URLs, cross-references,
+# and a trailing `{#id}` or `{.class}` attribute block.
+NON_PROSE_RE = re.compile(
+    r"\]\([^)]*\)|<[^>\s]*>|https?://\S+|@[\w:.-]+|\{[#.][^}]*\}")
 REASONING_RE = re.compile(
     r"(?i)\b(?:so(?!\s+that\b|-called\b|\s+far\b)|because|hence|therefore|thus|since)\b")
 
@@ -75,14 +76,40 @@ class Finding(NamedTuple):
 
 
 def _classify(attrs: str) -> Set[str]:
+    """Kinds (``hidden``, ``proof``, ``theorem``) of a div from its attribute text.
+
+    The attribute text is read as tokens, so attribute order and quoting do not
+    matter and a word inside a quoted value (``title="a proof of concept"``) is
+    not a class.
+    """
+    values = {key: value.strip("\"'") for key, value in KEY_VALUE_RE.findall(attrs)}
+    tokens = KEY_VALUE_RE.sub(" ", attrs).replace("{", " ").replace("}", " ").split()
+    classes = {t[1:] for t in tokens if t.startswith(".")}
+    ids = {t[1:] for t in tokens if t.startswith("#")}
+    bare = {t for t in tokens if t[0] not in ".#"}
     kinds: Set[str] = set()
-    if HIDDEN_RE.search(attrs):
+    when = values.get("when-format", "").replace(",", " ").split()
+    unless = values.get("unless-format", "").replace(",", " ").split()
+    if ("content-hidden" in classes and "revealjs" in when) or \
+            ("content-visible" in classes and "revealjs" in unless):
         kinds.add("hidden")
-    if PROOF_RE.search(attrs):
+    if "proof" in classes or "proof" in bare \
+            or any(c.startswith("proof-") for c in classes) \
+            or any(i.startswith("prf-") for i in ids):
         kinds.add("proof")
-    if THEOREM_RE.search(attrs):
+    if any(THEOREM_ID_RE.match(i) for i in ids):
         kinds.add("theorem")
     return kinds
+
+
+def _outside_math(line: str, in_display: bool) -> Tuple[str, bool]:
+    """The text of ``line`` outside ``$$...$$`` and ``$...$``, and the display
+    state at its end. A ``$$`` toggles display math wherever it falls on the line.
+    """
+    parts = line.split("$$")
+    prose = [part for index, part in enumerate(parts) if (index % 2 == 1) == in_display]
+    text = INLINE_MATH_RE.sub(" ", " ".join(prose))
+    return text, in_display != (len(parts) % 2 == 0)
 
 
 def scan_file(lines: List[str], keep: Optional[Set[int]] = None) -> Tuple[List[Finding], int]:
@@ -113,16 +140,14 @@ def scan_file(lines: List[str], keep: Optional[Set[int]] = None) -> Tuple[List[F
         include = INCLUDE_RE.search(masked)
         if include and PROOF_FILE_RE.search(include.group(1)) and hidden_now():
             return [("proof", "proof")]
-        if masked.count("$$") % 2 == 1:
-            in_display = not in_display
-            return []
-        if in_display or masked.lstrip().startswith("#"):
+        prose, in_display = _outside_math(masked, in_display)
+        if masked.lstrip().startswith("#"):
             return []
         for kinds in reversed(stack):
             if "proof" in kinds:
                 return []
             if "theorem" in kinds:
-                hit = REASONING_RE.search(INLINE_MATH_RE.sub(" ", masked))
+                hit = REASONING_RE.search(NON_PROSE_RE.sub(" ", prose))
                 return [("statement", hit.group(0).lower())] if hit else []
         return []
 
