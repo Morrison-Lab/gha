@@ -21,7 +21,16 @@ before the next exercise of a different group
 (the exercise slug with a trailing `-partK` removed).
 A solution that holds `<!-- restated-ok: reason -->` is exempt.
 
-A solution is checked when the pull request adds a line inside it or its exercise.
+The restating theorem is also flagged
+when its proof (a `.proof` div nested in it or directly after it)
+cites a solution (`@sol-...`) and displays no equation of its own,
+because a proof that only points back at the solution
+leaves the result unproved where it is stated.
+`<!-- restated-ok: reason -->` in the theorem or its proof exempts it.
+Whether the statement uses only defined symbols stays a review item.
+
+A solution is checked when the pull request adds a line inside it or its exercise,
+and a proof when it adds a line inside the theorem or its proof.
 With no base to diff against, the check skips instead of scanning the whole tree,
 so existing solutions are fixed when someone edits them anyway.
 It warns by default; `fail: true` blocks.
