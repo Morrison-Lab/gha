@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
+r"""
+Flag a Quarto page that a per-format render would write over another format.
+
+A publish that renders ``formats: 'html revealjs docx'`` runs
+``quarto render --to FORMAT --no-clean`` once per format. ``--to`` renders
+every page, even one whose front matter does not list FORMAT, and names the
+output after the page. A page with no ``revealjs`` entry therefore writes its
+deck to ``<stem>.html``, replacing the notes page (mds
+``linear-algebra.html`` served a slide deck on 2026-10-28).
+
+For each page with front matter, and each format in ``CFO_FORMATS``
+(default ``revealjs pdf docx``), the page must:
+
+- list the format under ``format:``; and
+- give that entry an ``output-file`` (so it cannot reuse the HTML name).
+
+A page with no ``format:`` key is flagged too, since it takes the project
+defaults and so has no ``output-file``. Set ``CFO_FORMATS`` to the formats the
+repository's publish renders with ``--to``. Pages whose names start with ``_``
+(subfiles) and ``_extensions/**`` are skipped.
+
+Configuration (environment variables, set by the composite action):
+  CFO_GLOBS          Space-separated git pathspecs (default: '*.qmd').
+  CFO_FORMATS        Space-separated formats to require (default: 'revealjs pdf docx').
+  CFO_PATHS_IGNORE   Comma/newline-separated glob patterns to skip.
+  CFO_FAIL           "false" => warn only; default "true".
+"""
+
+import fnmatch
+import os
+import re
+import subprocess
+import sys
+from typing import Dict, List, NamedTuple, Optional
+
+DEFAULT_FORMATS = "revealjs pdf docx"
+DEFAULT_IGNORE = "_extensions/**"
+
+
+class Finding(NamedTuple):
+    path: str
+    line: Optional[int]
+    message: str
+
+
+def front_matter(lines: List[str]) -> Optional[List[str]]:
+    """Return the YAML front matter lines, or None when there is none."""
+    if not lines or lines[0].strip() != "---":
+        return None
+    for i in range(1, len(lines)):
+        if lines[i].strip() in ("---", "..."):
+            return lines[1:i]
+    return None
+
+
+def parse_formats(fm: List[str]) -> Optional[Dict[str, Dict]]:
+    """Map each ``format:`` entry to {line, output_file}; None if no ``format:``."""
+    start = None
+    for i, raw in enumerate(fm):
+        if re.match(r"^format\s*:", raw):
+            start = i
+            break
+    if start is None:
+        return None
+    formats: Dict[str, Dict] = {}
+    entry_indent = None
+    current = None
+    for i in range(start + 1, len(fm)):
+        raw = fm[i]
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        if indent == 0:
+            break
+        if entry_indent is None:
+            entry_indent = indent
+        if indent == entry_indent:
+            name = re.match(r"^\s*([\w-]+)\s*:", raw)
+            if name:
+                current = name.group(1)
+                formats[current] = {"line": i + 2, "output_file": False}
+        elif current and re.match(r"^\s*output-file\s*:\s*\S", raw):
+            formats[current]["output_file"] = True
+    return formats
+
+
+def check_page(path: str, lines: List[str], required: List[str]) -> List[Finding]:
+    fm = front_matter(lines)
+    if fm is None:
+        return []
+    formats = parse_formats(fm)
+    if formats is None:
+        return [Finding(path, 1,
+                        "no `format:` key, so `--to %s` writes `<page>.html` "
+                        "over the notes page; list %s with an `output-file`"
+                        % (required[0], ", ".join(required)))]
+    findings = []
+    for fmt in required:
+        if fmt not in formats:
+            findings.append(Finding(
+                path, 1,
+                "`format:` omits %s, but a per-format publish renders it "
+                "anyway under the default name; add `%s: {output-file: ...}`"
+                % (fmt, fmt)))
+        elif not formats[fmt]["output_file"]:
+            findings.append(Finding(
+                path, formats[fmt]["line"],
+                "%s has no `output-file`, so it can overwrite the HTML page"
+                % fmt))
+    return findings
+
+
+def _ignored(path: str, patterns: List[str]) -> bool:
+    for pat in patterns:
+        regex = re.escape(pat).replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
+        regex = regex.replace(r"\?", "[^/]")
+        if re.fullmatch(regex, path) or fnmatch.fnmatch(path, pat):
+            return True
+    return False
+
+
+def tracked_files(globs: List[str]) -> List[str]:
+    out = subprocess.run(["git", "ls-files", "--"] + globs, check=True,
+                         capture_output=True, text=True).stdout
+    return [p for p in out.splitlines() if p]
+
+
+def run(globs: List[str], patterns: List[str], required: List[str]) -> List[Finding]:
+    findings = []
+    for path in tracked_files(globs):
+        if os.path.basename(path).startswith("_") or _ignored(path, patterns):
+            continue
+        if not path.endswith(".qmd") or not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            findings.extend(check_page(path, handle.read().splitlines(), required))
+    return findings
+
+
+def main() -> int:
+    globs = os.environ.get("CFO_GLOBS", "").split() or ["*.qmd"]
+    required = os.environ.get("CFO_FORMATS", "").split() or DEFAULT_FORMATS.split()
+    ignore = os.environ.get("CFO_PATHS_IGNORE", "")
+    patterns = [p.strip() for p in re.split(r"[,\n]", ignore) if p.strip()]
+    patterns += DEFAULT_IGNORE.split()
+    fail = os.environ.get("CFO_FAIL", "true").lower() != "false"
+    findings = run(globs, patterns, required)
+    level = "error" if fail else "warning"
+    for f in findings:
+        print("::%s file=%s,line=%d,title=Format output file::%s"
+              % (level, f.path, f.line or 1, f.message))
+    if not findings:
+        print("check-format-output-files: every page names an output-file for %s"
+              % ", ".join(required))
+        return 0
+    print("check-format-output-files: %d finding(s)" % len(findings))
+    return 1 if fail else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
