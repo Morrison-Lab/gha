@@ -1,0 +1,32 @@
+---
+title: "check-format-output-files.yml"
+---
+
+Fails when a Quarto page lacks an `output-file` for a format
+that the repository's publish renders with `quarto render --to FORMAT`.
+`--to FORMAT` renders every page, including one whose `format:` omits FORMAT,
+and names the output after the page.
+A page with no `revealjs` entry therefore writes its slide deck to `<stem>.html`,
+replacing the notes page.
+This happened to `linear-algebra.html`, `algebra.html` and `calculus.html` in
+[mds](https://github.com/Morrison-Lab/mds/pull/508).
+
+For each page with front matter, and each format in `formats`,
+the page must list the format under `format:` and give it an `output-file`.
+Subfiles (names starting with `_`) and `_extensions/**` are skipped.
+It fails by default; `fail: false` gives warning annotations only.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `formats` | `revealjs pdf docx` | Formats the publish renders with `--to` |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `true` | Fail on a finding; `false` warns |
+| `python-version` | `3.x` | Python version |
+
+## Usage
+
+Copy `examples/check-format-output-files.yml` to
+`.github/workflows/check-format-output-files.yml`.

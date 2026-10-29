@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-format-output-files.yml in your repo.
+# Fails when a Quarto page lacks an `output-file` for a format that the
+# publish renders with `quarto render --to FORMAT`: `--to` renders every page
+# under the default name, so a page with no `revealjs` entry has its HTML
+# replaced by a slide deck. Only contents:read is needed (the default).
+name: Check format output files
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-format-output-files.yml@v3
+    # with:
+    #   formats: 'revealjs pdf docx'           # formats the publish renders with --to
+    #   globs: '*.qmd'                         # pathspecs to check
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: false                            # warn instead of block (defaults to true)
