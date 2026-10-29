@@ -29,7 +29,8 @@ so a definition displaying one equation between two expressions is not flagged.
 A definition that holds `<!-- def-equiv-ok: reason -->` is exempt.
 
 A definition is checked when the pull request adds a line inside it.
-With no base to diff against, the check skips instead of scanning the whole tree,
+With no base to diff against,
+the check skips instead of scanning the whole tree,
 so existing definitions are fixed when someone edits them anyway.
 It warns by default; `fail: true` blocks.
 
