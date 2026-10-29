@@ -37,11 +37,19 @@ Configuration (environment variables, set by the composite action):
   DE_WHOLE_TREE    "true" => check every definition div in the tree.
 """
 
+import importlib.util
 import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+_ENGINE_PATH = Path(__file__).resolve().parent.parent / "check-write-idiom" / "check-write-idiom.py"
+_spec = importlib.util.spec_from_file_location("check_write_idiom_engine", _ENGINE_PATH)
+assert _spec is not None and _spec.loader is not None
+engine = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(engine)
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -227,37 +235,11 @@ def _run_git(args: List[str]) -> Optional[str]:
     return res.stdout if res.returncode == 0 else None
 
 
-_HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-
-
 def parse_diff(diff: str) -> Dict[str, Set[int]]:
-    """Added, non-blank line numbers per path."""
-    added: Dict[str, Set[int]] = {}
-    path: Optional[str] = None
-    old_left = new_left = new_line = 0
-    for line in diff.splitlines():
-        if old_left > 0 or new_left > 0:
-            if line.startswith("+"):
-                if path is not None and line[1:].strip():
-                    added[path].add(new_line)
-                new_line += 1
-                new_left -= 1
-            elif line.startswith("-"):
-                old_left -= 1
-            continue
-        if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
-            path = None if target == "/dev/null" else (
-                target[2:] if target.startswith("b/") else target)
-            if path is not None:
-                added.setdefault(path, set())
-            continue
-        m = _HUNK_RE.match(line)
-        if m:
-            old_left = int(m.group(1)) if m.group(1) is not None else 1
-            new_line = int(m.group(2))
-            new_left = int(m.group(3)) if m.group(3) is not None else 1
-    return added
+    """Added, non-blank line numbers per path (the shared engine's parser)."""
+    added, _deleted = engine.parse_diff(diff)
+    return {path: {n for n, text in numbered.items() if text.strip()}
+            for path, numbered in added.items()}
 
 
 def _glob_to_regex(pat: str) -> "re.Pattern[str]":
@@ -332,9 +314,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         base = _run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], True)
-        diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
-                         "--src-prefix=a/", "--dst-prefix=b/",
-                         base.strip(), "--", *globs])
+        diff = _run_git([*engine.GIT_DIFF_ARGS, base.strip(), "--", *globs])
         if diff is None:
             return Report([], True)
         touched = parse_diff(diff)
