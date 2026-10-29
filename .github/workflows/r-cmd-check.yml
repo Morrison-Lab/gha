@@ -303,7 +303,7 @@ jobs:
   R-CMD-check-hard:
     name: Hard dependencies only
     if: ${{ inputs.hard && github.event_name == 'pull_request' }}
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read

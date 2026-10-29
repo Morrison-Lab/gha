@@ -164,7 +164,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # PR builds/previews are keyed by PR number, so different PRs never block
     # each other but a newer push to the SAME PR cancels its own still-running
@@ -582,7 +582,7 @@ jobs:
   deploy:
     needs: build
     if: always() && (needs.build.result == 'success' || (github.event_name == 'pull_request' && github.event.action == 'closed'))
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 15
     concurrency:
       group: gh-pages

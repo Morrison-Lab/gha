@@ -65,7 +65,7 @@ on:
 
 jobs:
   annotation-gate-run:
-    runs-on: ${{ inputs.runs-on || (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     # The group name differs from any a caller sets at workflow level: a job
     # that shares its caller's group is cancelled as a deadlock.

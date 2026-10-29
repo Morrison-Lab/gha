@@ -45,7 +45,7 @@ on:
 
 jobs:
   report:
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     # `issues: write` and nothing else. Naming any scope here sets every
     # unlisted one to `none`, so a job that also checked the repository out

@@ -46,7 +46,7 @@ on:
 
 jobs:
   check-math-definitions:
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

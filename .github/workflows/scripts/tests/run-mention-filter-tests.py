@@ -208,7 +208,7 @@ def main() -> int:
         "(an omitted block inherits the caller's write-scoped GITHUB_TOKEN)",
     )
     check(
-        filt.get("runs-on") == "${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}",
+        filt.get("runs-on") == "${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}",
         "mention-filter uses the caller's CI_RUNNER variable, not inputs.runs-on "
         f"(found: {filt.get('runs-on')!r})",
     )

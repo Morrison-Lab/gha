@@ -58,7 +58,7 @@ on:
 
 jobs:
   cleanup:
-    runs-on: ${{ inputs.runs-on || (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     # Serialize gh-pages branch modifications with other publish/preview deploys.
     concurrency:

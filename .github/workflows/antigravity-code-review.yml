@@ -104,7 +104,7 @@ jobs:
           github.event.sender.type != 'Bot'
         )
       )
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read

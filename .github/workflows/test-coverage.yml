@@ -65,7 +65,7 @@ on:
 
 jobs:
   test-coverage:
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -92,7 +92,7 @@ jobs:
   examples-coverage:
     if: ${{ inputs.examples-coverage }}
     name: Examples and vignettes coverage
-    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
       contents: read
