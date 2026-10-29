@@ -2,18 +2,22 @@
 title: "check-unexplained-contrasts.yml"
 ---
 
-Diff-scoped, warn-only check that flags a contrast in a definition, remark or note that cites no source.
-A contrast the text keeps ("X, not Y") must say who holds the other reading, with a source,
+Diff-scoped, warn-only check that flags a contrast
+in a definition, remark or note that cites no source.
+A contrast the text keeps ("X, not Y")
+must say who holds the other reading, with a source,
 so it is not a straw man.
 If nobody holds the other reading, the contrast is deleted.
 This implements
 [gha#1302](https://github.com/Morrison-Lab/gha/issues/1302)
 and the psw rule "Do not rule out readings no reader would make".
 
-Whether anyone holds the other reading is a fact about the literature, so a script cannot decide it.
+Whether anyone holds the other reading is a fact about the literature,
+so a script cannot decide it.
 The check only prompts the author.
 
-The check reports one of these phrases in a `#def-`, `#rem-` or `#note-` div that holds no citation:
+The check reports one of these phrases
+in a `#def-`, `#rem-` or `#note-` div that holds no citation:
 ", not for/as/a/an/the", "does not mean", "do not mean",
 "not to be confused with", "is not a/an" and "rather than a/an".
 The finding sits on the line that holds the phrase.
@@ -32,7 +36,8 @@ The phrase list is noisy by design, which is why `fail` defaults to `false`.
 
 Only an added line is reported.
 The whole file is parsed, since the div opens far above the changed line.
-An added line whose exact text was also deleted in the same diff counts as moved.
+An added line whose exact text was also deleted in the same diff
+counts as moved.
 With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.
 Set `whole-tree: true` to scan every tracked file on purpose,
