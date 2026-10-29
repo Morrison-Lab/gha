@@ -31,11 +31,27 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
+      checks: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # full history + all tags
+
+      # Readiness bar from CLAUDE.md: every check run on this commit is green
+      # or skipped, none pending. Dependabot updater runs and this job are
+      # exempt (see audit_slide_readiness.py).
+      - name: Require every check run on this commit to be green
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ALLOW_BREAKING_SLIDE: ${{ vars.ALLOW_BREAKING_SLIDE || '' }}
+        run: |
+          if [ "${{ inputs.force }}" = "true" ] || [ "${ALLOW_BREAKING_SLIDE:-0}" = "1" ]; then
+            echo "::warning::Force flag set; bypassing the check-run readiness audit."
+            exit 0
+          fi
+          python3 .github/workflows/scripts/audit_slide_readiness.py \
+            --repo "$GITHUB_REPOSITORY" --sha "$GITHUB_SHA" --exempt slide
 
       - name: Guard against callee permission widening
         env:
