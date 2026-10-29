@@ -50,6 +50,17 @@ on:
           example a private-runner group) only for a private repository.
         type: string
         default: ''
+      gate-runs-on:
+        description: >-
+          Runner for the short gate jobs (preempt-previous, gather-context,
+          find-fallback-verdict, require-review, require-clean-verdict).
+          They only call the GitHub API or report a result, so a caller
+          whose `runs-on` is a busy self-hosted pool can send them to a
+          hosted runner such as ubuntu-latest and keep a merge gate from
+          queueing behind long jobs. Empty means the same runner as
+          `runs-on`.
+        type: string
+        default: ''
       pr-number:
         description: PR number to review (set by claude.yml's workflow_dispatch; empty for pull_request runs).
         type: string
@@ -284,7 +295,7 @@ jobs:
     concurrency:
       group: claude-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.gate-runs-on || inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions: {}
     steps:
@@ -313,7 +324,7 @@ jobs:
     concurrency:
       group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: false
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.gate-runs-on || inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       issues: write
@@ -2209,7 +2220,7 @@ jobs:
       (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
       fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
       fromJSON(needs.claude-review.outputs.cancelled || 'false')))
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.gate-runs-on || inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions: {}
     steps:
@@ -2240,7 +2251,7 @@ jobs:
       always() &&
       needs.claude-review.result == 'success' &&
       fromJSON(needs.claude-review.outputs.quota_exhausted || 'false')
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.gate-runs-on || inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       pull-requests: read
@@ -2288,7 +2299,7 @@ jobs:
       fromJSON(needs.post-review.outputs.stale || 'false')) &&
       !(needs.claude-review.result == 'success' &&
       fromJSON(needs.claude-review.outputs.cancelled || 'false'))
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.gate-runs-on || inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions: {}
     steps:
