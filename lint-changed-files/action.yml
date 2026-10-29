@@ -52,6 +52,15 @@ inputs:
   fail:
     description: Fail the action when lintr reports a lint (not just warn).
     default: 'true'
+  preinstalled-toolchain:
+    description: >-
+      The runner already provides R (with the pak package) and has no sudo,
+      as a self-hosted runner does. When 'true', skip setup-r and
+      setup-r-dependencies, and install the package's dependencies (Suggests
+      included), gh, lintr and `extra-packages` with pak into the runner's
+      user library. `install-quarto` has no effect in this mode, and
+      `apt-packages` must already be installed.
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -64,6 +73,7 @@ runs:
     # stays a separate capability -- its added-lines diffing is different
     # machinery from these three whole-file scopes (gha#258).
     - name: Set up R
+      if: inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         use-public-rspm: true
@@ -101,8 +111,19 @@ runs:
           echo "present=false" >> "$GITHUB_OUTPUT"
         fi
 
+    - name: Install R dependencies (preinstalled R)
+      if: inputs.preinstalled-toolchain == 'true' && inputs.use-renv != 'true' && steps.desc.outputs.present == 'true'
+      working-directory: ${{ inputs.path }}
+      shell: bash
+      env:
+        GITHUB_PAT: ${{ github.token }}
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+      run: |
+        set -euo pipefail
+        Rscript -e 'extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; pak::local_install_dev_deps(dependencies = TRUE); pak::pkg_install(c("gh", "lintr", extra))'
+
     - name: Set up R dependencies (DESCRIPTION)
-      if: inputs.use-renv != 'true' && steps.desc.outputs.present == 'true'
+      if: inputs.preinstalled-toolchain != 'true' && inputs.use-renv != 'true' && steps.desc.outputs.present == 'true'
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}

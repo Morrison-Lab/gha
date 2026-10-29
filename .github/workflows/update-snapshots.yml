@@ -56,6 +56,15 @@ on:
           libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev
           libtiff5-dev libjpeg-dev zlib1g-dev libomp-dev build-essential
           libcairo2-dev gettext
+      preinstalled-toolchain:
+        description: >
+          The runner already provides R (with the pak package), Julia and the
+          apt packages, and has no sudo, as a self-hosted runner does. Skips
+          setup-julia, the apt install, setup-r and setup-r-dependencies;
+          installs the package's dependencies (Suggests included) and
+          extra-packages with pak. needs has no effect in this mode.
+        type: boolean
+        default: false
       commit-message:
         description: Commit message for the snapshot update commit.
         type: string
@@ -106,18 +115,34 @@ jobs:
         with:
           repo-token: ${{ github.token }}
 
+      - name: Put the runner's preinstalled Julia on PATH
+        if: inputs.julia && inputs.preinstalled-toolchain
+        shell: bash
+        run: |
+          # A self-hosted runner's service has no login PATH, so a Julia
+          # unpacked under the runner user's home is not found by name.
+          set -euo pipefail
+          command -v julia > /dev/null && exit 0
+          for pattern in "$HOME/opt/julia-*/bin" "$HOME/.juliaup/bin" "$HOME/julia-*/bin"; do
+            dir="$(ls -d $pattern 2> /dev/null | sort -V | tail -n 1 || true)"
+            if [ -n "$dir" ] && [ -x "$dir/julia" ]; then
+              echo "$dir" >> "$GITHUB_PATH"
+              exit 0
+            fi
+          done
+
       - name: Set up Julia
-        if: inputs.julia
+        if: inputs.julia && !inputs.preinstalled-toolchain
         uses: julia-actions/setup-julia@da908477b5db94c10ffce8cfea9f2b3b9d5db687 # v3.0.3
         with:
           version: ${{ inputs.julia-version }}
 
       - name: Cache Julia packages
-        if: inputs.julia
+        if: inputs.julia && !inputs.preinstalled-toolchain
         uses: julia-actions/cache@9353db09a0f2bbbdec6f41791918c75d37391b36 # v3.5.0
 
       - name: Install apt packages
-        if: inputs.apt-packages != ''
+        if: inputs.apt-packages != '' && !inputs.preinstalled-toolchain
         env:
           APT_PACKAGES: ${{ inputs.apt-packages }}
         shell: bash
@@ -128,11 +153,22 @@ jobs:
           sudo apt-get install -y $APT_PACKAGES
 
       - name: Set up R
+        if: ${{ !inputs.preinstalled-toolchain }}
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           use-public-rspm: true
 
+      - name: Install R dependencies (preinstalled R)
+        if: inputs.preinstalled-toolchain
+        env:
+          EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript -e 'extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; pak::local_install_dev_deps(dependencies = TRUE); if (length(extra)) pak::pkg_install(extra)'
+
       - name: Set up R dependencies
+        if: ${{ !inputs.preinstalled-toolchain }}
         uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           extra-packages: ${{ inputs.extra-packages }}
