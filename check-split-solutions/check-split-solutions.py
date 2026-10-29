@@ -75,6 +75,31 @@ PLOT_RE = re.compile(
     r"visuali[sz]e)\b", re.IGNORECASE)
 
 
+ASSIGN_RE = re.compile(r"^[ \t]*[A-Za-z_.][\w.\[\]$\"', ]*\s*(?:<-|=(?!=))")
+# A definition is setup for later parts, and a hidden chunk is not shown to the reader.
+DEF_RE = re.compile(r"^(?:def|class|import|from)\s|^(?:library|require)\(")
+HIDDEN_OPT_RE = re.compile(r"^#\|\s*(?:include|eval):\s*(?:false|no)\b", re.IGNORECASE)
+SETUP_REF_RE = re.compile(r"setup of @exr-[\w-]+")
+REPEAT_REF_RE = re.compile(r"@(exr-[\w-]+)")
+# A line that continues the statement above it (indented, or a pipe, plus or bracket).
+CONTINUE_RE = re.compile(r"^(?:[ \t]+\S|[)\]}]|\|>|\+|%>%)")
+EXEC_FENCE_RE =re.compile(r"\{(?:python|r|julia)\b")
+# Statistics terms a lab solution reports with a function call. Each entry is
+# (term, regex for the term in exercise prose, regex for its call in code).
+TOPICS = (
+    ("correlation", r"correlat", r"\bcor\b|corr(?:coef)?\b|_corr\b|correlat"),
+    ("R-squared", r"R\^?2|R-squared|coefficient of determination",
+     r"rsquared|r_squared|\br2\b|_r2\b|r2_|\brsq|r\.squared"),
+    ("residual", r"residual", r"resid"),
+    ("indicator columns", r"indicator|dummy|one-hot",
+     r"[.]columns\b|contrasts\(|\bnames\("),
+    ("variance inflation", r"variance inflation|\bVIF", r"vif|variance_inflation"),
+    ("F-test", r"F-test|partial F|anova", r"anova|f_test|f_pvalue"),
+    ("p-value", r"p-value|\bp\s*value", r"p-?value|p\.value|\bpval"),
+    ("standard error", r"standard error|\bSEs?\b", r"\bbse\b|std_err|std\.error|stderr"),
+)
+
+
 class Div(NamedTuple):
     ident: str
     path: str
@@ -167,6 +192,60 @@ def has_figure(div: Div) -> bool:
     return bool(FIGURE_RE.search("\n".join(div.body)))
 
 
+def output_code(div: Div) -> str:
+    """Comments and non-assignment lines of the executable code chunks.
+
+    Assignments are setup a later part may build on; a printed or bare
+    result, or a comment naming one, is what the part reports.
+    """
+    out: List[str] = []
+    fence: Optional[Tuple[str, int]] = None
+    run = False
+    setup = False
+    braces = 0
+    for raw in div.body:
+        m = FENCE_RE.match(raw)
+        if fence is not None:
+            if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+                    and not m.group(2).strip()):
+                fence = None
+            elif run and raw.startswith("#|"):
+                run = not HIDDEN_OPT_RE.match(raw)
+            elif run:
+                if raw.lstrip().startswith("#"):
+                    if not (setup and (raw[:1] in " \t" or braces)):
+                        out.append(raw)
+                    continue
+                if not braces and not (CONTINUE_RE.match(raw) and raw.strip()):
+                    setup = bool(ASSIGN_RE.match(raw) or DEF_RE.match(raw))
+                if not setup:
+                    out.append(raw)
+                elif braces or "{" in raw:
+                    # An unindented R function body stays setup to its closing brace.
+                    braces = max(0, braces + raw.count("{") - raw.count("}"))
+            continue
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence = (m.group(1)[0], len(m.group(1)))
+            run = bool(EXEC_FENCE_RE.search(m.group(2)))
+    return "\n".join(out)
+
+
+def topics_answered_for_siblings(sol_div: Div, own: Div,
+                                 siblings: List[Div]) -> List[str]:
+    """Topics only a sibling exercise names, which this solution reports."""
+    own_prose = " ".join(prose_lines(own.body))
+    # An exercise that says "repeat @exr-x" asks for what @exr-x asks.
+    cited = set(REPEAT_REF_RE.findall(SETUP_REF_RE.sub("", own_prose)))
+    adopted = [x for x in siblings if x.ident in cited]
+    own_prose += " " + " ".join(" ".join(prose_lines(x.body)) for x in adopted)
+    sib_prose = " ".join(" ".join(prose_lines(x.body)) for x in siblings)
+    code = output_code(sol_div)
+    return [name for name, ask, call in TOPICS
+            if re.search(ask, sib_prose, re.IGNORECASE)
+            and not re.search(ask, own_prose, re.IGNORECASE)
+            and re.search(call, code, re.IGNORECASE)]
+
+
 def slug(ident: str) -> str:
     return ident.split("-", 1)[1]
 
@@ -179,6 +258,7 @@ class Finding(NamedTuple):
     path: str
     line: int
     message: str
+    blocking: bool = True
 
 
 def check_groups(divs: List[Div]) -> Dict[str, List[Finding]]:
@@ -218,6 +298,12 @@ def check_groups(divs: List[Div]) -> Dict[str, List[Finding]]:
                 found.append(Finding(d.path, d.start,
                     f"#sol-{s} draws a figure that a sibling exercise asks for, "
                     f"not its own. Fix: {ADVICE}"))
+            topics = topics_answered_for_siblings(d, exr[s], siblings)
+            if topics:
+                found.append(Finding(d.path, d.start,
+                    f"#sol-{s} reports {', '.join(topics)} in its code, which only a "
+                    f"sibling exercise asks for (heuristic, never blocks). Fix: {ADVICE}",
+                    False))
         if found:
             result[key] = found
     return result
@@ -379,14 +465,14 @@ def main() -> int:
         print(f"{'::warning::' if base_ref else ''}Skipping the split-solutions "
               f"check for this run ({reason}; not falling back to a whole-tree scan).")
         return 0
-    severity = "error" if fail else "warning"
     for f in report.findings:
+        severity = "error" if fail and f.blocking else "warning"
         print(f"::{severity} file={f.path},line={f.line}::{f.message}")
     if not report.findings:
         print("Every touched split exercise has its solution split with it.")
         return 0
     print(f"\n{len(report.findings)} finding(s) in {report.groups} split group(s).")
-    return 1 if fail else 0
+    return 1 if fail and any(f.blocking for f in report.findings) else 0
 
 
 if __name__ == "__main__":
