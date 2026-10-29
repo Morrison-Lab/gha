@@ -1,0 +1,48 @@
+name: Check site search shortcut
+description: >-
+  Fails when a Quarto site's search opens on Ctrl/Cmd-F or Ctrl/Cmd-S.
+  Quarto's `keyboard-shortcut` defaults to `["f", "/", "s"]` and its script
+  listens for `keyup` with no modifier check, so the keyup after Ctrl/Cmd-F
+  (find in page) or Ctrl/Cmd-S (save) opens site search (Ezra, 2026-10-28).
+  Every site keeps only `"/"`. A project directory is flagged when it defines
+  a `website:` or `book:` in a `_quarto*.yml` file and no file there sets
+  `keyboard-shortcut`, or when any `keyboard-shortcut` lists more than
+  `"/"`; `search: false` under `website:` or `book:` turns the check off for
+  that project. Reads the config files whole, with no diff scope. Blocking
+  by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. A pathspec
+      with a literal prefix is anchored at the repository root, so the
+      default adds `*/_quarto*.yml` to reach config files in subdirectories.
+    default: '_quarto*.yml */_quarto*.yml'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`. `_extensions/**` is always
+      skipped.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a site opens search on f or s (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check site search shortcut
+      shell: bash
+      env:
+        CSS_GLOBS: ${{ inputs.globs }}
+        CSS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CSS_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-search-shortcut.py"

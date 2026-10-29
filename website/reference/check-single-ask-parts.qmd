@@ -1,0 +1,60 @@
+---
+title: "check-single-ask-parts.yml"
+---
+
+Diff-scoped check that warns when a pull request adds or revises
+an exercise part that asks for more than one thing.
+The lab's rule (Ezra, 2026-10-27) is that each exercise part asks for one thing,
+and a part that asks for several things is split into several parts,
+with the solution split the same way.
+
+A part is a list item or a paragraph in the body of an exercise div (`#exr-`),
+outside any nested `.sol` or `.solution` div.
+An ask is a clause that opens with an imperative verb the exercises use,
+such as Compute, Find, Show, Compare, Plot or Explain.
+The check reports a part with two or more asks:
+two such sentences,
+or one sentence whose clauses open with such a verb
+after ", and", ", then", ";", "and then" or "and also",
+or after a bare "and" that is followed by such a verb.
+
+The check does not count:
+
+- anything inside a code fence, a code span, an HTML comment,
+  display math or inline math;
+- a part that carries `<!-- single-ask-ok: reason -->`
+  on its first line or the line before it,
+  or an exercise that carries it on its opening fence
+  or on the line just before the fence.
+
+A part the pull request does not touch is never reported.
+With no base to diff against, the check skips
+instead of scanning the whole tree.
+It is a heuristic, so it warns by default;
+`fail: true` makes it block.
+
+Known limits of the heuristic:
+
+- a blank line inside a list item splits the item into two parts,
+  as Markdown does for a paragraph;
+- an ask phrased without one of the listed verbs,
+  such as "Why does ...?", is not counted;
+- a line that holds only an HTML comment ends a part, as a blank line does;
+- a display-math block with no blank line around it belongs to the paragraph
+  next to it, as in Markdown, so that paragraph's asks count together;
+- the verb list is English only.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma- or newline-separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Scan every part, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+
+## Usage
+
+Copy `examples/check-single-ask-parts.yml` to
+`.github/workflows/check-single-ask-parts.yml`.

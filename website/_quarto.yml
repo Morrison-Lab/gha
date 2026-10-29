@@ -15,6 +15,10 @@ website:
   repo-subdir: website
   repo-actions: [issue, edit]
   page-navigation: true
+  # Quarto opens search on a bare "f" or "s" keyup, which also fires after
+  # Ctrl/Cmd-F (find in page) and Ctrl/Cmd-S (save). Keep only "/".
+  search:
+    keyboard-shortcut: ["/"]
   navbar:
     left:
       - text: "Overview"
@@ -83,13 +87,16 @@ website:
           - reference/check-exm-figures.qmd
           - reference/check-axis-titles.qmd
           - reference/check-tree-lists.qmd
+          - reference/check-search-shortcut.qmd
           - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
           - reference/check-bare-yes-no.qmd
           - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd
+          - reference/check-split-solutions.qmd
           - reference/check-rubric-checklists.qmd
+          - reference/check-single-ask-parts.qmd
           - reference/check-note-sheet-rows.qmd
           - reference/check-definite-antecedents.qmd
           - reference/check-paired-file-change.qmd

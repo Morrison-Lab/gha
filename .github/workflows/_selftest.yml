@@ -2642,6 +2642,91 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-tls || true
           rm -rf _ci-tls
+  # check-search-shortcut is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-search-shortcut@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the parsing rules; the composite calls below prove
+  # action.yml wires each input through.
+  search-shortcut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-search-shortcut unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-search-shortcut/tests/ -v
+      - name: Check this repository's site config
+        uses: ./check-search-shortcut
+      # This repo's site keeps only "/", so stage a site that keeps the
+      # default and assert that the blocking call really fails.
+      - name: Stage a site that keeps the default shortcut
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-css
+          printf '%s\n' 'website:' '  title: x' > _ci-css/_quarto.yml
+          git add -f _ci-css/_quarto.yml
+      - name: Check the staged site, expecting a failure
+        id: css-expected-failure
+        continue-on-error: true
+        uses: ./check-search-shortcut
+        with:
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.css-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-search-shortcut to fail on a staged site, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is blocking, so the same finding must fail with no fail input.
+      - name: Check the staged site with the default fail
+        id: css-default-failure
+        continue-on-error: true
+        uses: ./check-search-shortcut
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.css-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # Each of these must pass over the same staged site, so each proves
+      # its input reached the script.
+      - name: Check again with the site exempted through paths-ignore
+        uses: ./check-search-shortcut
+        with:
+          paths-ignore: '_ci-css/**'
+      - name: Check again with globs excluding the site
+        uses: ./check-search-shortcut
+        with:
+          globs: 'website/_quarto.yml'
+      - name: Check the staged site warn-only
+        uses: ./check-search-shortcut
+        with:
+          fail: 'false'
+      - name: Remove the staged site
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-css || true
+          rm -rf _ci-css
   # check-self-contained-captions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-self-contained-captions@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
@@ -2853,6 +2938,110 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-multipart || true
           rm -rf _ci-multipart
+
+  # check-single-ask-parts is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-single-ask-parts@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  single-ask-parts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-single-ask-parts unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-single-ask-parts/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-single-ask-parts
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+
+  # check-rubric-checklists is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-rubric-checklists@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  # check-split-solutions is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-split-solutions@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  split-solutions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-split-solutions unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-split-solutions/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-split-solutions
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no exercises, so stage a split pair with no solutions and assert
+      # that the blocking default really fails.
+      - name: Stage a split exercise without solutions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-split-solutions
+          printf '%s\n' '::: {#exr-a}' 'Ask.' ':::' '' '::: {#exr-a-part2}' 'Ask more.' ':::' > _ci-split-solutions/page.qmd
+          git add -f _ci-split-solutions/page.qmd
+      - name: Check the staged exercises, expecting a failure
+        id: split-solutions-expected-failure
+        continue-on-error: true
+        uses: ./check-split-solutions
+        with:
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.split-solutions-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-split-solutions to fail on a split exercise with no solutions, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with fail off, expecting a pass
+        uses: ./check-split-solutions
+        with:
+          whole-tree: 'true'
+          fail: 'false'
+      - name: Check again with the exercise exempted through paths-ignore
+        uses: ./check-split-solutions
+        with:
+          whole-tree: 'true'
+          paths-ignore: '_ci-split-solutions'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-split-solutions
+        with:
+          base-ref: ''
+      - name: Remove the staged exercise
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-split-solutions || true
+          rm -rf _ci-split-solutions
 
   # check-rubric-checklists is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-rubric-checklists@v3` does not resolve until
