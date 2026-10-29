@@ -29,7 +29,7 @@ match.
 
 Must be triggered by `pull_request` (the changed-line set comes from the PR).
 
-A repository with no `DESCRIPTION` in `path` skips the dependency setup:
+A repository with no `DESCRIPTION` in `path` skips `setup-r-dependencies`:
 the workflow installs `gh`, `lintr` and any `extra-packages` from CRAN
 (plain package names only) and skips `R CMD INSTALL`.
 
@@ -37,12 +37,12 @@ the workflow installs `gh`, `lintr` and any `extra-packages` from CRAN
 
 | Input                | Type    | Default | Description                                                                                                                                                       |
 | -------------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`               | string  | `'.'`   | Path to the R package root (the directory holding `DESCRIPTION`).                                                                                                 |
+| `path`               | string  | `'.'`   | Path to the R package root (the directory holding `DESCRIPTION`, if any).                                                                                                 |
 | `install-quarto`     | boolean | `false` | Install Quarto when setting up R dependencies.                                                                                                                    |
 | `use-renv`           | boolean | `false` | Restore dependencies with `renv` (`setup-renv`) instead of DESCRIPTION-based `setup-r-dependencies`.                                                              |
 | `renv-cache-version` | string  | `'1'`   | Cache version suffix passed to `setup-renv`.                                                                                                                      |
 | `apt-packages`       | string  | `''`    | Extra apt packages to install before setting up dependencies (space-separated).                                                                                   |
-| `extra-packages`     | string  | `''`    | Extra R packages to install (space- or comma-separated; passed to `setup-r-dependencies`, or installed from CRAN under `use-renv: true`). `gh` and `lintr` are always installed. |
+| `extra-packages`     | string  | `''`    | Extra R packages to install (space- or comma-separated; passed to `setup-r-dependencies`, or installed from CRAN under `use-renv: true` or when `path` holds no `DESCRIPTION`). `gh` and `lintr` are always installed. |
 | `install-package`    | boolean | `true`  | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Set `false` for a repo that is not an installable R package. |
 | `fail`               | boolean | `true`  | Fail the workflow when a lint is found on a changed line (rather than warn only).                                                                                 |
 | `file-pattern`       | string  | `'[.][Rr]$'` | Regular expression matched against each changed file's path; only matching files are linted. Use `'[.]([Rr]\|[Rr]md\|[Qq]md)$'` to also lint the R chunks in Quarto and R Markdown documents. |
