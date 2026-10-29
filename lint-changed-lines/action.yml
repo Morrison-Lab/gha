@@ -30,7 +30,8 @@ inputs:
     description: >-
       Extra R packages to install (space- or comma-separated; passed to
       r-lib/actions/setup-r-dependencies under DESCRIPTION, or installed from CRAN
-      under use-renv: true or when path holds no DESCRIPTION). gh and lintr are always installed.
+      under use-renv: true or when path holds no DESCRIPTION). gh and lintr
+      are always installed.
     default: ''
   install-package:
     description: >-
@@ -110,7 +111,7 @@ runs:
         extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
         pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
         repos <- getOption("repos")
-        if (is.null(repos) || identical(unname(repos[["CRAN"]]), "@CRAN@")) {
+        if (is.null(repos) || isTRUE(unname(repos["CRAN"]) == "@CRAN@")) {
           repos <- c(CRAN = "https://cloud.r-project.org")
         }
         install.packages(pkgs, repos = repos)
@@ -153,7 +154,7 @@ runs:
       if: inputs.install-package == 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) != ''
       shell: bash
       env:
-        RENV_CONFIG_AUTOLOADER_ENABLED: 'false'
+        RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
       run: R CMD INSTALL "${{ inputs.path }}"
 
     - name: Install lms (shared linter configuration)
