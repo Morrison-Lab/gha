@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-unexplained-contrasts.yml in your repo.
+# Diff-scoped, warn-only check: flags a contrast ("X, not Y", "does not mean")
+# in a `#def-`, `#rem-` or `#note-` div that cites no source, when a PR adds the
+# line. A kept contrast must say who holds the other reading, with a source.
+# Only contents:read is needed.
+name: Check for unexplained contrasts
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-unexplained-contrasts.yml@v3
+    # with:
+    #   globs: '*.qmd'                          # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # block instead of warn (defaults to false)
+    #   whole-tree: true                        # scan every contrast, not just a PR's additions
