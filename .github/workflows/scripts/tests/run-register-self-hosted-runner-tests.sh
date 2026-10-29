@@ -98,7 +98,7 @@ check "crontab: created when none existed" "$(grep -c '^@reboot' "$work/crontab"
 # The helpers are called after the script cd-s into the runner directory, so their
 # path must be absolute; a relative one fails to find them.
 check "helpers: dirname of BASH_SOURCE appears only in SCRIPT_DIR" "$(grep -c 'dirname "${BASH_SOURCE' "$script")" "1"
-check "helpers: all three are called through SCRIPT_DIR" "$(grep -c '"${SCRIPT_DIR}/' "$script")" "3"
+check "helpers: all four are called through SCRIPT_DIR" "$(grep -c '"${SCRIPT_DIR}/' "$script")" "4"
 
 # pin-runner-path.sh copies .path into .env (gha#1341).
 pin="$repo_root/scripts/pin-runner-path.sh"
@@ -133,6 +133,93 @@ nl=$'\n'
 pin_fails "missing .path" missing
 pin_fails "blank .path" "$nl"
 pin_fails "blank first line" "$nl/usr/bin$nl"
+
+# install-runner-cleanup-hook.sh sets the job-completed hook in .env (gha#1352).
+hook_installer="$repo_root/scripts/install-runner-cleanup-hook.sh"
+prune="$repo_root/scripts/prune-runner-workdir.sh"
+printf 'LANG=C.UTF-8' > "$rd/.env"
+RUNNER_DIR="$rd" bash "$hook_installer" > /dev/null
+check "hook: line added" "$(grep '^ACTIONS_RUNNER_HOOK_JOB_COMPLETED=' "$rd/.env")" "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=$prune"
+check "hook: existing line kept on its own line" "$(head -n 1 "$rd/.env")" "LANG=C.UTF-8"
+RUNNER_DIR="$rd" bash "$hook_installer" > /dev/null
+check "hook: idempotent" "$(grep -c '^ACTIONS_RUNNER_HOOK_JOB_COMPLETED=' "$rd/.env")" "1"
+printf 'ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh\n' > "$rd/.env"
+RUNNER_DIR="$rd" bash "$hook_installer" > /dev/null
+check "hook: a hook set by hand is kept" "$(cat "$rd/.env")" "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh"
+
+# prune-runner-workdir.sh, against a stub df whose free space grows by 1 GB for
+# each checkout removed: free = STUB_BASE_KB - 1 GB per non-underscore folder.
+cat > "$work/bin/df" << 'STUB'
+#!/usr/bin/env bash
+dir="${@: -1}"
+n=$(find "$dir" -mindepth 1 -maxdepth 1 -type d ! -name '_*' | wc -l)
+echo "Filesystem 1024-blocks Used Available Capacity Mounted"
+echo "stub 0 0 $((STUB_BASE_KB - n * 1048576)) 0% /"
+STUB
+chmod +x "$work/bin/df"
+gb=1048576
+# new_work: a work folder with checkouts a (oldest) .. d and the current job's
+# checkout cur, plus the runner's own _tool.
+new_work() {
+  w="$work/gha-work"
+  rm -rf "$w"
+  mkdir -p "$w/_tool" "$w/cur/cur"
+  for r in a b c d; do mkdir -p "$w/$r/$r"; done
+  touch -d '3 days ago' "$w/a"; touch -d '2 days ago' "$w/b"
+  touch -d '1 day ago' "$w/c"; touch -d '10 days ago' "$w/_tool"
+}
+# The runner runs a .sh hook as `bash -e -o pipefail`, so the tests do too.
+run_prune() {
+  env PATH="$work/bin:$PATH" GITHUB_WORKSPACE="$w/cur/cur" "$@" bash --noprofile --norc -e -o pipefail "$prune"
+}
+left() { find "$w" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tr '\n' ' '; }
+
+new_work
+touch -d '10 days ago' "$w/a"
+run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
+check "prune: a checkout unused for over a week is removed, nothing else" "$(left)" "_tool b c cur d "
+
+new_work
+# 5 checkouts + _tool: free starts at 13 - 5 = 8 GB; removing a and b reaches 10.
+run_prune STUB_BASE_KB=$((13 * gb)) > /dev/null
+check "prune: low space removes the oldest checkouts until 10 GB are free" "$(left)" "_tool c cur d "
+
+new_work
+out=$(run_prune STUB_BASE_KB=$((6 * gb)))
+check "prune: the current checkout and _tool survive when space stays low" "$(left)" "_tool cur "
+check "prune: still-low space is reported" "$(grep -c 'still has under 10 GB' <<< "$out")" "1"
+
+new_work
+out=$(env PATH="$work/bin:$PATH" GITHUB_WORKSPACE=relative STUB_BASE_KB=$((6 * gb)) bash -e -o pipefail "$prune"; echo "rc=$?")
+check "prune: a malformed workspace removes nothing" "$(left)" "_tool a b c cur d "
+check "prune: a malformed workspace warns and exits 0" "$(grep -c '^::warning::.*nothing pruned' <<< "$out") $(tail -n 1 <<< "$out")" "1 rc=0"
+
+new_work
+touch -d '10 days ago' "$w/cur"
+run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
+check "prune: the current checkout is not aged out" "$(left)" "_tool a b c cur d "
+# The 7-day boundary: 6.5 days unused is kept, 7.5 days is removed.
+new_work
+touch -d '156 hours ago' "$w/a"; touch -d '180 hours ago' "$w/b"
+run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
+check "prune: the age boundary is 7 days" "$(left)" "_tool a c cur d "
+
+# A failing df stops pruning with a warning and still exits 0 under -e.
+new_work
+mv "$work/bin/df" "$work/bin/df.ok"
+printf '#!/usr/bin/env bash\nexit 1\n' > "$work/bin/df"
+chmod +x "$work/bin/df"
+out=$(run_prune STUB_BASE_KB=$((6 * gb)); echo "rc=$?")
+mv "$work/bin/df.ok" "$work/bin/df"
+check "prune: a failing df removes nothing" "$(left)" "_tool a b c cur d "
+check "prune: a failing df warns and exits 0" "$(grep -c 'could not read free space' <<< "$out") $(tail -n 1 <<< "$out")" "1 rc=0"
+
+new_work
+out=$(run_prune STUB_BASE_KB=$((100 * gb)) PRUNE_MAX_AGE_DAYS=0)
+check "prune: an age of 0 days is refused" "$(left) $(grep -c 'at least 1' <<< "$out")" "_tool a b c cur d  1"
+
+# The mark is what lets a later job of another repository age it correctly.
+check "prune: the current checkout is marked as used now" "$(find "$w" -maxdepth 1 -name cur -mmin -5 | wc -l)" "1"
 
 echo "$cases cases, $failures failures"
 [[ "$failures" -eq 0 ]]
