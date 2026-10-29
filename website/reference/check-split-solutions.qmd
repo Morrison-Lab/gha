@@ -29,7 +29,20 @@ In a split group it reports:
   when its own exercise does not ask for a plot
   but a sibling exercise does.
   This is the case of `#sol-lab-boston-simple`,
-  whose figure answered the plot exercises two parts later.
+  whose figure answered the plot exercises two parts later;
+- a solution whose code reports a statistic that only a sibling exercise asks for.
+  This one is a heuristic and **never blocks**: it always prints a warning,
+  even with `fail: true`.
+  It looks for a short list of terms
+  (correlation, R-squared, residual, variance inflation, F-test, p-value,
+  standard error, indicator columns)
+  in the exercise text of the siblings but not of the solution's own exercise,
+  then looks for a call that reports the term in the solution's code.
+  Assignments, function definitions, imports, hidden chunks (`include: false`)
+  and comments inside a function count as setup and are not read.
+  An exercise that says "repeat @exr-x" is read as asking for what `@exr-x` asks.
+  This is the case of the old `#sol-lab-multiple`,
+  which printed the correlation that `-part3` asks for.
 
 Code, display math and HTML comments are not read for part labels.
 A solution that holds `<!-- split-solutions-ok: reason -->` is exempt.

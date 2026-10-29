@@ -4,6 +4,8 @@ description: >-
   divs sharing a slug once `-partK` is removed) has a missing, orphaned or
   combined solution: an exercise with no `#sol-` of its slug, a solution
   with part labels, or a figure that a sibling exercise asks for.
+  A solution whose code reports a statistic only a sibling asks for
+  gets a warning that never blocks.
   `<!-- split-solutions-ok: reason -->` exempts a solution. Fails by default.
 inputs:
   python-version:
