@@ -37,5 +37,4 @@ The reusable workflow and its example stub arrive in the next change.
 | `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
 | `fail` | `false` | Fail the workflow on a finding instead of warning |
 | `whole-tree` | `false` | Scan every exercise, not only a PR's additions |
-| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |
 | `python-version` | `3.x` | Python version to set up |
