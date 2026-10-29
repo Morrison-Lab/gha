@@ -1,5 +1,5 @@
 - `check-exercise-background`:
-  add a diff-scoped, warn-only composite action and reusable workflow
+  add a diff-scoped, warn-only composite action
   that flags an exercise (`#exr-` div) when a PR adds a line of it
   and its title has a content word that the body never mentions
   (Ezra, 2026-10-29, [psw#417](https://github.com/Morrison-Lab/psw/pull/417)).
