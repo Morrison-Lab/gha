@@ -2,8 +2,7 @@
 
 Covers what is flagged (a title word the body never mentions), what is not
 (a word the body repeats or shares a stem with, generic task verbs, math in the
-title, text outside an exercise, code, comments), diff scoping, and the
-defaults the script, the action and the reusable workflow must agree on.
+title, text outside an exercise, code, comments), and diff scoping.
 
 The script's name has a hyphen, so load it by path.
 """
@@ -79,6 +78,18 @@ def test_nested_div_counts_as_body():
     text = ("::: {#exr-a}\n#### Gamma kernel\n\nText.\n\n"
             "::: {.callout-note}\nA gamma kernel.\n:::\n:::")
     assert found(text) == []
+
+
+def test_a_nested_solution_does_not_supply_the_background():
+    text = ("::: {#exr-a}\n#### Gamma kernel\n\nFind it.\n\n"
+            "::: {#sol-a}\nThe gamma kernel.\n:::\n:::")
+    assert found(text) == [(2, ["gamma", "kernel"])]
+
+
+def test_a_title_attribute_is_read():
+    text = '::: {#exr-a title="Gamma kernel"}\nFind the maximum.\n:::'
+    assert found(text) == [(1, ["gamma", "kernel"])]
+    assert found('::: {#exr-a title="Gamma kernel"}\nThe gamma kernel.\n:::') == []
 
 
 def test_code_and_comments_are_skipped():
