@@ -1,0 +1,54 @@
+name: Check extracted lemmas
+description: >-
+  Diff-scoped, warn-only heuristic check that flags a solution, example or
+  proof that states a general fact ("for any", "for every" or "for all" with
+  math) and cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result, when the PR
+  edits it. `<!-- lemma-ok: reason -->` exempts a body. Warns by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only solutions, examples and proofs with a
+      line added since this ref are checked. On a pull request the reusable
+      workflow passes `HEAD^1`. When the diff can't be computed, or no base-ref
+      is given on a push run, the check is skipped rather than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Check every solution, example and proof the globs match, in full, instead of only
+      touched ones. Use it to measure a corpus; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check (recursive by
+      default).
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action on a finding. Defaults to 'false' (warning annotations
+      only), because the check is a heuristic.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check extracted lemmas
+      shell: bash
+      env:
+        EL_BASE_REF: ${{ inputs.base-ref }}
+        EL_WHOLE_TREE: ${{ inputs.whole-tree }}
+        EL_GLOBS: ${{ inputs.globs }}
+        EL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        EL_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-extracted-lemmas.py"

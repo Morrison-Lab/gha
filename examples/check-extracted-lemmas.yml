@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-extracted-lemmas.yml in your repo.
+# Diff-scoped, warn-only heuristic check: flags a solution, example or proof that a PR
+# edits and that states a general fact ("for any", "for every" or "for all" with math)
+# without citing a #thm-, #lem-, #cor- or #prp- result. <!-- lemma-ok: reason --> exempts one.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check extracted lemmas
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-extracted-lemmas.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # check every body, not just those a PR touches
