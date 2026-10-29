@@ -87,8 +87,8 @@ TIME_RE = re.compile(
     r"these\s+days)\b"
 )
 GENERIC_RE = re.compile(
-    r"\b(?:(?:domain|codomain|range|sample space)\s+[A-Z]\b(?![\w$\\(])"
-    r"|some\s+(?:domain|codomain|range|sample space)\b)"
+    r"\b(?:(?i:domain|codomain|range|sample\s+space)\s+[A-Z]\b(?![\w$\\(])"
+    r"|(?i:some\s+(?:domain|codomain|range|sample\s+space)\b))"
 )
 RULES = (
     ("position", POSITION_RE,

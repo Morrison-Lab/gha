@@ -51,6 +51,9 @@ def found(text: str):
     ("The mode is a point in domain A.", "generic", "domain a"),
     ("Let the range B be finite.", "generic", "range b"),
     ("Take some domain and a map.", "generic", "some domain"),
+    ("Domain A is finite.", "generic", "domain a"),
+    ("Some domain works.", "generic", "some domain"),
+    ("Let the sample  space S be finite.", "generic", "sample  space s"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
