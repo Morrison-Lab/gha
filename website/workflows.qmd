@@ -48,6 +48,7 @@ input tables and a copy-paste example.
 | [`check-caller-permissions.yml`](reference/check-caller-permissions.qmd) | Whole-tree, blocking check that fails when a caller job lacks the permissions a `Morrison-Lab/gha` reusable workflow's jobs request | `workflows-dir`, `fail` |
 | [`check-exm-figures.yml`](reference/check-exm-figures.qmd) | Diff-scoped, blocking check that flags an example div (`#exm-`) with no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-tree-lists.yml`](reference/check-tree-lists.qmd) | Diff-scoped, blocking check that flags a definition, example or other labelled div that mentions a tree, holds a list nested three or more levels deep and has no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-search-shortcut.yml`](reference/check-search-shortcut.qmd) | Blocking check that flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S: a `_quarto*.yml` project that sets no `keyboard-shortcut`, or any `keyboard-shortcut` that lists more than `"/"` | `globs`, `paths-ignore`, `fail` |
 | [`check-visualization-figures.yml`](reference/check-visualization-figures.qmd) | Diff-scoped, blocking check that flags a div that asks for a picture (a visual word in its title, or a sketch or plot request in an exercise prompt) but has no figure (an exercise may have it in its solution), when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-self-contained-captions.yml`](reference/check-self-contained-captions.qmd) | Diff-scoped, blocking check that flags a figure or table caption whose first sentence only points to another div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-code-messages.yml`](reference/check-code-messages.qmd) | Diff-scoped, warn-only check that flags a `geom_smooth()` or `stat_smooth()` call missing `method` or `formula`, and a `geom_histogram()` or `stat_bin()` call with no `bins`, `binwidth` or `breaks`, when a PR adds a line to it; the action also scans a rendered site for `cell-output-stderr` blocks | `globs`, `fail`, `whole-tree` |
@@ -56,8 +57,10 @@ input tables and a copy-paste example.
 | [`check-multipart-exercises.yml`](reference/check-multipart-exercises.qmd) | Diff-scoped check that fails when a PR adds or revises an exercise div (`#exr-`) holding more than one part | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-split-solutions.yml`](reference/check-split-solutions.qmd) | Diff-scoped check that fails when a PR touches a split exercise whose solution is not split with it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-rubric-checklists.yml`](reference/check-rubric-checklists.qmd) | Diff-scoped check that warns when a PR adds or revises a grading rubric (`Grading`, `Rubric`, `Marking scheme`, `Mark scheme`) with no task-list item (`- [ ] ...`) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-single-ask-parts.yml`](reference/check-single-ask-parts.qmd) | Diff-scoped, warn-only check that flags a part of an exercise div (`#exr-`), meaning a list item or paragraph outside its solution, that asks for more than one thing; each part asks for one thing | `globs`, `paths-ignore`, `python-version`, `fail`, `whole-tree` |
 | [`check-def-title-synonyms.yml`](reference/check-def-title-synonyms.qmd) | Diff-scoped, warn-only check that flags a `#def-` div title listing synonyms with parentheses or "also called" instead of a comma list, primary term first | `globs`, `fail`, `whole-tree` |
 | [`check-bare-yes-no.yml`](reference/check-bare-yes-no.qmd) | Diff-scoped check that fails when a PR adds a solution paragraph opening with a bare "Yes." or "No." instead of saying what the answer means in the question's terms | `globs`, `fail`, `whole-tree` |
+| [`check-key-equations-displayed.yml`](reference/check-key-equations-displayed.qmd) | Diff-scoped heuristic check that fails when a PR adds an inline equation in a proof that restates a displayed equation of the theorem or ends a concluding sentence; a key equation goes in display math | `globs`, `fail`, `whole-tree` |
 | [`check-pr-size.yml`](reference/check-pr-size.qmd) | Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines; a sweep goes out as minimal batches | `max-files`, `max-lines`, `paths-ignore`, `exempt-label`, `fail` |
 | [`check-note-sheet-rows.yml`](reference/check-note-sheet-rows.qmd) | Diff-scoped check, warn-only for the one-concept rules and always blocking for prose and non-table lists, that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree`, `runs-on` |
 | [`check-definite-antecedents.yml`](reference/check-definite-antecedents.qmd) | Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That, so no antecedent precedes it in the div (psw#291) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -67,6 +70,7 @@ input tables and a copy-paste example.
 | [`annotation-gate.yml`](reference/annotation-gate.qmd) | Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job | `levels`, `allow-patterns`, `job-name` |
 | [`annotation-gate-run.yml`](reference/annotation-gate.qmd) | Gate a finished run from a `workflow_run` workflow and post the result as an `annotation-gate` check run, for repositories whose checks are spread over many workflow files | `run-id`, `head-sha`, `run-attempt`, `workflow-id`, `all-runs`, `levels`, `allow-patterns` |
 | [`check-fform-paren.yml`](reference/check-fform-paren.qmd) | Diff-scoped, warn-only check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where an f form `\namef{...}` is defined in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
+| [`check-macro-expansions.yml`](reference/check-macro-expansions.qmd) | Diff-scoped, warn-only check that flags math that writes out by hand what a shared macro already says, such as `\sum_{i=1}^n` where `\sumin` exists, using the expansions in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `exclude`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
 | [`check-dependency-graph.yml`](reference/check-dependency-graph.qmd) | Run the self-test of a notes repo's vendored `build_dependency_graph.py`, then build its definition and result graph and fail on a cycle | `script-dir`, `pages-dir`, `site`, `fail-on-cycle` |
 | [`check-write-idiom.yml`](reference/check-write-idiom.qmd) | Diff-scoped, warn-only check that flags a line opening with `Write the`, `Write a` or `Write an` (after an optional list marker and label), because "Write ..." hides whether to derive, express, state or give | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`lint-qmd.yml`](reference/lint-qmd.qmd)                                 | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length`                                                                                                                   |
@@ -148,22 +152,23 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-informal-definitions.yml`, `check-literal-math-letters.yml`,
 `check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
 `check-one-div-per-subfile.yml`, `check-code-messages.yml`, `check-multipart-exercises.yml`,
-`check-split-solutions.yml`,
-`check-rubric-checklists.yml`,
+`check-rubric-checklists.yml`, `check-single-ask-parts.yml`, `check-split-solutions.yml`,
 `check-caller-permissions.yml`, `check-exm-figures.yml`, `check-visualization-figures.yml`,
 `check-axis-titles.yml`,
-`check-tree-lists.yml`, `check-self-contained-captions.yml`,
+`check-tree-lists.yml`, `check-search-shortcut.yml`, `check-self-contained-captions.yml`,
 `check-def-commentary.yml`, `check-solution-citations.yml`,
 `check-exercise-before-result.yml`,
 `check-pr-concerns.yml`,
 `check-pr-size.yml`,
 `check-def-title-synonyms.yml`,
 `check-bare-yes-no.yml`,
+`check-key-equations-displayed.yml`,
 `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
 `check-term-links.yml`, `check-paired-file-change.yml`,
 `annotation-gate.yml`,
 `annotation-gate-run.yml`,
-`check-local-macros.yml`, `check-fform-paren.yml`, `check-write-idiom.yml`,
+`check-local-macros.yml`, `check-fform-paren.yml`,
+`check-macro-expansions.yml`, `check-write-idiom.yml`,
 `check-dependency-graph.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
@@ -270,8 +275,8 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   lines a pull request adds or modifies (not whole changed files), so lint rules
   can be adopted or tightened incrementally: new and edited code must comply
   while untouched legacy code is left alone.
-  `file-pattern` widens the files
-  linted to Quarto and R Markdown documents, whose R chunks lintr lints, and
+  `file-pattern` extends the check to Quarto and R Markdown documents,
+  linting their R chunks, and
   `lms-ref` installs the shared `lms` package and lints with
   `lms::default_linters(nested_calls = TRUE)`, the lab's linters including the
   no-nested-calls rules.

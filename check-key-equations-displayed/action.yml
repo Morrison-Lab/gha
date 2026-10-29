@@ -1,0 +1,41 @@
+name: Check key equations are displayed
+description: >-
+  Diff-scoped heuristic check that flags an inline equation in a proof that is
+  a key equation (it restates a displayed equation of the theorem, or a
+  concluding sentence ends on it) and belongs in display math, when the diff
+  adds the line (Ezra, 2026-10-28). Fails by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only added lines are checked. Needs the base
+      commit in history (fetch-depth: 0). Without it the check is skipped.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked matching file in full; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  fail:
+    description: Fail the action on a finding (else warnings only).
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check key equations are displayed
+      shell: bash
+      env:
+        KED_BASE_REF: ${{ inputs.base-ref }}
+        KED_WHOLE_TREE: ${{ inputs.whole-tree }}
+        KED_GLOBS: ${{ inputs.globs }}
+        KED_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-key-equations-displayed.py"

@@ -1,0 +1,24 @@
+# Copy to .github/workflows/check-search-shortcut.yml in your repo.
+# Flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S: a
+# website: or book: with no keyboard-shortcut, or a keyboard-shortcut that
+# lists more than "/". Fix: under website: (or book:) add
+#   search:
+#     keyboard-shortcut: ["/"]
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check site search shortcut
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-search-shortcut.yml@v3
+    # with:
+    #   globs: '_quarto*.yml */_quarto*.yml'  # config files to read
+    #   paths-ignore: 'docs/**'               # skip known-noisy paths
+    #   fail: true                            # set false to warn only (defaults to true)

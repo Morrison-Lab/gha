@@ -225,7 +225,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-split-solutions`, `check-rubric-checklists`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-single-ask-parts`, `check-split-solutions`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -436,6 +436,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   for flagging a grading rubric (a line opening with `Grading`, `Rubric`, `Marking scheme` or `Mark scheme`) whose block holds no `- [ ]` task-list item;
   it takes the same diff model and is warn-only by default (`fail: false`),
   because Ezra's rule (2026-10-26) is that *most* STEM rubrics are checklists, not all;
+  `check-single-ask-parts/` (Python, stdlib only, gha#1278) bundles the composite action, script, and pytest suite
+  for flagging a part of an exercise div (`#exr-`), meaning a list item or paragraph outside its `.sol` div, that holds two or more imperative asks;
+  it takes the same diff model and is warn-only by default (`fail: false`) because it is a heuristic (Ezra, 2026-10-27);
   `check-note-sheet-rows/` (Python, stdlib only, gha#1164) bundles the composite action, script, and pytest suite
   for flagging a note-sheet table row that holds more than one concept: notation in a label, a label joining two concepts, or two formulas in one cell.
   It takes the same diff model as `check-one-div-per-subfile/`.
@@ -464,6 +467,11 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `check-write-idiom/` (Python, stdlib only, gha#1121, from psw#297) flags a line a PR adds in a `.qmd` or `.md` file that opens, after an optional list marker and label such as `(a)`, with `Write` followed by `the`, `a` or `an`,
   because "Write ..." hides whether to derive, express, state or give.
   It copies `check-fform-paren`'s diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default), and its env vars use the `CWI_` prefix.
+- `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
+  It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
+  A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.
+  It copies `check-fform-paren`'s diff model and Markdown masking, adds math-span detection, and its env vars use the `CME_` prefix.
+  Measure a repository with `whole-tree: true` before turning `fail` on, and fix or mark the existing hits (`<!-- check-macro-expansions: allow -->`) first.
   `Write $...$ for ...` (notation) and `Write down` pass, as do fences, spans, comments and front matter;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
   per assessment source and checks it against the source.

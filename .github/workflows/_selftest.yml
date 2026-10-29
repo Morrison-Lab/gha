@@ -1735,6 +1735,33 @@ jobs:
         uses: ./check-bare-yes-no
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-key-equations-displayed is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-key-equations-displayed@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  key-equations-displayed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-key-equations-displayed unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-key-equations-displayed/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-key-equations-displayed
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # check-code-messages is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-code-messages@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly.
@@ -2615,6 +2642,91 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-tls || true
           rm -rf _ci-tls
+  # check-search-shortcut is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-search-shortcut@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the parsing rules; the composite calls below prove
+  # action.yml wires each input through.
+  search-shortcut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-search-shortcut unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-search-shortcut/tests/ -v
+      - name: Check this repository's site config
+        uses: ./check-search-shortcut
+      # This repo's site keeps only "/", so stage a site that keeps the
+      # default and assert that the blocking call really fails.
+      - name: Stage a site that keeps the default shortcut
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-css
+          printf '%s\n' 'website:' '  title: x' > _ci-css/_quarto.yml
+          git add -f _ci-css/_quarto.yml
+      - name: Check the staged site, expecting a failure
+        id: css-expected-failure
+        continue-on-error: true
+        uses: ./check-search-shortcut
+        with:
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.css-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-search-shortcut to fail on a staged site, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is blocking, so the same finding must fail with no fail input.
+      - name: Check the staged site with the default fail
+        id: css-default-failure
+        continue-on-error: true
+        uses: ./check-search-shortcut
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.css-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # Each of these must pass over the same staged site, so each proves
+      # its input reached the script.
+      - name: Check again with the site exempted through paths-ignore
+        uses: ./check-search-shortcut
+        with:
+          paths-ignore: '_ci-css/**'
+      - name: Check again with globs excluding the site
+        uses: ./check-search-shortcut
+        with:
+          globs: 'website/_quarto.yml'
+      - name: Check the staged site warn-only
+        uses: ./check-search-shortcut
+        with:
+          fail: 'false'
+      - name: Remove the staged site
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-css || true
+          rm -rf _ci-css
   # check-self-contained-captions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-self-contained-captions@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
@@ -2827,6 +2939,37 @@ jobs:
           git rm -q -r --cached --ignore-unmatch _ci-multipart || true
           rm -rf _ci-multipart
 
+  # check-single-ask-parts is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-single-ask-parts@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  single-ask-parts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-single-ask-parts unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-single-ask-parts/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-single-ask-parts
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+
+  # check-rubric-checklists is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-rubric-checklists@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
   # check-split-solutions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-split-solutions@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
@@ -3335,6 +3478,126 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-fform-paren || true
           rm -rf _ci-fform-paren
+  # check-macro-expansions is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-macro-expansions@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the scanner and both scopes; the composite calls below prove
+  # action.yml wires each input through to the script.
+  macro-expansions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-macro-expansions unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-macro-expansions/tests/ -v
+      # This repo has no latex-macros submodule, so the default macros file is
+      # missing and the call must skip with a warning rather than fail.
+      - name: Check this PR's added lines, expecting a skip
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Stage a macros file and a page that writes a name followed by the
+      # paren macro, then assert that the blocking call really fails.
+      - name: Stage a macros file and a page spelling out a macro expansion
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-macro-expansions
+          printf '%s\n' '\providecommand{\sumin}{\sum_{i=1}^n}' > _ci-macro-expansions/macros.qmd
+          printf '%s\n' 'Take $\sum_{i=1}^n y_i$ here.' > _ci-macro-expansions/page.qmd
+          git add -f _ci-macro-expansions/macros.qmd _ci-macro-expansions/page.qmd
+      # Warn-only is the default: the same page must not fail the job.
+      - name: Check the staged page, warn-only by default
+        uses: ./check-macro-expansions
+        with:
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      - name: Check the staged page, expecting a failure
+        id: macro-expansions-expected-failure
+        continue-on-error: true
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.macro-expansions-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-macro-expansions to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-macro-expansions failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the working-tree-aware scope examines it and the call must fail. Were
+      # base-ref dropped, the call would skip and pass, so this failure proves
+      # base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: macro-expansions-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          base-ref: HEAD
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.macro-expansions-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (warning, exit 0). Were
+      # the skip a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          base-ref: ''
+          macros-file: '_ci-macro-expansions/macros.qmd'
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+          paths-ignore: '_ci-macro-expansions'
+      - name: Check again with globs excluding the page
+        uses: ./check-macro-expansions
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          macros-file: '_ci-macro-expansions/macros.qmd'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-macro-expansions || true
+          rm -rf _ci-macro-expansions
   # check-write-idiom is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-write-idiom@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit
