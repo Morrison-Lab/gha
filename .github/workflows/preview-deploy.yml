@@ -37,7 +37,7 @@ jobs:
   # reports conclusion == 'success', which would otherwise cause the deploy job
   # to fire and fail on artifact download.
   gate:
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       actions: read
@@ -60,7 +60,7 @@ jobs:
   deploy:
     needs: gate
     if: needs.gate.outputs.has-artifact == 'true'
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     # Serialize deploys to gh-pages so main-site publishes, PR previews, and
     # preview cleanups queue rather than race or clobber each other's commits.

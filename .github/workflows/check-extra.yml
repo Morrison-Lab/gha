@@ -62,7 +62,7 @@ jobs:
   check-no-warnings:
     name: Check for warnings
     if: ${{ inputs.check-warnings }}
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 60
     permissions:
       contents: read
@@ -83,7 +83,7 @@ jobs:
   check-random-test-order:
     name: Check random test order
     if: ${{ inputs.check-random-order }}
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -104,7 +104,7 @@ jobs:
   check-readme:
     name: Check README rendering
     if: ${{ inputs.check-readme }}
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
       contents: read

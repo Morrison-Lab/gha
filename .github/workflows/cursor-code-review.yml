@@ -38,7 +38,7 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.sender.type != 'Bot'
       )
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read

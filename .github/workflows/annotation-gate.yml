@@ -20,7 +20,7 @@ on:
 
 jobs:
   annotation-gate:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       actions: read

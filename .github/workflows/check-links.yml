@@ -43,7 +43,7 @@ on:
 
 jobs:
   link-checker:
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

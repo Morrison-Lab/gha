@@ -6832,6 +6832,10 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/audit_workflow_action_pins.py
 
+      - name: Assert every runs-on that reads CI_RUNNER is guarded to private repos
+        shell: bash
+        run: python3 .github/workflows/scripts/audit_ci_runner_guard.py
+
       # On pull_request the checkout is GitHub's merge ref, and the payload's
       # base.sha can lag the tip it was built on, so a diff from base.sha
       # scans the base branch's newer commits too (gha#1007). Run over the
