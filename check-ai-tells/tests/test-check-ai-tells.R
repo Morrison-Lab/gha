@@ -85,7 +85,7 @@ writeLines(c(
   "This file serves as the operator manual for the repository.",
   "The bias-variance trade-off and that trade-off curve are shown below.",
   "The cost function is minimized, and the computational cost is linear.",
-  "The derivative is zero at the minimum, and the model fits the data."
+  "The derivative is zero at the minimum, and the model decides the class by a threshold."
 ), near_miss)
 res_near <- scan_file_prose(near_miss)
 check("Near-miss sentences have 0 findings", length(res_near$findings) == 0L,

@@ -71,7 +71,7 @@ RHETORICAL_PATTERNS <- list(
     name = "commerce metaphor"
   ),
   list(
-    pattern = "(?i)\\b(?:derivatives?|gradients?|slopes?|models?|estimators?|approximations?|likelihood|algorithms?|loss)\\s+(?:recommends?|knows?|wants?|believes?|thinks?|prefers?|decides?)\\b|\\btrustworthy\\b",
+    pattern = "(?i)\\b(?:derivatives?|gradients?|slopes?|models?|estimators?|approximations?|likelihood|algorithms?|loss)\\s+(?:recommends?|knows?|wants?|believes?|thinks?)\\b|\\btrustworthy\\b",
     name = "personified math object"
   )
 )
