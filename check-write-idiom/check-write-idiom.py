@@ -118,9 +118,15 @@ def _mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
     return out, in_comment
 
 
-def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
-    """``([Finding, ...], lines examined)`` for a Markdown-family file."""
-    found: List[Finding] = []
+def scan_markdown(lines: List[str], check, allow_re) -> Tuple[List[Tuple[int, object]], int]:
+    """``([(line number, payload), ...], lines examined)`` for a Markdown file.
+
+    Skips YAML front matter, code fences, code spans, HTML comments, and a line
+    carrying, or following, a comment that ``allow_re`` matches. ``check`` maps
+    a masked line to the payloads it finds; a sibling check reuses this with
+    its own ``check`` and ``allow_re``.
+    """
+    found: List[Tuple[int, object]] = []
     examined = 0
     fence: Optional[Tuple[str, int]] = None  # (marker, length)
     in_comment = False
@@ -141,12 +147,24 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                 fence = None
             continue
         masked, in_comment = _mask_markdown_line(raw, in_comment)
-        allowed = ALLOW_RE.search(raw) or (
-            number > 1 and ALLOW_RE.search(lines[number - 2]))
-        hit = WRITE_RE.match(masked)
-        if hit and not allowed:
-            found.append(Finding(number, hit.group(1)))
+        allowed = allow_re.search(raw) or (
+            number > 1 and allow_re.search(lines[number - 2]))
+        if allowed:
+            continue
+        for payload in check(masked):
+            found.append((number, payload))
     return found, examined
+
+
+def _write_phrases(masked: str) -> List[str]:
+    hit = WRITE_RE.match(masked)
+    return [hit.group(1)] if hit else []
+
+
+def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
+    """``([Finding, ...], lines examined)`` for a Markdown-family file."""
+    hits, examined = scan_markdown(lines, _write_phrases, ALLOW_RE)
+    return [Finding(number, phrase) for number, phrase in hits], examined
 
 
 def format_message(finding: Finding) -> str:
@@ -268,8 +286,13 @@ def _read_lines(path: str) -> Optional[List[str]]:
 
 
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
-              whole_tree: bool) -> Report:
-    """Scan the added lines since ``base_ref``, or every line when whole-tree."""
+              whole_tree: bool, scan=None) -> Report:
+    """Scan the added lines since ``base_ref``, or every line when whole-tree.
+
+    ``scan`` is the per-file scanner (default ``scan_file``), so a sibling check
+    such as ``check-avoided-words`` can reuse the diff model.
+    """
+    scan = scan or scan_file
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
         out = _run_git(["ls-files", "--", *globs])
@@ -304,27 +327,33 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         files += 1
         keep = wanted[rel]
         lines += len(content) if keep is None else len(keep)
-        for finding in scan_file(content)[0]:
+        for finding in scan(content)[0]:
             if keep is None or finding.line in keep:
                 findings.append((rel, finding))
     return Report(findings, files, lines, False)
 
 
-def main() -> int:
-    base_ref = os.environ.get("CWI_BASE_REF", "").strip()
-    globs = os.environ.get("CWI_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    ignores = compile_globs(_split_list(os.environ.get("CWI_PATHS_IGNORE", "")))
-    fail = _env_flag("CWI_FAIL", _DEFAULT_FAIL)
-    whole_tree = _env_flag("CWI_WHOLE_TREE", False)
+def main(scan=None, prefix: str = "CWI_", name: str = "write-idiom",
+         clean: str = 'No line opens with "Write the", "Write a" or "Write an".',
+         summary: str = 'open with a vague "Write ...".',
+         format_finding=None) -> int:
+    """Run the check from the environment; the keyword arguments let a sibling
+    check reuse the engine with its own scanner, env prefix and wording."""
+    base_ref = os.environ.get(prefix + "BASE_REF", "").strip()
+    globs = os.environ.get(prefix + "GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
+    ignores = compile_globs(_split_list(os.environ.get(prefix + "PATHS_IGNORE", "")))
+    fail = _env_flag(prefix + "FAIL", _DEFAULT_FAIL)
+    whole_tree = _env_flag(prefix + "WHOLE_TREE", False)
+    describe = format_finding or format_message
 
-    report = run_check(base_ref, globs, ignores, whole_tree)
+    report = run_check(base_ref, globs, ignores, whole_tree, scan)
 
     if report.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
         # With no base-ref (a push run) the skip is expected, so it is not an annotation.
         level = "::warning::" if base_ref else ""
         print(
-            f"{level}Skipping the write-idiom check for this run "
+            f"{level}Skipping the {name} check for this run "
             f"({reason}; not falling back to a whole-tree scan, which would "
             f"reflag every use the repository already has)."
         )
@@ -334,14 +363,14 @@ def main() -> int:
     print(f"Examined {report.lines} line(s) across {report.files} file(s) "
           f"(scope: {scope}).")
     if not report.findings:
-        print('No line opens with "Write the", "Write a" or "Write an".')
+        print(clean)
         return 0
 
     severity = "error" if fail else "warning"
     for rel, finding in report.findings:
         print(f"::{severity} file={rel},line={finding.line}::"
-              f"{format_message(finding)}")
-    print(f"\n{len(report.findings)} line(s) open with a vague \"Write ...\".")
+              f"{describe(finding)}")
+    print(f"\n{len(report.findings)} line(s) {summary}")
     return 1 if fail else 0
 
 
