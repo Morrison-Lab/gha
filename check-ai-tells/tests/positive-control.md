@@ -17,3 +17,6 @@ The result?
 A faster fit, highlighting the value of plain code.
 It works not because it is clever but because it is simple.
 Let's dive in, since the scheduler serves as a bridge between stages.
+
+That trade is the whole bargain of gradient descent.
+The derivative recommends a step, and the recommendation is trustworthy only as far as the step is small.

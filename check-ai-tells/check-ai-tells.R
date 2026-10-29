@@ -63,6 +63,16 @@ RHETORICAL_PATTERNS <- list(
   list(
     pattern = "(?i)\\b(?:serves|stands)\\s+as\\s+(?:a|an|the)\\s+(?:bridge|testament|reminder|cornerstone|catalyst|beacon|foundation|gateway|springboard|linchpin)\\b",
     name = "inflated copula"
+  ),
+  # psw word-choice.qmd, "Avoid vague and metaphorical language": money words
+  # and minds for math objects stand in for a precise condition.
+  list(
+    pattern = "(?i)\\b(?:the\\s+whole\\s+bargain|bargain|pays?\\s+off|pays\\s+for\\s+itself|at\\s+the\\s+(?:price|cost)\\s+of|costs?\\s+(?:us|nothing)|buys?\\s+us|afford(?:able)?|cheap(?:ly|er)?|that\\s+trade(?![- ]?offs?\\b)|trad(?:e|es|ed|ing)\\s+\\w+\\s+for)\\b",
+    name = "commerce metaphor"
+  ),
+  list(
+    pattern = "(?i)\\b(?:derivatives?|gradients?|slopes?|models?|estimators?|approximations?|likelihood|algorithms?|loss)\\s+(?:recommends?|knows?|wants?|believes?|thinks?|prefers?|decides?)\\b|\\btrustworthy\\b",
+    name = "personified math object"
   )
 )
 

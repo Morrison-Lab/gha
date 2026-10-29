@@ -70,7 +70,8 @@ check("Found signposting", "signposting filler" %in% tells_found)
 for (tell in c("throat-clearing lead-in", "answered rhetorical question",
                "assistant chatter", "not-because reframe",
                "personified abstraction", "editorializing tail",
-               "inflated copula")) {
+               "inflated copula", "commerce metaphor",
+               "personified math object")) {
   check(paste("Found", tell), tell %in% tells_found)
 }
 
@@ -81,7 +82,10 @@ writeLines(c(
   "It failed because the input was empty, but the retry succeeded.",
   "The value stands at four, and the server works as a cache.",
   "Here is the table of results for each run.",
-  "This file serves as the operator manual for the repository."
+  "This file serves as the operator manual for the repository.",
+  "The bias-variance trade-off and that trade-off curve are shown below.",
+  "The cost function is minimized, and the computational cost is linear.",
+  "The derivative is zero at the minimum, and the model fits the data."
 ), near_miss)
 res_near <- scan_file_prose(near_miss)
 check("Near-miss sentences have 0 findings", length(res_near$findings) == 0L,
