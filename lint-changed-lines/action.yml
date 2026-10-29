@@ -86,7 +86,7 @@ runs:
         sudo apt-get install -y $APT_PACKAGES
 
     - name: Set up R dependencies (DESCRIPTION)
-      if: inputs.use-renv != 'true'
+      if: inputs.use-renv != 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) != ''
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
@@ -98,6 +98,18 @@ runs:
           any::lintr
           ${{ inputs.extra-packages }}
         needs: lint
+
+    - name: Install R packages (no DESCRIPTION)
+      if: inputs.use-renv != 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) == ''
+      shell: Rscript {0}
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: 'false'
+      run: |
+        extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
+        pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
+        install.packages(pkgs)
+        stopifnot(all(pkgs %in% rownames(installed.packages())))
 
     - name: Restore R dependencies (renv)
       if: inputs.use-renv == 'true'
@@ -133,7 +145,7 @@ runs:
         '
 
     - name: Install package
-      if: ${{ inputs.install-package == 'true' }}
+      if: inputs.install-package == 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) != ''
       shell: bash
       run: R CMD INSTALL "${{ inputs.path }}"
 
@@ -143,6 +155,7 @@ runs:
       env:
         GITHUB_PAT: ${{ github.token }}
         LMS_REF: ${{ inputs.lms-ref }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
       run: |
         if (!requireNamespace("remotes", quietly = TRUE)) {
           install.packages("remotes", repos = "https://cloud.r-project.org")
@@ -159,4 +172,5 @@ runs:
         LINT_FAIL: ${{ inputs.fail }}
         LINT_FILE_PATTERN: ${{ inputs.file-pattern }}
         LINT_LMS: ${{ inputs.lms-ref != '' }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
       run: Rscript "$GITHUB_ACTION_PATH/lint-changed-lines.R"
