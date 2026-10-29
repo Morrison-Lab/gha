@@ -22,6 +22,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-split-solutions`, `check-restated-results`,
   `check-format-output-files`,
   `check-def-title-synonyms`, `check-bare-yes-no`,
+`check-exercise-background`,
   `check-key-equations-displayed`, `check-definite-antecedents`,
   `check-pr-concerns`,
   `check-pr-size`,

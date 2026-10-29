@@ -47,6 +47,7 @@ updates:
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
       - "/check-bare-yes-no"
+      - "/check-exercise-background"
       - "/check-key-equations-displayed"
       - "/check-multipart-exercises"
       - "/check-split-solutions"
