@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# check-one-function-per-file: allow-multiple
 # Job-completed hook for a self-hosted runner: delete repository checkouts in
 # the runner's work folder that no job has used for a while, and more of them
 # when the disk is short (gha#1352).
