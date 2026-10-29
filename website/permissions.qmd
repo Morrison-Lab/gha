@@ -19,7 +19,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-self-credits`,
   `check-one-div-per-subfile`, `check-multipart-exercises`, `check-rubric-checklists`,
   `check-single-ask-parts`,
-  `check-split-solutions`, `check-restated-results`,
+  `check-split-solutions`, `check-restated-results`, `check-definition-equations`,
   `check-format-output-files`,
   `check-def-title-synonyms`, `check-bare-yes-no`,
 `check-exercise-background`,
