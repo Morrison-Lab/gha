@@ -32,6 +32,8 @@ Must be triggered by `pull_request` (the changed-line set comes from the PR).
 A repository with no `DESCRIPTION` in `path` skips `setup-r-dependencies`:
 the workflow installs `gh`, `lintr` and any `extra-packages` from CRAN
 (plain package names only) and skips `R CMD INSTALL`.
+On Linux, when the runner sets no CRAN mirror,
+it installs Posit Package Manager binaries.
 
 ## Inputs
 
