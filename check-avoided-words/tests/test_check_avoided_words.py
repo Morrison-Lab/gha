@@ -48,6 +48,9 @@ def found(text: str):
     ("It currently holds.", "time", "currently"),
     ("Nowadays this is routine.", "time", "nowadays"),
     ("At present the bound is loose.", "time", "at present"),
+    ("The mode is a point in domain A.", "generic", "domain a"),
+    ("Let the range B be finite.", "generic", "range b"),
+    ("Take some domain and a map.", "generic", "some domain"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
@@ -63,6 +66,10 @@ def test_flagged_forms(text, rule, phrase):
     "The new observation is held out.",
     "Now we compute the mean.",
     "Uneasy about the bound.",
+    "The mode is a point in the range of X.",
+    "The range of values is wide.",
+    "The domain $A$ is finite.",
+    "The domain Alpha is finite.",
 ])
 def test_unflagged_forms(text):
     assert found(text) == {}
@@ -169,7 +176,7 @@ def test_main_passes_comparisons_and_temporal_just(tmp_path, monkeypatch, capsys
     git("add", "-A")
     _main_env(monkeypatch, repo, CAW_FAIL="true")
     assert wi.main() == 0
-    assert "No position, effort or time" in capsys.readouterr().out
+    assert "No position, effort, time-relative or generic" in capsys.readouterr().out
 
 
 def test_main_without_base_skips_under_its_own_name(tmp_path, monkeypatch, capsys):

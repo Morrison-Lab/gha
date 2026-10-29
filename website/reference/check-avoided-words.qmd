@@ -27,6 +27,13 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   because "now we compute" and the term "new observation" are correct uses a
   regex cannot tell apart.
   `recently` is psw's own extension.
+- **Generic placeholders.**
+  A domain, codomain, range or sample space named by
+  a bare capital letter ("domain A") or by "some" ("some domain").
+  Name the specific set, such as "the range of X".
+  Source: psw's "be as specific as feasible" (psw#427).
+  A regex cannot know whether a specific object exists,
+  so a finding only asks the author to check.
 
 The check does not flag a code fence or code span, an HTML comment, YAML
 front matter, or a line carrying, or following,
