@@ -472,7 +472,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-avoided-words/` (Python, stdlib only, psw#418) flags words a style source advises against on a line a PR adds in a `.qmd` or `.md` file:
   `above` or `below` used for a place in the document, `just`, `easy` and `easily`, and time-relative words such as `currently` and `recently`.
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
-  It copies `check-write-idiom`'s diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default), and its env vars use the `CAW_` prefix.
+  It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
+  Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
   A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.

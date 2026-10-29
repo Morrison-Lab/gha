@@ -3871,9 +3871,10 @@ jobs:
           rm -rf _ci-write-idiom
   # check-avoided-words is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-avoided-words@v3` does not resolve until the
-  # tag slides past the merge. Exercise the local composite directly. The unit
-  # tests cover the scanner and both scopes; the composite calls below prove
-  # action.yml wires each input through to the script.
+  # tag slides past the merge. Exercise the local composite directly. The diff
+  # model is check-write-idiom's, tested in the write-idiom job; here the unit
+  # tests cover the rules, and one staged page proves action.yml wires the
+  # inputs through to the script.
   avoided-words:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -3894,8 +3895,6 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-avoided-words/tests/ -v
-      # Stage a page that says "the table above", then assert that the
-      # blocking call really fails.
       - name: Stage a page using a position word
         shell: bash
         run: |
@@ -3903,7 +3902,6 @@ jobs:
           mkdir -p _ci-avoided-words
           echo 'See the table above.' > _ci-avoided-words/page.qmd
           git add -f _ci-avoided-words/page.qmd
-      # Warn-only is the default: the same page must not fail the job.
       - name: Check the staged page, warn-only by default
         uses: ./check-avoided-words
         with:
@@ -3928,44 +3926,6 @@ jobs:
             exit 1
           fi
           echo "check-avoided-words failed on the staged page, as expected."
-      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
-      # the call must fail. Were base-ref dropped, it would skip and pass.
-      - name: Check again diff-scoped against HEAD, expecting a failure
-        id: avoided-words-diff-expected-failure
-        continue-on-error: true
-        uses: ./check-avoided-words
-        with:
-          fail: 'true'
-          base-ref: HEAD
-      - name: Assert the diff-scoped call failed
-        shell: bash
-        env:
-          OUTCOME: ${{ steps.avoided-words-diff-expected-failure.outcome }}
-        run: |
-          set -euo pipefail
-          if [ "$OUTCOME" != "failure" ]; then
-            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
-            exit 1
-          fi
-      # With no base and no whole-tree, the call skips (warning, exit 0).
-      - name: Check again with no base, expecting a skip
-        uses: ./check-avoided-words
-        with:
-          fail: 'true'
-          base-ref: ''
-      - name: Check again with the page exempted through paths-ignore
-        uses: ./check-avoided-words
-        with:
-          fail: 'true'
-          whole-tree: 'true'
-          globs: '_ci-avoided-words/*.qmd'
-          paths-ignore: '_ci-avoided-words'
-      - name: Check again with globs excluding the page
-        uses: ./check-avoided-words
-        with:
-          fail: 'true'
-          whole-tree: 'true'
-          globs: 'website/reference/*.qmd'
       - name: Remove the staged files
         if: always()
         shell: bash

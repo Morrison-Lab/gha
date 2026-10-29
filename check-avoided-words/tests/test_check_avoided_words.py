@@ -2,9 +2,10 @@ r"""Unit tests for check-avoided-words.
 
 Covers what counts as a finding (position, effort and time-relative words),
 what is not ("above the threshold", "just before"), what is skipped (code
-fences and spans, comments, front matter), the diff scoping including moved
-lines, main()'s exit codes, and the defaults the action, the reusable workflow
-and the script must agree on.
+fences and spans, comments, front matter), main()'s exit codes under the
+CAW_ prefix, and the defaults the action, the reusable workflow and the
+script must agree on. The diff model is the shared engine in
+check-write-idiom, which has its own tests.
 
 The script's name has a hyphen, so load it by path.
 """
@@ -121,7 +122,7 @@ def test_allow_comment_on_the_line_or_the_line_before():
         3: ("position", "the table above")}
 
 
-# -- diff scoping, over throwaway git repos ----------------------------------
+# -- main(): the shared engine under this check's prefix and wording ---------
 
 def _repo(tmp_path):
     """A git repo with one commit; returns its path and a git runner."""
@@ -136,103 +137,6 @@ def _repo(tmp_path):
     git("commit", "-q", "-m", "base")
     return tmp_path, git
 
-
-def _run(monkeypatch, tmp_path, base, **kw):
-    monkeypatch.chdir(tmp_path)
-    return wi.run_check(
-        base, kw.get("globs", wi.DEFAULT_GLOBS.split()),
-        wi.compile_globs(kw.get("ignores", [])), kw.get("whole_tree", False))
-
-
-def test_added_line_is_flagged_in_diff_mode(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "page.qmd").write_text("See the table above.\n")
-    git("add", "-A")
-    report = _run(monkeypatch, repo, "HEAD")
-    assert [(r, f.line) for r, f in report.findings] == [("page.qmd", 1)]
-
-
-def test_existing_use_is_not_reflagged(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "old.qmd").write_text("See the table above.\n")
-    git("add", "-A")
-    git("commit", "-q", "-m", "old")
-    (repo / "new.qmd").write_text("See the figure below.\n")
-    git("add", "-A")
-    report = _run(monkeypatch, repo, "HEAD")
-    assert [r for r, _ in report.findings] == ["new.qmd"]
-
-
-def test_only_added_lines_of_a_changed_file_are_flagged(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "a.qmd").write_text("See the table above.\nprose\n")
-    git("add", "-A")
-    git("commit", "-q", "-m", "old")
-    (repo / "a.qmd").write_text("See the table above.\nprose\nIt is easy.\n")
-    git("add", "-A")
-    report = _run(monkeypatch, repo, "HEAD")
-    assert [(f.line, f.phrase) for _, f in report.findings] == [(3, "easy")]
-
-
-def test_moved_line_is_not_flagged(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "old.qmd").write_text("See the table above.\nprose\n")
-    git("add", "-A")
-    git("commit", "-q", "-m", "old")
-    (repo / "old.qmd").write_text("prose\nSee the table above.\n")
-    git("add", "-A")
-    assert _run(monkeypatch, repo, "HEAD").findings == []
-
-
-def test_whole_tree_flags_existing_uses(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "old.qmd").write_text("See the table above.\n")
-    git("add", "-A")
-    git("commit", "-q", "-m", "old")
-    assert len(_run(monkeypatch, repo, "", whole_tree=True).findings) == 1
-
-
-@pytest.mark.parametrize("base", ["", "no-such-ref"])
-def test_unusable_base_skips_instead_of_falling_back(tmp_path, monkeypatch, base):
-    repo, git = _repo(tmp_path)
-    (repo / "old.qmd").write_text("See the table above.\n")
-    git("add", "-A")
-    git("commit", "-q", "-m", "old")
-    report = _run(monkeypatch, repo, base)
-    assert report.skipped and report.findings == []
-
-
-def test_other_extensions_are_not_read(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "notes.txt").write_text("See the table above.\n")
-    (repo / "page.Rmd").write_text("See the table above.\n")
-    git("add", "-A")
-    assert _run(monkeypatch, repo, "HEAD").findings == []
-
-
-def test_md_files_are_read(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "notes.md").write_text("- See the table above.\n")
-    git("add", "-A")
-    assert len(_run(monkeypatch, repo, "HEAD").findings) == 1
-
-
-def test_paths_ignore_skips_a_file(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "skip.qmd").write_text("See the table above.\n")
-    git("add", "-A")
-    assert _run(monkeypatch, repo, "HEAD", ignores=["skip.qmd"]).findings == []
-
-
-def test_report_counts_the_search_space(tmp_path, monkeypatch):
-    repo, git = _repo(tmp_path)
-    (repo / "a.qmd").write_text("prose\nSee the table above.\n")
-    git("add", "-A")
-    report = _run(monkeypatch, repo, "HEAD")
-    assert (report.files, report.lines) == (1, 2)
-
-
-# -- main(): the exit code ---------------------------------------------------
 
 def _main_env(monkeypatch, repo, **extra):
     monkeypatch.chdir(repo)
@@ -268,36 +172,22 @@ def test_main_passes_comparisons_and_temporal_just(tmp_path, monkeypatch, capsys
     assert "No position, effort or time" in capsys.readouterr().out
 
 
-def test_main_without_base_skips_even_when_failing(tmp_path, monkeypatch, capsys):
+def test_main_without_base_skips_under_its_own_name(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("See the table above.\n")
     git("add", "-A")
     _main_env(monkeypatch, repo, CAW_FAIL="true", CAW_BASE_REF="")
     assert wi.main() == 0
-    out = capsys.readouterr().out
-    assert out.startswith("Skipping the avoided-words check")
-    assert "::warning::" not in out
+    assert capsys.readouterr().out.startswith("Skipping the avoided-words check")
 
 
-def test_main_with_unresolvable_base_warns(tmp_path, monkeypatch, capsys):
+def test_write_idiom_prefix_is_not_read(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("See the table above.\n")
     git("add", "-A")
-    _main_env(monkeypatch, repo, CAW_FAIL="true", CAW_BASE_REF="no-such-ref")
+    _main_env(monkeypatch, repo)
+    monkeypatch.setenv("CWI_FAIL", "true")
     assert wi.main() == 0
-    assert capsys.readouterr().out.startswith(
-        "::warning::Skipping the avoided-words check")
-
-
-def test_main_whole_tree_fail_mode(tmp_path, monkeypatch, capsys):
-    repo, git = _repo(tmp_path)
-    (repo / "old.qmd").write_text("See the table above.\n")
-    git("add", "-A")
-    git("commit", "-q", "-m", "old")
-    _main_env(monkeypatch, repo, CAW_FAIL="true", CAW_WHOLE_TREE="true",
-              CAW_BASE_REF="")
-    assert wi.main() == 1
-    assert "::error file=old.qmd,line=1::" in capsys.readouterr().out
 
 
 # -- the action, the workflow and the script agree ---------------------------
@@ -316,4 +206,3 @@ def test_action_passes_every_input_to_the_script_under_the_caw_prefix():
     action = (_DIR / "action.yml").read_text()
     for var in ("BASE_REF", "WHOLE_TREE", "GLOBS", "PATHS_IGNORE", "FAIL"):
         assert f"CAW_{var}:" in action
-        assert f"CAW_{var}" in (_DIR / "check-avoided-words.py").read_text()
