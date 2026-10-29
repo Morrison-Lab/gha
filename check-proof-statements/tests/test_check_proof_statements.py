@@ -423,3 +423,7 @@ def test_main_finds_files_under_mnemonic_prefix_and_quoted_paths(tmp_path, monke
     assert "across 2 file(s)" in out
     assert "::warning file=plain.qmd,line=2::" in out
     assert 'file=ch/q"u.qmd,line=2::' in out
+
+
+def test_proof_class_prefix_is_a_proof():
+    assert scan(f"{HIDDEN}\n::: {{.proof-sketch}}\nx\n:::\n:::\n") == [(2, "proof", "proof")]

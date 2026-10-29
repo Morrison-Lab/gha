@@ -93,7 +93,9 @@ def _classify(attrs: str) -> Set[str]:
     if ("content-hidden" in classes and "revealjs" in when) or \
             ("content-visible" in classes and "revealjs" in unless):
         kinds.add("hidden")
-    if "proof" in classes or "proof" in bare or any(i.startswith("prf-") for i in ids):
+    if "proof" in classes or "proof" in bare \
+            or any(c.startswith("proof-") for c in classes) \
+            or any(i.startswith("prf-") for i in ids):
         kinds.add("proof")
     if any(THEOREM_ID_RE.match(i) for i in ids):
         kinds.add("theorem")
