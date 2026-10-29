@@ -76,6 +76,19 @@ RHETORICAL_PATTERNS <- list(
   )
 )
 
+# "leverage" is a tell as a verb ("to leverage the data"), but a noun in
+# statistics ("the leverage of a point", "high-leverage points"). Only the verb
+# is flagged: a match counts when a modal, "to" or a subject pronoun precedes it.
+LEVERAGE_VERB_PRECEDERS <- paste0(
+  "(?i)\\b(?:to|can|could|will|would|should|must|may|might|shall|we|you|they|it|i)",
+  "\\s+$"
+)
+
+is_noun_leverage <- function(line, start, val) {
+  tolower(val) == "leverage" &&
+    !grepl(LEVERAGE_VERB_PRECEDERS, substr(line, 1L, start - 1L), perl = TRUE)
+}
+
 # ── Diff Line Extraction ─────────────────────────────────────────────────────
 
 extract_added_lines <- function(patch) {
@@ -245,6 +258,7 @@ scan_file_prose <- function(file_path, added_lines_only = NULL) {
         start <- matches[k]
         len <- match_lens[k]
         val <- substr(line, start, start + len - 1L)
+        if (is_noun_leverage(line, start, val)) next
         findings[[length(findings) + 1L]] <- list(
           file = file_path,
           line = line_idx,
