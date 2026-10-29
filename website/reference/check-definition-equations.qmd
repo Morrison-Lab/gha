@@ -1,0 +1,46 @@
+---
+title: "check-definition-equations.yml"
+---
+
+Diff-scoped, warn-only heuristic check for the lab's rule (Ezra, 2026-10-29)
+that a definition div holds only the equation linking the symbol of the defined term
+to its definitional expression.
+An equality between expressions, or an equivalence between concepts,
+is stated as a result (`#thm-`, `#lem-`, `#cor-` or `#prp-`) after the definition.
+
+The check flags a `#def-` div when
+
+- a display equation chains equalities:
+  it has a defining operator (`:=`, `\eqdef`, `\coloneqq`, `\triangleq`) followed by another top-level `=`,
+  or, with no defining operator, two or more top-level `=`;
+- the div displays more than one equation,
+  unless each carries its own defining operator; or
+- the prose says the defined concept is equivalent to something else
+  ("equivalently", "in other words", "is equivalent to", "is the same as",
+  "also written", "which equals").
+
+An `=` inside brackets or `\text{}`, and a `cases` display, do not count.
+The check cannot tell which side of a single `a = b` is the defined symbol,
+so a definition displaying one equation between two expressions is not flagged.
+A definition that holds `<!-- def-equiv-ok: reason -->` is exempt.
+
+A definition is checked when the pull request adds a line inside it.
+With no base to diff against, the check skips instead of scanning the whole tree,
+so existing definitions are fixed when someone edits them anyway.
+It warns by default; `fail: true` blocks.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Check every definition, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
+
+## Usage
+
+Copy `examples/check-definition-equations.yml` to
+`.github/workflows/check-definition-equations.yml`.
