@@ -112,11 +112,19 @@ runs:
         pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
         repos <- getOption("repos")
         if (is.null(repos) || isTRUE(unname(repos["CRAN"]) == "@CRAN@")) {
-          # Binary packages need no system headers (curl, openssl, xml2).
-          release <- grep("^VERSION_CODENAME=", readLines("/etc/os-release"), value = TRUE)
-          codename <- sub("^VERSION_CODENAME=", "", release)
-          repos <- c(CRAN = sprintf("https://packagemanager.posit.co/cran/__linux__/%s/latest", codename))
-          options(HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os)))
+          repos <- c(CRAN = "https://cloud.r-project.org")
+          # On Linux, binary packages need no system headers (curl, openssl, xml2).
+          os_release <- "/etc/os-release"
+          codename <- character(0)
+          if (Sys.info()[["sysname"]] == "Linux" && file.exists(os_release)) {
+            release <- grep("^VERSION_CODENAME=", readLines(os_release), value = TRUE)
+            codename <- sub("^VERSION_CODENAME=", "", release)
+          }
+          if (length(codename) == 1 && nzchar(codename)) {
+            repos <- c(CRAN = sprintf("https://packagemanager.posit.co/cran/__linux__/%s/latest", codename))
+            # Posit serves binaries only to this user agent, which is R's own default format.
+            options(HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os)))
+          }
         }
         install.packages(pkgs, repos = repos)
         stopifnot(all(pkgs %in% rownames(installed.packages())))
