@@ -1082,7 +1082,7 @@ cookieconsent.run({
 <p>The workflow checks out the <strong>PR head commit</strong> (not the default <code>refs/pull/N/merge</code> ref), sets up R, installs the package (so <code>object_usage_linter</code> can resolve the package’s own functions), then runs <code>lintr</code> on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub “list PR files” API <code>patch</code>, whose line numbers are relative to the PR head – which is why the checkout is pinned to the head commit, so on-disk line numbers match.</p>
 <p>Must be triggered by <code>pull_request</code> (the changed-line set comes from the PR).</p>
 <p>A self-hosted runner that already has R keeps it: the workflow skips <code>setup-r</code>, whose <code>apt-get</code> step needs passwordless <code>sudo</code>.</p>
-<p>A repository with no <code>DESCRIPTION</code> in <code>path</code> skips <code>setup-r-dependencies</code>: the workflow installs <code>gh</code>, <code>lintr</code> and any <code>extra-packages</code> from CRAN (plain package names only) and skips <code>R CMD INSTALL</code>. On Linux, when the runner sets no CRAN mirror, it installs Posit Package Manager binaries.</p>
+<p>A repository with no <code>DESCRIPTION</code> in <code>path</code>, or with <code>install-package: false</code>, skips <code>setup-r-dependencies</code>: the workflow installs <code>gh</code>, <code>lintr</code> and any <code>extra-packages</code> from CRAN (plain package names only) and skips <code>R CMD INSTALL</code>. On Linux, when the runner sets no CRAN mirror, it installs Posit Package Manager binaries.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -1130,7 +1130,7 @@ cookieconsent.run({
 <td><code>extra-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Extra R packages to install (space- or comma-separated; passed to <code>setup-r-dependencies</code>, or installed from CRAN under <code>use-renv: true</code> or when <code>path</code> holds no <code>DESCRIPTION</code>). <code>gh</code> and <code>lintr</code> are always installed.</td>
+<td>Extra R packages to install (space- or comma-separated; passed to <code>setup-r-dependencies</code>, or installed from CRAN under <code>use-renv: true</code> or when <code>path</code> holds no <code>DESCRIPTION</code> or <code>install-package</code> is <code>false</code>). <code>gh</code> and <code>lintr</code> are always installed.</td>
 </tr>
 <tr class="odd">
 <td><code>install-package</code></td>
