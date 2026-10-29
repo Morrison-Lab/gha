@@ -46,7 +46,7 @@ on:
 jobs:
   request-review:
     if: github.event.pull_request.user.login == inputs.bot-actor
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       pull-requests: write

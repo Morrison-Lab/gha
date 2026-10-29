@@ -46,7 +46,7 @@ on:
 
 jobs:
   version-check:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:
       # `pull-requests: read` was already granted here and is now load-bearing:

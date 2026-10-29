@@ -39,7 +39,7 @@ on:
 
 jobs:
   check-orphaned-images:
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read

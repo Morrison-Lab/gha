@@ -72,7 +72,7 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.sender.type != 'Bot'
       )
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -491,7 +491,7 @@ jobs:
       needs.review.result != 'skipped' &&
       !fromJSON(needs.review.outputs.secret_skip || 'false') &&
       !fromJSON(needs.review.outputs.dispatch_guard_blocked || 'false')
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions: {}
     steps:

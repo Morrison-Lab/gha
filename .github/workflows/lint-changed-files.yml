@@ -67,7 +67,7 @@ on:
 
 jobs:
   lint-changed-files:
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     # Whole-tree package/project lint can exceed the 20-minute
     # lint-changed-lines budget; 30 is still a hang-catch, not a tight SLA.
     timeout-minutes: 30

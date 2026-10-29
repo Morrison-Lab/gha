@@ -166,7 +166,7 @@ jobs:
   # deploy job below declares it, even when deploy is false). Only the deploy
   # job actually uses the write token.
   build:
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -232,7 +232,7 @@ jobs:
   deploy:
     needs: build
     if: inputs.deploy
-    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     # Serialize deploys to gh-pages so main-site publishes, PR previews, and
     # preview cleanups queue rather than race or clobber each other's commits.

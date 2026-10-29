@@ -48,7 +48,7 @@ on:
 
 jobs:
   manage-project:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 15
     # Load-bearing trust gate --- see the SECURITY note above.
     if: >-

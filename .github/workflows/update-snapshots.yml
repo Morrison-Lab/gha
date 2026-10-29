@@ -83,7 +83,7 @@ on:
 
 jobs:
   update-snapshots:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 60
     # Read-only: this job runs the branch's own code, so the push happens in
     # the separate `push` job below.
@@ -203,7 +203,7 @@ jobs:
   push:
     needs: update-snapshots
     if: needs.update-snapshots.outputs.committed == 'true'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event.repository.private != false && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: write
