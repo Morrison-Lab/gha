@@ -1239,8 +1239,8 @@ cookieconsent.run({
 <tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
-<td><code>'ubuntu-latest'</code></td>
-<td>Runner for the agent job. The <code>mention-filter</code> job always uses <code>ubuntu-latest</code>.</td>
+<td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
+<td>Runner for the agent job. The <code>mention-filter</code> job uses <code>CI_RUNNER</code>, else <code>ubuntu-latest</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>report-cost</code></td>
