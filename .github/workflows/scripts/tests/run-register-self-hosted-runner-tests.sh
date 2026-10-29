@@ -209,7 +209,11 @@ check "prune: the age boundary is 7 days" "$(left)" "_tool a c cur d "
 new_work
 mkdir -p "$w/R/library"; touch -d '10 days ago' "$w/R"
 run_prune STUB_BASE_KB=$((6 * gb)) > /dev/null
-check "prune: a non-checkout directory survives age and low space" "$(left)" "R _tool cur "
+check "prune: an old non-checkout directory survives" "$(left)" "R _tool cur "
+new_work
+mkdir -p "$w/R/library"
+run_prune STUB_BASE_KB=$((6 * gb)) > /dev/null
+check "prune: a recent non-checkout directory survives low space" "$(left)" "R _tool cur "
 
 # A failing df stops pruning with a warning and still exits 0 under -e.
 new_work
