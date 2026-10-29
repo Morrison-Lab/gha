@@ -1735,9 +1735,7 @@ jobs:
         uses: ./check-bare-yes-no
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
-  # check-exercise-background is brand new, so its reusable workflow's internal
-  # `uses: Morrison-Lab/gha/check-exercise-background@v3` does not resolve until
-  # the tag slides past the merge. Exercise the local composite directly.
+  # Exercise the local composite directly; the reusable workflow is a separate change.
   exercise-background:
     runs-on: ubuntu-latest
     timeout-minutes: 20
