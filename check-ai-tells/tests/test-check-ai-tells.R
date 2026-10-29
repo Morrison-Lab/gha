@@ -190,4 +190,33 @@ check("Negated verb leverage is flagged",
 check("Noun leverage at the end of a clause is not flagged",
       leverage_hits("Plot the residuals against leverage.") == 0L)
 
+# Test: math, macro names, link targets and plurals are never prose-checked
+leverage_hits_lines <- function(lines) {
+  tmp <- tempfile(fileext = ".qmd")
+  writeLines(lines, tmp)
+  length(scan_file_prose(tmp)$findings)
+}
+check("Plural leverages in link text is not flagged",
+      leverage_hits_lines("The [leverages](linear-regression.qmd#def-leverage) satisfy a bound.") == 0L)
+check("Plural leverages in prose is not flagged",
+      leverage_hits_lines("The leverages satisfy a bound.") == 0L)
+check("A leverage macro inside inline math is not flagged",
+      leverage_hits_lines("Here $\\leverage{i} = \\hatmat_{ii}$ is the hat matrix diagonal.") == 0L)
+check("A leverage macro inside one-line display math is not flagged",
+      leverage_hits_lines("$$\\leverage{i} = \\hatmat_{ii}$$") == 0L)
+check("A leverage macro inside a multi-line display block is not flagged",
+      leverage_hits_lines(c("$$", "\\leverage{i} = \\hatmat_{ii}", "$$ {#eq-leverage}")) == 0L)
+check("A leverage macro in an opener-line display block is not flagged",
+      leverage_hits_lines(c("$$\\leverage{i} = \\hatmat_{ii}", "\\leverage{j}", "$$")) == 0L)
+check("A bare leverage macro name is not flagged",
+      leverage_hits_lines("The macro \\leverage names the diagonal entry.") == 0L)
+check("Prose after display math is still checked",
+      leverage_hits_lines(c("$$", "x", "$$", "We want to leverage the data.")) == 1L)
+check("Prose before an opener line is still checked",
+      leverage_hits_lines(c("We want to leverage this. $$", "x", "$$")) == 1L)
+check("Currency is not read as math that hides a verb",
+      leverage_hits_lines("It costs $5 and we want to leverage it for $6.") == 1L)
+check("A link target holding a tell word is not prose",
+      leverage_hits_lines("See [the notes](robust-leverage-notes.md) for more.") == 0L)
+
 cat("\nAll check-ai-tells tests passed successfully.\n")

@@ -83,7 +83,7 @@ RHETORICAL_PATTERNS <- list(
 # or a clause end or noun-like continuation after it.
 LEVERAGE_NOUN_BEFORE <- paste0(
   "(?i)(?:\\b(?:the|a|an|its|their|each|every|of|high|low|large|larger|largest|",
-  "small|smaller|smallest|zero|unit|average|mean|maximum|maximal|leverage)\\s+|[-\\[(])$"
+  "small|smaller|smallest|zero|unit|average|mean|maximum|maximal|leverage)\\s+|[-\\[(\\\\])$"
 )
 LEVERAGE_NOUN_AFTER <- paste0(
   "(?i)^(?:\\]|\\s*(?:[,.;:)]|$|\\(|(?:values?|points?|scores?|statistics?|",
@@ -160,6 +160,12 @@ parse_git_diff <- function(diff_lines) {
 
 # ── Prose Extraction ─────────────────────────────────────────────────────────
 
+# The old inline-math pattern put a backslash inside a [^...] class, which is
+# literal in a non-perl regex, so a span holding a macro such as \leverage was
+# never stripped and its macro name was read as prose.
+DISPLAY_MATH_RE <- "(?<!\\\\)\\$\\$.*?(?<!\\\\)\\$\\$"
+INLINE_MATH_RE <- "(?<![\\\\$])\\$(?=\\S)[^$]+?(?<=\\S)\\$(?!\\d)"
+
 strip_non_prose <- function(lines) {
   # Strips YAML header, code chunks, math blocks, div blocks, and inline code/math
   in_yaml <- FALSE
@@ -195,14 +201,18 @@ strip_non_prose <- function(lines) {
       next
     }
 
-    # Display math ($$)
-    if (grepl("^\\$\\$\\s*$", line)) {
-      in_math_block <- !in_math_block
+    # Display math ($$): a block runs from a line that opens one (a line
+    # with an odd number of $$ once whole $$...$$ spans are removed) to the
+    # next line holding $$, so text before an opener is still prose.
+    if (in_math_block) {
+      if (grepl("$$", line, fixed = TRUE)) in_math_block <- FALSE
       cleaned[i] <- ""
       next
     }
-    if (in_math_block) {
-      cleaned[i] <- ""
+    line <- gsub(DISPLAY_MATH_RE, " ", line, perl = TRUE)
+    if (grepl("$$", line, fixed = TRUE)) {
+      in_math_block <- TRUE
+      cleaned[i] <- sub("\\$\\$.*$", " ", line, perl = TRUE)
       next
     }
 
@@ -214,8 +224,12 @@ strip_non_prose <- function(lines) {
 
     # Strip inline code `...`
     line_clean <- gsub("`[^`]+`", " ", line)
-    # Strip inline math $...$
-    line_clean <- gsub("\\$[^\\$]+\\$", " ", line_clean)
+    # Strip link targets and attribute blocks: only the link text is prose
+    line_clean <- gsub("\\]\\([^)]*\\)", "]", line_clean, perl = TRUE)
+    line_clean <- gsub("\\{[#.][^}]*\\}", " ", line_clean, perl = TRUE)
+    # Strip inline math $...$ (Pandoc rule: no space inside the dollar signs,
+    # and no digit right after the closing one, so currency is left alone)
+    line_clean <- gsub(INLINE_MATH_RE, " ", line_clean, perl = TRUE)
     # Strip HTML tags
     line_clean <- gsub("<[^>]+>", " ", line_clean)
 
