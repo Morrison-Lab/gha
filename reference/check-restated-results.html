@@ -1051,7 +1051,8 @@ cookieconsent.run({
 <li>the solution displays an equation.</li>
 </ul>
 <p>The check follows <code>{{&lt; include &gt;}}</code> lines, so it reads a page in the order a reader sees it. After a derivation solution, a theorem-type div has to appear before the next exercise of a different group (the exercise slug with a trailing <code>-partK</code> removed). A solution that holds <code>&lt;!-- restated-ok: reason --&gt;</code> is exempt.</p>
-<p>A solution is checked when the pull request adds a line inside it or its exercise. With no base to diff against, the check skips instead of scanning the whole tree, so existing solutions are fixed when someone edits them anyway. It warns by default; <code>fail: true</code> blocks.</p>
+<p>The restating theorem is also flagged when its proof (a <code>.proof</code> div nested in it or directly after it) cites a solution (<code>@sol-...</code>) and displays no equation of its own, because a proof that only points back at the solution leaves the result unproved where it is stated. <code>&lt;!-- restated-ok: reason --&gt;</code> in the theorem or its proof exempts it. Whether the statement uses only defined symbols stays a review item.</p>
+<p>A solution is checked when the pull request adds a line inside it or its exercise, and a proof when it adds a line inside the theorem or its proof. With no base to diff against, the check skips instead of scanning the whole tree, so existing solutions are fixed when someone edits them anyway. It warns by default; <code>fail: true</code> blocks.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
