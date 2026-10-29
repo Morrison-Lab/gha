@@ -94,6 +94,7 @@ website:
           - reference/check-bare-yes-no.qmd
           - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd
+          - reference/check-split-solutions.qmd
           - reference/check-rubric-checklists.qmd
           - reference/check-single-ask-parts.qmd
           - reference/check-note-sheet-rows.qmd

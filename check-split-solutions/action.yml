@@ -1,0 +1,56 @@
+name: Check split solutions
+description: >-
+  Diff-scoped check that fails when a split exercise (two or more `#exr-`
+  divs sharing a slug once `-partK` is removed) has a missing, orphaned or
+  combined solution: an exercise with no `#sol-` of its slug, a solution
+  with part labels, or a figure that a sibling exercise asks for.
+  `<!-- split-solutions-ok: reason -->` exempts a solution. Fails by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only exercises with a line added since this
+      ref are checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Diff mode needs the base commit in history (checkout with fetch-depth:
+      0); when the diff can't be computed, or no base-ref is given on a push
+      run, the check is skipped rather than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only
+      touched exercises. Use it to measure a corpus; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check (recursive by
+      default).
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a split exercise's solution is not split. Defaults to
+      'true'; 'false' gives warning annotations only.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check split solutions
+      shell: bash
+      env:
+        SSP_BASE_REF: ${{ inputs.base-ref }}
+        SSP_WHOLE_TREE: ${{ inputs.whole-tree }}
+        SSP_GLOBS: ${{ inputs.globs }}
+        SSP_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        SSP_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-split-solutions.py"
