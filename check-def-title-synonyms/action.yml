@@ -2,8 +2,9 @@ name: Check definition title synonyms
 description: >-
   Diff-scoped check that flags the title of a `#def-` div that lists synonyms
   with parentheses or "also called" instead of a comma list with the primary
-  term first, when the diff adds the title line (Ezra, 2026-10-23;
-  Morrison-Lab/psw#338). Warn-only by default.
+  term first, or that lists aliases for a definition stating the term twice
+  (equivalent but distinct concepts), when the diff adds the title line (Ezra,
+  2026-10-23 and 2026-10-29; Morrison-Lab/psw#338). Warn-only by default.
 inputs:
   python-version:
     description: Python version to set up.

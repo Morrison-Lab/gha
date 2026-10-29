@@ -103,3 +103,40 @@ def test_whole_tree_flags_existing(repo, monkeypatch, capsys):
 def test_no_base_ref_skips(repo, monkeypatch, capsys):
     code, out = _run(repo, monkeypatch, capsys, DTS_FAIL="true")
     assert code == 0 and "Skipping" in out
+
+
+def _body(text):
+    lines = text.split("\n")
+    return dts.def_bodies(lines)
+
+
+def test_alias_title_with_two_defining_equations_is_flagged():
+    text = (":::{#def-a}\n\n#### Cross-entropy loss, log loss\n\n"
+            "$$\nL := -\\log p\n$$\n\n$$\nL := H(q, p)\n$$\n\n:::\n")
+    bodies = _body(text)
+    assert dts.two_definitions("Cross-entropy loss, log loss", bodies[3])
+
+
+def test_alias_title_with_equivalence_prose_is_flagged():
+    text = (":::{#def-a}\n\n#### Mean, average\n\nThe mean is the sum over n.\n"
+            "Equivalently, it is the balance point.\n\n:::\n")
+    assert dts.two_definitions("Mean, average", _body(text)[3])
+
+
+def test_alias_title_with_one_definition_passes():
+    text = ":::{#def-a}\n\n#### Mean, average\n\n$$\nm := \\sum x / n\n$$\n\n:::\n"
+    assert not dts.two_definitions("Mean, average", _body(text)[3])
+
+
+def test_single_name_title_is_not_checked():
+    assert not dts.two_definitions("Mean", "Equivalently, the average.")
+
+
+def test_allow_comment_exempts():
+    body = "Equivalently, x. <!-- def-title-synonyms: allow -->"
+    assert not dts.two_definitions("A, B", body)
+
+
+def test_body_of_nested_div_is_whole_definition():
+    text = (":::{#def-a}\n\n#### A, B\n\n::: {.callout-note}\nEquivalently x.\n:::\n\n:::\n")
+    assert "Equivalently" in _body(text)[3]
