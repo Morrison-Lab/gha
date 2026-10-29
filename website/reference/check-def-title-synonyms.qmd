@@ -16,6 +16,19 @@ when it holds a parenthesis, "also called", "also known as",
 Math (`$...$`) and a parenthetical that contains math are ignored,
 so a title like `Almost everywhere ($\measure$-a.e.)` passes.
 
+The check also warns when a title lists two or more names
+and the definition states the term twice:
+two display equations that each carry a defining operator
+(`:=`, `\eqdef`, `\coloneqq`, `\triangleq`),
+or prose such as "equivalently" or "in other words".
+Only true synonyms, which name one concept with one definition,
+share a title.
+Equivalent but distinct concepts each get their own definition
+and a theorem that they agree
+(Ezra, 2026-10-29; psw#424).
+`<!-- def-title-synonyms: allow -->` in the definition exempts it.
+This second rule is a heuristic.
+
 An untouched title is never reflagged.
 With no base ref the check skips instead of scanning the whole tree;
 `whole-tree` measures a corpus.

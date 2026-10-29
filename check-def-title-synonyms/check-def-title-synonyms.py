@@ -75,6 +75,58 @@ def def_titles(lines: List[str]) -> List[Tuple[int, str]]:
     return found
 
 
+FENCE_LINE_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
+DEFINER_RE = re.compile(r":=|\\eqdef\b|\\coloneqq\b|\\triangleq\b")
+EQUIV_RE = re.compile(
+    r"\b(?:equivalently|in other words|is equivalent to|is the same as|"
+    r"also defined as|alternatively)\b", re.IGNORECASE)
+DISPLAY_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
+ALLOW_RE = re.compile(r"<!--\s*def-title-synonyms\s*:\s*allow\b", re.IGNORECASE)
+
+
+def def_bodies(lines: List[str]) -> Dict[int, str]:
+    """Body text of each ``#def-`` div, keyed by the line number of its title."""
+    titles = dict(def_titles(lines))
+    bodies: Dict[int, str] = {}
+    depth, start = 0, None
+    for idx, raw in enumerate(lines):
+        m = FENCE_LINE_RE.match(raw)
+        if not m:
+            continue
+        if m.group(2):
+            if depth == 0 and DEF_OPEN_RE.match(raw):
+                start = idx
+            depth += 1
+        elif depth > 0:
+            depth -= 1
+            if depth == 0 and start is not None:
+                inner = lines[start + 1:idx]
+                for number in titles:
+                    if start + 1 <= number <= idx + 1:
+                        bodies[number] = "\n".join(inner)
+                start = None
+    return bodies
+
+
+def alias_names(title: str) -> List[str]:
+    plain = MATH_RE.sub("\x00", title)
+    return [n.strip() for n in plain.split(",") if n.strip()]
+
+
+def two_definitions(title: str, body: str) -> bool:
+    """True when a comma-list title has a body that defines the term twice.
+
+    Names that share a title are synonyms for one concept, which has one
+    definition. A body with two defining equations, or prose giving an
+    equivalent second definition, describes two concepts that happen to agree.
+    """
+    if len(alias_names(title)) < 2 or ALLOW_RE.search(body):
+        return False
+    displays = [d for d in DISPLAY_RE.findall(body) if DEFINER_RE.search(d)]
+    prose = DISPLAY_RE.sub(" ", body)
+    return len(displays) >= 2 or bool(EQUIV_RE.search(prose))
+
+
 def added_lines(diff: str) -> Dict[str, Set[int]]:
     """Added line numbers per path from ``git diff -U0`` output."""
     added: Dict[str, Set[int]] = {}
@@ -137,13 +189,24 @@ def main() -> int:
         except OSError:
             continue
         keep = wanted[rel]
+        bodies = def_bodies(lines)
         for number, title in def_titles(lines):
             titles += 1
-            if (keep is None or number in keep) and bad_title(title):
+            if not (keep is None or number in keep):
+                continue
+            if bad_title(title):
                 findings += 1
                 print(f"::{severity} file={rel},line={number}::Definition title "
                       f"'{title}' lists synonyms with parentheses or 'also called'. "
                       f"Fix: {ADVICE}")
+            elif two_definitions(title, bodies.get(number, "")):
+                findings += 1
+                print(f"::{severity} file={rel},line={number}::Definition title "
+                      f"'{title}' lists aliases, but the definition states the "
+                      f"term twice. Only true synonyms share a title; give "
+                      f"equivalent but distinct concepts their own definitions "
+                      f"and a theorem that they agree, or add "
+                      f"<!-- def-title-synonyms: allow --> (heuristic).")
     print(f"Examined {titles} definition title(s) in {len(wanted)} file(s); "
           f"{findings} flagged.")
     return 1 if findings and fail else 0
