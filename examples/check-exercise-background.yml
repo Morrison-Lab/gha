@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-exercise-background.yml in your repo.
+# Diff-scoped, warn-only heuristic check: flags an exercise (#exr- div) whose
+# title names an object that its body never mentions. A body gives the
+# background its title implies: "Maximizing a gamma-family kernel" is followed
+# by what a gamma kernel is and why anyone maximizes one.
+# Only contents:read is needed.
+name: Check exercise background
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-exercise-background.yml@v3
+    # with:
+    #   globs: '*.qmd'        # pathspecs to check
+    #   fail: true            # block (defaults to warn only)
+    #   whole-tree: true      # scan every exercise, not just a PR's additions
