@@ -28,6 +28,11 @@ adds a line of the exercise, an untouched exercise keeps its form, and with no
 base ref the check skips rather than scanning the whole tree.
 ``EXB_WHOLE_TREE=true`` measures a corpus. Needs Python 3.9 or later.
 
+Stack: this is part 1 of 5, split from gha#1327 to stay under the size cap.
+The tests (gha#1329), composite action (gha#1330), registrations and selftest
+job (gha#1331), and reusable workflow and example stub (gha#1332) follow.
+Until the composite action lands, the script runs only when called directly.
+
 Configuration (environment variables, set by the composite action):
   EXB_BASE_REF    Git ref/SHA to diff against. Empty and not whole-tree => skip.
   EXB_GLOBS       Space-separated git pathspecs (default: '*.qmd').
