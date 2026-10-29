@@ -158,7 +158,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-caller-permissions.yml`, `check-exm-figures.yml`, `check-visualization-figures.yml`,
 `check-axis-titles.yml`,
 `check-tree-lists.yml`, `check-search-shortcut.yml`, `check-self-contained-captions.yml`,
-`check-def-commentary.yml`, `check-solution-citations.yml`,
+`check-def-commentary.yml`, `check-unexplained-contrasts.yml`, `check-solution-citations.yml`,
 `check-exercise-before-result.yml`,
 `check-pr-concerns.yml`,
 `check-pr-size.yml`,
