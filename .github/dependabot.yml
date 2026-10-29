@@ -26,6 +26,7 @@ updates:
       - "/check-macro-expansions"
       - "/check-write-idiom"
       - "/check-avoided-words"
+      - "/check-proof-statements"
       - "/check-formatting"
       - "/check-informal-definitions"
       - "/check-literal-math-letters"

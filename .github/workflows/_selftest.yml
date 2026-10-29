@@ -4160,6 +4160,75 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-avoided-words || true
           rm -rf _ci-avoided-words
+  # check-proof-statements is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-proof-statements@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The diff
+  # model is check-write-idiom's; here the unit tests cover the rules, and one
+  # staged page proves action.yml wires the inputs through to the script.
+  proof-statements:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-proof-statements unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-proof-statements/tests/ check-write-idiom/tests/ -v
+      - name: Stage a page that hides a proof from slides
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-proof-statements
+          printf '%s\n' \
+            '::: {.content-hidden when-format="revealjs"}' \
+            '' \
+            '::: proof' \
+            'Trivial.' \
+            ':::' \
+            '' \
+            ':::' > _ci-proof-statements/page.qmd
+          git add -f _ci-proof-statements/page.qmd
+      - name: Check the staged page, warn-only by default
+        uses: ./check-proof-statements
+        with:
+          whole-tree: 'true'
+          globs: '_ci-proof-statements/*.qmd'
+      - name: Check the staged page, expecting a failure
+        id: proof-statements-expected-failure
+        continue-on-error: true
+        uses: ./check-proof-statements
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-proof-statements/*.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.proof-statements-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-proof-statements to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-proof-statements failed on the staged page, as expected."
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-proof-statements || true
+          rm -rf _ci-proof-statements
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.
