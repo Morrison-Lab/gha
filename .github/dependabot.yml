@@ -52,6 +52,7 @@ updates:
       - "/check-multipart-exercises"
       - "/check-split-solutions"
       - "/check-restated-results"
+      - "/check-definition-equations"
       - "/check-format-output-files"
       - "/check-rubric-checklists"
       - "/check-single-ask-parts"
