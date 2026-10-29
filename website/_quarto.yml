@@ -114,6 +114,7 @@ website:
           - reference/check-macro-expansions.qmd
           - reference/check-write-idiom.qmd
           - reference/check-avoided-words.qmd
+          - reference/check-proof-statements.qmd
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd
           - reference/lint-changed-files.qmd
