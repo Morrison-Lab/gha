@@ -81,6 +81,7 @@ website:
           - reference/check-pr-size.qmd
           - reference/check-pr-concerns.qmd
           - reference/check-def-commentary.qmd
+          - reference/check-unexplained-contrasts.qmd
           - reference/check-solution-citations.qmd
           - reference/check-exercise-before-result.qmd
           - reference/check-caller-permissions.qmd

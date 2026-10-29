@@ -1,0 +1,54 @@
+name: Check for unexplained contrasts
+description: >-
+  Diff-scoped, warn-only check that flags a contrast ("X, not Y", "does not
+  mean", "rather than a") in a `#def-`, `#rem-` or `#note-` div that cites no
+  source. A kept contrast must say who holds the other reading, with a source
+  (psw: Do not rule out readings no reader would make). Scoped to lines a diff
+  adds. Escape hatch: `<!-- check-unexplained-contrasts: allow -->` on the line.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Needs the base commit in history (checkout with fetch-depth: 0); when
+      the diff can't be computed the check is skipped with a warning rather
+      than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an unexplained contrast is found (else
+      non-blocking). Defaults to 'false'.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check for unexplained contrasts
+      shell: bash
+      env:
+        UCT_BASE_REF: ${{ inputs.base-ref }}
+        UCT_WHOLE_TREE: ${{ inputs.whole-tree }}
+        UCT_GLOBS: ${{ inputs.globs }}
+        UCT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        UCT_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-unexplained-contrasts.py"
