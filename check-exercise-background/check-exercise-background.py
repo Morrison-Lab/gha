@@ -6,11 +6,14 @@ Flag an exercise whose title names an object that the body never mentions.
 The lab's rule (Ezra, 2026-10-29; Morrison-Lab/psw teaching chapter): an
 exercise body gives the background its title implies. If the title says
 "Maximizing a gamma-family kernel", the body says what a gamma distribution
-and its kernel are, links them, and says why anyone cares. A body that only
-restates the formula leaves a reader who skipped the title with no context.
+and its kernel are, links them, and says why anyone cares. This check covers
+only the first step, naming the object: it cannot tell whether the body
+links or explains it, so a pass does not mean the background is adequate.
 
-What is flagged: an exercise div (id ``exr-...``) with a heading title in
-which some content word does not occur in the body. A word counts as present
+What is flagged: an exercise div (id ``exr-...``) with a heading title or a
+``title="..."`` attribute in which some content word does not occur in the
+body. The body excludes nested solution divs (``#sol-``, ``.sol``,
+``.solution``, ``.answer``), so a solution cannot hide a missing word. A word counts as present
 when another word in the body shares its first five letters, so "Maximizing"
 matches "maximum". Generic task verbs (find, compute, check, classify, ...)
 and ordinary connecting words are never reported. Math in the title, code
@@ -23,7 +26,7 @@ body, with its link, or reword the title.
 Diff-scoped like check-bare-yes-no: a finding is reported only when the diff
 adds a line of the exercise, an untouched exercise keeps its form, and with no
 base ref the check skips rather than scanning the whole tree.
-``EXB_WHOLE_TREE=true`` measures a corpus.
+``EXB_WHOLE_TREE=true`` measures a corpus. Needs Python 3.9 or later.
 
 Configuration (environment variables, set by the composite action):
   EXB_BASE_REF    Git ref/SHA to diff against. Empty and not whole-tree => skip.
@@ -45,6 +48,8 @@ ADVICE = ("say it in the body and link its definition, "
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 EXR_RE = re.compile(r"#exr-")
+SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
+ATTR_TITLE_RE = re.compile(r'title="([^"]*)"')
 TITLE_RE = re.compile(r"^#{1,6}\s+(.*?)\s*(?:\{[^}]*\})?\s*$")
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 MATH_RE = re.compile(r"\$[^$]*\$")
@@ -131,11 +136,17 @@ def exercises(lines: List[str]) -> List[Finding]:
         dm = DIV_RE.match(raw)
         if dm:
             if dm.group(2):
-                if cur is None and EXR_RE.search(dm.group(2)):
-                    cur = {"depth": depth, "start": lineno, "title": None,
+                attrs = dm.group(2)
+                if cur is None and EXR_RE.search(attrs):
+                    attr_title = ATTR_TITLE_RE.search(attrs)
+                    cur = {"depth": depth, "start": lineno, "skip": None,
+                           "title": attr_title.group(1) if attr_title else None,
                            "title_line": lineno, "body": []}
                 elif cur is not None:
-                    cur["body"].append(raw)
+                    if cur["skip"] is None and SOL_RE.search(attrs):
+                        cur["skip"] = depth
+                    if cur["skip"] is None:
+                        cur["body"].append(raw)
                 depth += 1
             elif depth > 0:
                 depth -= 1
@@ -148,9 +159,12 @@ def exercises(lines: List[str]) -> List[Finding]:
                                              cur["start"], lineno))
                     cur = None
                 elif cur is not None:
-                    cur["body"].append(raw)
+                    if cur["skip"] == depth:
+                        cur["skip"] = None
+                    elif cur["skip"] is None:
+                        cur["body"].append(raw)
             continue
-        if cur is None:
+        if cur is None or cur["skip"] is not None:
             continue
         tm = TITLE_RE.match(raw)
         if tm and cur["title"] is None and not any(b.strip() for b in cur["body"]):
