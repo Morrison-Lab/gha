@@ -2,8 +2,9 @@ name: Check avoided words
 description: >-
   Diff-scoped check that flags words a style source advises against, in .qmd
   and .md prose: "above"/"below" for a place in the document,
-  "just"/"easy"/"easily", and time-relative words such as "currently" and
-  "recently" (psw#418; Google developer documentation style guide). Skips code
+  "just"/"easy"/"easily", time-relative words such as "currently" and
+  "recently" (psw#418; Google developer documentation style guide), and a
+  generic placeholder set such as "domain A" (psw#427). Skips code
   fences and spans, HTML comments and front matter. Scoped to lines a diff
   adds (an added line whose exact text was also deleted in the same diff
   counts as moved). Warn-only by default.

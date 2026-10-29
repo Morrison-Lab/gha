@@ -3,7 +3,8 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Three rules, each with a source that was read (psw#418):
+Four rules; the first three each have a source that was read (psw#418),
+and the fourth is psw's own (psw#427):
 
 - **position words**: ``above`` or ``below`` used for a place in the
   document, such as "the table above" or "as shown below". Refer to the
@@ -21,6 +22,12 @@ Three rules, each with a source that was read (psw#418):
   are not flagged because "now" and the term "new observation" are common
   correct uses a regex cannot tell apart; review covers them. ``recently`` is
   psw's own extension, which the guide does not list.
+- **generic placeholders**: a domain, codomain, range or sample space named
+  by a bare capital letter ("domain A", "range B") or by "some" ("some
+  domain"). Name the specific set, such as "the range of X". Source: psw's
+  "be as specific as feasible" (psw#427). A regex cannot know whether a
+  specific object exists, so a finding only asks the author to check; a
+  deliberate abstract use takes the allow comment.
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
@@ -79,6 +86,10 @@ TIME_RE = re.compile(
     r"(?i)\b(?:currently|recently|nowadays|at\s+present|at\s+the\s+moment|"
     r"these\s+days)\b"
 )
+GENERIC_RE = re.compile(
+    r"\b(?:(?i:domain|codomain|range|sample\s+space)\s+[A-Z]\b(?![\w$\\(])"
+    r"|(?i:some\s+(?:domain|codomain|range|sample\s+space)\b))"
+)
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -90,6 +101,9 @@ RULES = (
     ("time", TIME_RE,
      "Give a date or a version instead of a time-relative word; it goes stale "
      "(psw#418; Google style guide, Timeless documentation)."),
+    ("generic", GENERIC_RE,
+     'Name the specific set, such as "the range of X", instead of a '
+     "generic placeholder; be as specific as feasible (psw#427)."),
 )
 
 
@@ -123,7 +137,7 @@ def format_message(finding: Finding) -> str:
 def main() -> int:
     return engine.main(
         scan=scan_file, prefix="CAW_", name="avoided-words",
-        clean="No position, effort or time-relative word found.",
+        clean="No position, effort, time-relative or generic-placeholder word found.",
         summary="use a word a style source advises against.",
         format_finding=format_message)
 
