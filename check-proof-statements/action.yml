@@ -39,7 +39,7 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action when an hidden proof or statement reasoning is found
+      Fail the action when a hidden proof or statement reasoning is found
       (else non-blocking). Defaults to 'false' (warning annotations only).
     default: 'false'
 runs:
