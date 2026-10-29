@@ -7,7 +7,7 @@ with a theorem-type class but no id with the matching prefix.
 Quarto and the lab's `callouty-theorem` and `custom-callout` extensions
 build a callout, a number and a cross-reference target from the id,
 so a div written `::: {.remark}` renders as a plain block quote
-([lds#1600](https://github.com/Morrison-Lab/lds/pull/1600)).
+(Morrison-Lab/lds#1600, a private repository the link checker cannot reach).
 
 | Class | Needs an id starting |
 | --- | --- |
