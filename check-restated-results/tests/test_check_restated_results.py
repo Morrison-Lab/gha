@@ -155,3 +155,62 @@ def test_warn_only_by_default(repo, monkeypatch, capsys):
     assert "::warning" in capsys.readouterr().out
     monkeypatch.setenv("RR_FAIL", "true")
     assert rr.main() == 1
+
+
+# -- proof that only cites the solution (gha#1315) ----------------------------
+
+BASE = div("exr-a", "Derive the mean.") + div("sol-a", EQ)
+
+
+def proof(body: str) -> str:
+    return f"::: {{.proof}}\n\n{body}\n\n:::\n\n"
+
+
+def test_proof_citing_only_the_solution_is_flagged_when_following():
+    out = msgs(BASE + div("thm-a", "The mean is 1.") + proof("See @sol-a."))
+    assert len(out) == 1 and "#thm-a" in out[0] and "proved only by citing" in out[0]
+
+
+def test_proof_citing_only_the_solution_is_flagged_when_nested():
+    out = msgs(BASE + div("thm-a", "The mean is 1.\n\n" + proof("By @sol-a.").rstrip()))
+    assert len(out) == 1 and "#thm-a" in out[0]
+
+
+def test_proof_with_its_own_derivation_passes():
+    assert msgs(BASE + div("thm-a", "T.") + proof("As in @sol-a:\n\n" + EQ)) == []
+
+
+def test_proof_citing_earlier_results_passes():
+    assert msgs(BASE + div("thm-a", "T.") + proof("By @thm-b and @lem-c.")) == []
+
+
+def test_theorem_without_a_proof_is_not_flagged_for_citing():
+    assert msgs(BASE + div("thm-a", "T.")) == []
+
+
+def test_proof_exemption_in_the_theorem_or_the_proof():
+    assert msgs(BASE + div("thm-a", "<!-- restated-ok: reason -->\nT.")
+                + proof("See @sol-a.")) == []
+    assert msgs(BASE + div("thm-a", "T.")
+                + proof("<!-- restated-ok: reason -->\nSee @sol-a.")) == []
+
+
+def test_proof_after_unrelated_div_is_not_the_theorem_proof():
+    assert msgs(BASE + div("thm-a", "T.") + div("rem-a", "Note.") + proof("See @sol-a.")) == []
+
+
+def test_proof_check_is_diff_scoped(repo):
+    text = BASE + div("thm-a", "T.") + proof("See @sol-a.")
+    (repo / "p.qmd").write_text(text)
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "old")
+    _git(repo, "checkout", "-q", "-b", "pr")
+    (repo / "q.qmd").write_text("Other.\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "other")
+    assert run(base="main").findings == []
+    (repo / "p.qmd").write_text(text.replace("See @sol-a.", "See @sol-a again."))
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "edit proof")
+    found = run(base="main").findings
+    assert len(found) == 1 and "#thm-a" in found[0].message

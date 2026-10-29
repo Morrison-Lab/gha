@@ -22,7 +22,14 @@ with a trailing ``-partK`` removed). The check is a heuristic: it is
 warn-only by default, and ``<!-- restated-ok: reason -->`` in the solution
 exempts it.
 
-A solution is checked when the diff adds a line inside it or its exercise, or
+A restating theorem is also flagged when its proof (a nested or directly
+following ``.proof`` div) cites a solution (``@sol-...``) and displays no
+equation of its own, since a proof that only points back at the solution leaves
+the result unproved where it is stated. ``<!-- restated-ok: reason -->`` in the
+theorem or its proof exempts it. Undefined symbols stay a review item.
+
+A solution is checked when the diff adds a line inside it or its exercise, and
+a proof when the diff adds a line inside the theorem or its proof, or
 always with ``RR_WHOLE_TREE=true``. No base-ref means the run is skipped.
 
 Configuration (environment variables, set by the composite action):
@@ -68,6 +75,12 @@ DERIVE_RE = re.compile(
     r"express|closed\s+form|(?:find|obtain|give|write\s+down)\s+(?:an?\s+|the\s+)?"
     r"(?:expression|formula|equation|form))\b", re.IGNORECASE)
 CITES_RESULT_RE = re.compile(r"@(?:thm|lem|cor|prp)-")
+CITES_SOLUTION_RE = re.compile(r"@sol-")
+PROOF_OPEN_RE = re.compile(r"^ {0,3}:{3,}\s*\{[^}]*\.proof\b")
+PROOF_ADVICE = (
+    "derive the result in the proof from earlier results, or add "
+    "<!-- restated-ok: reason --> to the theorem"
+)
 
 
 class Div(NamedTuple):
@@ -179,6 +192,54 @@ class Finding(NamedTuple):
     message: str
 
 
+def _div_end(stream: Stream, start: int, limit: int) -> Optional[int]:
+    """Index of the line closing the div that opens at ``start``."""
+    depth = 0
+    for idx in range(start, limit):
+        dm = DIV_RE.match(stream[idx][2])
+        if not dm:
+            continue
+        depth += 1 if dm.group(2) else -1
+        if depth == 0:
+            return idx
+    return None
+
+
+def proof_span(stream: Stream, thm: Div) -> Optional[Tuple[int, int]]:
+    """Stream span of the theorem's proof: nested in it, or directly after it."""
+    for idx in range(thm.start + 1, thm.end):
+        if PROOF_OPEN_RE.match(stream[idx][2]):
+            end = _div_end(stream, idx, thm.end)
+            return (idx, end) if end is not None else None
+    nxt = thm.end + 1
+    while nxt < len(stream) and not stream[nxt][2].strip():
+        nxt += 1
+    if nxt < len(stream) and PROOF_OPEN_RE.match(stream[nxt][2]):
+        end = _div_end(stream, nxt, len(stream))
+        return (nxt, end) if end is not None else None
+    return None
+
+
+def check_proof(stream: Stream, thm: Div,
+                touched: Optional[Dict[str, Set[int]]]) -> List[Finding]:
+    """A restating theorem whose proof only cites a solution."""
+    span = proof_span(stream, thm)
+    if span is None:
+        return []
+    proof = tuple(t for _, _, t in stream[span[0]:span[1] + 1])
+    if any(ALLOW_RE.search(t) for t in thm.body + proof):
+        return []
+    if not CITES_SOLUTION_RE.search(prose(proof)) or displays_equation(proof):
+        return []
+    lines = stream[thm.start:thm.end + 1] + stream[span[0]:span[1] + 1]
+    if touched is not None and not any(ln in touched.get(p, ()) for p, ln, _ in lines):
+        return []
+    path, line, _ = stream[thm.start]
+    return [Finding(path, line,
+        f"#{thm.ident} is proved only by citing a solution, with no derivation of "
+        f"its own (heuristic). Fix: {PROOF_ADVICE}")]
+
+
 def check_page(stream: Stream, touched: Optional[Dict[str, Set[int]]]) -> List[Finding]:
     divs = find_divs(stream)
     findings: List[Finding] = []
@@ -194,7 +255,7 @@ def check_page(stream: Stream, touched: Optional[Dict[str, Set[int]]]) -> List[F
             continue
         exr = next((x for x in reversed(divs[:i])
                     if x.ident == "exr-" + slug(d.ident)), None)
-        if exr is None or not is_derivation(d, exr) or not hit(d, exr):
+        if exr is None or not is_derivation(d, exr):
             continue
         group = group_of(d.ident)
         restated = False
@@ -202,10 +263,11 @@ def check_page(stream: Stream, touched: Optional[Dict[str, Set[int]]]) -> List[F
             kind = nxt.ident.split("-", 1)[0]
             if kind in RESULT_KINDS:
                 restated = True
+                findings.extend(check_proof(stream, nxt, touched))
                 break
             if kind == "exr" and group_of(nxt.ident) != group:
                 break
-        if not restated:
+        if not restated and hit(d, exr):
             path, line, _ = stream[d.start]
             findings.append(Finding(path, line,
                 f"#{d.ident} derives a result, but no #thm-, #lem-, #cor- or #prp- div "
