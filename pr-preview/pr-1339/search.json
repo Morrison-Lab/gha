@@ -644,6 +644,42 @@
     ]
   },
   {
+    "objectID": "reference/check-avoided-words.html#inputs",
+    "href": "reference/check-avoided-words.html#inputs",
+    "title": "check-avoided-words.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\nfalse\nFail the workflow when an avoided word is found. Warn-only by default.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-avoided-words.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-avoided-words.html#permissions",
+    "href": "reference/check-avoided-words.html#permissions",
+    "title": "check-avoided-words.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-avoided-words.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-avoided-words.html#example",
+    "href": "reference/check-avoided-words.html#example",
+    "title": "check-avoided-words.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/check-avoided-words.yml in your repo.\nname: Check avoided words\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-avoided-words.yml@v3\n    # with:\n    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)\n    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths\n    #   fail: true                              # block instead of warn (defaults to false)\n    #   whole-tree: true                        # scan every line, not just a PR's additions\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-avoided-words.yml for the full caller stub.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-avoided-words.yml"
+    ]
+  },
+  {
     "objectID": "reference/claude-manage-project.html",
     "href": "reference/claude-manage-project.html",
     "title": "claude-manage-project.yml",
