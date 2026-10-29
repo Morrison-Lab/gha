@@ -146,6 +146,10 @@ start_runner() {
     echo "Runner already running."
     return 0
   fi
+  # nohup ./run.sh passes on this shell's PATH (at reboot, cron's), not the
+  # one recorded in .path; pinning it in .env keeps the tools found there.
+  RUNNER_DIR="$RUNNER_DIR" bash "${SCRIPT_DIR}/pin-runner-path.sh" ||
+    echo "warning: the runner's PATH was not pinned; jobs get the PATH it starts with" >&2
   nohup ./run.sh > runner.log 2>&1 &
   echo "Runner started (log: $RUNNER_DIR/runner.log)."
 }

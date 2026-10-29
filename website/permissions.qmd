@@ -34,7 +34,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-exercise-before-result`,
   `check-term-links`, `check-paired-file-change`,
   `check-local-macros`, `check-fform-paren`, `check-macro-expansions`,
-  `check-write-idiom`, `check-math-definitions`,
+  `check-write-idiom`, `check-avoided-words`, `check-math-definitions`,
   `check-merge-drops`, `check-note-sheet-rows`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`,
