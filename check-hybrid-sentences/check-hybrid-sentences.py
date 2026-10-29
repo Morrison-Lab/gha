@@ -120,7 +120,12 @@ def top_level_relation(math: str) -> bool:
     flat: List[str] = []
     for i, c in enumerate(math):
         if i and math[i - 1] == "\\":
-            flat.append(c if depth == 0 else " ")
+            # an escaped brace is a literal set or indicator brace: it still groups
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth = max(0, depth - 1)
+            flat.append(c if depth == 0 and c not in "{}" else " ")
             continue
         if c in OPEN:
             depth += 1

@@ -153,6 +153,11 @@ def top_level_equals(math: str) -> List[int]:
     hits: List[int] = []
     for i, c in enumerate(math):
         if i and math[i - 1] == "\\":
+            # an escaped brace is a literal set or indicator brace: it still groups
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth = max(0, depth - 1)
             continue
         if c in OPEN:
             depth += 1
