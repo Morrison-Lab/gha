@@ -74,7 +74,7 @@ diagnostics quote source, so forwarding them would publish exactly what
 | `java-version` | `25` | JPlag 6.x needs Java 25 or newer. |
 | `jar` | `''` | Path to an already-downloaded JPlag jar, skipping the download. Its digest is still verified. |
 | `upload-report` | `false` | Upload JPlag's report as an artifact. |
-| `runs-on` | `ubuntu-latest` | Runner label (reusable workflow only). |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label (reusable workflow only). |
 | `timeout-minutes` | `30` | Job timeout (reusable workflow only). |
 
 ## Outputs

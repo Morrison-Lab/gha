@@ -21,7 +21,7 @@ splices, and blank lines that split a GFM table.
 | `base-ref`                 | string  | `''`     | Git ref/SHA to diff against. If set, only newly added lines in the diff are checked for list-item merge splices. Defaults to empty (skips check to avoid whole-tree false-positives). Pass 'all' to scan all lines. |
 | `fail-on-item-splices`     | boolean | `true`   | Fail the workflow when a list-item merge splice is detected.                                                                                                                                                     |
 | `fail-on-table-splits`     | boolean | `true`   | Fail the workflow when a blank line splits a GFM table, orphaning the rows below it so they render as literal text. Scans the whole tree rather than diff-scoping, since a split table has no legitimate form. |
-| `runs-on` | string | `'ubuntu-latest'` | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
 
