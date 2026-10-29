@@ -45,6 +45,13 @@ on:
           instead of one per workflow. `run-id` is then unused.
         type: boolean
         default: false
+      defer-while-running:
+        description: >-
+          With `all-runs`, skip this gate while another workflow's run on the
+          commit is still queued or in progress; the last to finish gates the
+          commit. See the `annotation-gate` action's input of the same name.
+        type: boolean
+        default: false
       levels:
         description: Comma list of annotation levels to enforce (notice, warning, failure).
         type: string
@@ -77,5 +84,6 @@ jobs:
           run-attempt: ${{ inputs.run-attempt }}
           head-sha: ${{ inputs.head-sha }}
           all-runs: ${{ inputs.all-runs }}
+          defer-while-running: ${{ inputs.defer-while-running }}
           levels: ${{ inputs.levels }}
           allow-patterns: ${{ inputs.allow-patterns }}

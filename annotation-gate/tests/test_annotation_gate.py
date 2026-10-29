@@ -214,6 +214,11 @@ def test_a_newer_unfinished_run_does_not_hide_an_older_finished_one():
     assert [r["run_number"] for r in g.latest_runs(runs, "")] == [4]
 
 
+def test_unfinished_runs_lists_queued_and_in_progress_runs_but_not_the_gates_own():
+    runs = [run(1, "push", 1, status="queued"), run(2, "push", 1, status="in_progress"), run(3, "push", 1), run(4, "push", 1, status="in_progress", name="Annotation gate")]
+    assert sorted(r["workflow_id"] for r in g.unfinished_runs(runs, "Annotation gate")) == [1, 2]
+
+
 def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts):
     posted, fetched = [], []
     for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
@@ -277,3 +282,24 @@ def test_commit_mode_without_a_head_sha_fails_fast(monkeypatch):
     monkeypatch.delenv("GATE_HEAD_SHA", raising=False)
     monkeypatch.delenv("GATE_RUN_ID", raising=False)
     assert g.main() == 2
+
+
+def test_defer_while_running_posts_nothing_when_another_run_is_unfinished(monkeypatch):
+    monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
+    runs = [run(1, "push", 1, rid=10), run(2, "push", 1, status="in_progress", rid=20)]
+    code, posted, fetched = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0})
+    assert code == 0 and posted == [] and fetched == []
+
+
+def test_defer_while_running_still_gates_when_every_run_has_finished(monkeypatch):
+    monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
+    runs = [run(1, "push", 1, rid=10)]
+    code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0})
+    assert code == 0 and posted[0][4] is True
+
+
+def test_without_defer_an_unfinished_run_does_not_stop_the_gate(monkeypatch):
+    monkeypatch.delenv("GATE_DEFER_WHILE_RUNNING", raising=False)
+    runs = [run(1, "push", 1, rid=10), run(2, "push", 1, status="in_progress", rid=20)]
+    code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0})
+    assert code == 0 and len(posted) == 1
