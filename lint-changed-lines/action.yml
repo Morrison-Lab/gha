@@ -104,6 +104,7 @@ runs:
       shell: Rscript {0}
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
       run: |
         extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
         pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
@@ -153,6 +154,7 @@ runs:
       env:
         GITHUB_PAT: ${{ github.token }}
         LMS_REF: ${{ inputs.lms-ref }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
       run: |
         if (!requireNamespace("remotes", quietly = TRUE)) {
           install.packages("remotes", repos = "https://cloud.r-project.org")
@@ -169,4 +171,5 @@ runs:
         LINT_FAIL: ${{ inputs.fail }}
         LINT_FILE_PATTERN: ${{ inputs.file-pattern }}
         LINT_LMS: ${{ inputs.lms-ref != '' }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
       run: Rscript "$GITHUB_ACTION_PATH/lint-changed-lines.R"
