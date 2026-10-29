@@ -98,7 +98,41 @@ check "crontab: created when none existed" "$(grep -c '^@reboot' "$work/crontab"
 # The helpers are called after the script cd-s into the runner directory, so their
 # path must be absolute; a relative one fails to find them.
 check "helpers: dirname of BASH_SOURCE appears only in SCRIPT_DIR" "$(grep -c 'dirname "${BASH_SOURCE' "$script")" "1"
-check "helpers: both are called through SCRIPT_DIR" "$(grep -c '"${SCRIPT_DIR}/' "$script")" "2"
+check "helpers: all three are called through SCRIPT_DIR" "$(grep -c '"${SCRIPT_DIR}/' "$script")" "3"
+
+# pin-runner-path.sh copies .path into .env (gha#1341).
+pin="$repo_root/scripts/pin-runner-path.sh"
+rd="$work/runner"
+mkdir "$rd"
+echo "/opt/quarto/bin:/usr/bin" > "$rd/.path"
+printf 'LANG=C.UTF-8' > "$rd/.env"
+RUNNER_DIR="$rd" bash "$pin" > /dev/null
+check "pin: PATH line added" "$(grep '^PATH=' "$rd/.env")" "PATH=/opt/quarto/bin:/usr/bin"
+check "pin: existing line kept on its own line" "$(head -n 1 "$rd/.env")" "LANG=C.UTF-8"
+RUNNER_DIR="$rd" bash "$pin" > /dev/null
+check "pin: idempotent" "$(grep -c '^PATH=' "$rd/.env")" "1"
+printf 'PATH=/custom\n' > "$rd/.env"
+RUNNER_DIR="$rd" bash "$pin" > /dev/null
+check "pin: a PATH set by hand is kept" "$(cat "$rd/.env")" "PATH=/custom"
+rm "$rd/.env"
+RUNNER_DIR="$rd" bash "$pin" > /dev/null
+check "pin: .env created when missing" "$(cat "$rd/.env")" "PATH=/opt/quarto/bin:/usr/bin"
+# pin_fails <name> <.path contents, or "missing">: the pin must exit non-zero,
+# say why, and leave .env alone. A blank PATH= line would unset PATH.
+pin_fails() {
+  rm -f "$rd/.path" "$rd/.env"
+  if [ "$2" != missing ]; then printf '%s' "$2" > "$rd/.path"; fi
+  echo "LANG=C.UTF-8" > "$rd/.env"
+  local err rc=0
+  err=$(RUNNER_DIR="$rd" bash "$pin" 2>&1 > /dev/null) || rc=$?
+  check "pin: $1 exits non-zero" "$([ "$rc" -ne 0 ] && echo nonzero || echo zero)" "nonzero"
+  check "pin: $1 says why" "$err" "No PATH recorded in $rd/.path."
+  check "pin: $1 leaves .env alone" "$(cat "$rd/.env")" "LANG=C.UTF-8"
+}
+nl=$'\n'
+pin_fails "missing .path" missing
+pin_fails "blank .path" "$nl"
+pin_fails "blank first line" "$nl/usr/bin$nl"
 
 echo "$cases cases, $failures failures"
 [[ "$failures" -eq 0 ]]
