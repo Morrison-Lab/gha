@@ -14,10 +14,12 @@ The check reads the body of
 - the proof of each `#thm-`, `#lem-`, `#cor-` or `#prp-` div
   (a `.proof` div nested in it or directly after it).
 
-A body is flagged when a sentence of its prose says "for any", "for every" or "for all"
+A body is flagged when a sentence of its prose says
+"for any", "for every" or "for all"
 and also holds inline math,
 and the body cites no result
-(`@thm-`, `@lem-`, `@cor-`, `@prp-`, or a link to a `#thm-`, `#lem-`, `#cor-` or `#prp-` anchor).
+(`@thm-`, `@lem-`, `@cor-`, `@prp-`,
+or a link to a `#thm-`, `#lem-`, `#cor-` or `#prp-` anchor).
 A theorem's own statement is not read, since a theorem is meant to be general.
 The check follows `{{< include >}}` lines,
 so it reads a page in the order a reader sees it.
