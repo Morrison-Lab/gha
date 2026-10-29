@@ -475,7 +475,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426): a proof inside a `content-hidden` wrapper for `revealjs`, in any file a PR touches, and reasoning words ("so", "because" and others) on an added line inside a `#thm-`, `#lem-`, `#cor-` or `#prp-` statement.
-  It loads `check-write-idiom`'s engine like `check-avoided-words`, and sets `scan_file.wants_scope` so `run_check` passes it the added-line set and reports its findings as returned (the hidden-proof rule is file-level, not line-level); its env vars use the `CPS_` prefix.
+  It loads `check-write-idiom`'s engine like `check-avoided-words`.
+  It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set and reports its findings as returned,
+  because the hidden-proof rule is file-level, not line-level.
+  Its env vars use the `CPS_` prefix.
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
   A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.
