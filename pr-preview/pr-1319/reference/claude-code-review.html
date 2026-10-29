@@ -1105,7 +1105,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>runs-on</code></td>
 <td>string</td>
-<td><code>'ubuntu-latest'</code></td>
+<td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
 <td>Runner for every job in the workflow. Set a self-hosted label only for a private repository.</td>
 </tr>
 <tr class="even">

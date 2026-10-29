@@ -1103,7 +1103,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>runs-on</code></td>
 <td>string</td>
-<td><code>'ubuntu-latest'</code></td>
+<td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
 <td>Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo.</td>
 </tr>
 <tr class="even">
