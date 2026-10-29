@@ -136,11 +136,15 @@ runs:
       shell: bash
       run: |
         # A self-hosted runner's service has no login PATH, so a Quarto
-        # installed in the runner user's home is not found by name.
+        # unpacked under the runner user's home (~/opt/quarto-<version>) is
+        # not found by name. Use the newest one. Nothing happens when quarto
+        # is already on PATH or no such directory exists.
         set -euo pipefail
-        quarto_bin=/home/morri313/opt/quarto-1.10.18/bin
-        if ! command -v quarto > /dev/null && [ -x "$quarto_bin/quarto" ]; then
-          echo "$quarto_bin" >> "$GITHUB_PATH"
+        if ! command -v quarto > /dev/null; then
+          quarto_bin="$(ls -d "$HOME"/opt/quarto-*/bin 2> /dev/null | sort -V | tail -n 1 || true)"
+          if [ -n "$quarto_bin" ] && [ -x "$quarto_bin/quarto" ]; then
+            echo "$quarto_bin" >> "$GITHUB_PATH"
+          fi
         fi
 
     - name: Install apt packages
