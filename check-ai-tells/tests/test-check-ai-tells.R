@@ -163,4 +163,31 @@ check("Parse new multi-word names from a space-separated list",
       setequal(res_new_mw, c("inflated copula", "when it comes to", "delve")),
       res_new_mw, c("inflated copula", "when it comes to", "delve"))
 
+# Test: "leverage" is flagged as a verb only, not as the statistical noun
+leverage_hits <- function(text) {
+  tmp <- tempfile(fileext = ".md")
+  writeLines(text, tmp)
+  length(scan_file_prose(tmp)$findings)
+}
+check("Noun leverage (definition) is not flagged",
+      leverage_hits("The leverage of an observation is the diagonal entry of the hat matrix.") == 0L)
+check("Noun leverage (hyphenated, modified) is not flagged",
+      leverage_hits("Points with high leverage and a large leverage value pull the fit.") == 0L)
+check("Noun leverage in a link is not flagged",
+      leverage_hits("Find the car with the largest [leverage](linear-regression.qmd#def-leverage).") == 0L)
+check("Verb leverage after 'to' is flagged",
+      leverage_hits("We want to leverage the data to build a model.") == 1L)
+check("Verb leverage after a modal is flagged",
+      leverage_hits("Teams can leverage existing tools here.") == 1L)
+check("Verb leverage after a plural subject is flagged",
+      leverage_hits("Researchers leverage large language models.") == 1L)
+check("Verb leverage after 'and' is flagged",
+      leverage_hits("The team reads the logs and leverage the results.") == 1L)
+check("Verb leverage after an adverb is flagged",
+      leverage_hits("We want to better leverage the data.") == 1L)
+check("Negated verb leverage is flagged",
+      leverage_hits("The method does not leverage the structure.") == 1L)
+check("Noun leverage at the end of a clause is not flagged",
+      leverage_hits("Plot the residuals against leverage.") == 0L)
+
 cat("\nAll check-ai-tells tests passed successfully.\n")

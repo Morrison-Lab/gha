@@ -76,6 +76,27 @@ RHETORICAL_PATTERNS <- list(
   )
 )
 
+# "leverage" is a tell as a verb ("to leverage the data"), but a noun in
+# statistics ("the leverage of a point", "high-leverage points"). Only
+# recognizable noun contexts are exempt, so an unfamiliar context stays flagged:
+# a determiner or adjective before it, a link or parenthesis opening before it,
+# or a clause end or noun-like continuation after it.
+LEVERAGE_NOUN_BEFORE <- paste0(
+  "(?i)(?:\\b(?:the|a|an|its|their|each|every|of|high|low|large|larger|largest|",
+  "small|smaller|smallest|zero|unit|average|mean|maximum|maximal|leverage)\\s+|[-\\[(])$"
+)
+LEVERAGE_NOUN_AFTER <- paste0(
+  "(?i)^(?:\\]|\\s*(?:[,.;:)]|$|\\(|(?:values?|points?|scores?|statistics?|",
+  "of|h|plot|plots|and\\s+influence|diagnostics?)\\b))"
+)
+
+is_noun_leverage <- function(line, start, val) {
+  end <- start + nchar(val)
+  tolower(val) == "leverage" &&
+    (grepl(LEVERAGE_NOUN_BEFORE, substr(line, 1L, start - 1L), perl = TRUE) ||
+       grepl(LEVERAGE_NOUN_AFTER, substr(line, end, nchar(line)), perl = TRUE))
+}
+
 # ── Diff Line Extraction ─────────────────────────────────────────────────────
 
 extract_added_lines <- function(patch) {
@@ -245,6 +266,7 @@ scan_file_prose <- function(file_path, added_lines_only = NULL) {
         start <- matches[k]
         len <- match_lens[k]
         val <- substr(line, start, start + len - 1L)
+        if (is_noun_leverage(line, start, val)) next
         findings[[length(findings) + 1L]] <- list(
           file = file_path,
           line = line_idx,
