@@ -3203,6 +3203,74 @@ jobs:
           git rm -q -r --cached --ignore-unmatch _ci-definition-equations || true
           rm -rf _ci-definition-equations
 
+  # check-hybrid-sentences is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-hybrid-sentences@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  hybrid-sentences:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-hybrid-sentences unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-hybrid-sentences/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-hybrid-sentences
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no hybrid sentences, so stage one and assert
+      # that the check warns by default and blocks with fail on.
+      - name: Stage a hybrid sentence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-hybrid-sentences
+          printf '%s\n' 'The risk is zero if and only if $f = g$.' > _ci-hybrid-sentences/page.qmd
+          git add -f _ci-hybrid-sentences/page.qmd
+      - name: Check the staged sentence, expecting a warning only
+        uses: ./check-hybrid-sentences
+        with:
+          whole-tree: 'true'
+      - name: Check again with fail on, expecting a failure
+        id: hybrid-sentences-expected-failure
+        continue-on-error: true
+        uses: ./check-hybrid-sentences
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.hybrid-sentences-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-hybrid-sentences with fail on to fail on a hybrid sentence, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-hybrid-sentences
+        with:
+          base-ref: ''
+      - name: Remove the staged sentence
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-hybrid-sentences || true
+          rm -rf _ci-hybrid-sentences
+
   # check-rubric-checklists is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-rubric-checklists@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
