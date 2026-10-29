@@ -290,7 +290,10 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     """Scan the added lines since ``base_ref``, or every line when whole-tree.
 
     ``scan`` is the per-file scanner (default ``scan_file``), so a sibling check
-    such as ``check-avoided-words`` can reuse the diff model.
+    such as ``check-avoided-words`` can reuse the diff model. A scanner with a
+    true ``wants_scope`` attribute is called as ``scan(content, keep)``, with
+    ``keep`` the set of added line numbers (``None`` for a whole-tree scan),
+    and its findings are reported as returned, not filtered to ``keep``.
     """
     scan = scan or scan_file
     wanted: Dict[str, Optional[Set[int]]] = {}
@@ -327,6 +330,11 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         files += 1
         keep = wanted[rel]
         lines += len(content) if keep is None else len(keep)
+        if getattr(scan, "wants_scope", False):
+            # The scanner reads the added-line set itself (a file-level rule
+            # fires when the file is touched at all) and returns what to report.
+            findings.extend((rel, f) for f in scan(content, keep)[0])
+            continue
         for finding in scan(content)[0]:
             if keep is None or finding.line in keep:
                 findings.append((rel, finding))
