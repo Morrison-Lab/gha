@@ -9,7 +9,7 @@ on:
           private repository; never for a public one, whose pull requests
           can run arbitrary code on it.
         type: string
-        default: ubuntu-latest
+        default: ''
       python-version:
         description: Python version to set up.
         type: string
@@ -41,7 +41,7 @@ on:
 
 jobs:
   check-pr-concerns:
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

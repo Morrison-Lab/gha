@@ -13,7 +13,7 @@ on:
           private repository; never for a public one, whose pull requests
           can run arbitrary code on it.
         type: string
-        default: ubuntu-latest
+        default: ''
       run-id:
         description: The finished run to gate, github.event.workflow_run.id.
         type: string
@@ -65,7 +65,7 @@ on:
 
 jobs:
   annotation-gate-run:
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     # The group name differs from any a caller sets at workflow level: a job
     # that shares its caller's group is cancelled as a deadlock.

@@ -9,7 +9,7 @@ on:
           private repository; never for a public one, whose pull requests
           can run arbitrary code on it.
         type: string
-        default: ubuntu-latest
+        default: ''
       trigger-paths:
         description: >-
           Comma- or newline-separated git pathspecs. A changed file matching
@@ -38,7 +38,7 @@ on:
 
 jobs:
   check-paired-file-change:
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read

@@ -22,7 +22,7 @@ on:
           private repository; never for a public one, whose pull requests
           can run arbitrary code on it.
         type: string
-        default: ubuntu-latest
+        default: ''
       preview-dir:
         description: Directory on gh-pages that holds the per-PR preview subdirectories.
         type: string
@@ -58,7 +58,7 @@ on:
 
 jobs:
   cleanup:
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
     # Serialize gh-pages branch modifications with other publish/preview deploys.
     concurrency:

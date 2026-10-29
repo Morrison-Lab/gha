@@ -208,8 +208,8 @@ def main() -> int:
         "(an omitted block inherits the caller's write-scoped GITHUB_TOKEN)",
     )
     check(
-        filt.get("runs-on") == "ubuntu-latest",
-        "mention-filter uses ubuntu-latest, not inputs.runs-on "
+        filt.get("runs-on") == "${{ vars.CI_RUNNER || 'ubuntu-latest' }}",
+        "mention-filter uses the caller's CI_RUNNER variable, not inputs.runs-on "
         f"(found: {filt.get('runs-on')!r})",
     )
     timeout = filt.get("timeout-minutes")

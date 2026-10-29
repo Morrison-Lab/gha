@@ -20,7 +20,7 @@ on:
           can run arbitrary code on it. A self-hosted runner without root
           cannot run steps that call apt or sudo, such as `apt-packages`.
         type: string
-        default: ubuntu-latest
+        default: ''
       path:
         description: >-
           Path (relative to the caller repo root) to the Quarto project to
@@ -237,7 +237,7 @@ jobs:
       (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
       (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name))
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ inputs.runs-on || vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # Cancel an in-progress preview build when a newer commit on the same ref
     # supersedes it. Without cancel-in-progress the default is false, so a fresh
