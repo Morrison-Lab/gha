@@ -234,6 +234,22 @@ runs:
         echo "$PR_NUMBER" > _preview_upload/meta/pr-number.txt
         echo "$PREVIEW_ACTION" > _preview_upload/meta/action.txt
 
+    - name: Put the runner's Quarto on PATH
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      run: |
+        # A self-hosted runner's service has no login PATH, so a Quarto
+        # unpacked under the runner user's home (~/opt/quarto-<version>) is
+        # not found by name. Use the newest one. Nothing happens when quarto
+        # is already on PATH or no such directory exists.
+        set -euo pipefail
+        if ! command -v quarto > /dev/null; then
+          quarto_bin="$(ls -d "$HOME"/opt/quarto-*/bin 2> /dev/null | sort -V | tail -n 1 || true)"
+          if [ -n "$quarto_bin" ] && [ -x "$quarto_bin/quarto" ]; then
+            echo "$quarto_bin" >> "$GITHUB_PATH"
+          fi
+        fi
+
     - name: Set up Quarto
       if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
@@ -402,6 +418,12 @@ runs:
         mkdir -p "${depot%%:*}/conda/3/$(uname -m)"
         if command -v Rscript >/dev/null 2>&1 \
           && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
+          # RCall records the R library path at build time, and the restored
+          # cache keeps it (the cache holds packages/ but not the environment,
+          # so Pkg sees no RCall until it is added again), so a new R release
+          # (4.6.1 to 4.6.2) leaves RCall pointing at a directory that is
+          # gone. Add RCall, as JuliaCall would, and rebuild it against this R.
+          R_HOME="$(R RHOME)" julia -e 'import Pkg; Pkg.add("RCall"); Pkg.build("RCall")'
           Rscript -e 'JuliaCall::julia_setup(installJulia = FALSE)'
         else
           echo "::notice::setup-julia is true but the R package JuliaCall is not installed, so knitr cannot run {julia} chunks; add it to r-packages (any::JuliaCall) if pages need that."
