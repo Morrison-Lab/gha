@@ -120,7 +120,12 @@ def top_level_relation(math: str) -> bool:
     flat: List[str] = []
     for i, c in enumerate(math):
         if i and math[i - 1] == "\\":
-            flat.append(c if depth == 0 else " ")
+            # an escaped brace is a literal set or indicator brace: it still groups
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth = max(0, depth - 1)
+            flat.append(c if depth == 0 and c not in "{}" else " ")
             continue
         if c in OPEN:
             depth += 1
@@ -172,12 +177,20 @@ def connective_at(toks: List[str], i: int) -> int:
     return 0
 
 
+def joiner_at(toks: List[str], i: int) -> int:
+    """Length of a connective at ``i``, counting one comma just before it."""
+    if toks[i:i + 1] == [","]:
+        n = connective_at(toks, i + 1)
+        return n + 1 if n else 0
+    return connective_at(toks, i)
+
+
 def segments(toks: List[str]) -> List[Tuple[int, int]]:
     """Token ranges between connectives and commas."""
     cuts: List[Tuple[int, int]] = []
     i, begin = 0, 0
     while i < len(toks):
-        n = connective_at(toks, i)
+        n = joiner_at(toks, i)
         if toks[i] == "," or n:
             cuts.append((begin, i))
             i += n or 1
@@ -199,7 +212,7 @@ def hybrid(sentence: str) -> bool:
         left = toks[segs[k][0]:segs[k][1]]
         right = toks[segs[k + 1][0]:segs[k + 1][1]]
         end = segs[k][1]
-        if not connective_at(toks, end):
+        if not joiner_at(toks, end):
             continue
         if right[:1] == ["R"] and "R" not in left and words(left) >= MIN_WORDS:
             return True
@@ -345,6 +358,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         if base is None or not base.strip():
             return Report([], True)
         diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                         "--src-prefix=a/", "--dst-prefix=b/",
                          base.strip(), "--", *globs])
         if diff is None:
             return Report([], True)

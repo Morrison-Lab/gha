@@ -41,6 +41,12 @@ def test_equal_sign_inside_brackets_is_not_a_chain():
     assert msgs(div(body)) == []
 
 
+def test_escaped_braces_group_like_brackets():
+    for rhs in (r"\{x : f(x) = 0\}", r"\indicator\{X = x\}", r"\left\{ x = 1 \right\}"):
+        body = "The **term** is\n\n$$\nS \\eqdef " + rhs + ".\n$$"
+        assert msgs(div(body)) == [], rhs
+
+
 def test_chain_after_definer_is_flagged():
     out = msgs(div("The **term** is\n\n$$\nf \\eqdef g(x) = h(x).\n$$"))
     assert len(out) == 1 and "#def-a" in out[0] and "chains" in out[0]

@@ -3240,9 +3240,15 @@ jobs:
           printf '%s\n' '::: {#def-a}' '$$' 'f := g = h' '$$' ':::' > _ci-definition-equations/page.qmd
           git add -f _ci-definition-equations/page.qmd
       - name: Check the staged definition, expecting a warning only
-        uses: ./check-definition-equations
-        with:
-          whole-tree: 'true'
+        shell: bash
+        env:
+          DE_WHOLE_TREE: 'true'
+        run: |
+          set -euo pipefail
+          out=$(python3 check-definition-equations/check-definition-equations.py)
+          echo "$out"
+          grep -q '^::warning file=_ci-definition-equations/page.qmd' <<<"$out" \
+            || { echo "::error::expected a warning for the staged definition"; exit 1; }
       - name: Check again with fail on, expecting a failure
         id: definition-equations-expected-failure
         continue-on-error: true
@@ -3261,9 +3267,15 @@ jobs:
             exit 1
           fi
       - name: Check again with no base, expecting a skip
-        uses: ./check-definition-equations
-        with:
-          base-ref: ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(python3 check-definition-equations/check-definition-equations.py)
+          echo "$out"
+          grep -q '^Skipping the definition-equations' <<<"$out" \
+            || { echo "::error::expected a skip with no base ref"; exit 1; }
+          ! grep -q '^::warning file=' <<<"$out" \
+            || { echo "::error::a skipped run must not scan the tree"; exit 1; }
       - name: Remove the staged definition
         if: always()
         shell: bash
@@ -3308,9 +3320,15 @@ jobs:
           printf '%s\n' 'The risk is zero if and only if $f = g$.' > _ci-hybrid-sentences/page.qmd
           git add -f _ci-hybrid-sentences/page.qmd
       - name: Check the staged sentence, expecting a warning only
-        uses: ./check-hybrid-sentences
-        with:
-          whole-tree: 'true'
+        shell: bash
+        env:
+          HS_WHOLE_TREE: 'true'
+        run: |
+          set -euo pipefail
+          out=$(python3 check-hybrid-sentences/check-hybrid-sentences.py)
+          echo "$out"
+          grep -q '^::warning file=_ci-hybrid-sentences/page.qmd' <<<"$out" \
+            || { echo "::error::expected a warning for the staged hybrid sentence"; exit 1; }
       - name: Check again with fail on, expecting a failure
         id: hybrid-sentences-expected-failure
         continue-on-error: true
@@ -3329,9 +3347,15 @@ jobs:
             exit 1
           fi
       - name: Check again with no base, expecting a skip
-        uses: ./check-hybrid-sentences
-        with:
-          base-ref: ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(python3 check-hybrid-sentences/check-hybrid-sentences.py)
+          echo "$out"
+          grep -q '^Skipping the hybrid-sentences' <<<"$out" \
+            || { echo "::error::expected a skip with no base ref"; exit 1; }
+          ! grep -q '^::warning file=' <<<"$out" \
+            || { echo "::error::a skipped run must not scan the tree"; exit 1; }
       - name: Remove the staged sentence
         if: always()
         shell: bash
