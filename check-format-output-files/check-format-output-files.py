@@ -65,6 +65,11 @@ def parse_formats(fm: List[str]) -> Optional[Dict[str, Dict]]:
     if start is None:
         return None
     formats: Dict[str, Dict] = {}
+    flow = re.match(r"^format\s*:\s*\{(.*)\}\s*$", fm[start])
+    if flow:
+        for name, body in re.findall(r"""["']?([\w-]+)["']?\s*:\s*(\{[^{}]*\}|[^,{}]*)""", flow.group(1)):
+            formats[name] = {"line": start + 2, "output_file": "output-file" in body}
+        return formats
     entry_indent = None
     current = None
     for i in range(start + 1, len(fm)):
@@ -77,10 +82,11 @@ def parse_formats(fm: List[str]) -> Optional[Dict[str, Dict]]:
         if entry_indent is None:
             entry_indent = indent
         if indent == entry_indent:
-            name = re.match(r"^\s*([\w-]+)\s*:", raw)
+            name = re.match(r"""^\s*["']?([\w-]+)["']?\s*:(.*)$""", raw)
             if name:
                 current = name.group(1)
-                formats[current] = {"line": i + 2, "output_file": False}
+                inline = re.search(r"\{[^}]*output-file\s*:\s*\S", name.group(2))
+                formats[current] = {"line": i + 2, "output_file": bool(inline)}
         elif current and re.match(r"^\s*output-file\s*:\s*\S", raw):
             formats[current]["output_file"] = True
     return formats
@@ -102,7 +108,7 @@ def check_page(path: str, lines: List[str], required: List[str]) -> List[Finding
             findings.append(Finding(
                 path, 1,
                 "`format:` omits %s, but a per-format publish renders it "
-                "anyway under the default name; add `%s: {output-file: ...}`"
+                "anyway under the default name; add `%s:` with an `output-file:` key"
                 % (fmt, fmt)))
         elif not formats[fmt]["output_file"]:
             findings.append(Finding(

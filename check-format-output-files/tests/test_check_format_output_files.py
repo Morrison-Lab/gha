@@ -75,3 +75,26 @@ def test_subfiles_are_skipped(tmp_path, monkeypatch):
     subprocess.run(["git", "add", "."], check=True)
     findings = cfo.run(["*.qmd"], [], REQ)
     assert [f.path for f in findings] == ["page.qmd"]
+
+
+def test_inline_flow_entry_with_output_file_passes():
+    text = FULL.replace(REVEAL, "  revealjs: {output-file: a-slides.html}\n")
+    assert check(text) == []
+
+
+def test_flow_style_format_mapping_passes():
+    text = ("---\nformat: {html: default, revealjs: {output-file: a.html}, "
+            "pdf: {output-file: a.pdf}, docx: {output-file: a.docx}}\n---\n")
+    assert check(text) == []
+
+
+def test_flow_style_format_mapping_missing_output_file_fails():
+    text = ("---\nformat: {revealjs: default, pdf: {output-file: a.pdf}, "
+            "docx: {output-file: a.docx}}\n---\n")
+    findings = check(text)
+    assert len(findings) == 1 and "revealjs" in findings[0].message
+
+
+def test_quoted_format_key_passes():
+    text = FULL.replace("  revealjs:\n", '  "revealjs":\n')
+    assert check(text) == []
