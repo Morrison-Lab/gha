@@ -1,0 +1,41 @@
+---
+title: "check-restated-results.yml"
+---
+
+Diff-scoped, warn-only heuristic check for the lab's rule (Ezra, 2026-10-29)
+that a result first derived in an exercise solution is restated
+in its own theorem-type div (`#thm-`, `#lem-`, `#cor-` or `#prp-`) after the exercise.
+
+A `#sol-` div is a *derivation* when
+
+- its exercise asks to derive, prove, show, solve, simplify or express something,
+  or to find an expression, formula or closed form,
+  and does not cite an existing result (`@thm-...`),
+  which would make the solution a proof of a stated result; and
+- the solution displays an equation.
+
+The check follows `{{< include >}}` lines, so it reads a page in the order a reader sees it.
+After a derivation solution, a theorem-type div has to appear
+before the next exercise of a different group
+(the exercise slug with a trailing `-partK` removed).
+A solution that holds `<!-- restated-ok: reason -->` is exempt.
+
+A solution is checked when the pull request adds a line inside it or its exercise.
+With no base to diff against, the check skips instead of scanning the whole tree,
+so existing solutions are fixed when someone edits them anyway.
+It warns by default; `fail: true` blocks.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Check every derivation solution, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+
+## Usage
+
+Copy `examples/check-restated-results.yml` to
+`.github/workflows/check-restated-results.yml`.

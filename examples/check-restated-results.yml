@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-restated-results.yml in your repo.
+# Diff-scoped, warn-only heuristic check: flags a derivation solution (#sol- whose
+# exercise asks to derive, prove, show or solve, and whose solution displays an
+# equation) that a PR edits when no #thm-, #lem-, #cor- or #prp- div restates the
+# result after the exercise. <!-- restated-ok: reason --> exempts one.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check restated results
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-restated-results.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # check every solution, not just those a PR touches
