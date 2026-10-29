@@ -29,6 +29,9 @@ match.
 
 Must be triggered by `pull_request` (the changed-line set comes from the PR).
 
+A repository with no `DESCRIPTION` in `path` skips the dependency setup:
+the workflow installs `gh`, `lintr` and any `extra-packages` from CRAN, and `install-package` should be `false`.
+
 ## Inputs
 
 | Input                | Type    | Default | Description                                                                                                                                                       |
