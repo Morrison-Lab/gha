@@ -35,7 +35,7 @@ In a split group it reports:
   even with `fail: true`.
   It looks for a short list of terms
   (correlation, R-squared, residual, variance inflation, F-test, p-value,
-  standard error, indicator columns)
+  standard error, a listing of indicator columns)
   in the exercise text of the siblings but not of the solution's own exercise,
   then looks for a call that reports the term in the solution's code.
   Assignments, function definitions, imports, hidden chunks (`include: false`)
@@ -43,6 +43,9 @@ In a split group it reports:
   An exercise that says "repeat @exr-x" is read as asking for what `@exr-x` asks.
   This is the case of the old `#sol-lab-multiple`,
   which printed the correlation that `-part3` asks for.
+  Known gap: it cannot see a second model fit in the first solution
+  (the old `#sol-sign-flip` fitted the model with `horsepower` added,
+  which `-part4` asks for), because that has no term to look for.
 
 Code, display math and HTML comments are not read for part labels.
 A solution that holds `<!-- split-solutions-ok: reason -->` is exempt.

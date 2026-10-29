@@ -245,6 +245,22 @@ def test_output_after_a_setup_block_is_reported():
     assert len(_quiet_with(chunk(code, "r"))) == 1
 
 
+@pytest.mark.parametrize("lang, code", [
+    ("python", "print(X.columns.tolist())"),
+    ("r", "contrasts(carseats$ShelveLoc)"),
+    ("r", "recipe |> prep() |> bake(new_data = NULL) |> names()"),
+])
+def test_column_listing_for_a_sibling_is_flagged(lang, code):
+    # lds#1540: the Carseats solution listed the indicator columns of part 2.
+    out = findings(
+        div("exr-lab", "Fit Sales on all columns."),
+        div("sol-lab", chunk(code, lang)),
+        div("exr-lab-part2", "Which indicator columns does the software build?"),
+        div("sol-lab-part2", "Two."),
+    )
+    assert len(out) == 1 and "indicator columns" in out[0]
+
+
 def test_repeat_reference_adopts_the_cited_exercise():
     out = findings(
         div("exr-lab", "Fit the model."), div("sol-lab", "Fitted."),

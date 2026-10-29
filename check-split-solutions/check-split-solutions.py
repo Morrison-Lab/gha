@@ -91,11 +91,12 @@ TOPICS = (
     ("R-squared", r"R\^?2|R-squared|coefficient of determination",
      r"rsquared|r_squared|\br2\b|_r2\b|r2_|\brsq|r\.squared"),
     ("residual", r"residual", r"resid"),
+    ("indicator columns", r"indicator|dummy|one-hot",
+     r"[.]columns\b|contrasts\(|\bnames\("),
     ("variance inflation", r"variance inflation|\bVIF", r"vif|variance_inflation"),
     ("F-test", r"F-test|partial F|anova", r"anova|f_test|f_pvalue"),
     ("p-value", r"p-value|\bp\s*value", r"p-?value|p\.value|\bpval"),
     ("standard error", r"standard error|\bSEs?\b", r"\bbse\b|std_err|std\.error|stderr"),
-    ("indicator", r"indicator|dummy|one-hot", r"dummies|step_dummy|one_hot"),
 )
 
 
