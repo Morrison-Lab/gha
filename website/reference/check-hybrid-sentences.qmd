@@ -5,8 +5,9 @@ title: "check-hybrid-sentences.yml"
 Diff-scoped, warn-only heuristic check for the lab's rule
 (Ezra, 2026-10-29)
 that a sentence is entirely in words or entirely in math.
-A sentence such as "The risk is zero if and only if `f = g` in math" states its first
-condition in words and its second as a relation between expressions.
+A sentence such as "The risk is zero if and only if `f = g` in math"
+states its first condition in words
+and its second as a relation between expressions.
 Write two sentences instead:
 one entirely in words, where single inline expressions are fine,
 and one displayed entirely in math.
