@@ -150,6 +150,10 @@ start_runner() {
   # one recorded in .path; pinning it in .env keeps the tools found there.
   RUNNER_DIR="$RUNNER_DIR" bash "${SCRIPT_DIR}/pin-runner-path.sh" ||
     echo "warning: the runner's PATH was not pinned; jobs get the PATH it starts with" >&2
+  # The runner never removes a checkout, so without this hook the work folder
+  # grows until the disk is full (gha#1352).
+  RUNNER_DIR="$RUNNER_DIR" bash "${SCRIPT_DIR}/install-runner-cleanup-hook.sh" ||
+    echo "warning: no cleanup hook installed; old checkouts will accumulate" >&2
   nohup ./run.sh > runner.log 2>&1 &
   echo "Runner started (log: $RUNNER_DIR/runner.log)."
 }
