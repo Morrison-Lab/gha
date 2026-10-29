@@ -333,7 +333,9 @@ jobs:
   # strip Markdown -- so a quoted or code-span mention still starts THIS job.
   # That is the accepted residual: one short runner, no checkout of the
   # caller, no write-scoped secrets, no `inputs.runs-on` (a consumer may have
-  # pointed that at a large runner for the agent). detect-bot-mention reuses
+  # pointed that at a large runner for the agent). It runs on the caller's
+  # `CI_RUNNER` variable, else ubuntu-latest, so a private repository on a
+  # self-hosted runner needs no hosted minutes for it. detect-bot-mention reuses
   # the #342 stripper rather than approximating CommonMark in the expression
   # language, and `claude` below starts only when this job's `proceed` output
   # is true.
