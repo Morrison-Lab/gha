@@ -5,5 +5,4 @@
   `require-review` and `require-clean-verdict`).
   A caller whose `runs-on` is a busy self-hosted pool can send them to a
   hosted runner, so the merge gate does not queue behind long jobs
-  ([Morrison-Lab/lds#1577](https://github.com/Morrison-Lab/lds/pull/1577)
-  waited about an hour for two of them).
+  (one such caller waited about an hour for two of them).
