@@ -112,7 +112,11 @@ runs:
         pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
         repos <- getOption("repos")
         if (is.null(repos) || isTRUE(unname(repos["CRAN"]) == "@CRAN@")) {
-          repos <- c(CRAN = "https://cloud.r-project.org")
+          # Binary packages need no system headers (curl, openssl, xml2).
+          release <- grep("^VERSION_CODENAME=", readLines("/etc/os-release"), value = TRUE)
+          codename <- sub("^VERSION_CODENAME=", "", release)
+          repos <- c(CRAN = sprintf("https://packagemanager.posit.co/cran/__linux__/%s/latest", codename))
+          options(HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os)))
         }
         install.packages(pkgs, repos = repos)
         stopifnot(all(pkgs %in% rownames(installed.packages())))
