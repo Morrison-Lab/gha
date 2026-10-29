@@ -419,9 +419,11 @@ runs:
         if command -v Rscript >/dev/null 2>&1 \
           && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
           # RCall records the R library path at build time, and the restored
-          # cache keeps it, so a new R release (4.6.1 to 4.6.2) leaves RCall
-          # pointing at a directory that is gone. Rebuild it against this R.
-          R_HOME="$(R RHOME)" julia -e 'import Pkg; any(p -> p.name == "RCall", values(Pkg.dependencies())) && Pkg.build("RCall")'
+          # cache keeps it (the cache holds packages/ but not the environment,
+          # so Pkg sees no RCall until it is added again), so a new R release
+          # (4.6.1 to 4.6.2) leaves RCall pointing at a directory that is
+          # gone. Add RCall, as JuliaCall would, and rebuild it against this R.
+          R_HOME="$(R RHOME)" julia -e 'import Pkg; Pkg.add("RCall"); Pkg.build("RCall")'
           Rscript -e 'JuliaCall::julia_setup(installJulia = FALSE)'
         else
           echo "::notice::setup-julia is true but the R package JuliaCall is not installed, so knitr cannot run {julia} chunks; add it to r-packages (any::JuliaCall) if pages need that."
