@@ -2,16 +2,20 @@
 title: "check-definition-equations.yml"
 ---
 
-Diff-scoped, warn-only heuristic check for the lab's rule (Ezra, 2026-10-29)
-that a definition div holds only the equation linking the symbol of the defined term
-to its definitional expression.
+Diff-scoped, warn-only heuristic check for the lab's rule
+(Ezra, 2026-10-29)
+that a definition div holds only the equation
+linking the symbol of the defined term to its definitional expression.
 An equality between expressions, or an equivalence between concepts,
-is stated as a result (`#thm-`, `#lem-`, `#cor-` or `#prp-`) after the definition.
+is stated as a result (`#thm-`, `#lem-`, `#cor-` or `#prp-`)
+after the definition.
 
 The check flags a `#def-` div when
 
 - a display equation chains equalities:
-  it has a defining operator (`:=`, `\eqdef`, `\coloneqq`, `\triangleq`) followed by another top-level `=`,
+  it has a defining operator
+  (`:=`, `\eqdef`, `\coloneqq`, `\triangleq`)
+  followed by another top-level `=`,
   or, with no defining operator, two or more top-level `=`;
 - the div displays more than one equation,
   unless each carries its own defining operator; or
