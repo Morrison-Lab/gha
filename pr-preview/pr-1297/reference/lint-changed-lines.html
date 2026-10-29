@@ -717,6 +717,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-split-solutions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-split-solutions.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-rubric-checklists.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-rubric-checklists.yml</span></a>
   </div>
@@ -1063,7 +1069,7 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="how-it-works">How it works</h2>
 <p>The workflow checks out the <strong>PR head commit</strong> (not the default <code>refs/pull/N/merge</code> ref), sets up R, installs the package (so <code>object_usage_linter</code> can resolve the package’s own functions), then runs <code>lintr</code> on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub “list PR files” API <code>patch</code>, whose line numbers are relative to the PR head – which is why the checkout is pinned to the head commit, so on-disk line numbers match.</p>
 <p>Must be triggered by <code>pull_request</code> (the changed-line set comes from the PR).</p>
-<p>A repository with no <code>DESCRIPTION</code> in <code>path</code> skips the dependency setup: the workflow installs <code>gh</code>, <code>lintr</code> and any <code>extra-packages</code> from CRAN, and <code>install-package</code> should be <code>false</code>.</p>
+<p>A repository with no <code>DESCRIPTION</code> in <code>path</code> skips the dependency setup: the workflow installs <code>gh</code>, <code>lintr</code> and any <code>extra-packages</code> from CRAN (plain package names only) and skips <code>R CMD INSTALL</code>.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
