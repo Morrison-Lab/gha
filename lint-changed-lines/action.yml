@@ -9,8 +9,8 @@ description: >-
 inputs:
   path:
     description: >-
-      Path to the R package root (the directory holding DESCRIPTION). Defaults
-      to the repository root.
+      Path to the R package root (the directory holding DESCRIPTION, if any).
+      Defaults to the repository root.
     default: '.'
   install-quarto:
     description: Install Quarto when setting up R dependencies.
@@ -30,7 +30,7 @@ inputs:
     description: >-
       Extra R packages to install (space- or comma-separated; passed to
       r-lib/actions/setup-r-dependencies under DESCRIPTION, or installed from CRAN
-      under use-renv: true). gh and lintr are always installed.
+      under use-renv: true or when path holds no DESCRIPTION). gh and lintr are always installed.
     default: ''
   install-package:
     description: >-
@@ -90,6 +90,7 @@ runs:
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: 'false'
       with:
         working-directory: ${{ inputs.path }}
         install-quarto: ${{ inputs.install-quarto }}
@@ -108,7 +109,11 @@ runs:
       run: |
         extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
         pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
-        install.packages(pkgs)
+        repos <- getOption("repos")
+        if (is.null(repos) || identical(unname(repos[["CRAN"]]), "@CRAN@")) {
+          repos <- c(CRAN = "https://cloud.r-project.org")
+        }
+        install.packages(pkgs, repos = repos)
         stopifnot(all(pkgs %in% rownames(installed.packages())))
 
     - name: Restore R dependencies (renv)
@@ -147,6 +152,8 @@ runs:
     - name: Install package
       if: inputs.install-package == 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) != ''
       shell: bash
+      env:
+        RENV_CONFIG_AUTOLOADER_ENABLED: 'false'
       run: R CMD INSTALL "${{ inputs.path }}"
 
     - name: Install lms (shared linter configuration)
