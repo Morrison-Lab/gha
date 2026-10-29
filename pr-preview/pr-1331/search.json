@@ -1044,7 +1044,7 @@
     "href": "reference/check-exercise-background.html#usage",
     "title": "check-exercise-background.yml",
     "section": "Usage",
-    "text": "Usage\nCopy examples/check-exercise-background.yml to .github/workflows/ in your repository.",
+    "text": "Usage\nCall the composite action from a workflow step. The reusable workflow and its example stub arrive in the next change.",
     "crumbs": [
       "Overview",
       "Reference",
