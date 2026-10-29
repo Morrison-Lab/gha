@@ -77,16 +77,24 @@ RHETORICAL_PATTERNS <- list(
 )
 
 # "leverage" is a tell as a verb ("to leverage the data"), but a noun in
-# statistics ("the leverage of a point", "high-leverage points"). Only the verb
-# is flagged: a match counts when a modal, "to" or a subject pronoun precedes it.
-LEVERAGE_VERB_PRECEDERS <- paste0(
-  "(?i)\\b(?:to|can|could|will|would|should|must|may|might|shall|we|you|they|it|i)",
-  "\\s+$"
+# statistics ("the leverage of a point", "high-leverage points"). Only
+# recognizable noun contexts are exempt, so an unfamiliar context stays flagged:
+# a determiner or adjective before it, a link or parenthesis opening before it,
+# or a clause end or noun-like continuation after it.
+LEVERAGE_NOUN_BEFORE <- paste0(
+  "(?i)(?:\\b(?:the|a|an|its|their|each|every|of|high|low|large|larger|largest|",
+  "small|smaller|smallest|zero|unit|average|mean|maximum|maximal|leverage)\\s+|[-\\[(])$"
+)
+LEVERAGE_NOUN_AFTER <- paste0(
+  "(?i)^(?:\\]|\\s*(?:[,.;:)]|$|\\(|(?:values?|points?|scores?|statistics?|",
+  "of|h|plot|plots|and\\s+influence|diagnostics?)\\b))"
 )
 
 is_noun_leverage <- function(line, start, val) {
+  end <- start + nchar(val)
   tolower(val) == "leverage" &&
-    !grepl(LEVERAGE_VERB_PRECEDERS, substr(line, 1L, start - 1L), perl = TRUE)
+    (grepl(LEVERAGE_NOUN_BEFORE, substr(line, 1L, start - 1L), perl = TRUE) ||
+       grepl(LEVERAGE_NOUN_AFTER, substr(line, end, nchar(line)), perl = TRUE))
 }
 
 # ── Diff Line Extraction ─────────────────────────────────────────────────────

@@ -179,5 +179,15 @@ check("Verb leverage after 'to' is flagged",
       leverage_hits("We want to leverage the data to build a model.") == 1L)
 check("Verb leverage after a modal is flagged",
       leverage_hits("Teams can leverage existing tools here.") == 1L)
+check("Verb leverage after a plural subject is flagged",
+      leverage_hits("Researchers leverage large language models.") == 1L)
+check("Verb leverage after 'and' is flagged",
+      leverage_hits("The team reads the logs and leverage the results.") == 1L)
+check("Verb leverage after an adverb is flagged",
+      leverage_hits("We want to better leverage the data.") == 1L)
+check("Negated verb leverage is flagged",
+      leverage_hits("The method does not leverage the structure.") == 1L)
+check("Noun leverage at the end of a clause is not flagged",
+      leverage_hits("Plot the residuals against leverage.") == 0L)
 
 cat("\nAll check-ai-tells tests passed successfully.\n")
