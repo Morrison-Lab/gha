@@ -101,3 +101,17 @@ def test_a_finding_needs_an_added_line_inside_the_exercise():
     assert exb.touched(finding, {5}) is True
     assert exb.touched(finding, {20}) is False
     assert exb.touched(finding, None) is True
+
+
+def test_defaults_agree_across_script_action_and_workflow():
+    def input_block(text: str, name: str) -> str:
+        start = text.index(f"\n      {name}:" if "workflow_call" in text else f"\n  {name}:")
+        return text[start:].split("\n\n")[0]
+
+    action = (_DIR / "action.yml").read_text()
+    workflow = (_DIR.parent / ".github/workflows/check-exercise-background.yml").read_text()
+    assert exb._flag("EXB_FAIL", False) is False  # the script's default, with the variable unset
+    assert "default: 'false'" in input_block(action, "fail")
+    assert "default: false" in input_block(workflow, "fail")
+    assert "default: '*.qmd'" in input_block(action, "globs")
+    assert "default: '*.qmd'" in input_block(workflow, "globs")
