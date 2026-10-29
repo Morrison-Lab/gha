@@ -62,7 +62,20 @@ inputs:
 runs:
   using: composite
   steps:
+    # A self-hosted runner without passwordless sudo cannot run setup-r, whose
+    # apt-get step needs it, so a runner that already has R keeps its own.
+    - name: Detect an installed R
+      id: r
+      shell: bash
+      run: |
+        if command -v Rscript >/dev/null 2>&1 && [ "$RUNNER_ENVIRONMENT" = "self-hosted" ]; then
+          echo "present=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "present=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Set up R
+      if: steps.r.outputs.present != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         use-public-rspm: true
