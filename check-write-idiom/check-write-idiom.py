@@ -183,6 +183,44 @@ def _run_git(args: List[str]) -> Optional[str]:
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 
+_C_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13,
+              '"': 34, "\\": 92}
+
+
+def _unquote_git_path(target: str) -> str:
+    """Undo git's C-style quoting of a path that holds ``"``, a backslash or a
+    control character (``"b/ch/q\\"u.qmd"``); any other target is returned as is.
+    """
+    if len(target) < 2 or not (target.startswith('"') and target.endswith('"')):
+        return target
+    body = target[1:-1]
+    out = bytearray()
+    i = 0
+    while i < len(body):
+        char = body[i]
+        if char != "\\" or i + 1 >= len(body):
+            out += char.encode("utf-8")
+            i += 1
+            continue
+        nxt = body[i + 1]
+        if nxt in _C_ESCAPES:
+            out.append(_C_ESCAPES[nxt])
+            i += 2
+        elif nxt in "01234567":
+            digits = body[i + 1:i + 4]
+            octal = ""
+            for d in digits:
+                if d not in "01234567":
+                    break
+                octal += d
+            out.append(int(octal, 8) & 0xFF)
+            i += 1 + len(octal)
+        else:
+            out += body[i:i + 2].encode("utf-8")
+            i += 2
+    return out.decode("utf-8", errors="replace")
+
+
 def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
     """Added ``{path: {line_number: text}}`` and the set of deleted texts.
 
@@ -205,7 +243,7 @@ def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
                 old_left -= 1
             continue
         if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
+            target = _unquote_git_path(line[4:].rstrip("\t"))
             path = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
             if path is not None:
                 added.setdefault(path, {})
@@ -310,7 +348,10 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         base = _run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, 0, True)
+        # Fixed prefixes: diff.mnemonicPrefix would print `w/` and make every
+        # touched file read as missing.
         diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                         "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/",
                          base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, 0, True)

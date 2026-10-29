@@ -358,3 +358,68 @@ def test_action_passes_every_input_to_the_script_under_the_cps_prefix():
     action = (_DIR / "action.yml").read_text()
     for var in ("BASE_REF", "WHOLE_TREE", "GLOBS", "PATHS_IGNORE", "FAIL"):
         assert f"CPS_{var}:" in action
+
+
+# -- review findings (gha#1355) ----------------------------------------------
+
+@pytest.mark.parametrize("wrapper", [
+    '::: {when-format="revealjs" .content-hidden}',
+    "::: {.content-hidden when-format=revealjs}",
+    '::: {.content-hidden when-format="html, revealjs"}',
+    '::: {unless-format="revealjs" .content-visible}',
+])
+def test_hidden_wrapper_attribute_order_and_quoting(wrapper):
+    assert scan(f"{wrapper}\n::: proof\nx\n:::\n:::\n") == [(2, "proof", "proof")]
+
+
+def test_a_word_in_a_quoted_attribute_is_not_a_class():
+    text = '::: {#thm-a title="a proof of concept"}\nSo x holds.\n:::\n'
+    assert scan(text) == [(2, "statement", "so")]
+    hidden = f'{HIDDEN}\n::: {{.callout title="proof"}}\nx\n:::\n:::\n'
+    assert scan(hidden) == []
+
+
+@pytest.mark.parametrize("line", [
+    "See [the set](sets.qmd#def-so-called-x) for details.",
+    "See [y](#def-since-a).",
+    "See <https://so.example.com/since>.",
+    "See https://so.example.com/since for details.",
+    "By @eq-hence-x the bound holds.",
+    "The bound holds. {#sec-since}",
+])
+def test_links_urls_and_references_are_not_prose(line):
+    assert scan(f"::: {{#thm-a}}\n{line}\n:::\n") == []
+
+
+def test_prose_next_to_a_link_is_still_read():
+    text = "::: {#thm-a}\nSee [the set](sets.qmd#def-x), so it holds.\n:::\n"
+    assert scan(text) == [(2, "statement", "so")]
+
+
+def test_display_math_closed_mid_line_hands_the_rest_back_to_prose():
+    text = "::: {#thm-a}\n$$\nx = y\n$$ hence z.\n:::\n"
+    assert scan(text) == [(4, "statement", "hence")]
+
+
+def test_inline_display_pair_then_standalone_pair():
+    text = "::: {#thm-a}\nLet $$ x = y $$\n$$\nz\n$$ hence w.\n:::\n"
+    assert scan(text) == [(5, "statement", "hence")]
+
+
+def test_main_finds_files_under_mnemonic_prefix_and_quoted_paths(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "ch").mkdir()
+    page = f"{HIDDEN}\n::: proof\nx\n:::\n:::\n"
+    (repo / "ch" / 'q"u.qmd').write_text(page)
+    (repo / "plain.qmd").write_text(page)
+    git("add", "-A")
+    _main_env(monkeypatch, repo)
+    for key, value in (("GIT_CONFIG_COUNT", "1"),
+                       ("GIT_CONFIG_KEY_0", "diff.mnemonicPrefix"),
+                       ("GIT_CONFIG_VALUE_0", "true")):
+        monkeypatch.setenv(key, value)
+    assert cps.main() == 0
+    out = capsys.readouterr().out
+    assert "across 2 file(s)" in out
+    assert "::warning file=plain.qmd,line=2::" in out
+    assert 'file=ch/q"u.qmd,line=2::' in out
