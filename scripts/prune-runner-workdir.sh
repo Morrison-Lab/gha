@@ -17,8 +17,10 @@
 #   1. delete any not used for PRUNE_MAX_AGE_DAYS (default 7, at least 1);
 #   2. while the work folder's filesystem has less than PRUNE_MIN_FREE_GB
 #      (default 10) free, delete the oldest remaining one.
-# Directories whose name starts with `_` (_tool, _actions, _temp, ...) are the
-# runner's own and are never touched.
+# Only a checkout is touched: a directory <repo> holding <repo>/<repo>, the
+# layout the runner creates. The runner's own `_*` directories (_tool,
+# _actions, _temp, ...) and anything else a job keeps in the work folder, such
+# as the R library r-lib/setup-r installs under R/, are never touched.
 #
 # A failure here warns and exits 0 rather than failing: the job has already
 # finished, and a red job over housekeeping would hide whether the job itself
@@ -74,18 +76,23 @@ remove() {
   fi
 }
 
+# True when $1 is a checkout other than the current job's.
+is_other_checkout() {
+  [ "$1" != "$current" ] && [ -d "$1/${1##*/}" ]
+}
+
 # The checkouts other than the current job's, oldest use first, NUL-separated.
 candidates() {
   find "$work" -mindepth 1 -maxdepth 1 -type d ! -name '_*' -printf '%T@ %p\0' |
     LC_ALL=C sort -z -n | while IFS= read -r -d '' line; do
       d="${line#* }"
-      [ "$d" = "$current" ] || printf '%s\0' "$d"
+      if is_other_checkout "$d"; then printf '%s\0' "$d"; fi
     done
 }
 
 # Pass 1: -mtime +N matches at least N + 1 whole days, so N = days - 1.
 while IFS= read -r -d '' d; do
-  [ "$d" = "$current" ] && continue
+  is_other_checkout "$d" || continue
   remove "$d" "unused for over $max_age_days days"
 done < <(find "$work" -mindepth 1 -maxdepth 1 -type d ! -name '_*' \
   -mtime "+$((max_age_days - 1))" -print0)
