@@ -8227,8 +8227,6 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-format-output-files/tests/ -v
-      - name: Check this repository's pages
-        uses: ./check-format-output-files
       - name: Stage a page with no revealjs entry
         shell: bash
         run: |
@@ -8242,6 +8240,7 @@ jobs:
         uses: ./check-format-output-files
         with:
           formats: revealjs
+          globs: '_ci-format-output-files/*.qmd'
       - name: Assert the failing call actually failed
         shell: bash
         env:
@@ -8256,11 +8255,13 @@ jobs:
         uses: ./check-format-output-files
         with:
           formats: revealjs
+          globs: '_ci-format-output-files/*.qmd'
           fail: 'false'
       - name: Check again with the page exempted through paths-ignore
         uses: ./check-format-output-files
         with:
           formats: revealjs
+          globs: '_ci-format-output-files/*.qmd'
           paths-ignore: '_ci-format-output-files/**'
       - name: Remove the staged page
         if: always()
