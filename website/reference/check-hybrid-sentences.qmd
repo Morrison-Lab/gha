@@ -1,0 +1,50 @@
+---
+title: "check-hybrid-sentences.yml"
+---
+
+Diff-scoped, warn-only heuristic check for the lab's rule
+(Ezra, 2026-10-29)
+that a sentence is entirely in words or entirely in math.
+A sentence such as "The risk is zero if and only if `f = g` in math"
+states its first condition in words
+and its second as a relation between expressions.
+Write two sentences instead:
+one entirely in words, where single inline expressions are fine,
+and one displayed entirely in math.
+
+The check reads each prose paragraph outside code fences, display math and HTML
+comments, and flags a sentence when
+
+- the clause on one side of "if and only if", "iff", "and" or "or" starts
+  or ends
+  with an inline relation between expressions
+  (`=`, `\neq`, `<`, `\le`, `\subseteq`, `\approx`, `\iff` and the like), and
+- the clause on the other side holds three or more words and no such relation.
+
+A relation inside brackets or `\text{}` does not count.
+Two relations joined by a connective, as in "with `a = 1` and `b = 2` in math",
+are all math and are not flagged.
+A paragraph with a counter-example mark (the cross emoji),
+or one that holds `<!-- hybrid-ok: reason -->`, is exempt.
+
+A paragraph is checked when the pull request adds a line in it.
+With no base to diff against,
+the check skips instead of scanning the whole tree,
+so existing sentences are fixed when someone edits them anyway.
+It warns by default; `fail: true` blocks.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Check every paragraph, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
+
+## Usage
+
+Copy `examples/check-hybrid-sentences.yml` to
+`.github/workflows/check-hybrid-sentences.yml`.
