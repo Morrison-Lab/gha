@@ -14,7 +14,8 @@ and one displayed entirely in math.
 The check reads each prose paragraph outside code fences, display math and HTML
 comments, and flags a sentence when
 
-- the clause on one side of "if and only if", "iff", "and" or "or" starts or ends
+- the clause on one side of "if and only if", "iff", "and" or "or" starts
+  or ends
   with an inline relation between expressions
   (`=`, `\neq`, `<`, `\le`, `\subseteq`, `\approx`, `\iff` and the like), and
 - the clause on the other side holds three or more words and no such relation.
