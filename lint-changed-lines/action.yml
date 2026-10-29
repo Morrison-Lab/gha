@@ -100,7 +100,7 @@ runs:
         sudo apt-get install -y $APT_PACKAGES
 
     - name: Set up R dependencies (DESCRIPTION)
-      if: inputs.use-renv != 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) != ''
+      if: inputs.use-renv != 'true' && inputs.install-package == 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) != ''
       uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
@@ -115,7 +115,7 @@ runs:
         needs: lint
 
     - name: Install R packages (no DESCRIPTION)
-      if: inputs.use-renv != 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) == ''
+      if: inputs.use-renv != 'true' && (inputs.install-package != 'true' || hashFiles(format('{0}/DESCRIPTION', inputs.path)) == '')
       shell: Rscript {0}
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
