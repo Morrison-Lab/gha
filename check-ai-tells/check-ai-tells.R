@@ -204,11 +204,17 @@ strip_non_prose <- function(lines) {
     # Display math ($$): a block runs from a line that opens one (a line
     # with an odd number of $$ once whole $$...$$ spans are removed) to the
     # next line holding $$, so text before an opener is still prose.
+    # A blank line ends a block too, as in Pandoc, so a stray $$ cannot hide
+    # the rest of the file. Inline code is masked first, so a code span that
+    # mentions $$ opens nothing.
     if (in_math_block) {
-      if (grepl("$$", line, fixed = TRUE)) in_math_block <- FALSE
+      if (!nzchar(trimws(line)) || grepl("$$", line, fixed = TRUE)) {
+        in_math_block <- FALSE
+      }
       cleaned[i] <- ""
       next
     }
+    line <- gsub("`[^`]+`", " ", line)
     line <- gsub(DISPLAY_MATH_RE, " ", line, perl = TRUE)
     if (grepl("$$", line, fixed = TRUE)) {
       in_math_block <- TRUE
