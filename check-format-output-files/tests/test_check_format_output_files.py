@@ -93,3 +93,44 @@ def test_flow_style_format_mapping_missing_output_file_fails():
 def test_quoted_format_key_passes():
     text = FULL.replace("  revealjs:\n", '  "revealjs":\n')
     assert check(text) == []
+
+
+def _repo(tmp_path, monkeypatch, front):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "page.qmd").write_text(front)
+    subprocess.run(["git", "add", "page.qmd"], check=True)
+
+
+BAD = "---\ntitle: T\nformat:\n  html: default\n---\n"
+
+
+def test_main_fails_by_default(tmp_path, monkeypatch):
+    _repo(tmp_path, monkeypatch, BAD)
+    monkeypatch.delenv("CFO_FAIL", raising=False)
+    assert cfo.main() == 1
+
+
+def test_main_warns_when_fail_is_false(tmp_path, monkeypatch, capsys):
+    _repo(tmp_path, monkeypatch, BAD)
+    monkeypatch.setenv("CFO_FAIL", "false")
+    assert cfo.main() == 0
+    assert "::warning" in capsys.readouterr().out
+
+
+def test_main_honors_paths_ignore(tmp_path, monkeypatch):
+    _repo(tmp_path, monkeypatch, BAD)
+    monkeypatch.setenv("CFO_PATHS_IGNORE", "page.qmd")
+    assert cfo.main() == 0
+
+
+def test_defaults_agree_across_script_action_and_workflow():
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[2]
+    for path in ("check-format-output-files/action.yml",
+                 ".github/workflows/check-format-output-files.yml"):
+        text = (root / path).read_text()
+        assert "'revealjs pdf docx'" in text, path
+        assert "'*.qmd'" in text, path
+    assert cfo.DEFAULT_FORMATS == "revealjs pdf docx"
