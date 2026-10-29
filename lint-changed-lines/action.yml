@@ -104,11 +104,12 @@ runs:
       shell: Rscript {0}
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
-        RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
+        RENV_CONFIG_AUTOLOADER_ENABLED: 'false'
       run: |
         extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
         pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
-        install.packages(pkgs, repos = "https://cloud.r-project.org")
+        install.packages(pkgs)
+        stopifnot(all(pkgs %in% rownames(installed.packages())))
 
     - name: Restore R dependencies (renv)
       if: inputs.use-renv == 'true'
@@ -144,7 +145,7 @@ runs:
         '
 
     - name: Install package
-      if: ${{ inputs.install-package == 'true' }}
+      if: inputs.install-package == 'true' && hashFiles(format('{0}/DESCRIPTION', inputs.path)) != ''
       shell: bash
       run: R CMD INSTALL "${{ inputs.path }}"
 
