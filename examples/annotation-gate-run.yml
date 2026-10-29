@@ -31,6 +31,7 @@ jobs:
       run-attempt: ${{ github.event.workflow_run.run_attempt }}
       head-sha: ${{ github.event.workflow_run.head_sha }}
       all-runs: true
+    #   defer-while-running: true              # only the last gate of a burst does the work
     #   levels: 'warning,failure'              # skip notices
     #   allow-patterns: |                      # tracked exceptions, regexes
     #     lychee .* Rejected status code: 503

@@ -64,7 +64,10 @@ inputs:
       workflow's run on the commit is still queued or in progress. That run's
       completion starts its own gate, so the last to finish gates the commit
       and the earlier ones do no API work. A check run posted by an earlier
-      gate stays until then. Off by default, because a quick failure is then
+      gate stays until then. Turn it on only when the caller triggers on
+      `workflow_run` for every workflow (`workflows: ["*"]`): with a narrower
+      list, the deferring gate can wait on a run that starts no gate and leave
+      the commit ungated. Off by default, because a quick failure is then
       reported only when the slowest workflow on the commit finishes.
     default: 'false'
   token:
