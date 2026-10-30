@@ -6643,7 +6643,7 @@
     "href": "reference/check-heading-levels.html#scope",
     "title": "check-heading-levels.yml",
     "section": "Scope",
-    "text": "Scope\nA finding is reported only when the heading line that causes it was added in the pull request. The whole page and its includes are parsed, since the first heading may sit in a file the diff did not touch. An added line whose exact text was also deleted in the same diff counts as moved rather than new, and a blank added line is not content.\nWith no base-ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to scan every tracked page in full on purpose, which measures how many headings a corpus carries that break the outline.",
+    "text": "Scope\nA finding is reported only when the heading line that causes it was added in the pull request. The whole page and its includes are parsed, since the first heading may sit in a file the diff did not touch. A blank added line is not content. A heading moved to another place is flagged like a new one, since the break depends on the headings around it.\nWith no base-ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to scan every tracked page in full on purpose, which measures how many headings a corpus carries that break the outline.",
     "crumbs": [
       "Overview",
       "Reference",
