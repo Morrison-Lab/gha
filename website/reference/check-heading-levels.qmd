@@ -22,7 +22,8 @@ The check reports three mistakes:
   is deeper than level 2.
   The finding sits on that heading, in the include that holds it.
 - **Title repeated as a heading.**
-  The first heading a page renders is a level 2 heading that repeats the page's `title:`.
+  The first heading a page renders is a level 2 heading
+  that repeats the page's `title:`.
 
 A page is a `.qmd` file with a `title:` in its front matter.
 A file without one is an include, whatever its name.
@@ -36,10 +37,12 @@ The check does not count:
 
 ## Scope
 
-A finding is reported only when the heading line that causes it was added in the pull request.
+A finding is reported only when the heading line that causes it
+was added in the pull request.
 The whole page and its includes are parsed,
 since the first heading may sit in a file the diff did not touch.
-An added line whose exact text was also deleted in the same diff counts as moved rather than new,
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new,
 and a blank added line is not content.
 
 With no `base-ref`, or when the diff cannot be computed,
