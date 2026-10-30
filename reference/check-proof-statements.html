@@ -1129,7 +1129,7 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="rules">Rules</h2>
 <ul>
 <li><strong>Proof hidden from slides.</strong> A proof div inside <code>::: {.content-hidden when-format="revealjs"}</code> (or <code>.content-visible unless-format="revealjs"</code>), or an include of a <code>_prf-</code> or <code>_proof-</code> subfile there, is flagged on the proof’s opening line. Every proof is shown on slides. The finding is reported when the pull request adds any line to the file, not only the proof’s own lines.</li>
-<li><strong>Reasoning in a theorem statement.</strong> “so”, “because”, “hence”, “therefore”, “thus” or “since” on an added line inside a <code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code> div, outside the proof the div holds. A statement gives the result and its hypotheses; the proof gives the reasoning. Heuristic: “so that” and “so-called” pass, and words inside math are not read.</li>
+<li><strong>Reasoning in a theorem statement.</strong> “so”, “because”, “hence”, “therefore”, “thus” or “since”, or an aside such as “without loss of generality”, “moreover” or “furthermore”, on an added line inside a <code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code> div, outside the proof the div holds. A statement gives the result and its hypotheses; the proof gives the reasoning. Heuristic: “so that” and “so-called” pass, and words inside math are not read.</li>
 </ul>
 <p>The check does not read a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, <code>&lt;!-- check-proof-statements: allow --&gt;</code>.</p>
 </section>
