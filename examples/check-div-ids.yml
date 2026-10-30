@@ -3,7 +3,6 @@
 # .definition, ...) but no matching id (#rem-, #def-, ...) when a PR adds its
 # opening line. Without the id the div renders as a plain block quote.
 # Warn-only by default.
-# Only contents:read is needed (the default), so no permissions block is required.
 name: Check div ids
 
 on:
@@ -15,6 +14,8 @@ on:
 
 jobs:
   check:
+    permissions:
+      contents: read
     uses: Morrison-Lab/gha/.github/workflows/check-div-ids.yml@v3
     # with:
     #   globs: '*.qmd'              # pathspecs to check (recursive)
