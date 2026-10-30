@@ -156,6 +156,18 @@ def test_reasoning_words_are_flagged_in_a_statement(word):
     assert scan(text) == [(2, "statement", word)]
 
 
+@pytest.mark.parametrize("phrase", [
+    "without loss of generality", "Without loss of generality", "moreover", "furthermore"])
+def test_asides_are_flagged_in_a_statement(phrase):
+    text = f"::: {{#thm-a}}\n{phrase.capitalize()}, assume $x > 0$.\n:::\n"
+    assert scan(text) == [(2, "statement", phrase.lower())]
+
+
+def test_an_aside_in_the_proof_is_not_a_statement():
+    text = "::: {#thm-a}\nLet $x > 0$.\n\n::: {.proof}\nMoreover, $x$ is finite.\n:::\n:::\n"
+    assert scan(text) == []
+
+
 @pytest.mark.parametrize("opening", ["#lem-a", "#cor-a", "#prp-a", "#thm-a"])
 def test_every_theorem_type_is_a_statement(opening):
     text = f"::: {{{opening}}}\nIt holds, so it works.\n:::\n"
