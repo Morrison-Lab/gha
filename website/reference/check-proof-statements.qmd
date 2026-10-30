@@ -17,7 +17,8 @@ Diff-scoped, warn-only check for two of the lab's proof rules
   The finding is reported when the pull request adds any line to the file,
   not only the proof's own lines.
 - **Reasoning in a theorem statement.**
-  "so", "because", "hence", "therefore", "thus" or "since" on an added line
+  "so", "because", "hence", "therefore", "thus" or "since", or an aside such as
+  "without loss of generality", "moreover" or "furthermore", on an added line
   inside a `#thm-`, `#lem-`, `#cor-` or `#prp-` div, outside the proof the div holds.
   A statement gives the result and its hypotheses; the proof gives the reasoning.
   Heuristic: "so that" and "so-called" pass, and words inside math are not read.

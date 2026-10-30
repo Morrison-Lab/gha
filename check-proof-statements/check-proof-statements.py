@@ -15,7 +15,10 @@ Morrison-Lab/gha#1351):
   the file being edited. There is no sweep: an untouched file is never flagged.
 - **reasoning in a theorem statement**: a line the pull request adds, inside a
   ``#thm-``, ``#lem-``, ``#cor-`` or ``#prp-`` div and outside any proof div it
-  holds, that uses "so", "because", "hence", "therefore", "thus" or "since".
+  holds, that uses "so", "because", "hence", "therefore", "thus" or "since",
+  or an aside such as "without loss of generality", "moreover" or
+  "furthermore" (Halmos, "How to Write Mathematics", 1970, section 10: these
+  "do not belong in the statement of a theorem"; Morrison-Lab/psw#422).
   A statement gives the result and its hypotheses; the proof gives the
   reasoning. Heuristic, so warn-only: "so that" and "so-called" pass, and words
   inside inline or display math, code and comments are not read.
@@ -59,14 +62,15 @@ INLINE_MATH_RE = re.compile(r"\$[^$]*\$")
 NON_PROSE_RE = re.compile(
     r"\]\([^)]*\)|<[^>\s]*>|https?://\S+|@[\w:.-]+|\{[#.][^}]*\}")
 REASONING_RE = re.compile(
-    r"(?i)\b(?:so(?!\s+that\b|-called\b|\s+far\b)|because|hence|therefore|thus|since)\b")
+    r"(?i)\b(?:so(?!\s+that\b|-called\b|\s+far\b)|because|hence|therefore|thus|since"
+    r"|without\s+loss\s+of\s+generality|moreover|furthermore)\b")
 
 PROOF_MESSAGE = (
     "Show every proof on slides: remove the content-hidden wrapper around this "
     "proof (Ezra, 2026-10-29, mds#534; psw#426).")
 STATEMENT_MESSAGE = (
     'A theorem statement gives the result and its hypotheses; move the reasoning '
-    '("{word}") into the proof (Ezra, 2026-10-29, mds#534; psw#426).')
+    'or aside ("{word}") into the proof (Ezra, 2026-10-29, mds#534; psw#426, psw#422).')
 
 
 class Finding(NamedTuple):
