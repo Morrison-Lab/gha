@@ -7,6 +7,6 @@
   and a shared `### Configuring R` include opened ten chapters one level too deep.
   Headings inside fenced divs (the `####` titles of definition and exercise divs), code fences,
   comments and front matter do not count, and `<!-- check-heading-levels: allow -->` exempts a line.
-  Like `check-one-div-per-subfile` it scopes to added lines (a moved line is not new),
+  Like `check-one-div-per-subfile` it scopes to added lines,
   skips rather than scanning the whole tree when there is no base to diff against,
   and has a `whole-tree` mode that measures how many headings a corpus carries.

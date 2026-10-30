@@ -203,3 +203,61 @@ def test_action_and_script_agree_on_defaults():
     assert hlv._DEFAULT_FAIL is False
     assert hlv.DEFAULT_GLOBS == "*.qmd"
     assert "HLV_FAIL" in action and "HLV_BASE_REF" in action
+
+
+# -- review findings -----------------------------------------------------------
+
+def test_include_inside_a_fenced_div_is_not_counted(tmp_path):
+    (tmp_path / "_in.qmd").write_text("#### Inside\n")
+    body = "## A\n\n::: {#exm-a}\n{{< include _in.qmd >}}\n:::\n\n### B\n"
+    assert kinds(tmp_path, body) == []
+
+
+def test_include_cycle_back_to_the_page_stops(tmp_path):
+    (tmp_path / "_loop.qmd").write_text("## Loop\n\n{{< include page.qmd >}}\n")
+    path = page(tmp_path, "{{< include _loop.qmd >}}\n")
+    assert hlv.scan_page(path, str(tmp_path)) == []
+
+
+def test_include_through_a_symlink_cycle_stops(tmp_path):
+    (tmp_path / "_a.qmd").write_text("## A\n\n{{< include sub/_a.qmd >}}\n")
+    (tmp_path / "sub").symlink_to(tmp_path)
+    path = page(tmp_path, "{{< include _a.qmd >}}\n")
+    assert hlv.scan_page(path, str(tmp_path)) == []
+
+
+def test_trailing_hash_without_space_is_part_of_the_text(tmp_path):
+    path = page(tmp_path, "## Learning C#\n")
+    first = hlv.scan_headings(path, str(tmp_path))[0][0]
+    assert first.text == "Learning C#"
+
+
+def test_closing_hashes_after_a_space_are_dropped(tmp_path):
+    path = page(tmp_path, "## Newton ##\n")
+    assert hlv.scan_headings(path, str(tmp_path))[0][0].text == "Newton"
+    assert kinds(tmp_path, "## Newton ##\n") == [("title", 5)]
+
+
+def test_folded_multiline_title_is_read(tmp_path):
+    path = tmp_path / "page.qmd"
+    path.write_text("---\ntitle: >-\n  Newton's\n  method\nformat: html\n---\n\n## Newton's method\n")
+    assert hlv.page_title(hlv.read_lines(str(path))) == "Newton's method"
+    assert [(f.kind) for f in hlv.scan_page(str(path), str(tmp_path))] == ["title"]
+
+
+def test_read_lines_sees_a_rewritten_file(tmp_path):
+    path = tmp_path / "f.qmd"
+    path.write_text("one\n")
+    assert hlv.read_lines(str(path)) == ["one"]
+    path.write_text("one\ntwo\n")
+    assert hlv.read_lines(str(path)) == ["one", "two"]
+
+
+def test_moved_heading_is_flagged_like_a_new_one(repo):
+    (repo / "page.qmd").write_text('---\ntitle: "T"\n---\n\n## A\n\n## B\n\n### C\n')
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "base")
+    (repo / "page.qmd").write_text('---\ntitle: "T"\n---\n\n## A\n\n#### C\n\n## B\n')
+    _git(repo, "add", ".")
+    report = hlv.run_check("HEAD", ["*.qmd"], [], False)
+    assert [(f.line, f.kind) for f in report.findings] == [(7, "skip")]

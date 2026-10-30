@@ -30,7 +30,7 @@ A file without one is an include, whatever its name.
 
 The check does not count:
 
-- a heading inside any fenced div
+- a heading inside any fenced div, or in a file included from inside one
   (the `####` title of a definition or exercise div is the lab's convention);
 - a heading inside a code fence, an HTML comment or the YAML front matter;
 - a heading on a line carrying `<!-- check-heading-levels: allow -->`.
@@ -41,9 +41,9 @@ A finding is reported only when the heading line that causes it
 was added in the pull request.
 The whole page and its includes are parsed,
 since the first heading may sit in a file the diff did not touch.
-An added line whose exact text was also deleted in the same diff
-counts as moved rather than new,
-and a blank added line is not content.
+A blank added line is not content.
+A heading moved to another place is flagged like a new one,
+since the break depends on the headings around it.
 
 With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.

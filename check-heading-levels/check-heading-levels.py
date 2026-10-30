@@ -44,6 +44,7 @@ Configuration (environment variables, set by the composite action):
   HLV_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
+import functools
 import importlib.util
 import os
 import re
@@ -74,9 +75,10 @@ DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = False
 ALLOW_MARKER = "check-heading-levels: allow"
 
-HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*#*[ \t]*$")
+HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*?)(?:[ \t]+#+)?[ \t]*$")
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 TITLE_RE = re.compile(r"""^title:\s*(?:"(.*)"|'(.*)'|(.*?))\s*$""")
+BLOCK_SCALAR_RE = re.compile(r"^[>|][+-]?\d*$")
 ATTR_RE = re.compile(r"\s*\{[^{}]*\}\s*$")
 
 ADVICE_SKIP = "use the next level down, or add the missing level"
@@ -123,7 +125,8 @@ def clean_text(text: str) -> str:
     return ATTR_RE.sub("", text).strip().strip("\"'").lower()
 
 
-def read_lines(path: str) -> Optional[List[str]]:
+@functools.lru_cache(maxsize=None)
+def _read_cached(path: str, mtime_ns: int, size: int) -> Optional[Tuple[str, ...]]:
     try:
         with open(path, encoding="utf-8", errors="replace") as handle:
             lines = handle.read().split("\n")
@@ -131,20 +134,48 @@ def read_lines(path: str) -> Optional[List[str]]:
         return None
     if lines and lines[-1] == "":
         lines.pop()
-    return lines
+    return tuple(lines)
+
+
+def read_lines(path: str) -> Optional[List[str]]:
+    """The file's lines, read once per version of the file.
+
+    Every page that includes a shared subfile parses it again, so the read is
+    cached on the file's modification time and size.
+    """
+    try:
+        info = os.stat(path)
+    except OSError:
+        return None
+    cached = _read_cached(path, info.st_mtime_ns, info.st_size)
+    return None if cached is None else list(cached)
 
 
 def page_title(lines: List[str]) -> Optional[str]:
     """The ``title:`` of the YAML front matter, or None."""
     if not lines or lines[0].strip() != "---":
         return None
-    for raw in lines[1:]:
+    for idx, raw in enumerate(lines[1:], start=1):
         if raw.strip() in ("---", "..."):
             return None
         m = TITLE_RE.match(raw)
         if m:
-            return next(g for g in m.groups() if g is not None)
+            value = next(g for g in m.groups() if g is not None)
+            if BLOCK_SCALAR_RE.match(value):
+                return " ".join(_block_scalar(lines, idx))
+            return value
     return None
+
+
+def _block_scalar(lines: List[str], idx: int) -> List[str]:
+    """The indented lines under ``title: >-`` (a folded or literal title)."""
+    body: List[str] = []
+    for raw in lines[idx + 1:]:
+        if raw.strip() and not raw[0].isspace():
+            break
+        if raw.strip():
+            body.append(raw.strip())
+    return body
 
 
 def resolve_include(target: str, current: str, root: str) -> Optional[str]:
@@ -164,12 +195,17 @@ def scan_headings(path: str, root: str, seen: Tuple[str, ...] = ()
                   ) -> List[Tuple[Heading, bool]]:
     """Headings in the order the page renders them, following includes.
 
-    Each is paired with whether it sits in ``path`` itself (not an include),
-    so the skip rule can compare headings of one file only.
+    Each is paired with whether it sits in ``path`` itself (not an include).
+    The skip rule in ``scan_subfile`` compares headings of one file only;
+    ``scan_page`` compares every heading the page renders, includes too, so
+    an include that opens a level too deep also breaks the next heading.
+    ``seen`` holds the real paths of the files being expanded, so a cycle,
+    including one back to the top-level page, stops.
     """
     lines = read_lines(path)
     if lines is None:
         return []
+    real = os.path.realpath(path)
     out: List[Tuple[Heading, bool]] = []
     fence: Optional[Tuple[str, int]] = None
     in_comment = False
@@ -199,9 +235,9 @@ def scan_headings(path: str, root: str, seen: Tuple[str, ...] = ()
         inc = INCLUDE_RE.search(raw)
         if inc:
             target = resolve_include(inc.group(1), path, root)
-            if target and target not in seen and target != path:
+            if depth == 0 and target and target != real and target not in seen:
                 out.extend((h, False) for h, _ in
-                           scan_headings(target, root, seen + (path,)))
+                           scan_headings(target, root, seen + (real,)))
             continue
         hm = HEADING_RE.match(raw)
         if hm and depth == 0:
@@ -285,10 +321,9 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
                              base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, True)
-        added, deleted = ods.parse_diff(diff)
+        added, _deleted = ods.parse_diff(diff)
         for rel, numbered in added.items():
-            keep[rel] = {n for n, text in numbered.items()
-                         if text.strip() and text not in deleted}
+            keep[rel] = {n for n, text in numbered.items() if text.strip()}
     found: List[Finding] = []
     for rel in sorted(files):
         if is_page(rel):
