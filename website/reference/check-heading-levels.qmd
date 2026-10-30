@@ -1,0 +1,95 @@
+---
+title: "check-heading-levels.yml"
+---
+
+Diff-scoped, warn-only check that flags a heading that breaks its page's outline.
+The lab's rule (Ezra, 2026-10-30) is that a page's title is its level 1 heading,
+so the body starts at level 2,
+and each heading is at most one level deeper than the one before it.
+Pages split out of larger pages kept the headings of the page they came from,
+and a shared include opened ten chapters one level too deep.
+
+The check reports three mistakes:
+
+- **Skipped level.**
+  A heading more than one level deeper than the heading before it in the same file
+  (`##` then `####`).
+  The first heading of a page is compared with the title, level 1.
+  The first heading of an included subfile is compared with nothing,
+  since it takes its level from the page that includes it.
+- **Page starts too deep.**
+  The first heading a page renders, following its `{{< include >}}` shortcodes,
+  is deeper than level 2.
+  The finding sits on that heading, in the include that holds it.
+- **Title repeated as a heading.**
+  The first heading a page renders is a level 2 heading that repeats the page's `title:`.
+
+A page is a `.qmd` file with a `title:` in its front matter.
+A file without one is an include, whatever its name.
+
+The check does not count:
+
+- a heading inside any fenced div
+  (the `####` title of a definition or exercise div is the lab's convention);
+- a heading inside a code fence, an HTML comment or the YAML front matter;
+- a heading on a line carrying `<!-- check-heading-levels: allow -->`.
+
+## Scope
+
+A finding is reported only when the heading line that causes it was added in the pull request.
+The whole page and its includes are parsed,
+since the first heading may sit in a file the diff did not touch.
+An added line whose exact text was also deleted in the same diff counts as moved rather than new,
+and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked page in full on purpose,
+which measures how many headings a corpus carries that break the outline.
+
+## Inputs
+
+| Input          | Type    | Default    | Description |
+| -------------- | ------- | ---------- | ----------- |
+| `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`    | Fail the workflow when a heading breaks its page's outline. The default gives warning annotations only. |
+| `whole-tree`   | boolean | `false`    | Scan every tracked page in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`   | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-heading-levels.yml in your repo.
+# Diff-scoped check: flags a heading that breaks its page's outline when a PR adds
+# the heading line: a skipped level (## then ####), a page whose first heading is
+# deeper than level 2, or a first heading that repeats the page title.
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check heading levels
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-heading-levels.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every page, not just a PR's additions
+```
+
+See
+[`examples/check-heading-levels.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-heading-levels.yml)
+for the full caller stub.
