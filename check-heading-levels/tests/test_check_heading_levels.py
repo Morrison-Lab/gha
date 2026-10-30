@@ -254,10 +254,14 @@ def test_read_lines_sees_a_rewritten_file(tmp_path):
 
 
 def test_moved_heading_is_flagged_like_a_new_one(repo):
-    (repo / "page.qmd").write_text('---\ntitle: "T"\n---\n\n## A\n\n## B\n\n### C\n')
+    # The long block under "## A" keeps git from treating it as the moved one,
+    # so the moved line is "### X", whose text is unchanged.
+    prose = "\n".join(f"line {n}" for n in range(1, 6))
+    front = '---\ntitle: "T"\n---\n\n'
+    (repo / "page.qmd").write_text(f"{front}## A\n\n{prose}\n\n### X\n")
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "base")
-    (repo / "page.qmd").write_text('---\ntitle: "T"\n---\n\n## A\n\n#### C\n\n## B\n')
+    (repo / "page.qmd").write_text(f"{front}### X\n\n## A\n\n{prose}\n")
     _git(repo, "add", ".")
     report = hlv.run_check("HEAD", ["*.qmd"], [], False)
-    assert [(f.line, f.kind) for f in report.findings] == [(7, "skip")]
+    assert [(f.line, f.kind) for f in report.findings] == [(5, "deep")]
