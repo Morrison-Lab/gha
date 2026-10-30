@@ -6,8 +6,7 @@ description: >-
   or a first heading that repeats the page title (Ezra, 2026-10-30; a page's
   title is level 1, so its body starts at level 2). Headings inside fenced
   divs, code fences and comments are not counted. Scoped to lines a diff adds
-  (an added line whose exact text was also deleted in the same diff counts
-  as moved). Warn-only by default.
+  (a moved heading is flagged like a new one). Warn-only by default.
 inputs:
   python-version:
     description: Python version to set up.
