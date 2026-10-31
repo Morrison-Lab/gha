@@ -1,0 +1,24 @@
+# Copy to .github/workflows/check-page-length.yml in your repo.
+# Diff-scoped check: flags a page a PR adds to when the page, with its includes
+# expanded, has more than 600 math expressions or 5000 source lines.
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check page length
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-page-length.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   max-math: '600'                        # math expressions per page
+    #   max-lines: '5000'                      # source lines per page
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # scan every page, not just a PR's additions

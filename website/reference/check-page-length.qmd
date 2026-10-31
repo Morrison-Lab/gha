@@ -1,0 +1,76 @@
+---
+title: "check-page-length.yml"
+---
+
+Diff-scoped, warn-only check that flags a page a pull request adds to
+when the page has grown too long.
+The lab's rule (Ezra, 2026-10-31) is that a page should load
+and finish rendering its math in under 5 seconds,
+and that its scroll bar should not shrink to its smallest length.
+A page that fails either goal is split into several pages.
+
+## What it measures
+
+The check runs without a browser, which the lab bans for agents,
+so it measures two proxies on the *expanded* page,
+the page's own text with each `{{< include >}}` shortcode
+replaced by the file it names:
+
+- **Math expressions.**
+  The limit is `max-math`, default 600.
+  MathJax typesets every formula in the browser,
+  so rendering time grows with the number of formulas.
+  At roughly 8 ms per expression on a mid-range laptop,
+  600 expressions is near the 5-second goal.
+  Math inside code fences and HTML comments does not count.
+- **Source lines.**
+  The limit is `max-lines`, default 5000.
+  A coarse proxy for rendered height, hence for the scroll bar's length.
+  Semantic line breaks put about one sentence on a line.
+
+## Decision record
+
+These limits are estimates, chosen on 2026-10-31 from the lds corpus:
+at 600 math expressions, 10 of lds's 40 chapters are over,
+including gradient descent.
+To reproduce, run the check with `whole-tree: true`
+and `globs: 'chapters/*.qmd'` in a checkout of lds.
+The 8 ms per expression and the line limit are not measured.
+To calibrate them, time MathJax on the expanded page in Node
+(no browser) and set `max-math` to the count that finishes in 5 seconds.
+Change the defaults in `check-page-length.py` and `action.yml` together;
+a unit test pins that they agree.
+
+## What it flags
+
+A page (a `.qmd` file with a `title:`) over either limit,
+when the pull request adds a non-blank line to the page or to a file it includes.
+The finding sits on the first added line in the page itself,
+or on line 1 when only an included file changed.
+A page the diff did not touch is not reflagged, so nothing is swept.
+`<!-- check-page-length: allow -->` anywhere in the page's own file exempts it.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to measure every tracked page in full.
+
+## Inputs
+
+| Input          | Type    | Default    | Description |
+| -------------- | ------- | ---------- | ----------- |
+| `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. |
+| `max-math`     | string  | `'600'`    | Largest number of math expressions a page may have. |
+| `max-lines`    | string  | `'5000'`   | Largest number of source lines a page may have, includes expanded. |
+| `fail`         | boolean | `false`    | Fail the workflow when a touched page is over a limit. The default gives warning annotations only. |
+| `whole-tree`   | boolean | `false`    | Measure every tracked page in full instead of only touched pages. |
+
+## Usage
+
+```yaml
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-page-length.yml@v3
+```
+
+Copy [`examples/check-page-length.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-page-length.yml).

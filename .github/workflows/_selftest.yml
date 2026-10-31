@@ -1942,6 +1942,94 @@ jobs:
         if: always()
         shell: bash
         run: git rm -rf --cached -q _ci-heading-levels || true
+  # check-page-length is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-page-length@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the rules and both scopes; the composite calls below prove
+  # action.yml wires each input through.
+  page-length:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-page-length unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-page-length/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-page-length
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no Quarto pages, so stage one that skips a level and
+      # assert that the blocking call really fails.
+      - name: Stage a page with three math expressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-page-length
+          printf '%s\n' '---' 'title: "T"' '---' '' '$a$ $b$ $c$' > _ci-page-length/page.qmd
+          git add -f _ci-page-length/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: page-length-expected-failure
+        continue-on-error: true
+        uses: ./check-page-length
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: '_ci-page-length/*.qmd'
+          max-math: '2'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.page-length-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-page-length to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is warn-only, so the same finding must pass.
+      - name: Check the staged page with the default fail
+        uses: ./check-page-length
+        with:
+          whole-tree: 'true'
+          globs: '_ci-page-length/*.qmd'
+          max-math: '2'
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-page-length
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: '_ci-page-length/*.qmd'
+          paths-ignore: '_ci-page-length'
+          max-math: '2'
+      - name: Check again with globs excluding the page
+        uses: ./check-page-length
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/check-page-length.qmd'
+          max-math: '2'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-page-length
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: git rm -rf --cached -q _ci-page-length || true
   # check-one-div-per-subfile is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-one-div-per-subfile@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
