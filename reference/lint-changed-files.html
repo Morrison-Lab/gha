@@ -1216,6 +1216,12 @@ cookieconsent.run({
 <td>Fail the workflow when lintr reports a lint (rather than warn only).</td>
 </tr>
 <tr class="odd">
+<td><code>preinstalled-toolchain</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>The runner already provides R with pak and has no sudo, as a self-hosted runner does. Skips <code>setup-r</code> and <code>setup-r-dependencies</code> and installs the package’s dependencies (Suggests included), <code>gh</code>, <code>lintr</code> and <code>extra-packages</code> with pak. <code>install-quarto</code> then has no effect, and <code>apt-packages</code> must already be installed.</td>
+</tr>
+<tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
@@ -1251,7 +1257,8 @@ cookieconsent.run({
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: ''      # extra R deps (gh + lintr always installed from CRAN)</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: false  # skip R CMD INSTALL even when DESCRIPTION is present</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false             # warn instead of failing on lints</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preinstalled-toolchain: true            # runner has R with pak and no sudo</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-changed-files.yml</code>).</p>
 <p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag.</p>
 

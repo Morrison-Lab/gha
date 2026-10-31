@@ -1500,7 +1500,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><a href="./reference/lint-changed-files.html"><code>lint-changed-files.yml</code></a></td>
 <td>lintr over a PR’s changed files, a whole package, or a whole project, selected by <code>scope</code></td>
-<td><code>scope</code>, <code>path</code>, <code>linter-file</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>apt-packages</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code></td>
+<td><code>scope</code>, <code>path</code>, <code>linter-file</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>apt-packages</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code>, <code>preinstalled-toolchain</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/lint-workflows.html"><code>lint-workflows.yml</code></a></td>
@@ -1540,7 +1540,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><a href="./reference/update-snapshots.html"><code>update-snapshots.yml</code></a></td>
 <td>Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit</td>
-<td><code>ref</code>, <code>pr-mode</code>, <code>julia</code>, <code>extra-packages</code>, <code>apt-packages</code>, <code>commit-message</code>; secret <code>WORKFLOW_TOKEN</code></td>
+<td><code>ref</code>, <code>pr-mode</code>, <code>julia</code>, <code>extra-packages</code>, <code>apt-packages</code>, <code>preinstalled-toolchain</code>, <code>commit-message</code>; secret <code>WORKFLOW_TOKEN</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
@@ -1675,7 +1675,7 @@ cookieconsent.run({
 <tr class="even">
 <td><a href="./reference/version-check.html"><code>version-check.yml</code></a></td>
 <td>Fail a PR whose <code>DESCRIPTION</code> <code>Version:</code> differs from the base branch’s</td>
-<td><code>description-path</code>, <code>no-version-increment-label</code>, <code>bump-branch</code></td>
+<td><code>description-path</code>, <code>no-version-increment-label</code>, <code>bump-branch</code>, <code>preinstalled-toolchain</code></td>
 </tr>
 </tbody>
 </table>
