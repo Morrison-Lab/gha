@@ -43,6 +43,12 @@ on:
           automation's own PR).
         type: string
         default: automated/bump-dev-version
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R and has no sudo, as a self-hosted
+          runner does. Skips the R setup step.
+        type: boolean
+        default: false
 
 jobs:
   version-check:
@@ -133,7 +139,7 @@ jobs:
           path: compare
 
       - name: Set up R
-        if: steps.exempt.outputs.skip != 'true'
+        if: steps.exempt.outputs.skip != 'true' && !inputs.preinstalled-toolchain
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           use-public-rspm: true

@@ -28,6 +28,7 @@ Two bypasses, both skip the check entirely:
 | `description-path`              | string | `DESCRIPTION`                  | Path to the DESCRIPTION file to check.                    |
 | `no-version-increment-label`    | string | `no version increment`          | PR label that skips this check entirely.                 |
 | `bump-branch`                   | string | `automated/bump-dev-version`    | Head branch that skips this check entirely.               |
+| `preinstalled-toolchain`        | boolean | `false`                        | The runner already provides R and has no sudo, as a self-hosted runner does. Skips the R setup step. |
 
 ## Permissions
 
@@ -63,6 +64,7 @@ jobs:
       # description-path: DESCRIPTION                    # default
       # no-version-increment-label: 'no version increment' # default
       # bump-branch: automated/bump-dev-version           # default
+      # preinstalled-toolchain: true                      # runner has R and no sudo
 ```
 
 See `version-check.yml` in

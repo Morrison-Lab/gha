@@ -64,6 +64,15 @@ on:
         description: Fail the workflow when lintr reports a lint.
         type: boolean
         default: true
+      preinstalled-toolchain:
+        description: >-
+          The runner already provides R (with the pak package) and has no
+          sudo, as a self-hosted runner does. Skips setup-r and
+          setup-r-dependencies and installs the R packages with pak.
+          `install-quarto` then has no effect, and `apt-packages` must
+          already be installed.
+        type: boolean
+        default: false
 
 jobs:
   lint-changed-files:
@@ -105,3 +114,4 @@ jobs:
           extra-packages: ${{ inputs.extra-packages }}
           install-package: ${{ inputs.install-package }}
           fail: ${{ inputs.fail }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
