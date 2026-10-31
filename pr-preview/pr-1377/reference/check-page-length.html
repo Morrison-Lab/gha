@@ -1141,13 +1141,13 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="what-it-measures">What it measures</h2>
 <p>The check runs without a browser, which the lab bans for agents, so it measures two proxies on the <em>expanded</em> page, the page’s own text with each <code>{{&lt; include &gt;}}</code> shortcode replaced by the file it names:</p>
 <ul>
-<li><strong>Math expressions.</strong> (<code>max-math</code>, default 600). MathJax typesets every formula in the browser, so rendering time grows with the number of formulas. At roughly 8 ms per expression on a mid-range laptop, 600 expressions is near the 5-second goal. Math inside code fences and HTML comments does not count.</li>
-<li><strong>Source lines.</strong> (<code>max-lines</code>, default 5000). A coarse proxy for rendered height, hence for the scroll bar’s length. Semantic line breaks put about one sentence on a line.</li>
+<li><strong>Math expressions.</strong> The limit is <code>max-math</code>, default 600. MathJax typesets every formula in the browser, so rendering time grows with the number of formulas. At roughly 8 ms per expression on a mid-range laptop, 600 expressions is near the 5-second goal. Math inside code fences and HTML comments does not count.</li>
+<li><strong>Source lines.</strong> The limit is <code>max-lines</code>, default 5000. A coarse proxy for rendered height, hence for the scroll bar’s length. Semantic line breaks put about one sentence on a line.</li>
 </ul>
 </section>
 <section id="decision-record" class="level2">
 <h2 class="anchored" data-anchor-id="decision-record">Decision record</h2>
-<p>These limits are estimates, chosen on 2026-10-31 from the lds corpus: at 600 math expressions, 10 of lds’s 40 chapters are over, including gradient descent. The 8 ms per expression and the line limit are not measured. To calibrate them, time MathJax on the expanded page in Node (no browser) and set <code>max-math</code> to the count that finishes in 5 seconds. Change the defaults in <code>check-page-length.py</code> and <code>action.yml</code> together; a unit test pins that they agree.</p>
+<p>These limits are estimates, chosen on 2026-10-31 from the lds corpus: at 600 math expressions, 10 of lds’s 40 chapters are over, including gradient descent. To reproduce, run the check with <code>whole-tree: true</code> and <code>globs: 'chapters/*.qmd'</code> in a checkout of lds. The 8 ms per expression and the line limit are not measured. To calibrate them, time MathJax on the expanded page in Node (no browser) and set <code>max-math</code> to the count that finishes in 5 seconds. Change the defaults in <code>check-page-length.py</code> and <code>action.yml</code> together; a unit test pins that they agree.</p>
 </section>
 <section id="what-it-flags" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-flags">What it flags</h2>

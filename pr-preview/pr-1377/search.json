@@ -4807,7 +4807,7 @@
     "href": "reference/check-page-length.html#what-it-measures",
     "title": "check-page-length.yml",
     "section": "What it measures",
-    "text": "What it measures\nThe check runs without a browser, which the lab bans for agents, so it measures two proxies on the expanded page, the page’s own text with each {{&lt; include &gt;}} shortcode replaced by the file it names:\n\nMath expressions. (max-math, default 600). MathJax typesets every formula in the browser, so rendering time grows with the number of formulas. At roughly 8 ms per expression on a mid-range laptop, 600 expressions is near the 5-second goal. Math inside code fences and HTML comments does not count.\nSource lines. (max-lines, default 5000). A coarse proxy for rendered height, hence for the scroll bar’s length. Semantic line breaks put about one sentence on a line.",
+    "text": "What it measures\nThe check runs without a browser, which the lab bans for agents, so it measures two proxies on the expanded page, the page’s own text with each {{&lt; include &gt;}} shortcode replaced by the file it names:\n\nMath expressions. The limit is max-math, default 600. MathJax typesets every formula in the browser, so rendering time grows with the number of formulas. At roughly 8 ms per expression on a mid-range laptop, 600 expressions is near the 5-second goal. Math inside code fences and HTML comments does not count.\nSource lines. The limit is max-lines, default 5000. A coarse proxy for rendered height, hence for the scroll bar’s length. Semantic line breaks put about one sentence on a line.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -4819,7 +4819,7 @@
     "href": "reference/check-page-length.html#decision-record",
     "title": "check-page-length.yml",
     "section": "Decision record",
-    "text": "Decision record\nThese limits are estimates, chosen on 2026-10-31 from the lds corpus: at 600 math expressions, 10 of lds’s 40 chapters are over, including gradient descent. The 8 ms per expression and the line limit are not measured. To calibrate them, time MathJax on the expanded page in Node (no browser) and set max-math to the count that finishes in 5 seconds. Change the defaults in check-page-length.py and action.yml together; a unit test pins that they agree.",
+    "text": "Decision record\nThese limits are estimates, chosen on 2026-10-31 from the lds corpus: at 600 math expressions, 10 of lds’s 40 chapters are over, including gradient descent. To reproduce, run the check with whole-tree: true and globs: 'chapters/*.qmd' in a checkout of lds. The 8 ms per expression and the line limit are not measured. To calibrate them, time MathJax on the expanded page in Node (no browser) and set max-math to the count that finishes in 5 seconds. Change the defaults in check-page-length.py and action.yml together; a unit test pins that they agree.",
     "crumbs": [
       "Overview",
       "Reference",
