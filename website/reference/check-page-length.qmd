@@ -17,14 +17,14 @@ the page's own text with each `{{< include >}}` shortcode
 replaced by the file it names:
 
 - **Math expressions.**
-  (`max-math`, default 600).
+  The limit is `max-math`, default 600.
   MathJax typesets every formula in the browser,
   so rendering time grows with the number of formulas.
   At roughly 8 ms per expression on a mid-range laptop,
   600 expressions is near the 5-second goal.
   Math inside code fences and HTML comments does not count.
 - **Source lines.**
-  (`max-lines`, default 5000).
+  The limit is `max-lines`, default 5000.
   A coarse proxy for rendered height, hence for the scroll bar's length.
   Semantic line breaks put about one sentence on a line.
 
