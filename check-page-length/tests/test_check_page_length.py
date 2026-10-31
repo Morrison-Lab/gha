@@ -24,6 +24,10 @@ def test_math_in_code_and_comments_is_not_counted():
     assert cpl.count_math(text) == 1  # "$5 and $" reads as one inline span
 
 
+def test_math_like_text_in_inline_code_is_not_counted():
+    assert cpl.count_math("Use `$VAR` and `$HOME` in shell, then $x$.") == 1
+
+
 def test_escaped_dollar_is_not_math():
     assert cpl.count_math(r"costs \$5 and \$6") == 0
 
@@ -91,7 +95,7 @@ def test_edit_to_an_included_file_flags_the_page(repo):
     git(repo, "add", "."); git(repo, "commit", "-qm", "edit")
     rep = cpl.run_check("HEAD~1", ["*.qmd"], [], False, 10, 5000)
     assert [(r, f.kind) for r, f in rep.findings] == [("page.qmd", "math")]
-    assert rep.findings[0][1].line == 1 or rep.findings[0][1].line > 0
+    assert rep.findings[0][1].line == 1
 
 
 def test_short_page_is_not_flagged_when_touched(repo):

@@ -1987,6 +1987,7 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
+          globs: '_ci-page-length/*.qmd'
           max-math: '2'
       - name: Assert the failing call actually failed
         shell: bash
@@ -2003,12 +2004,14 @@ jobs:
         uses: ./check-page-length
         with:
           whole-tree: 'true'
+          globs: '_ci-page-length/*.qmd'
           max-math: '2'
       - name: Check again with the page exempted through paths-ignore
         uses: ./check-page-length
         with:
           whole-tree: 'true'
           fail: 'true'
+          globs: '_ci-page-length/*.qmd'
           paths-ignore: '_ci-page-length'
           max-math: '2'
       - name: Check again with globs excluding the page
@@ -2016,7 +2019,7 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'website/reference/*.qmd'
+          globs: 'website/reference/check-page-length.qmd'
           max-math: '2'
       - name: Check again with no base, expecting a skip
         uses: ./check-page-length

@@ -33,6 +33,8 @@ replaced by the file it names:
 These limits are estimates, chosen on 2026-10-31 from the lds corpus:
 at 600 math expressions, 10 of lds's 40 chapters are over,
 including gradient descent.
+To reproduce, run the check with `whole-tree: true`
+and `globs: 'chapters/*.qmd'` in a checkout of lds.
 The 8 ms per expression and the line limit are not measured.
 To calibrate them, time MathJax on the expanded page in Node
 (no browser) and set `max-math` to the count that finishes in 5 seconds.
