@@ -1,11 +1,11 @@
 """Unit tests for check-page-length: counting, include expansion, scoping, defaults."""
 
 import importlib.util
+import re
 import subprocess
 from pathlib import Path
 
 import pytest
-import yaml
 
 _DIR = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location(
@@ -69,7 +69,7 @@ def git(cwd, *args):
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     git(tmp_path, "init", "-q", "-b", "main")
-    git(tmp_path, "config", "user.email", "t@example.com")
+    git(tmp_path, "config", "user.email", "tester")
     git(tmp_path, "config", "user.name", "t")
     monkeypatch.chdir(tmp_path)
     return tmp_path
@@ -124,8 +124,14 @@ def test_whole_tree_measures_every_page(repo):
 
 
 def test_action_defaults_match_script():
-    action = yaml.safe_load((_DIR / "action.yml").read_text())
-    ins = action["inputs"]
-    assert ins["max-math"]["default"] == str(cpl.DEFAULT_MAX_MATH)
-    assert ins["max-lines"]["default"] == str(cpl.DEFAULT_MAX_LINES)
-    assert ins["fail"]["default"] == "false"
+    text = (_DIR / "action.yml").read_text()
+
+    def default(name):
+        m = re.search(rf"^  {name}:\n(?:    .*\n)*?    default: '?([^'\n]*)'?$",
+                      text, re.MULTILINE)
+        assert m, name
+        return m.group(1)
+
+    assert default("max-math") == str(cpl.DEFAULT_MAX_MATH)
+    assert default("max-lines") == str(cpl.DEFAULT_MAX_LINES)
+    assert default("fail") == "false"

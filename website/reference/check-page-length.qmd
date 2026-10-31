@@ -4,8 +4,8 @@ title: "check-page-length.yml"
 
 Diff-scoped, warn-only check that flags a page a pull request adds to
 when the page has grown too long.
-The lab's rule (Ezra, 2026-10-31) is that a page should load and finish rendering its math
-in under 5 seconds,
+The lab's rule (Ezra, 2026-10-31) is that a page should load
+and finish rendering its math in under 5 seconds,
 and that its scroll bar should not shrink to its smallest length.
 A page that fails either goal is split into several pages.
 
@@ -13,15 +13,18 @@ A page that fails either goal is split into several pages.
 
 The check runs without a browser, which the lab bans for agents,
 so it measures two proxies on the *expanded* page,
-the page's own text with each `{{< include >}}` shortcode replaced by the file it names:
+the page's own text with each `{{< include >}}` shortcode
+replaced by the file it names:
 
-- **Math expressions** (`max-math`, default 600).
+- **Math expressions.**
+  (`max-math`, default 600).
   MathJax typesets every formula in the browser,
   so rendering time grows with the number of formulas.
   At roughly 8 ms per expression on a mid-range laptop,
   600 expressions is near the 5-second goal.
   Math inside code fences and HTML comments does not count.
-- **Source lines** (`max-lines`, default 5000).
+- **Source lines.**
+  (`max-lines`, default 5000).
   A coarse proxy for rendered height, hence for the scroll bar's length.
   Semantic line breaks put about one sentence on a line.
 
@@ -29,7 +32,7 @@ the page's own text with each `{{< include >}}` shortcode replaced by the file i
 
 These limits are estimates, chosen on 2026-10-31 from the lds corpus:
 at 600 math expressions, 10 of lds's 40 chapters are over,
-including every chapter Ezra named as slow.
+including gradient descent.
 The 8 ms per expression and the line limit are not measured.
 To calibrate them, time MathJax on the expanded page in Node
 (no browser) and set `max-math` to the count that finishes in 5 seconds.
