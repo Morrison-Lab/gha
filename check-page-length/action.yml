@@ -1,0 +1,57 @@
+name: Check page length
+description: >-
+  Diff-scoped check that flags a Quarto page a pull request adds to when the
+  page, with its includes expanded, has more than 600 math expressions or 5000
+  source lines: proxies for taking over 5 seconds to finish rendering math and
+  for a scroll bar at its smallest length. Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only pages touched since this ref are
+      reported. Needs fetch-depth: 0. With no base-ref (or an uncomputable
+      diff) the check is skipped with a warning, not run on the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Measure every tracked page in full instead of only pages the diff
+      touched. `base-ref` is ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of pages to check (recursive).
+    default: '*.qmd'
+  paths-ignore:
+    description: Comma/newline-separated glob patterns (relative paths) to skip.
+    default: ''
+  max-math:
+    description: Largest number of math expressions a page may have.
+    default: '600'
+  max-lines:
+    description: Largest number of source lines a page may have, includes expanded.
+    default: '5000'
+  fail:
+    description: >-
+      Fail the action when a touched page is over a limit (else non-blocking).
+      Defaults to 'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check page length
+      shell: bash
+      env:
+        CPL_BASE_REF: ${{ inputs.base-ref }}
+        CPL_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CPL_GLOBS: ${{ inputs.globs }}
+        CPL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CPL_MAX_MATH: ${{ inputs.max-math }}
+        CPL_MAX_LINES: ${{ inputs.max-lines }}
+        CPL_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-page-length.py"
