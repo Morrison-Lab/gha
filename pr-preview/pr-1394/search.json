@@ -3931,7 +3931,7 @@
     "href": "reference/check-exercise-question-paragraph.html#inputs",
     "title": "check-exercise-question-paragraph.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\nfail\ntrue\nFail the workflow on a finding; false gives warnings only\n\n\nwhole-tree\nfalse\nScan every exercise, not only a PR’s additions\n\n\npython-version\n3.x\nPython version to set up",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nbase-ref\n(empty)\nGit ref or SHA to diff against; empty skips the check unless whole-tree is set\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\nfail\ntrue\nFail the workflow on a finding; false gives warnings only\n\n\nwhole-tree\nfalse\nScan every exercise, not only a PR’s additions\n\n\npython-version\n3.x\nPython version to set up",
     "crumbs": [
       "Overview",
       "Reference",
