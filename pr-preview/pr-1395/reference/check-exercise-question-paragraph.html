@@ -598,6 +598,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-heading-siblings.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-heading-siblings.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-figure-placement.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-figure-placement.yml</span></a>
   </div>
@@ -624,6 +630,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="../reference/check-pr-concerns.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-pr-concerns.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/cancel-superseded.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cancel-superseded.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1141,21 +1153,26 @@ cookieconsent.run({
 </thead>
 <tbody>
 <tr class="odd">
+<td><code>base-ref</code></td>
+<td>(empty)</td>
+<td>Git ref or SHA to diff against; empty skips the check unless <code>whole-tree</code> is set</td>
+</tr>
+<tr class="even">
 <td><code>globs</code></td>
 <td><code>*.qmd</code></td>
 <td>Space-separated git pathspecs of tracked files to check</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>fail</code></td>
 <td><code>true</code></td>
 <td>Fail the workflow on a finding; <code>false</code> gives warnings only</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>whole-tree</code></td>
 <td><code>false</code></td>
 <td>Scan every exercise, not only a PR’s additions</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>python-version</code></td>
 <td><code>3.x</code></td>
 <td>Python version to set up</td>
