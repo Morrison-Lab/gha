@@ -56,6 +56,8 @@ already include the right `permissions:` blocks; copy them as-is.
 - `check-links` opens an issue on `main` failures, so grant `issues: write`,
   `pull-requests: read`, `contents: read`.
 - `summary` comments on issues, so grant `issues: write`, `contents: read`.
+- `cancel-superseded` cancels other runs of the pull request, so grant
+  `actions: write`, `pull-requests: read`.
 - `update-snapshots` pushes the snapshot-update commit back to the branch, so
   grant `contents: write`.
 - `quarto-publish` deploys to the `gh-pages` branch, so grant `contents: write`,

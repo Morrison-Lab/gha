@@ -1,0 +1,45 @@
+name: Run bundled steps on the cluster
+description: >-
+  Run several shell steps as one HTCondor job on a WWU CS cluster head,
+  falling back to the runner when the cluster cannot be used.
+inputs:
+  steps:
+    description: One shell command per line. Fewer than two are run on the runner.
+    required: true
+  head:
+    description: Cluster head node.
+    default: cse-head.cluster.cs.wwu.edu
+  working-directory:
+    description: Checkout to copy to the cluster.
+    default: .
+runs:
+  using: composite
+  steps:
+    - name: Run steps
+      shell: bash
+      env:
+        STEPS: ${{ inputs.steps }}
+        CONDOR_HEAD: ${{ inputs.head }}
+        WORKDIR: ${{ inputs.working-directory }}
+        SCRIPT: ${{ github.action_path }}/../../../condor-batch/condor-batch.sh
+      run: |
+        set -uo pipefail
+        steps_file="$RUNNER_TEMP/condor-steps.txt"
+        printf '%s\n' "$STEPS" > "$steps_file"
+        run_local() {
+          echo "::notice::running the steps on the runner: $1"
+          cd "$WORKDIR"
+          while IFS= read -r cmd <&3; do
+            [ -n "${cmd//[[:space:]]/}" ] || continue
+            bash -c "$cmd" < /dev/null || exit $?
+          done 3< "$steps_file"
+        }
+        key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
+        [ -r "$key" ] || { run_local "no cluster key on this runner"; exit $?; }
+        rc=0
+        bash "$SCRIPT" "$WORKDIR" "$steps_file" || rc=$?
+        case "$rc" in
+          71) run_local "too few steps to bundle"; exit $? ;;
+          70) run_local "the cluster job did not run normally"; exit $? ;;
+          *) exit "$rc" ;;
+        esac
