@@ -1728,7 +1728,7 @@
     "href": "reference/cancel-superseded.html#inputs",
     "title": "cancel-superseded.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nruns-on\nprivate repositories: vars.CI_RUNNER; otherwise ubuntu-latest\nRunner label for the job",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nruns-on\nvars.CI_RUNNER in a private repository that sets it; otherwise ubuntu-latest\nRunner label for the job",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1752,7 +1752,7 @@
     "href": "reference/cancel-superseded.html#limits",
     "title": "cancel-superseded.yml",
     "section": "Limits",
-    "text": "Limits\n\nGitHub lists no pull request for a run from a fork, so fork pull requests are never matched.\nFork and Dependabot pull requests get a read-only token, which cannot cancel runs.",
+    "text": "Limits\n\nGitHub lists no pull request for a run from a fork, so fork pull requests are never matched.\nRuns in waiting or requested status are not cancelled.\nFork and Dependabot pull requests get a read-only token, which cannot cancel runs.",
     "crumbs": [
       "Overview",
       "Reference",

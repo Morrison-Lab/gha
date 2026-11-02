@@ -1144,7 +1144,7 @@ cookieconsent.run({
 <tbody>
 <tr class="odd">
 <td><code>runs-on</code></td>
-<td>private repositories: <code>vars.CI_RUNNER</code>; otherwise <code>ubuntu-latest</code></td>
+<td><code>vars.CI_RUNNER</code> in a private repository that sets it; otherwise <code>ubuntu-latest</code></td>
 <td>Runner label for the job</td>
 </tr>
 </tbody>
@@ -1158,6 +1158,7 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="limits">Limits</h2>
 <ul>
 <li>GitHub lists no pull request for a run from a fork, so fork pull requests are never matched.</li>
+<li>Runs in <code>waiting</code> or <code>requested</code> status are not cancelled.</li>
 <li>Fork and Dependabot pull requests get a read-only token, which cannot cancel runs.</li>
 </ul>
 </section>
