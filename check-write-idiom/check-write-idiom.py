@@ -388,9 +388,11 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
 def main(scan=None, prefix: str = "CWI_", name: str = "write-idiom",
          clean: str = 'No line opens with "Write the", "Write a" or "Write an".',
          summary: str = 'open with a vague "Write ...".',
-         format_finding=None) -> int:
+         format_finding=None, always_fail=frozenset()) -> int:
     """Run the check from the environment; the keyword arguments let a sibling
-    check reuse the engine with its own scanner, env prefix and wording."""
+    check reuse the engine with its own scanner, env prefix and wording.
+    A finding whose ``rule`` is in ``always_fail`` is an error and fails the
+    run whatever the FAIL flag says."""
     base_ref = os.environ.get(prefix + "BASE_REF", "").strip()
     globs = os.environ.get(prefix + "GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
     ignores = compile_globs(_split_list(os.environ.get(prefix + "PATHS_IGNORE", "")))
@@ -418,12 +420,15 @@ def main(scan=None, prefix: str = "CWI_", name: str = "write-idiom",
         print(clean)
         return 0
 
-    severity = "error" if fail else "warning"
+    blocking = False
     for rel, finding in report.findings:
+        hard = getattr(finding, "rule", None) in always_fail
+        blocking = blocking or hard or fail
+        severity = "error" if (hard or fail) else "warning"
         print(f"::{severity} file={rel},line={finding.line}::"
               f"{describe(finding)}")
     print(f"\n{len(report.findings)} line(s) {summary}")
-    return 1 if fail else 0
+    return 1 if blocking else 0
 
 
 if __name__ == "__main__":

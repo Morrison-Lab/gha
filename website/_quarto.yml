@@ -79,11 +79,13 @@ website:
           - reference/check-one-div-per-subfile.qmd
           - reference/check-heading-levels.qmd
           - reference/check-page-length.qmd
+          - reference/check-heading-siblings.qmd
           - reference/check-figure-placement.qmd
           - reference/check-div-ids.qmd
           - reference/check-code-messages.qmd
           - reference/check-pr-size.qmd
           - reference/check-pr-concerns.qmd
+          - reference/cancel-superseded.qmd
           - reference/check-def-commentary.qmd
           - reference/check-unexplained-contrasts.qmd
           - reference/check-solution-citations.qmd
@@ -98,6 +100,7 @@ website:
           - reference/check-def-title-synonyms.qmd
           - reference/check-bare-yes-no.qmd
           - reference/check-exercise-background.qmd
+          - reference/check-exercise-question-paragraph.qmd
           - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd
           - reference/check-split-solutions.qmd
