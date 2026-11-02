@@ -79,6 +79,7 @@ website:
           - reference/check-one-div-per-subfile.qmd
           - reference/check-heading-levels.qmd
           - reference/check-page-length.qmd
+          - reference/check-heading-siblings.qmd
           - reference/check-figure-placement.qmd
           - reference/check-div-ids.qmd
           - reference/check-code-messages.qmd
