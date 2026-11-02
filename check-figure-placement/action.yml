@@ -1,0 +1,58 @@
+name: Check figure placement
+description: >-
+  Diff-scoped check that flags a figure the diff adds to when no sentence on
+  its page cites it with `@fig-id`, or when it sits directly after an example,
+  exercise or solution div instead of inside it (Ezra, 2026-11-02). Warn-only
+  by default; `<!-- figure-placement: allow -->` on a figure's line or in its
+  div exempts it (a figure shared by several examples sits outside every div).
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only figures on lines added since this ref
+      are checked. On a pull request the reusable workflow passes `HEAD^1`.
+      When the diff can't be computed (e.g. a shallow clone, or no base-ref
+      given on a push run), the check is skipped with a warning rather than
+      falling back to a whole-tree scan, which would reflag every figure the
+      corpus already carries.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a figure is uncited or unnested (else warning
+      annotations only). Defaults to 'false'.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check figure placement
+      shell: bash
+      env:
+        FPL_BASE_REF: ${{ inputs.base-ref }}
+        FPL_WHOLE_TREE: ${{ inputs.whole-tree }}
+        FPL_GLOBS: ${{ inputs.globs }}
+        FPL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        FPL_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-figure-placement.py"

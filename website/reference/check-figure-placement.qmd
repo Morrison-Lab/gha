@@ -1,0 +1,48 @@
+---
+title: "check-figure-placement.yml"
+---
+
+Diff-scoped, warn-only check that flags a figure a pull request adds
+when the page does not discuss it or places it away from its example.
+The lab's rule (Ezra, 2026-11-02) is that every figure is discussed
+and cross-referenced in prose,
+and that a figure specific to one example or exercise is nested inside that example's or exercise's div.
+
+## What it flags
+
+- **Uncited.**
+  No `@fig-id`, and no `[text](#fig-id)` link, appears on the page outside the figure itself.
+  A citation on another page does not count.
+- **Unnested.**
+  The figure is not inside an `#exm-`, `#exr-` or `#sol-` div,
+  and the nearest non-blank line before it closes one.
+  A figure that several examples share follows prose, so it is not flagged.
+
+A figure is a div or image labelled `{#fig-id}`, or a code chunk with `#| label: fig-id`.
+A figure inside a code fence or HTML comment is not counted.
+Only a figure whose lines include one the pull request adds is reported,
+so nothing existing is swept.
+`<!-- figure-placement: allow -->` on the figure or inside its div exempts it.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to measure every tracked file in full.
+
+## Inputs
+
+| Input          | Type    | Default   | Description |
+| -------------- | ------- | --------- | ----------- |
+| `globs`        | string  | `'*.qmd'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`      | Comma- or newline-separated glob patterns (relative paths) to skip. |
+| `fail`         | boolean | `false`   | Fail the workflow when a figure is uncited or unnested. The default gives warning annotations only. |
+| `whole-tree`   | boolean | `false`   | Check every tracked file in full instead of only added lines. |
+
+## Usage
+
+```yaml
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-figure-placement.yml@v3
+```
+
+Copy [`examples/check-figure-placement.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-figure-placement.yml).

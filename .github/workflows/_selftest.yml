@@ -2030,6 +2030,74 @@ jobs:
         if: always()
         shell: bash
         run: git rm -rf --cached -q _ci-page-length || true
+  # check-figure-placement is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-figure-placement@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the rules and both scopes; the composite calls below prove
+  # action.yml wires each input through.
+  figure-placement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-figure-placement unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-figure-placement/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-figure-placement
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - name: Stage an uncited figure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-fig
+          printf '%s\n' '::: {#fig-a}' '![](a.png)' ':::' > _ci-fig/page.qmd
+          git add -f _ci-fig/page.qmd
+      - name: Check the staged figure with fail, expecting a failure
+        id: fig-expected-failure
+        continue-on-error: true
+        uses: ./check-figure-placement
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: '_ci-fig/*.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.fig-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-figure-placement to fail on a staged figure, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check the staged figure with the default, which only warns
+        uses: ./check-figure-placement
+        with:
+          whole-tree: 'true'
+          globs: '_ci-fig/*.qmd'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-figure-placement
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: git rm -rf --cached -q _ci-fig || true
   # check-one-div-per-subfile is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-one-div-per-subfile@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
