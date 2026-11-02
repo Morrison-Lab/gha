@@ -9,10 +9,12 @@ goes in its own paragraph, apart from the scenario information.
 
 The check looks at each exercise div (`#exr-...`).
 A sentence is a task when it ends with a question mark
-or starts with an imperative task verb such as Show, Find, Compute, Estimate, Explain or Derive.
+or starts with an imperative task verb
+such as Show, Find, Compute, Estimate, Explain or Derive.
 Every other sentence of prose counts as scenario.
 A paragraph with both kinds is reported.
-Sentences are found by punctuation, so a sentence broken across lines at a clause counts once.
+Sentences are found by punctuation,
+so a sentence broken across lines at a clause counts once.
 
 Solutions, callouts such as hints, code fences, display math, lists, tables,
 headings and HTML comments are not examined.
