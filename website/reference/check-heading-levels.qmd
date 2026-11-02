@@ -2,10 +2,12 @@
 title: "check-heading-levels.yml"
 ---
 
-Diff-scoped, warn-only check that flags a heading that breaks its page's outline.
-The lab's rule (Ezra, 2026-10-30) is that a page's title is its level 1 heading,
-so the body starts at level 2,
-and each heading is at most one level deeper than the one before it.
+Diff-scoped check that flags a heading that breaks its page's outline.
+It fails by default, since agents ignore warnings (Ezra, 2026-11-02).
+A page's title is not a numbered level,
+so the body starts at level 1 (Ezra, 2026-11-02, correcting 2026-10-30):
+a body that starts at level 2 numbers its sections 0.1, 0.2 under `number-sections: true`.
+Each heading is at most one level deeper than the one before it.
 Pages split out of larger pages kept the headings of the page they came from,
 and a shared include opened ten chapters one level too deep.
 
@@ -13,16 +15,16 @@ The check reports three mistakes:
 
 - **Skipped level.**
   A heading more than one level deeper than the heading before it in the same file
-  (`##` then `####`).
-  The first heading of a page is compared with the title, level 1.
+  (`#` then `###`).
+  The first heading of a page is compared with level 0, so it must be level 1.
   The first heading of an included subfile is compared with nothing,
   since it takes its level from the page that includes it.
 - **Page starts too deep.**
   The first heading a page renders, following its `{{< include >}}` shortcodes,
-  is deeper than level 2.
+  is deeper than level 1.
   The finding sits on that heading, in the include that holds it.
 - **Title repeated as a heading.**
-  The first heading a page renders is a level 2 heading
+  The first heading a page renders is a level 1 heading
   that repeats the page's `title:`.
 
 A page is a `.qmd` file with a `title:` in its front matter.
@@ -56,7 +58,7 @@ which measures how many headings a corpus carries that break the outline.
 | -------------- | ------- | ---------- | ----------- |
 | `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`         | boolean | `false`    | Fail the workflow when a heading breaks its page's outline. The default gives warning annotations only. |
+| `fail`         | boolean | `true`     | Fail the workflow when a heading breaks its page's outline. Set `false` for warning annotations only. |
 | `whole-tree`   | boolean | `false`    | Scan every tracked page in full instead of only a PR's added lines. |
 | `python-version` | string | `'3.x'`   | Python version to set up. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
@@ -70,9 +72,9 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 ```yaml
 # Copy to .github/workflows/check-heading-levels.yml in your repo.
 # Diff-scoped check: flags a heading that breaks its page's outline when a PR adds
-# the heading line: a skipped level (## then ####), a page whose first heading is
-# deeper than level 2, or a first heading that repeats the page title.
-# Warn-only by default.
+# the heading line: a skipped level (# then ###), a page whose first heading is
+# deeper than level 1, or a first heading that repeats the page title.
+# Fails by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check heading levels
 
@@ -89,7 +91,7 @@ jobs:
     # with:
     #   globs: '*.qmd'                         # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
-    #   fail: true                             # block instead of warn (defaults to false)
+    #   fail: false                            # warn instead of block (defaults to true)
     #   whole-tree: true                       # scan every page, not just a PR's additions
 ```
 
