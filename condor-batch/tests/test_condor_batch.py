@@ -13,12 +13,14 @@ SCRIPT = Path(__file__).resolve().parent.parent / "condor-batch.sh"
 
 SSH_STUB = """\
 echo "ssh $*" >> "$STUB_LOG"
+[ -z "${STUB_SSH_RC:-}" ] || exit "$STUB_SSH_RC"
 while [ "$1" != bash ]; do shift; done
 exec "$@"
 """
 
 RSYNC_STUB = """\
 echo "rsync $*" >> "$STUB_LOG"
+[ -z "${STUB_RSYNC_RC:-}" ] || exit "$STUB_RSYNC_RC"
 dest="${@: -1}"; dest="${dest#*:}"
 src="${@: -2:1}"
 if [ -f "$src" ]; then mkdir -p "$(dirname "$dest")"; cp "$src" "$dest"
@@ -100,6 +102,18 @@ def test_step_exit_codes_that_look_like_infrastructure_become_1(tmp_path):
         assert proc.returncode == 1, rv
 
 
+def test_failed_ssh_exits_70(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_SSH_RC="255")
+    assert proc.returncode == 70
+    assert "ssh to the cluster head failed" in proc.stderr
+
+
+def test_failed_copy_exits_70_without_submitting(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RSYNC_RC="23")
+    assert proc.returncode == 70
+    assert _count(calls, "ssh ") == 0
+
+
 def test_held_or_aborted_job_exits_70(tmp_path):
     # No "return value" line in condor.log, and condor_wait itself failed.
     proc, _ = _run(tmp_path, ["a", "b"], STUB_WAIT_RC="1")
@@ -111,3 +125,37 @@ def test_ssh_key_with_whitespace_is_refused(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], CONDOR_SSH_KEY="/tmp/my key")
     assert proc.returncode == 64
     assert calls == []
+
+
+ACTION = Path(__file__).resolve().parents[2] / ".github/actions/condor-batch/action.yml"
+
+
+def _run_action(tmp_path: Path, script_rc: int):
+    import yaml
+
+    action = yaml.safe_load(ACTION.read_text())
+    run = next(s["run"] for s in action["runs"]["steps"] if "run" in s)
+    script = tmp_path / "stub.sh"
+    script.write_text(f"exit {script_rc}\n")
+    key = tmp_path / "key"
+    key.write_text("k")
+    marker = tmp_path / "marker"
+    env = {
+        **os.environ,
+        "STEPS": f"touch {marker}\ntrue",
+        "CONDOR_HEAD": "h",
+        "WORKDIR": str(tmp_path),
+        "SCRIPT": str(script),
+        "CONDOR_SSH_KEY": str(key),
+        "RUNNER_TEMP": str(tmp_path),
+    }
+    proc = subprocess.run(["bash", "-c", run], env=env, capture_output=True, text=True, check=False)
+    return proc.returncode, marker.exists()
+
+
+def test_composite_reruns_locally_only_for_infrastructure_codes(tmp_path):
+    for rc, reruns, final in [(70, True, 0), (71, True, 0), (0, False, 0), (2, False, 2), (3, False, 3), (255, False, 255)]:
+        case_dir = tmp_path / str(rc)
+        case_dir.mkdir()
+        code, ran_locally = _run_action(case_dir, rc)
+        assert (code, ran_locally) == (final, reruns), rc
