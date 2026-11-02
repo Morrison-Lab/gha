@@ -203,7 +203,7 @@ def test_main_passes_comparisons_and_temporal_just(tmp_path, monkeypatch, capsys
     git("add", "-A")
     _main_env(monkeypatch, repo, CAW_FAIL="true")
     assert wi.main() == 0
-    assert "No position, effort, time-relative or generic" in capsys.readouterr().out
+    assert "No avoided word or trailing parenthetical link" in capsys.readouterr().out
 
 
 def test_main_without_base_skips_under_its_own_name(tmp_path, monkeypatch, capsys):
