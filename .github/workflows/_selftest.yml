@@ -1920,8 +1920,10 @@ jobs:
         uses: ./check-heading-levels
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
-      # This repo has no Quarto pages, so stage one that skips a level and
-      # assert that the blocking call really fails.
+          paths-ignore: 'website/**'
+      # Stage a page that starts at level 2 and skips a level, and assert
+      # that the call, which fails by default, really fails. The website's
+      # hand-written pages are excluded: they are not numbered.
       - name: Stage a page that skips a heading level
         shell: bash
         run: |
@@ -1935,7 +1937,7 @@ jobs:
         uses: ./check-heading-levels
         with:
           whole-tree: 'true'
-          fail: 'true'
+          paths-ignore: 'website/**'
       - name: Assert the failing call actually failed
         shell: bash
         env:
@@ -1946,23 +1948,27 @@ jobs:
             echo "::error::expected check-heading-levels to fail on a staged page, got outcome='$OUTCOME'"
             exit 1
           fi
-      # The default is warn-only, so the same finding must pass.
-      - name: Check the staged page with the default fail
+      # With fail turned off, the same finding must pass.
+      - name: Check the staged page with fail turned off
         uses: ./check-heading-levels
         with:
           whole-tree: 'true'
+          fail: 'false'
+          paths-ignore: 'website/**'
       - name: Check again with the page exempted through paths-ignore
         uses: ./check-heading-levels
         with:
           whole-tree: 'true'
           fail: 'true'
-          paths-ignore: '_ci-heading-levels'
+          paths-ignore: |
+            _ci-heading-levels
+            website/**
       - name: Check again with globs excluding the page
         uses: ./check-heading-levels
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'website/reference/*.qmd'
+          globs: 'build-dependency-graph/tests/fixture/ok/*.qmd'
       - name: Check again with no base, expecting a skip
         uses: ./check-heading-levels
         with:
