@@ -29,6 +29,11 @@ and the fourth is psw's own (psw#427):
   specific object exists, so a finding only asks the author to check; a
   deliberate abstract use takes the allow comment.
 
+- **back-references to a "setup"**: "the setup of @exr-x", "the same setup
+  as". Name the specific data, variables, or model the part reuses (psw#442).
+  A finding only asks the author to check; a deliberate use takes the allow
+  comment.
+
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
 or at the end of a clause); "above the threshold" passes. ``just`` is not
@@ -90,6 +95,10 @@ GENERIC_RE = re.compile(
     r"\b(?:(?i:domain|codomain|range|sample\s+space)\s+[A-Z]\b(?![\w$\\(])"
     r"|(?i:some\s+(?:domain|codomain|range|sample\s+space)\b))"
 )
+BACKREF_RE = re.compile(
+    r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?(?:set-?up|setting)\s+(?:of|from|in)\b"
+    r"|(?:same|identical)\s+(?:set-?up|setting)\s+as\b)"
+)
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -104,6 +113,10 @@ RULES = (
     ("generic", GENERIC_RE,
      'Name the specific set, such as "the range of X", instead of a '
      "generic placeholder; be as specific as feasible (psw#427)."),
+    ("backref", BACKREF_RE,
+     'Name the data, variables, or model a back-reference reuses instead of '
+     '"the setup of ..."; write about content, not the structure of the '
+     "notes (psw#442)."),
 )
 
 
