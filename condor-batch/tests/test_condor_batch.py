@@ -82,7 +82,7 @@ def test_five_steps_make_exactly_one_submission(tmp_path):
 
 def test_single_step_is_refused_without_contacting_the_cluster(tmp_path):
     proc, calls = _run(tmp_path, ["only"])
-    assert proc.returncode == 2
+    assert proc.returncode == 71
     assert "refusing" in proc.stderr
     assert calls == []
 
@@ -92,10 +92,18 @@ def test_job_return_value_becomes_the_exit_code(tmp_path):
     assert proc.returncode == 5
 
 
-def test_held_or_aborted_job_exits_3_not_2(tmp_path):
+def test_step_exit_codes_that_look_like_infrastructure_become_1(tmp_path):
+    for rv in ("70", "71", "255"):
+        case_dir = tmp_path / rv
+        case_dir.mkdir()
+        proc, _ = _run(case_dir, ["a", "b"], STUB_RV=rv)
+        assert proc.returncode == 1, rv
+
+
+def test_held_or_aborted_job_exits_70(tmp_path):
     # No "return value" line in condor.log, and condor_wait itself failed.
     proc, _ = _run(tmp_path, ["a", "b"], STUB_WAIT_RC="1")
-    assert proc.returncode == 3
+    assert proc.returncode == 70
     assert "did not end normally" in proc.stderr
 
 

@@ -13,6 +13,11 @@
 # not visible there). TMPDIR is on that home too. The log streams back when the
 # job ends; the exit code is the last failing step's, or 0.
 #
+# Exit 70 means the cluster could not run the job normally (ssh failed, or the
+# job was held or aborted) and 71 means too few steps; the caller may rerun the
+# steps on the runner for those two only. A step's own exit 70, 71 or 255 is
+# reported as 1, so no step failure can look like an infrastructure failure.
+#
 # Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/home/morri313/ci), RUN_ID (default GITHUB_RUN_ID or the
@@ -34,7 +39,7 @@ min_steps="${MIN_STEPS:-2}"
 n=$(grep -c -E '[^[:space:]]' "$steps" || true)
 if [ "$n" -lt "$min_steps" ]; then
   echo "refusing to submit $n step(s): need at least $min_steps; run it on the runner" >&2
-  exit 2
+  exit 71
 fi
 
 case "$key" in
@@ -82,7 +87,13 @@ condor_wait condor.log || wait_rc=$?
 [ ! -f err.log ] || cat err.log >&2
 rv=
 [ ! -f condor.log ] || rv=$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)
-if [ -n "$rv" ]; then exit "$rv"; fi
+if [ -n "$rv" ]; then
+  case "$rv" in 70|71|255) exit 1 ;; esac
+  exit "$rv"
+fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
-exit 3
+exit 70
 REMOTE
+rc=$?
+[ "$rc" -ne 255 ] || { echo "ssh to the cluster head failed" >&2; exit 70; }
+exit "$rc"

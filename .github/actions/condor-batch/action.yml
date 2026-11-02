@@ -39,7 +39,7 @@ runs:
         bash "$SCRIPT" "$WORKDIR" "$steps_file"
         rc=$?
         case "$rc" in
-          2) run_local "too few steps to bundle"; exit $? ;;
-          3|255) run_local "the cluster job did not run normally (exit $rc)"; exit $? ;;
+          71) run_local "too few steps to bundle"; exit $? ;;
+          70) run_local "the cluster job did not run normally"; exit $? ;;
           *) exit "$rc" ;;
         esac
