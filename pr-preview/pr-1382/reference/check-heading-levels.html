@@ -633,6 +633,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-heading-siblings.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-heading-siblings.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-figure-placement.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-figure-placement.yml</span></a>
   </div>
@@ -659,6 +665,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="../reference/check-pr-concerns.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-pr-concerns.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/cancel-superseded.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cancel-superseded.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -743,6 +755,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="../reference/check-exercise-background.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-exercise-background.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-exercise-question-paragraph.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-exercise-question-paragraph.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1147,12 +1165,12 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a heading that breaks its page’s outline. The lab’s rule (Ezra, 2026-10-30) is that a page’s title is its level 1 heading, so the body starts at level 2, and each heading is at most one level deeper than the one before it. Pages split out of larger pages kept the headings of the page they came from, and a shared include opened ten chapters one level too deep.</p>
+<p>Diff-scoped check that flags a heading that breaks its page’s outline. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). A page’s title is not a numbered level, so the body starts at level 1 (Ezra, 2026-11-02, correcting 2026-10-30): a body that starts at level 2 numbers its sections 0.1, 0.2 under <code>number-sections: true</code>. Each heading is at most one level deeper than the one before it. Pages split out of larger pages kept the headings of the page they came from, and a shared include opened ten chapters one level too deep.</p>
 <p>The check reports three mistakes:</p>
 <ul>
-<li><strong>Skipped level.</strong> A heading more than one level deeper than the heading before it in the same file (<code>##</code> then <code>####</code>). The first heading of a page is compared with the title, level 1. The first heading of an included subfile is compared with nothing, since it takes its level from the page that includes it.</li>
-<li><strong>Page starts too deep.</strong> The first heading a page renders, following its <code>{{&lt; include &gt;}}</code> shortcodes, is deeper than level 2. The finding sits on that heading, in the include that holds it.</li>
-<li><strong>Title repeated as a heading.</strong> The first heading a page renders is a level 2 heading that repeats the page’s <code>title:</code>.</li>
+<li><strong>Skipped level.</strong> A heading more than one level deeper than the heading before it in the same file (<code>#</code> then <code>###</code>). The first heading of a page is compared with level 0, so it must be level 1. The first heading of an included subfile is compared with nothing, since it takes its level from the page that includes it.</li>
+<li><strong>Page starts too deep.</strong> The first heading a page renders, following its <code>{{&lt; include &gt;}}</code> shortcodes, is deeper than level 1. The finding sits on that heading, in the include that holds it.</li>
+<li><strong>Title repeated as a heading.</strong> The first heading a page renders is a level 1 heading that repeats the page’s <code>title:</code>.</li>
 </ul>
 <p>A page is a <code>.qmd</code> file with a <code>title:</code> in its front matter. A file without one is an include, whatever its name.</p>
 <p>The check does not count:</p>
@@ -1193,8 +1211,8 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Fail the workflow when a heading breaks its page’s outline. The default gives warning annotations only.</td>
+<td><code>true</code></td>
+<td>Fail the workflow when a heading breaks its page’s outline. Set <code>false</code> for warning annotations only.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>
@@ -1225,9 +1243,9 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="example">Example</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-heading-levels.yml in your repo.</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Diff-scoped check: flags a heading that breaks its page's outline when a PR adds</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># the heading line: a skipped level (## then ####), a page whose first heading is</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># deeper than level 2, or a first heading that repeats the page title.</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Warn-only by default.</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># the heading line: a skipped level (# then </span><span class="al">###</span><span class="co">), a page whose first heading is</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># deeper than level 1, or a first heading that repeats the page title.</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Fails by default.</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Only contents:read is needed (the default), so no permissions block is required.</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check heading levels</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
@@ -1244,7 +1262,7 @@ cookieconsent.run({
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*.qmd'                         # pathspecs to check (recursive)</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block instead of warn (defaults to false)</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false                            # warn instead of block (defaults to true)</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   whole-tree: true                       # scan every page, not just a PR's additions</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-heading-levels.yml"><code>examples/check-heading-levels.yml</code></a> for the full caller stub.</p>
 
