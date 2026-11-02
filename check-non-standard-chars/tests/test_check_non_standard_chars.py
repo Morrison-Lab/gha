@@ -38,6 +38,27 @@ class TestCheckNonStandardChars(unittest.TestCase):
         )
         self.assertEqual(res.returncode, 0, f"script exited {res.returncode}: {res.stderr.decode('utf-8', errors='replace')}")
 
+    def test_find_files_ignores_untracked_files_in_git_checkout(self):
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / "tracked.md").write_text("plain\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "tracked.md"], check=True)
+            (root / "leftover").mkdir()
+            (root / "leftover" / "untracked.md").write_text("a — b\n", encoding="utf-8")
+            found = cnsc.find_files(root, [".md"])
+            self.assertEqual([f.name for f in found], ["tracked.md"])
+
+    def test_find_files_falls_back_to_glob_outside_git(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "a.md").write_text("x\n", encoding="utf-8")
+            found = cnsc.find_files(root, [".md"])
+            self.assertEqual([f.name for f in found], ["a.md"])
+
 
 if __name__ == "__main__":
     unittest.main()
