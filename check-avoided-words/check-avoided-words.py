@@ -108,6 +108,9 @@ PARENREF_RE = re.compile(
     r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
     r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
 )
+# Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
+# failing check; the other rules stay warn-only by default).
+ALWAYS_FAIL = frozenset({"parenref"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -165,7 +168,8 @@ def main() -> int:
         scan=scan_file, prefix="CAW_", name="avoided-words",
         clean="No avoided word or trailing parenthetical link found.",
         summary="use a word a style source advises against.",
-        format_finding=format_message)
+        format_finding=format_message,
+        always_fail=ALWAYS_FAIL)
 
 
 if __name__ == "__main__":

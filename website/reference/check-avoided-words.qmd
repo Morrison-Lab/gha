@@ -44,6 +44,8 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   Link the term itself, or make the whole claim the link text.
   `(see @thm-x)` passes, since no word can carry that link.
   Source: Ezra's review of mds, 2026-11-02 (gha#1402).
+  This is the one rule that fails the run whatever `fail` says;
+  the other rules warn unless `fail` is true.
 
 The check does not flag a code fence or code span, an HTML comment, YAML
 front matter, or a line carrying, or following,

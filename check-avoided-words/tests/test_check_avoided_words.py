@@ -196,6 +196,21 @@ def test_main_warns_by_default_and_fails_on_request(tmp_path, monkeypatch, capsy
     assert "::error file=page.qmd,line=2::" in capsys.readouterr().out
 
 
+def test_parenref_fails_by_default_while_other_rules_warn(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nSee the table above.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo)
+    assert wi.main() == 0
+    (repo / "page.qmd").write_text(
+        "prose\nSee the table above.\n$f$ is not differentiable at $c$ (@def-differentiable).\n")
+    git("add", "-A")
+    assert wi.main() == 1
+    out = capsys.readouterr().out
+    assert "::error file=page.qmd,line=3::" in out
+    assert "::warning file=page.qmd,line=2::" in out
+
+
 def test_main_passes_comparisons_and_temporal_just(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text(
