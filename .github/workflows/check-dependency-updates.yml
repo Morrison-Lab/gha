@@ -95,7 +95,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: ${{ inputs.model }}
+          # Forwarding the job token skips claude-code-action's OIDC
+          # App-token exchange, which fails without `id-token: write`
+          # (gha#1407; the same remedy run-claude-review-attempt uses, gha#580).
+          github_token: ${{ github.token }}
           plugin_marketplaces: |
             ${{ inputs.use-ai-config && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
           plugins: |
@@ -110,7 +113,10 @@ jobs:
           # `Bash(gh api:*)` or `Bash(gh api repos/*)` are avoided per the
           # precedent established in claude-manage-project.yml (gha#670).
           # Bash(tee:*) is allowed so the report can be written to $GITHUB_STEP_SUMMARY.
+          # claude-code-action has no `model` input, so the model goes in
+          # claude_args (gha#1407).
           claude_args: >-
+            ${{ inputs.model && format('--model {0}', inputs.model) || '' }}
             --allowedTools
             "WebSearch,WebFetch,Read,Glob,Grep,Bash(gh api repos/*/releases/latest*),Bash(gh api repos/*/tags*),Bash(gh api repos/*/commits*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(tee:*)"
           prompt: |
