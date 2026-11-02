@@ -12,8 +12,11 @@ What is flagged: a paragraph of an exercise div (id ``exr-...``) with a task
 sentence and a non-task sentence. A task sentence ends with a question mark,
 or starts with an imperative task verb such as Show, Find, Compute, Estimate,
 Explain or Derive, unless a verb form follows within two words ("Count data
-are skewed." is scenario). Every other sentence in prose counts as scenario.
-An exercise nested inside another exercise is not examined separately. A
+are skewed." is scenario). The verb forms are a short list of auxiliaries, so
+"Test scores improved." still reads as a task; exempt such an exercise with
+the comment below. Every other sentence in prose counts as scenario.
+An exercise nested inside another exercise is not examined separately, and a
+skip div (solution or callout) nested inside a skipped div is part of it. A
 paragraph of only tasks, or of only scenario, is fine, and so is a paragraph
 of the task followed by nothing.
 
