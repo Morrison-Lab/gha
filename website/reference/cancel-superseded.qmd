@@ -1,0 +1,35 @@
+---
+title: "cancel-superseded.yml"
+---
+
+Cancels the queued and running workflow runs of a pull request
+that were started for a head the pull request no longer has,
+and, once the pull request closes, the runs started before it closed.
+This implements
+[gha#1400](https://github.com/Morrison-Lab/gha/issues/1400).
+
+Runs started at or after the close are left alone,
+so a `closed` workflow such as preview teardown still runs.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `runs-on` | `vars.CI_RUNNER` in a private repository that sets it; otherwise `ubuntu-latest` | Runner label for the job |
+
+## Permissions
+
+The caller grants `actions: write` and `pull-requests: read`.
+
+## Limits
+
+- GitHub lists no pull request for a run from a fork,
+  so fork pull requests are never matched.
+- Runs in `waiting` or `requested` status are not cancelled.
+- Fork and Dependabot pull requests get a read-only token,
+  which cannot cancel runs.
+
+## Example
+
+See
+[`examples/cancel-superseded.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/cancel-superseded.yml).

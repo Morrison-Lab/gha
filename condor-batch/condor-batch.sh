@@ -13,14 +13,20 @@
 # not visible there). TMPDIR is on that home too. The log streams back when the
 # job ends; the exit code is the last failing step's, or 0.
 #
+# Exit 70 means the cluster could not run the job normally (ssh failed, or the
+# job was held or aborted) and 71 means too few steps; the caller may rerun the
+# steps on the runner for those two only. A step's own exit 70, 71 or 255 is
+# reported as 1, so no step failure can look like an infrastructure failure.
+#
 # Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/home/morri313/ci), RUN_ID (default GITHUB_RUN_ID or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB).
 #
-# Exit codes: the last failing step's code, or 0; 2 = refused (too few steps);
-# 3 = the job did not end normally (held, removed, aborted, or condor_wait
-# failed); 64 = CONDOR_SSH_KEY contains whitespace.
+# Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
+# 70 = the cluster could not run the job normally (copy or ssh failed, or the
+# job was held, removed, aborted, or condor_wait failed); 64 = CONDOR_SSH_KEY
+# contains whitespace.
 set -euo pipefail
 
 checkout="${1:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
@@ -34,18 +40,20 @@ min_steps="${MIN_STEPS:-2}"
 n=$(grep -c -E '[^[:space:]]' "$steps" || true)
 if [ "$n" -lt "$min_steps" ]; then
   echo "refusing to submit $n step(s): need at least $min_steps; run it on the runner" >&2
-  exit 2
+  exit 71
 fi
 
 case "$key" in
   *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
 esac
 ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
-rsync -a --mkpath --delete -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/"
-rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps"
+transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
+rsync -a --mkpath --delete -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/" || transfer_failed
+rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps" || transfer_failed
 
 # The remote script runs on the head: it writes the job and submits it once.
-ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" <<'REMOTE'
+rc=0
+ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" <<'REMOTE' || rc=$?
 set -euo pipefail
 dir=$1 cpus=$2 mem=$3
 cd "$dir"
@@ -82,7 +90,12 @@ condor_wait condor.log || wait_rc=$?
 [ ! -f err.log ] || cat err.log >&2
 rv=
 [ ! -f condor.log ] || rv=$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)
-if [ -n "$rv" ]; then exit "$rv"; fi
+if [ -n "$rv" ]; then
+  case "$rv" in 70|71|255) exit 1 ;; esac
+  exit "$rv"
+fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
-exit 3
+exit 70
 REMOTE
+[ "$rc" -ne 255 ] || { echo "ssh to the cluster head failed" >&2; exit 70; }
+exit "$rc"

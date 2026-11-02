@@ -1,0 +1,70 @@
+---
+title: "check-heading-siblings.yml"
+---
+
+Diff-scoped, warn-only check that flags a heading a pull request adds
+to a group of too many sibling headings.
+Sibling headings are headings of the same level under the same parent heading;
+the top-level headings of a page are siblings under the page.
+The lab's guideline (Ezra, 2026-11-02) is to aim for at most about five
+and to split or group past seven,
+so a reader scanning the headings can hold them all in mind.
+Miller's
+["magical number seven"](https://en.wikipedia.org/wiki/The_Magical_Number_Seven,_Plus_or_Minus_Two)
+and Cowan's later
+[estimate of about four chunks](https://www.cambridge.org/core/journals/behavioral-and-brain-sciences/article/magical-number-4-in-shortterm-memory-a-reconsideration-of-mental-storage-capacity/44023F1147D4A1D44BDC0AD226838496)
+motivate the guideline; both concern memory,
+and a reader can rescan a table of contents,
+so the check fires at the seven where the guideline says to act, not at five.
+
+## What it measures
+
+The check counts headings on the *expanded* page,
+the page's own text with each `{{< include >}}` shortcode
+replaced by the file it names,
+since a chapter's headings are often split across subfiles.
+Headings inside fenced code blocks and HTML comments do not count.
+A heading's parent is the nearest earlier heading of a lower level.
+
+## Decision record
+
+The threshold of 7 was chosen on 2026-11-02
+to match the guideline's "split or group past seven".
+On first measurement of the source trees,
+the check finds crowded groups in lds, sds and psw and none in pds.
+To reproduce, run the check with `whole-tree: true` in a checkout of each repository.
+Change the default in `check-heading-siblings.py`, `action.yml`
+and the reusable workflow together.
+
+## What it flags
+
+A group of more than `max` siblings,
+when the pull request adds one of its headings to the page or to a file it includes.
+The finding sits on the first added heading of the group.
+A group the diff did not add a heading to is not reflagged, so nothing is swept.
+`<!-- check-heading-siblings: allow -->`
+anywhere in the page's own file exempts it.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to measure every tracked page in full.
+
+## Inputs
+
+| Input          | Type    | Default    | Description |
+| -------------- | ------- | ---------- | ----------- |
+| `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. |
+| `max`          | string  | `'7'`      | Largest number of sibling headings under one parent. |
+| `fail`         | boolean | `false`    | Fail the workflow when a touched group is over the limit. The default gives warning annotations only. |
+| `whole-tree`   | boolean | `false`    | Measure every tracked page in full instead of only touched pages. |
+
+## Usage
+
+```yaml
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-heading-siblings.yml@v3
+```
+
+Copy [`examples/check-heading-siblings.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-heading-siblings.yml).

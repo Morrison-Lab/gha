@@ -35,6 +35,7 @@ updates:
       - "/check-one-div-per-subfile"
       - "/check-heading-levels"
       - "/check-page-length"
+      - "/check-heading-siblings"
       - "/check-div-ids"
       - "/check-code-messages"
       - "/check-pr-size"

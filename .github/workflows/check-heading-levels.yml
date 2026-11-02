@@ -34,9 +34,10 @@ on:
       fail:
         description: >-
           Fail the workflow when a heading breaks its page's outline
-          (else non-blocking). Defaults to false (warning annotations only).
+          (else non-blocking). Defaults to true: agents ignore warnings
+          (Ezra, 2026-11-02).
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-heading-levels:
