@@ -1,0 +1,53 @@
+name: Check heading siblings
+description: >-
+  Diff-scoped check that flags a heading a pull request adds to a group of more
+  than 7 sibling headings (same level, same parent heading, with includes
+  expanded), so a reader scanning the headings can hold them in mind. Warn-only
+  by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only pages touched since this ref are
+      reported. Needs fetch-depth: 0. With no base-ref (or an uncomputable
+      diff) the check is skipped with a warning, not run on the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Measure every tracked page in full instead of only pages the diff
+      touched. `base-ref` is ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of pages to check (recursive).
+    default: '*.qmd'
+  paths-ignore:
+    description: Comma/newline-separated glob patterns (relative paths) to skip.
+    default: ''
+  max:
+    description: Largest number of sibling headings under one parent.
+    default: '7'
+  fail:
+    description: >-
+      Fail the action when a touched group is over the limit (else
+      non-blocking). Defaults to 'false' (warning annotations only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check heading siblings
+      shell: bash
+      env:
+        CHS_BASE_REF: ${{ inputs.base-ref }}
+        CHS_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CHS_GLOBS: ${{ inputs.globs }}
+        CHS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CHS_MAX: ${{ inputs.max }}
+        CHS_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-heading-siblings.py"
