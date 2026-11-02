@@ -7,7 +7,7 @@ description: >-
   2026-11-02; a page's title is not a numbered level, so its body starts at
   level 1 and a level 2 start numbers sections 0.1, 0.2). Headings inside fenced
   divs, code fences and comments are not counted. Scoped to lines a diff adds
-  (a moved heading is flagged like a new one). Warn-only by default.
+  (a moved heading is flagged like a new one). Fails by default.
 inputs:
   python-version:
     description: Python version to set up.

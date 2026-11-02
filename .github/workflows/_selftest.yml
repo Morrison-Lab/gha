@@ -1904,6 +1904,7 @@ jobs:
         uses: ./check-heading-levels
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          paths-ignore: 'website/**'
       # Stage a page that starts at level 2 and skips a level, and assert
       # that the call, which fails by default, really fails. The website's
       # hand-written pages are excluded: they are not numbered.
