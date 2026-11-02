@@ -184,7 +184,8 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
             continue
         attrs = dm.group(2)
         if attrs:
-            attached = bool(ATTACHED_RE.search(QUOTED_RE.sub('""', attrs)))
+            attached = (bool(ATTACHED_RE.search(QUOTED_RE.sub('""', attrs)))
+                        or bool(SOURCE_ID_RE.search(attrs)))
             if depth == 0 and not attached and CONDITIONAL_RE.search(attrs):
                 # Judged when it closes, by the divs directly inside it.
                 wrapper = Div(idx + 1, attrs)

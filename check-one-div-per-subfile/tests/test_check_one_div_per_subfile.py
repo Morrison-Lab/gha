@@ -114,6 +114,11 @@ def test_unclosed_hidden_wrapper_is_counted_and_unbalanced():
     assert not ods.is_balanced(lines)
 
 
+def test_hidden_source_remark_does_not_count():
+    doc = "::: {#thm-a}\nx\n:::\n\n::: {.content-hidden #rem-source-a}\ny\n:::\n"
+    assert extra_lines(doc) == []
+
+
 def test_claim_after_a_hidden_proof_still_counts():
     doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\n::: proof\nP.\n:::\n:::\n"
            "::: {#thm-b}\nB.\n:::\n")
