@@ -1368,7 +1368,7 @@ cookieconsent.run({
 </tr>
 <tr class="even">
 <td><a href="./reference/check-heading-levels.html"><code>check-heading-levels.yml</code></a></td>
-<td>Diff-scoped, warn-only check that flags a heading that breaks its page’s outline when a PR adds the heading line: a skipped level, a page whose first heading is deeper than level 2, or a first heading that repeats the page title (a page’s title is level 1, so its body starts at level 2).</td>
+<td>Diff-scoped check that flags a heading that breaks its page’s outline when a PR adds the heading line, and fails by default: a skipped level, a page whose first heading is deeper than level 1, or a first heading that repeats the page title (a page’s title is not a numbered level, so its body starts at level 1).</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
