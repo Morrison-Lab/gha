@@ -6,19 +6,22 @@ Diff-scoped, warn-only check that flags a figure a pull request adds
 when the page does not discuss it or places it away from its example.
 The lab's rule (Ezra, 2026-11-02) is that every figure is discussed
 and cross-referenced in prose,
-and that a figure specific to one example or exercise is nested inside that example's or exercise's div.
+and that a figure specific to one example or exercise
+is nested inside that example's or exercise's div.
 
 ## What it flags
 
 - **Uncited.**
-  No `@fig-id`, and no `[text](#fig-id)` link, appears on the page outside the figure itself.
+  No `@fig-id`, and no `[text](#fig-id)` link,
+  appears on the page outside the figure itself.
   A citation on another page does not count.
 - **Unnested.**
   The figure is not inside an `#exm-`, `#exr-` or `#sol-` div,
   and the nearest non-blank line before it closes one.
   A figure that several examples share follows prose, so it is not flagged.
 
-A figure is a div or image labelled `{#fig-id}`, or a code chunk with `#| label: fig-id`.
+A figure is a div or image labelled `{#fig-id}`,
+or a code chunk with `#| label: fig-id`.
 A figure inside a code fence or HTML comment is not counted.
 Only a figure whose lines include one the pull request adds is reported,
 so nothing existing is swept.
