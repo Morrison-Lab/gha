@@ -114,7 +114,7 @@ def test_end_to_end_in_a_git_repo(tmp_path, monkeypatch):
         subprocess.run(["git", *args], cwd=tmp_path, check=True,
                        capture_output=True)
     git("init", "-q", "-b", "main")
-    git("config", "user.email", "t@example.com")
+    git("config", "user.email", "t@example.com")  # phi-allow: synthetic test address
     git("config", "user.name", "t")
     page = tmp_path / "page.qmd"
     page.write_text('---\ntitle: "P"\n---\n\n' + sections(7) + "\n")
