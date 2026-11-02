@@ -25,8 +25,10 @@ What is flagged, in ``.qmd``/``.md`` files, on a line a diff adds:
   same ``Source:`` line, or anywhere inside the ``Source`` div.
 
 What is not flagged: a link or a mention on its own ("for further reading, see
-the sds notes"), a citation of an entry that is not own, front matter, inline
-code, code fences and chunk options.
+the sds notes"), a link to a definition or result on an own site (a URL ending
+in an anchor such as ``#def-orthogonal-matrix``, which the lab's rules require
+for a prerequisite term), a citation of an entry that is not own, front matter,
+inline code, code fences and chunk options.
 
 Configuration file (``RC_CONFIG``, default ``.github/own-works.yml``), a
 restricted YAML of top-level lists, each as ``key:`` followed by ``- item``
@@ -263,6 +265,9 @@ CREDIT_RE = re.compile(
     r"\bthanks\s+to\b|\backnowledg(?:e|es|ed|ing|ment|ments|ement|ements)\b",
     re.IGNORECASE,
 )
+TERM_ANCHOR_AHEAD = (
+    r"(?![^\s)\]]*#(?:def|thm|lem|cor|prp|exm|exr|sol|rem)-)"
+)
 ACK_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+acknowledg(?:e)?ments?\b",
                             re.IGNORECASE)
 SOURCE_LINE_RE = re.compile(
@@ -305,7 +310,10 @@ def _name_regexes(cfg: Config) -> List["re.Pattern[str]"]:
         out.append(re.compile(r"(?<![\w/])" + body + r"(?![\w])",
                               re.IGNORECASE))
     for url in cfg.urls:
-        out.append(re.compile(re.escape(url), re.IGNORECASE))
+        # A link whose target is a term anchor (#def-orthogonal-matrix) is
+        # the lab's required link to a prerequisite definition, not a credit.
+        out.append(re.compile(re.escape(url) + TERM_ANCHOR_AHEAD,
+                              re.IGNORECASE))
     return out
 
 

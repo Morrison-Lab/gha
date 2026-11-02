@@ -158,6 +158,15 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Keep renv from activating (preinstalled R)
+        if: inputs.preinstalled-toolchain
+        shell: bash
+        run: |
+          # A project .Rprofile that bootstraps renv would otherwise replace
+          # the runner's library with an empty project library, hiding pak
+          # and every package installed there ("no package called 'pak'").
+          echo "RENV_CONFIG_AUTOLOADER_ENABLED=false" >> "$GITHUB_ENV"
+
       - name: Install R dependencies (preinstalled R)
         if: inputs.preinstalled-toolchain
         env:

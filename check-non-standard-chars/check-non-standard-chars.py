@@ -26,6 +26,7 @@ than decoding.
 """
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import List, Tuple, Dict
@@ -95,6 +96,25 @@ def check_file(file_path: Path) -> List[Tuple[int, int, str, str]]:
     return issues
 
 
+def _tracked_files(root_dir: Path):
+    """
+    List the files git tracks under root_dir, or None outside a git checkout.
+
+    Persistent self-hosted runners keep untracked leftovers (such as a
+    submodule an earlier job populated) in the work directory, and a
+    file-system walk would scan them.
+    """
+    try:
+        res = subprocess.run(
+            ['git', '-C', str(root_dir), 'ls-files', '-z'],
+            capture_output=True, check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    names = res.stdout.decode('utf-8', errors='surrogateescape').split(chr(0))
+    return [root_dir / n for n in names if n]
+
+
 def find_files(root_dir: Path, extensions: List[str]) -> List[Path]:
     """
     Find all files with given extensions in the directory tree.
@@ -107,9 +127,13 @@ def find_files(root_dir: Path, extensions: List[str]) -> List[Path]:
     Returns:
         List of matching file paths
     """
-    files = []
-    for ext in extensions:
-        files.extend(root_dir.glob(f'**/*{ext}'))
+    tracked = _tracked_files(root_dir)
+    if tracked is not None:
+        files = [f for f in tracked if f.name.endswith(tuple(extensions)) and f.is_file()]
+    else:
+        files = []
+        for ext in extensions:
+            files.extend(root_dir.glob(f'**/*{ext}'))
     ignored_dirs = {'.git', '.claude', '.worktrees', '.Rproj.user', 'node_modules', 'renv', 'site_libs', '_site', '_freeze'}
 
     filtered = []

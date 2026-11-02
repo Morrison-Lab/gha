@@ -1,0 +1,1 @@
+- `check-avoided-words` warns on back-references like "the setup of Exercise 1" that do not name what they reuse (psw#442).

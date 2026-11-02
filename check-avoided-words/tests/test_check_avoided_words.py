@@ -54,9 +54,18 @@ def found(text: str):
     ("Domain A is finite.", "generic", "domain a"),
     ("Some domain works.", "generic", "some domain"),
     ("Let the sample  space S be finite.", "generic", "sample  space s"),
+    ("Use the setup of @exr-wcgs.", "backref", "the setup of"),
+    ("Keep the same setup as @exr-wcgs.", "backref", "same setup as"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
+
+
+def test_backref_passes_unrelated_setup():
+    assert found("Set up the model, then fit it.") == {}
+    assert found("An experiment's setup is simple.") == {}
+    assert found("Consider the setting in which data are missing.") == {}
+    assert found("Adjust the setting of the dial.") == {}
 
 
 @pytest.mark.parametrize("text", [
