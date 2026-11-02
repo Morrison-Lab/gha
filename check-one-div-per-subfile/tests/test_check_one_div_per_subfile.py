@@ -82,6 +82,44 @@ def test_lookalike_div_still_counts(head):
     assert extra_lines(doc) == [5]
 
 
+HIDDEN = '::: {.content-hidden when-format="revealjs"}'
+
+
+def test_proof_hidden_from_slides_stays_with_its_claim():
+    doc = ("::: {#thm-a}\nClaim.\n:::\n\n" + HIDDEN
+           + "\n\n{{< slidebreak >}}\n\n::: proof\nWhy.\n:::\n\n:::\n")
+    assert extra_lines(doc) == []
+
+
+def test_hidden_wrapper_around_a_claim_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN
+           + "\n::: {#thm-b}\nB.\n:::\n:::\n")
+    assert extra_lines(doc) == [4]
+
+
+def test_hidden_wrapper_with_a_proof_and_a_claim_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN
+           + "\n::: proof\nP.\n:::\n::: {#thm-b}\nB.\n:::\n:::\n")
+    assert extra_lines(doc) == [4]
+
+
+def test_hidden_wrapper_with_no_div_still_counts():
+    doc = "::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\nText.\n:::\n"
+    assert extra_lines(doc) == [4]
+
+
+def test_unclosed_hidden_wrapper_is_counted_and_unbalanced():
+    lines = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\n::: proof\nP.\n:::\n").split("\n")
+    assert [d.line for d in ods.top_level_divs(lines)] == [1, 4]
+    assert not ods.is_balanced(lines)
+
+
+def test_claim_after_a_hidden_proof_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\n::: proof\nP.\n:::\n:::\n"
+           "::: {#thm-b}\nB.\n:::\n")
+    assert extra_lines(doc) == [9]
+
+
 def test_second_claim_after_a_proof_still_counts():
     doc = ("::: {#thm-a}\nA.\n:::\n::: proof\nP.\n:::\n"
            "::: {#thm-b}\nB.\n:::\n")
