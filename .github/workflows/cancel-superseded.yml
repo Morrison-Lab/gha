@@ -3,7 +3,11 @@ name: Cancel Superseded Runs (reusable)
 # Call this from a `pull_request` workflow listening for `synchronize` and
 # `closed`. It cancels every other queued or running workflow run that belongs
 # to the pull request and was started for a head the pull request no longer
-# has, and every run of a pull request that was closed (gha#1400).
+# has, and every run started before a pull request closed (gha#1400).
+#
+# Limits: GitHub lists no pull request for a run from a fork, so fork pull
+# requests are never matched, and their read-only token could not cancel
+# anyway; Dependabot pull requests get a read-only token too.
 
 on:
   workflow_call:
@@ -38,21 +42,33 @@ jobs:
           pr_json=$(gh api "repos/$REPO/pulls/$PR")
           state=$(jq -r .state <<< "$pr_json")
           head=$(jq -r .head.sha <<< "$pr_json")
+          # A run created at or after the close belongs to the close itself
+          # (preview teardown and the like), so only earlier runs are stale.
+          closed_at=$(jq -r '.closed_at // "9999-12-31T23:59:59Z"' <<< "$pr_json")
           echo "PR $PR is $state at head $head"
           cancelled=0
           for status in queued in_progress; do
-            ids=$(gh api "repos/$REPO/actions/runs?status=$status&event=pull_request&per_page=100" \
-              --jq ".workflow_runs[]
-                | select(.id != ($RUN_ID | tonumber))
-                | select(any(.pull_requests[]?; .number == ($PR | tonumber)))
-                | select(\"$state\" != \"open\" or .head_sha != \"$head\")
-                | .id")
-            for id in $ids; do
-              if gh api -X POST "repos/$REPO/actions/runs/$id/cancel" > /dev/null; then
-                cancelled=$((cancelled + 1))
-              else
-                echo "::warning::could not cancel run $id"
-              fi
+            page=1
+            while :; do
+              runs=$(gh api "repos/$REPO/actions/runs?status=$status&event=pull_request&per_page=100&page=$page")
+              count=$(jq '.workflow_runs | length' <<< "$runs")
+              ids=$(jq -r --arg state "$state" --arg head "$head" --arg closed "$closed_at" \
+                --argjson pr "$PR" --argjson self "$RUN_ID" '
+                .workflow_runs[]
+                | select(.id != $self)
+                | select(any(.pull_requests[]?; .number == $pr))
+                | select(($state == "open" and .head_sha != $head)
+                    or ($state != "open" and .created_at < $closed))
+                | .id' <<< "$runs")
+              for id in $ids; do
+                if gh api -X POST "repos/$REPO/actions/runs/$id/cancel" > /dev/null; then
+                  cancelled=$((cancelled + 1))
+                else
+                  echo "::warning::could not cancel run $id"
+                fi
+              done
+              [ "$count" -lt 100 ] && break
+              page=$((page + 1))
             done
           done
           echo "Cancelled $cancelled superseded run(s)."
