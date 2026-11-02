@@ -64,6 +64,8 @@ def test_flagged_forms(text, rule, phrase):
 def test_backref_passes_unrelated_setup():
     assert found("Set up the model, then fit it.") == {}
     assert found("An experiment's setup is simple.") == {}
+    assert found("Consider the setting in which data are missing.") == {}
+    assert found("Adjust the setting of the dial.") == {}
 
 
 @pytest.mark.parametrize("text", [

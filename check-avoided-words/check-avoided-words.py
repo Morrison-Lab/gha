@@ -96,8 +96,8 @@ GENERIC_RE = re.compile(
     r"|(?i:some\s+(?:domain|codomain|range|sample\s+space)\b))"
 )
 BACKREF_RE = re.compile(
-    r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?(?:set-?up|setting)\s+(?:of|from|in)\b"
-    r"|(?:same|identical)\s+(?:set-?up|setting)\s+as\b)"
+    r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?set-?up\s+(?:of|from|in)\b"
+    r"|(?:same|identical)\s+set-?up\s+as\b)"
 )
 RULES = (
     ("position", POSITION_RE,
