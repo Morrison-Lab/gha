@@ -25,11 +25,13 @@ A heading's parent is the nearest earlier heading of a lower level.
 
 ## Decision record
 
-The threshold of 7 was chosen on 2026-11-02 to match the guideline's "split or group past seven".
+The threshold of 7 was chosen on 2026-11-02
+to match the guideline's "split or group past seven".
 On first measurement of the source trees,
 the check finds crowded groups in lds, sds and psw and none in pds.
 To reproduce, run the check with `whole-tree: true` in a checkout of each repository.
-Change the default in `check-heading-siblings.py`, `action.yml` and the reusable workflow together.
+Change the default in `check-heading-siblings.py`, `action.yml`
+and the reusable workflow together.
 
 ## What it flags
 
@@ -37,7 +39,8 @@ A group of more than `max` siblings,
 when the pull request adds one of its headings to the page or to a file it includes.
 The finding sits on the first added heading of the group.
 A group the diff did not add a heading to is not reflagged, so nothing is swept.
-`<!-- check-heading-siblings: allow -->` anywhere in the page's own file exempts it.
+`<!-- check-heading-siblings: allow -->`
+anywhere in the page's own file exempts it.
 
 With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.
