@@ -56,9 +56,24 @@ def found(text: str):
     ("Let the sample  space S be finite.", "generic", "sample  space s"),
     ("Use the setup of @exr-wcgs.", "backref", "the setup of"),
     ("Keep the same setup as @exr-wcgs.", "backref", "same setup as"),
+    ("$f$ is not differentiable at $c$ (@def-differentiable).", "parenref",
+     "$ (@def-differentiable)"),
+    ("A kernel has the same mode as its density ([why](https://x.org/a#thm-k)),",
+     "parenref", "([why](https://x.org/a#thm-k))"),
+    ("The bound ([proof](page.qmd#thm-b)) holds.", "parenref",
+     "([proof](page.qmd#thm-b))"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
+
+
+def test_parenref_passes_linked_term_and_see():
+    assert found("$f$ is not [differentiable at](calculus.qmd#def-differentiable) $c$.") == {}
+    assert found("[A kernel has the same mode as its density](https://x.org/a#thm-k),") == {}
+    assert found("The bound holds (see @thm-b).") == {}
+    assert found("(@def-x) opens the line.") == {}
+    assert found("The bound holds (see [the proof](page.qmd#thm-b)).") == {}
+    assert found("Hold <!-- check-avoided-words: allow --> it (@def-x).") == {}
 
 
 def test_backref_passes_unrelated_setup():
@@ -181,6 +196,21 @@ def test_main_warns_by_default_and_fails_on_request(tmp_path, monkeypatch, capsy
     assert "::error file=page.qmd,line=2::" in capsys.readouterr().out
 
 
+def test_parenref_fails_by_default_while_other_rules_warn(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nSee the table above.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo)
+    assert wi.main() == 0
+    (repo / "page.qmd").write_text(
+        "prose\nSee the table above.\n$f$ is not differentiable at $c$ (@def-differentiable).\n")
+    git("add", "-A")
+    assert wi.main() == 1
+    out = capsys.readouterr().out
+    assert "::error file=page.qmd,line=3::" in out
+    assert "::warning file=page.qmd,line=2::" in out
+
+
 def test_main_passes_comparisons_and_temporal_just(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text(
@@ -188,7 +218,7 @@ def test_main_passes_comparisons_and_temporal_just(tmp_path, monkeypatch, capsys
     git("add", "-A")
     _main_env(monkeypatch, repo, CAW_FAIL="true")
     assert wi.main() == 0
-    assert "No position, effort, time-relative or generic" in capsys.readouterr().out
+    assert "No avoided word or trailing parenthetical link" in capsys.readouterr().out
 
 
 def test_main_without_base_skips_under_its_own_name(tmp_path, monkeypatch, capsys):

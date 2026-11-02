@@ -3,8 +3,8 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Four rules; the first three each have a source that was read (psw#418),
-and the fourth is psw's own (psw#427):
+Six rules; the first three each have a source that was read (psw#418),
+and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402):
 
 - **position words**: ``above`` or ``below`` used for a place in the
   document, such as "the table above" or "as shown below". Refer to the
@@ -33,6 +33,11 @@ and the fourth is psw's own (psw#427):
   as". Name the specific data, variables, or model the part reuses (psw#442).
   A finding only asks the author to check; a deliberate use takes the allow
   comment.
+
+- **trailing parenthetical links**: a crossref such as "differentiable at $c$
+  (@def-differentiable)" after a word, or a "([why](url))" link after a claim.
+  Link the term itself, or make the whole claim the link text (gha#1402).
+  "(see @thm-x)" passes, since no word can carry that link.
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
@@ -99,6 +104,13 @@ BACKREF_RE = re.compile(
     r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?set-?up\s+(?:of|from|in)\b"
     r"|(?:same|identical)\s+set-?up\s+as\b)"
 )
+PARENREF_RE = re.compile(
+    r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
+    r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
+)
+# Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
+# failing check; the other rules stay warn-only by default).
+ALWAYS_FAIL = frozenset({"parenref"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -117,6 +129,11 @@ RULES = (
      'Name the data, variables, or model a back-reference reuses instead of '
      '"the setup of ..."; write about content, not the structure of the '
      "notes (psw#442)."),
+    ("parenref", PARENREF_RE,
+     "Link the term, or make the whole claim the link text, instead of a "
+     'trailing "(@def-x)" crossref or "([why](url))" link '
+     "(Ezra, 2026-11-02; gha#1402). A deliberate use takes the "
+     "check-avoided-words allow comment."),
 )
 
 
@@ -150,9 +167,10 @@ def format_message(finding: Finding) -> str:
 def main() -> int:
     return engine.main(
         scan=scan_file, prefix="CAW_", name="avoided-words",
-        clean="No position, effort, time-relative or generic-placeholder word found.",
+        clean="No avoided word or trailing parenthetical link found.",
         summary="use a word a style source advises against.",
-        format_finding=format_message)
+        format_finding=format_message,
+        always_fail=ALWAYS_FAIL)
 
 
 if __name__ == "__main__":
