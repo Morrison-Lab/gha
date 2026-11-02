@@ -1165,7 +1165,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a Quarto subfile holding more than one top-level div. The lab’s rule (Ezra, 2026-10-18) is that new and revised content gets one div per subfile. One exception (Ezra, 2026-10-23): a proof may share a file with its claim, and a solution with its exercise. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1092">gha#1092</a>.</p>
+<p>Diff-scoped, warn-only check that flags a Quarto subfile holding more than one top-level div. The lab’s rule (Ezra, 2026-10-18) is that new and revised content gets one div per subfile. One exception (Ezra, 2026-10-23): a proof may share a file with its claim, and a solution with its exercise. That includes a proof wrapped in a <code>.content-hidden</code> or <code>.content-visible</code> div, which is how the lab hides a proof from slides. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1092">gha#1092</a>.</p>
 <p>A subfile is a <code>.qmd</code> file whose name starts with <code>_</code> and which sits under a <code>_subfiles</code> directory. The check reports a subfile that has more than one top-level fenced div when the pull request adds a line to it. The finding sits on the opening line of the second div.</p>
 <p>The check does not count:</p>
 <ul>
