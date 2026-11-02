@@ -947,8 +947,8 @@ jobs:
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest condor-batch/tests/ -q
   condor-batch-cluster:
-    if: vars.CI_RUNNER && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ vars.CI_RUNNER }}
+    if: github.event.repository.private && vars.CI_RUNNER && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read
