@@ -131,6 +131,11 @@ def test_quoted_content_hidden_is_not_a_wrapper():
     assert extra_lines(doc) == [4]
 
 
+def test_quoted_source_id_is_not_a_source_remark():
+    doc = '::: {#thm-a}\nA.\n:::\n::: {title="#rem-source-a"}\ntext\n:::\n'
+    assert extra_lines(doc) == [4]
+
+
 def test_claim_after_a_hidden_proof_still_counts():
     doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\n::: proof\nP.\n:::\n:::\n"
            "::: {#thm-b}\nB.\n:::\n")

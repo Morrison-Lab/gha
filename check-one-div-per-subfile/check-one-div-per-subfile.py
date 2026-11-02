@@ -186,7 +186,7 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
         if attrs:
             unquoted = QUOTED_RE.sub('""', attrs)
             attached = bool(ATTACHED_RE.search(unquoted))
-            exempt = attached or bool(SOURCE_ID_RE.search(attrs))
+            exempt = attached or bool(SOURCE_ID_RE.search(unquoted))
             if depth == 0 and not exempt and CONDITIONAL_RE.search(unquoted):
                 # Judged when it closes, by the divs directly inside it.
                 wrapper = Div(idx + 1, attrs)
