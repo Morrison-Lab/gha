@@ -9,7 +9,10 @@ the top-level headings of a page are siblings under the page.
 The lab's guideline (Ezra, 2026-11-02) is to aim for at most about five
 and to split or group past seven,
 so a reader scanning the headings can hold them all in mind.
-Miller's "magical number seven" and Cowan's later estimate of about four chunks
+Miller's
+["magical number seven"](https://en.wikipedia.org/wiki/The_Magical_Number_Seven,_Plus_or_Minus_Two)
+and Cowan's later
+[estimate of about four chunks](https://www.cambridge.org/core/journals/behavioral-and-brain-sciences/article/magical-number-4-in-shortterm-memory-a-reconsideration-of-mental-storage-capacity/44023F1147D4A1D44BDC0AD226838496)
 motivate the guideline; both concern memory,
 and a reader can rescan a table of contents,
 so the check fires at the seven where the guideline says to act, not at five.

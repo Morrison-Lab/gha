@@ -142,8 +142,16 @@ def headings(lines: List[Source]) -> List[Heading]:
     found: List[Heading] = []
     fence: Optional[Tuple[str, int]] = None
     in_comment = False
+    in_front_matter: Dict[str, bool] = {}
     for src in lines:
         line = src.text
+        if src.line == 1 and line.strip() == "---":
+            in_front_matter[src.path] = True
+            continue
+        if in_front_matter.get(src.path):
+            if line.strip() in ("---", "..."):
+                in_front_matter[src.path] = False
+            continue
         if in_comment:
             if "-->" in line:
                 in_comment = False

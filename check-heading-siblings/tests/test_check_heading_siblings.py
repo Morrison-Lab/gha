@@ -54,6 +54,12 @@ def test_headings_in_code_and_comments_are_ignored():
     assert [h.title for h in chs.headings(lines(text))] == ["Real"]
 
 
+def test_yaml_comments_in_front_matter_are_not_headings():
+    text = '---\ntitle: "P"\n# a yaml comment\n---\n\n## Real\n'
+    assert [h.title for h in chs.headings(lines(text))] == ["Real"]
+    assert chs.headings(lines(text))[0].parent == -1
+
+
 def test_attributes_are_stripped_from_titles():
     assert chs.headings(lines("## Title {#sec-t .unnumbered}"))[0].title == "Title"
 
