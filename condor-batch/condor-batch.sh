@@ -17,6 +17,10 @@
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/home/morri313/ci), RUN_ID (default GITHUB_RUN_ID or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB).
+#
+# Exit codes: the last failing step's code, or 0; 2 = refused (too few steps);
+# 3 = the job did not end normally (held, removed, aborted, or condor_wait
+# failed); 64 = CONDOR_SSH_KEY contains whitespace.
 set -euo pipefail
 
 checkout="${1:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
@@ -33,6 +37,9 @@ if [ "$n" -lt "$min_steps" ]; then
   exit 2
 fi
 
+case "$key" in
+  *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
+esac
 ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
 rsync -a --mkpath --delete -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/"
 rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps"
@@ -69,8 +76,13 @@ should_transfer_files = NO
 queue 1
 SUB
 condor_submit .condor.sub
-condor_wait condor.log
-cat out.log
-cat err.log >&2
-exit "$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)"
+wait_rc=0
+condor_wait condor.log || wait_rc=$?
+[ ! -f out.log ] || cat out.log
+[ ! -f err.log ] || cat err.log >&2
+rv=
+[ ! -f condor.log ] || rv=$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)
+if [ -n "$rv" ]; then exit "$rv"; fi
+echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
+exit 3
 REMOTE
