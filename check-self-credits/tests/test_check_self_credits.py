@@ -191,6 +191,34 @@ def test_bare_link_for_further_reading(cfg, own):
     assert flagged(text, cfg, own) == []
 
 
+def test_term_link_to_own_site_beside_built_from_is_not_a_credit(cfg, own):
+    # gha#1385: "built from" is mathematics here, and the link is a term link.
+    text = (
+        "The cross term vanishes, because w is built from vectors\n"
+        "that v is [orthogonal](https://morrison-lab.github.io/mds/"
+        "linear-algebra-special-matrices.html#def-orthogonal-matrix) to:"
+    )
+    assert flagged(text, cfg, own) == []
+
+
+def test_page_link_to_own_site_beside_adapted_from_is_still_a_credit(cfg, own):
+    text = "This is adapted from [the mds notes](https://morrison-lab.github.io/mds/)."
+    assert flagged(text, cfg, own) == [(1, "credit")]
+
+
+def test_page_link_beside_built_from_is_still_a_credit(cfg, own):
+    text = "The site is built from [qwt](https://morrison-lab.github.io/qwt/)."
+    assert flagged(text, cfg, own) == [(1, "credit")]
+
+
+def test_term_link_does_not_hide_a_named_credit_in_the_sentence(cfg, own):
+    text = (
+        "Adapted from the Morrison-Lab/sds notes, see "
+        "[consistency](https://morrison-lab.github.io/sds/estimation.html#def-consistent)."
+    )
+    assert flagged(text, cfg, own) == [(1, "credit")]
+
+
 def test_outside_person_credit(cfg, own):
     text = "Adapted from Hutchinson's notes [@hutchinson2020]."
     assert flagged(text, cfg, own) == []
