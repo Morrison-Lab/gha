@@ -34,6 +34,7 @@ to `.github/workflows/` in your repository.
 
 | Input | Default | Meaning |
 | --- | --- | --- |
+| `base-ref` | (empty) | Git ref or SHA to diff against; empty skips the check unless `whole-tree` is set |
 | `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
 | `fail` | `true` | Fail the workflow on a finding; `false` gives warnings only |
 | `whole-tree` | `false` | Scan every exercise, not only a PR's additions |
