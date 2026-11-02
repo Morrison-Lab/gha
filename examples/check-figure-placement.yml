@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-figure-placement.yml in your repo.
+# Diff-scoped check: flags a figure a PR adds that no prose cites with @fig-id,
+# or that sits directly after an example or exercise div instead of inside it.
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check figure placement
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-figure-placement.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # check every file, not just a PR's additions
