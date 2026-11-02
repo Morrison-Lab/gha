@@ -1,0 +1,38 @@
+---
+title: "check-exercise-question-paragraph.yml"
+---
+
+Diff-scoped check that fails a pull request which adds a paragraph of an exercise
+that mixes scenario information with the instruction or question.
+The lab's rule (Ezra, 2026-11-02) is that the task of an exercise
+goes in its own paragraph, apart from the scenario information.
+
+The check looks at each exercise div (`#exr-...`).
+A sentence is a task when it ends with a question mark
+or starts with an imperative task verb such as Show, Find, Compute, Estimate, Explain or Derive.
+Every other sentence of prose counts as scenario.
+A paragraph with both kinds is reported.
+Sentences are found by punctuation, so a sentence broken across lines at a clause counts once.
+
+Solutions, callouts such as hints, code fences, display math, lists, tables,
+headings and HTML comments are not examined.
+`<!-- question-paragraph-ok: reason -->` inside an exercise exempts it.
+
+An untouched paragraph is never reflagged.
+With no base ref the check skips instead of scanning the whole tree;
+`whole-tree` measures a corpus.
+
+## Usage
+
+Copy
+[`examples/check-exercise-question-paragraph.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-exercise-question-paragraph.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `fail` | `true` | Fail the workflow on a finding; `false` gives warnings only |
+| `whole-tree` | `false` | Scan every exercise, not only a PR's additions |
+| `python-version` | `3.x` | Python version to set up |
