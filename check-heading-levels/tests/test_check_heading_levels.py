@@ -199,8 +199,8 @@ def test_no_base_ref_skips_rather_than_scanning(repo):
 
 def test_action_and_script_agree_on_defaults():
     action = (_DIR / "action.yml").read_text()
-    assert "default: 'false'" in action
-    assert hlv._DEFAULT_FAIL is False
+    assert "default: 'true'" in action
+    assert hlv._DEFAULT_FAIL is True
     assert hlv.DEFAULT_GLOBS == "*.qmd"
     assert "HLV_FAIL" in action and "HLV_BASE_REF" in action
 

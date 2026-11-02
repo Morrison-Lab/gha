@@ -42,8 +42,8 @@ inputs:
   fail:
     description: >-
       Fail the action when a heading breaks its page's outline (else
-      non-blocking). Defaults to 'false' (warning annotations only).
-    default: 'false'
+      non-blocking). Defaults to 'true': agents ignore warnings.
+    default: 'true'
 runs:
   using: composite
   steps:

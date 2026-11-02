@@ -35,15 +35,15 @@ Design notes, in the model of ``check-one-div-per-subfile``:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``HLV_WHOLE_TREE=true`` scans the
   whole tree, which measures how many headings the corpus carries.
-- **Warn-only by default** (``HLV_FAIL`` defaults to false) until a corpus is
-  clean.
+- **Failing by default** (``HLV_FAIL`` defaults to true; Ezra, 2026-11-02:
+  agents ignore warnings). Diff-scoped, so only added headings can fail.
 
 Configuration (environment variables, set by the composite action):
   HLV_BASE_REF      Git ref/SHA to diff against. Empty and not whole-tree =>
                     skip the check.
   HLV_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   HLV_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  HLV_FAIL          "true" => fail on findings; default "false".
+  HLV_FAIL          "false" => warn only; default "true".
   HLV_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
@@ -75,7 +75,7 @@ def _load_sibling(name: str):
 ods = _load_sibling("check-one-div-per-subfile")
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 ALLOW_MARKER = "check-heading-levels: allow"
 
 HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*?)(?:[ \t]+#+)?[ \t]*$")
