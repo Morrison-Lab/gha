@@ -4,20 +4,23 @@ r"""
 Flag a heading whose level breaks the page's outline.
 
 The lab's rule (Ezra, 2026-10-30, after pages split out of larger pages kept
-headings from the page they came from): a page's title is its level 1
-heading, so the body starts at level 2 and each heading is at most one level
-deeper than the one before it. Three mistakes are flagged:
+headings from the page they came from; corrected 2026-11-02): a page's title
+comes from its front matter and is not a numbered level, so the body starts
+at level 1 (``#``) and each heading is at most one level deeper than the one
+before it. A body that starts at level 2 numbers its sections 0.1, 0.2 under
+``number-sections: true``. Three mistakes are flagged:
 
 - **Skipped level.** A heading more than one level deeper than the heading
-  before it in the same file (``##`` then ``####``). The first heading of a
-  page is compared with the title, level 1; the first heading of an included
+  before it in the same file (``#`` then ``###``). The first heading of a
+  page is compared with the title, level 0; the first heading of an included
   subfile is not compared with anything.
 - **Page starts too deep.** The first heading a page renders, following its
-  ``{{< include >}}`` shortcodes, is deeper than level 2 (a shared
-  ``### Configuring R`` include that opens ten chapters).
+  ``{{< include >}}`` shortcodes, is deeper than level 1 (a shared
+  ``### Configuring R`` include that opens ten chapters, or a body of ``##``
+  sections that number 0.1, 0.2).
 - **Title repeated as a heading.** The first heading a page renders repeats
   the page's ``title:`` (a section copied into its own page with its
-  ``## Newton's method`` heading still on it).
+  ``# Newton's method`` heading still on it).
 
 What is not counted: headings inside code fences, HTML comments, YAML front
 matter or any fenced div (``####`` titles of definition and exercise divs are
@@ -32,15 +35,15 @@ Design notes, in the model of ``check-one-div-per-subfile``:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``HLV_WHOLE_TREE=true`` scans the
   whole tree, which measures how many headings the corpus carries.
-- **Warn-only by default** (``HLV_FAIL`` defaults to false) until a corpus is
-  clean.
+- **Failing by default** (``HLV_FAIL`` defaults to true; Ezra, 2026-11-02:
+  agents ignore warnings). Diff-scoped, so only added headings can fail.
 
 Configuration (environment variables, set by the composite action):
   HLV_BASE_REF      Git ref/SHA to diff against. Empty and not whole-tree =>
                     skip the check.
   HLV_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   HLV_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  HLV_FAIL          "true" => fail on findings; default "false".
+  HLV_FAIL          "false" => warn only; default "true".
   HLV_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
@@ -72,7 +75,7 @@ def _load_sibling(name: str):
 ods = _load_sibling("check-one-div-per-subfile")
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 ALLOW_MARKER = "check-heading-levels: allow"
 
 HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*?)(?:[ \t]+#+)?[ \t]*$")
@@ -83,7 +86,7 @@ ATTR_RE = re.compile(r"\s*\{[^{}]*\}\s*$")
 
 ADVICE_SKIP = "use the next level down, or add the missing level"
 ADVICE_DEEP = (
-    "start the page at level 2: raise this heading, or the include's other "
+    "start the page at level 1: raise this heading, or the include's other "
     "headings with it"
 )
 ADVICE_TITLE = (
@@ -254,21 +257,22 @@ def scan_page(path: str, root: str) -> List[Finding]:
     findings: List[Finding] = []
     if headings:
         first = headings[0][0]
-        if first.level > 2 and not first.allowed:
+        if first.level > 1 and not first.allowed:
             findings.append(Finding(
                 first.path, first.line, "deep",
                 f"Page starts at level {first.level} ('{first.text}'); the "
-                f"title is level 1, so the first heading is level 2. "
+                f"title is not a numbered level, so the first heading is "
+                f"level 1 (a level 2 start numbers sections 0.1, 0.2). "
                 f"Fix: {ADVICE_DEEP}"))
-        elif (title and first.level == 2 and not first.allowed
+        elif (title and first.level == 1 and not first.allowed
               and clean_text(first.text) == clean_text(title)):
             findings.append(Finding(
                 first.path, first.line, "title",
                 f"The page's first heading ('{first.text}') repeats its "
                 f"title. Fix: {ADVICE_TITLE}"))
-    prev = 1
+    prev = 0
     for heading, own in headings:
-        reported_deep = (heading is headings[0][0] and heading.level > 2)
+        reported_deep = (heading is headings[0][0] and heading.level > 1)
         if (own and heading.level > prev + 1 and not heading.allowed
                 and not reported_deep):
             findings.append(Finding(
