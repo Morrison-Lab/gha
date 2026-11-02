@@ -149,7 +149,9 @@ def _run_action(tmp_path: Path, script_rc: int):
         "CONDOR_SSH_KEY": str(key),
         "RUNNER_TEMP": str(tmp_path),
     }
-    proc = subprocess.run(["bash", "-c", run], env=env, capture_output=True, text=True, check=False)
+    # GitHub runs `shell: bash` as this command line, with errexit on.
+    cmd = ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", run]
+    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, check=False)
     return proc.returncode, marker.exists()
 
 

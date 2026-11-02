@@ -36,8 +36,8 @@ runs:
         }
         key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
         [ -r "$key" ] || { run_local "no cluster key on this runner"; exit $?; }
-        bash "$SCRIPT" "$WORKDIR" "$steps_file"
-        rc=$?
+        rc=0
+        bash "$SCRIPT" "$WORKDIR" "$steps_file" || rc=$?
         case "$rc" in
           71) run_local "too few steps to bundle"; exit $? ;;
           70) run_local "the cluster job did not run normally"; exit $? ;;
