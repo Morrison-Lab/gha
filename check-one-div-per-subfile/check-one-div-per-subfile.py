@@ -184,15 +184,17 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
             continue
         attrs = dm.group(2)
         if attrs:
-            attached = (bool(ATTACHED_RE.search(QUOTED_RE.sub('""', attrs)))
-                        or bool(SOURCE_ID_RE.search(attrs)))
-            if depth == 0 and not attached and CONDITIONAL_RE.search(attrs):
+            unquoted = QUOTED_RE.sub('""', attrs)
+            attached = bool(ATTACHED_RE.search(unquoted))
+            exempt = attached or bool(SOURCE_ID_RE.search(attrs))
+            if depth == 0 and not exempt and CONDITIONAL_RE.search(unquoted):
                 # Judged when it closes, by the divs directly inside it.
                 wrapper = Div(idx + 1, attrs)
                 wrapper_ok = None
-            elif depth == 0 and not attached and not SOURCE_ID_RE.search(attrs):
+            elif depth == 0 and not exempt:
                 found.append(Div(idx + 1, attrs))
             elif depth == 1 and wrapper is not None:
+                # Only a proof or solution makes the wrapper part of its claim.
                 wrapper_ok = wrapper_ok is not False and attached
             depth += 1
         elif depth > 0:
