@@ -54,6 +54,7 @@ updates:
       - "/check-def-title-synonyms"
       - "/check-bare-yes-no"
       - "/check-exercise-background"
+      - "/check-exercise-question-paragraph"
       - "/check-key-equations-displayed"
       - "/check-multipart-exercises"
       - "/check-split-solutions"
