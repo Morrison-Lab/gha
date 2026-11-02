@@ -1,0 +1,51 @@
+name: Check exercise question paragraphs
+description: >-
+  Diff-scoped check that flags a paragraph of an exercise div (id `exr-...`)
+  that mixes scenario information with the instruction or question, when the
+  diff adds a line of the paragraph. The task goes in its own paragraph
+  (Ezra, 2026-11-02). Solutions, hints, code, display math, lists and comments
+  are not examined; `<!-- question-paragraph-ok: reason -->` exempts an
+  exercise. Fails by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only paragraphs with a line added since this
+      ref are checked. On a pull request the reusable workflow passes `HEAD^1`.
+      Diff mode needs the base commit in history (checkout with fetch-depth:
+      0); when the diff can't be computed, or no base-ref is given on a push
+      run, the check is skipped rather than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only
+      touched paragraphs. Use it to measure a corpus; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check (recursive by
+      default).
+    default: '*.qmd'
+  fail:
+    description: >-
+      Fail the action when a paragraph mixes scenario and task. Defaults to
+      'true'; 'false' gives warning annotations only.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check exercise question paragraphs
+      shell: bash
+      env:
+        EQP_BASE_REF: ${{ inputs.base-ref }}
+        EQP_WHOLE_TREE: ${{ inputs.whole-tree }}
+        EQP_GLOBS: ${{ inputs.globs }}
+        EQP_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-exercise-question-paragraph.py"
