@@ -47,6 +47,9 @@ jobs:
           closed_at=$(jq -r '.closed_at // "9999-12-31T23:59:59Z"' <<< "$pr_json")
           echo "PR $PR is $state at head $head"
           cancelled=0
+          # Collect every id before cancelling, since a cancelled run leaves
+          # the listing and would shift the pages that follow.
+          all_ids=""
           for status in queued in_progress; do
             page=1
             while :; do
@@ -60,15 +63,16 @@ jobs:
                 | select(($state == "open" and .head_sha != $head)
                     or ($state != "open" and .created_at < $closed))
                 | .id' <<< "$runs")
-              for id in $ids; do
-                if gh api -X POST "repos/$REPO/actions/runs/$id/cancel" > /dev/null; then
-                  cancelled=$((cancelled + 1))
-                else
-                  echo "::warning::could not cancel run $id"
-                fi
-              done
+              all_ids="$all_ids $ids"
               [ "$count" -lt 100 ] && break
               page=$((page + 1))
             done
+          done
+          for id in $all_ids; do
+            if gh api -X POST "repos/$REPO/actions/runs/$id/cancel" > /dev/null; then
+              cancelled=$((cancelled + 1))
+            else
+              echo "::warning::could not cancel run $id"
+            fi
           done
           echo "Cancelled $cancelled superseded run(s)."

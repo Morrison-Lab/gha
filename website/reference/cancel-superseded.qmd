@@ -15,7 +15,7 @@ so a `closed` workflow such as preview teardown still runs.
 
 | Input | Default | Meaning |
 | --- | --- | --- |
-| `runs-on` | private repositories: `vars.CI_RUNNER`; otherwise `ubuntu-latest` | Runner label for the job |
+| `runs-on` | `vars.CI_RUNNER` in a private repository that sets it; otherwise `ubuntu-latest` | Runner label for the job |
 
 ## Permissions
 
@@ -25,6 +25,7 @@ The caller grants `actions: write` and `pull-requests: read`.
 
 - GitHub lists no pull request for a run from a fork,
   so fork pull requests are never matched.
+- Runs in `waiting` or `requested` status are not cancelled.
 - Fork and Dependabot pull requests get a read-only token,
   which cannot cancel runs.
 
