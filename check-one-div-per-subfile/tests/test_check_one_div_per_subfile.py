@@ -82,6 +82,66 @@ def test_lookalike_div_still_counts(head):
     assert extra_lines(doc) == [5]
 
 
+HIDDEN = '::: {.content-hidden when-format="revealjs"}'
+
+
+def test_proof_hidden_from_slides_stays_with_its_claim():
+    doc = ("::: {#thm-a}\nClaim.\n:::\n\n" + HIDDEN
+           + "\n\n{{< slidebreak >}}\n\n::: proof\nWhy.\n:::\n\n:::\n")
+    assert extra_lines(doc) == []
+
+
+def test_hidden_wrapper_around_a_claim_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN
+           + "\n::: {#thm-b}\nB.\n:::\n:::\n")
+    assert extra_lines(doc) == [4]
+
+
+def test_hidden_wrapper_with_a_proof_and_a_claim_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN
+           + "\n::: proof\nP.\n:::\n::: {#thm-b}\nB.\n:::\n:::\n")
+    assert extra_lines(doc) == [4]
+
+
+def test_hidden_wrapper_with_no_div_still_counts():
+    doc = "::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\nText.\n:::\n"
+    assert extra_lines(doc) == [4]
+
+
+def test_unclosed_hidden_wrapper_is_counted_and_unbalanced():
+    lines = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\n::: proof\nP.\n:::\n").split("\n")
+    assert [d.line for d in ods.top_level_divs(lines)] == [1, 4]
+    assert not ods.is_balanced(lines)
+
+
+def test_hidden_source_remark_does_not_count():
+    doc = "::: {#thm-a}\nx\n:::\n\n::: {.content-hidden #rem-source-a}\ny\n:::\n"
+    assert extra_lines(doc) == []
+
+
+def test_hidden_wrapper_around_only_a_source_remark_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN
+           + "\n::: {#rem-source-x}\ny\n:::\n:::\n")
+    assert extra_lines(doc) == [4]
+
+
+def test_quoted_content_hidden_is_not_a_wrapper():
+    doc = ('::: {#thm-a}\nA.\n:::\n::: {title="see .content-hidden"}\n'
+           "::: proof\nP.\n:::\n:::\n")
+    assert extra_lines(doc) == [4]
+
+
+def test_quoted_source_id_is_not_a_source_remark():
+    doc = '::: {#thm-a}\nA.\n:::\n::: {title="#rem-source-a"}\ntext\n:::\n'
+    assert extra_lines(doc) == [4]
+
+
+def test_claim_after_a_hidden_proof_still_counts():
+    doc = ("::: {#thm-a}\nA.\n:::\n" + HIDDEN + "\n::: proof\nP.\n:::\n:::\n"
+           "::: {#thm-b}\nB.\n:::\n")
+    assert extra_lines(doc) == [9]
+
+
 def test_second_claim_after_a_proof_still_counts():
     doc = ("::: {#thm-a}\nA.\n:::\n::: proof\nP.\n:::\n"
            "::: {#thm-b}\nB.\n:::\n")

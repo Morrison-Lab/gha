@@ -8,6 +8,8 @@ The lab's rule (Ezra, 2026-10-18) is that new and revised content
 gets one div per subfile.
 One exception (Ezra, 2026-10-23):
 a proof may share a file with its claim, and a solution with its exercise.
+That includes a proof wrapped in a `.content-hidden` or `.content-visible` div,
+which is how the lab hides a proof from slides.
 This implements
 [gha#1092](https://github.com/Morrison-Lab/gha/issues/1092).
 

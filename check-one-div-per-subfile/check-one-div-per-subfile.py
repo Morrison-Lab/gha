@@ -23,6 +23,8 @@ What is not counted:
 - a top-level proof or solution div (class ``proof``, ``sol`` or
   ``solution``, or an id starting ``prf-`` or ``sol-``), which stays with the
   claim or exercise it belongs to;
+- a top-level ``.content-hidden`` or ``.content-visible`` wrapper whose only
+  divs are proofs or solutions (how the lab hides a proof from slides);
 - fences inside code blocks (a backtick opener whose info string holds a
   backtick is not a fence; any indentation is accepted, for fences inside
   list items);
@@ -98,6 +100,11 @@ SOURCE_ID_RE = re.compile(r"#rem-source-")
 ATTACHED_RE = re.compile(
     r"(?:^|[\s{])\.?(?:proof|sol|solution)(?=[\s}.#]|$)|#(?:prf|sol)-"
 )
+# A conditional-content wrapper (``.content-hidden``/``.content-visible``)
+# whose only divs are proofs or solutions belongs with them: the lab hides a
+# proof from slides with ``::: {.content-hidden when-format="revealjs"}``
+# around ``::: proof``, so the proof cannot carry that class itself.
+CONDITIONAL_RE = re.compile(r"(?:^|[\s{])\.content-(?:hidden|visible)(?=[\s}.#]|$)")
 
 
 # A quoted attribute value (``title="a sol"``) is not a class or an id.
@@ -158,6 +165,8 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
     depth = 0
     in_comment = False
     found: List[Div] = []
+    wrapper: Optional[Div] = None
+    wrapper_ok: Optional[bool] = None
     for idx, raw in enumerate(lines):
         if fence is None:
             raw, in_comment = strip_comments(raw, in_comment)
@@ -175,12 +184,28 @@ def scan_divs(lines: List[str]) -> Tuple[List[Div], bool]:
             continue
         attrs = dm.group(2)
         if attrs:
-            if (depth == 0 and not SOURCE_ID_RE.search(attrs)
-                    and not ATTACHED_RE.search(QUOTED_RE.sub('""', attrs))):
+            unquoted = QUOTED_RE.sub('""', attrs)
+            attached = bool(ATTACHED_RE.search(unquoted))
+            exempt = attached or bool(SOURCE_ID_RE.search(unquoted))
+            if depth == 0 and not exempt and CONDITIONAL_RE.search(unquoted):
+                # Judged when it closes, by the divs directly inside it.
+                wrapper = Div(idx + 1, attrs)
+                wrapper_ok = None
+            elif depth == 0 and not exempt:
                 found.append(Div(idx + 1, attrs))
+            elif depth == 1 and wrapper is not None:
+                # Only a proof or solution makes the wrapper part of its claim.
+                wrapper_ok = wrapper_ok is not False and attached
             depth += 1
         elif depth > 0:
             depth -= 1
+            if depth == 0 and wrapper is not None:
+                if wrapper_ok is not True:
+                    found.append(wrapper)
+                wrapper = None
+    if wrapper is not None:
+        found.append(wrapper)
+    found.sort(key=lambda d: d.line)
     return found, depth == 0 and fence is None and not in_comment
 
 
