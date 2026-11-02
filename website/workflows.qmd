@@ -184,7 +184,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-tree-lists.yml`, `check-search-shortcut.yml`, `check-self-contained-captions.yml`,
 `check-def-commentary.yml`, `check-unexplained-contrasts.yml`, `check-solution-citations.yml`,
 `check-exercise-before-result.yml`,
-`check-pr-concerns.yml`,
+`check-pr-concerns.yml`, `cancel-superseded.yml`,
 `check-pr-size.yml`,
 `check-def-title-synonyms.yml`,
 `check-bare-yes-no.yml`,

@@ -1,0 +1,58 @@
+name: Cancel Superseded Runs (reusable)
+
+# Call this from a `pull_request` workflow listening for `synchronize` and
+# `closed`. It cancels every other queued or running workflow run that belongs
+# to the pull request and was started for a head the pull request no longer
+# has, and every run of a pull request that was closed (gha#1400).
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ''
+
+jobs:
+  cancel-superseded:
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      pull-requests: read
+    concurrency:
+      group: cancel-superseded-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Cancel runs for old heads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          pr_json=$(gh api "repos/$REPO/pulls/$PR")
+          state=$(jq -r .state <<< "$pr_json")
+          head=$(jq -r .head.sha <<< "$pr_json")
+          echo "PR $PR is $state at head $head"
+          cancelled=0
+          for status in queued in_progress; do
+            ids=$(gh api "repos/$REPO/actions/runs?status=$status&event=pull_request&per_page=100" \
+              --jq ".workflow_runs[]
+                | select(.id != ($RUN_ID | tonumber))
+                | select(any(.pull_requests[]?; .number == ($PR | tonumber)))
+                | select(\"$state\" != \"open\" or .head_sha != \"$head\")
+                | .id")
+            for id in $ids; do
+              if gh api -X POST "repos/$REPO/actions/runs/$id/cancel" > /dev/null; then
+                cancelled=$((cancelled + 1))
+              else
+                echo "::warning::could not cancel run $id"
+              fi
+            done
+          done
+          echo "Cancelled $cancelled superseded run(s)."
