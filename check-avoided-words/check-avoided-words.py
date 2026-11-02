@@ -34,6 +34,11 @@ and the fourth is psw's own (psw#427):
   A finding only asks the author to check; a deliberate use takes the allow
   comment.
 
+- **trailing parenthetical links**: a crossref such as "differentiable at $c$
+  (@def-differentiable)" after a word, or a "([why](url))" link after a claim.
+  Link the term itself, or make the whole claim the link text (gha#1402).
+  "(see @thm-x)" passes, since no word can carry that link.
+
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
 or at the end of a clause); "above the threshold" passes. ``just`` is not
@@ -99,6 +104,10 @@ BACKREF_RE = re.compile(
     r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?set-?up\s+(?:of|from|in)\b"
     r"|(?:same|identical)\s+set-?up\s+as\b)"
 )
+PARENREF_RE = re.compile(
+    r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
+    r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
+)
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -117,6 +126,10 @@ RULES = (
      'Name the data, variables, or model a back-reference reuses instead of '
      '"the setup of ..."; write about content, not the structure of the '
      "notes (psw#442)."),
+    ("parenref", PARENREF_RE,
+     "Link the term, or make the whole claim the link text, instead of a "
+     'trailing "(@def-x)" crossref or "([why](url))" link '
+     "(Ezra, 2026-11-02; gha#1402)."),
 )
 
 
@@ -150,7 +163,7 @@ def format_message(finding: Finding) -> str:
 def main() -> int:
     return engine.main(
         scan=scan_file, prefix="CAW_", name="avoided-words",
-        clean="No position, effort, time-relative or generic-placeholder word found.",
+        clean="No avoided word or trailing parenthetical link found.",
         summary="use a word a style source advises against.",
         format_finding=format_message)
 

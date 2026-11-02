@@ -56,9 +56,24 @@ def found(text: str):
     ("Let the sample  space S be finite.", "generic", "sample  space s"),
     ("Use the setup of @exr-wcgs.", "backref", "the setup of"),
     ("Keep the same setup as @exr-wcgs.", "backref", "same setup as"),
+    ("$f$ is not differentiable at $c$ (@def-differentiable).", "parenref",
+     "$ (@def-differentiable)"),
+    ("A kernel has the same mode as its density ([why](https://x.org/a#thm-k)),",
+     "parenref", "([why](https://x.org/a#thm-k))"),
+    ("The bound ([proof](page.qmd#thm-b)) holds.", "parenref",
+     "([proof](page.qmd#thm-b))"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
+
+
+def test_parenref_passes_linked_term_and_see():
+    assert found("$f$ is not [differentiable at](calculus.qmd#def-differentiable) $c$.") == {}
+    assert found("[A kernel has the same mode as its density](https://x.org/a#thm-k),") == {}
+    assert found("The bound holds (see @thm-b).") == {}
+    assert found("(@def-x) opens the line.") == {}
+    assert found("The bound holds (see [the proof](page.qmd#thm-b)).") == {}
+    assert found("Hold <!-- check-avoided-words: allow --> it (@def-x).") == {}
 
 
 def test_backref_passes_unrelated_setup():

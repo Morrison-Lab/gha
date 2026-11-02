@@ -38,6 +38,12 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   "The setup of @exr-x" or "the same setup as".
   Name the data, variables or model the part reuses.
   Source: psw's "Talk about the ideas, not the notes" (psw#442).
+- **Trailing parenthetical links.**
+  A crossref after a word, such as `differentiable at $c$ (@def-differentiable)`,
+  or a `([why](url))` link after a claim.
+  Link the term itself, or make the whole claim the link text.
+  `(see @thm-x)` passes, since no word can carry that link.
+  Source: Ezra's review of mds, 2026-11-02 (gha#1402).
 
 The check does not flag a code fence or code span, an HTML comment, YAML
 front matter, or a line carrying, or following,
