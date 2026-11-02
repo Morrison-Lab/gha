@@ -1,0 +1,1 @@
+- `update-snapshots.yml` with `preinstalled-toolchain: true` now sets `RENV_CONFIG_AUTOLOADER_ENABLED=false`, so a project `.Rprofile` that bootstraps renv no longer hides the runner's `pak` (#1387).
