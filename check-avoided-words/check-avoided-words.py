@@ -3,8 +3,8 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Four rules; the first three each have a source that was read (psw#418),
-and the fourth is psw's own (psw#427):
+Six rules; the first three each have a source that was read (psw#418),
+and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402):
 
 - **position words**: ``above`` or ``below`` used for a place in the
   document, such as "the table above" or "as shown below". Refer to the
@@ -132,7 +132,8 @@ RULES = (
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '
-     "(Ezra, 2026-11-02; gha#1402)."),
+     "(Ezra, 2026-11-02; gha#1402). A deliberate use takes the "
+     "check-avoided-words allow comment."),
 )
 
 
