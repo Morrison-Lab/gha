@@ -105,6 +105,25 @@ def test_a_finding_is_kept_only_when_the_diff_adds_a_line_of_its_paragraph():
     text = exercise("A clinic records 40 visits.\nHow many were new patients?")
     lines = text.split("\n")
     (item,) = eqp.exercises(lines)
-    assert eqp.paragraph_touched(lines, item, {5})
-    assert not eqp.paragraph_touched(lines, item, {1})
-    assert not eqp.paragraph_touched(lines, item, {8})
+    assert eqp.touched(item, {5})
+    assert not eqp.touched(item, {1})
+    assert not eqp.touched(item, {8})
+
+
+@pytest.mark.parametrize("sentence", [
+    "Count data are overdispersed.",
+    "Test scores were recorded.",
+    "Fit was poor.",
+    "Match rates differ.",
+])
+def test_a_scenario_sentence_that_starts_with_a_task_verb_is_not_a_task(sentence):
+    assert not eqp.is_task(sentence)
+
+
+def test_the_motivating_exercise_is_flagged_before_the_split_and_not_after():
+    before = ("Let $\\vq$ be the distribution.\n"
+              "Show that the cross-entropy equals the loss.")
+    after = ("Let $\\vq$ be the distribution.\n\n"
+             "Show that the cross-entropy equals the loss.")
+    assert lines_flagged(exercise(before)) == [4]
+    assert lines_flagged(exercise(after)) == []

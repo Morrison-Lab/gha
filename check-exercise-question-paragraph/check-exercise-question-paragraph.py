@@ -11,7 +11,9 @@ without rereading the setup.
 What is flagged: a paragraph of an exercise div (id ``exr-...``) with a task
 sentence and a non-task sentence. A task sentence ends with a question mark,
 or starts with an imperative task verb such as Show, Find, Compute, Estimate,
-Explain or Derive. Every other sentence in prose counts as scenario. A
+Explain or Derive, unless a verb form follows within two words ("Count data
+are skewed." is scenario). Every other sentence in prose counts as scenario.
+An exercise nested inside another exercise is not examined separately. A
 paragraph of only tasks, or of only scenario, is fine, and so is a paragraph
 of the task followed by nothing.
 
@@ -70,8 +72,15 @@ TASK_VERBS = frozenset("""
 """.split())
 
 
+VERB_FORMS = frozenset("""
+    is are was were be been has have had does did can could will would may
+    might should must differ differs
+""".split())
+
+
 class Finding(NamedTuple):
     line: int
+    end: int
     snippet: str
 
 
@@ -90,8 +99,11 @@ def is_task(sentence: str) -> bool:
     if sentence.rstrip("\"')]*_ ").endswith("?"):
         return True
     text = LEAD_RE.sub("", sentence.lstrip("(*_\"' "))
-    words = re.findall(r"[A-Za-z]+", text[:30])
-    return bool(words) and words[0].lower() in TASK_VERBS
+    words = [w.lower() for w in re.findall(r"[A-Za-z]+", text[:60])]
+    if not words or words[0] not in TASK_VERBS:
+        return False
+    # "Count data are skewed." has a verb of its own after the noun phrase.
+    return not VERB_FORMS.intersection(words[1:3])
 
 
 def mixed(paragraph: str) -> bool:
@@ -107,7 +119,7 @@ def paragraphs(body: List[tuple]) -> List[tuple]:
 
     def close() -> None:
         if cur:
-            out.append((cur[0][0], " ".join(t for _, t in cur)))
+            out.append((cur[0][0], cur[-1][0], " ".join(t for _, t in cur)))
             cur.clear()
 
     in_math = False
@@ -165,9 +177,9 @@ def exercises(lines: List[str]) -> List[Finding]:
                 depth -= 1
                 if cur is not None and depth == cur["depth"]:
                     if not cur["ok"]:
-                        for first, text in paragraphs(cur["body"]):
+                        for first, last, text in paragraphs(cur["body"]):
                             if mixed(text):
-                                found.append(Finding(first, text[:60]))
+                                found.append(Finding(first, last, text[:60]))
                     cur = None
                 elif cur is not None and cur["skip"] == depth:
                     cur["skip"] = None
@@ -224,6 +236,13 @@ def _flag(name: str, default: bool) -> bool:
     return default if not value else value in ("1", "true", "yes", "on")
 
 
+def touched(item: Finding, keep: Optional[Set[int]]) -> bool:
+    """Whether the diff adds a line of the paragraph (None = every line)."""
+    if keep is None:
+        return True
+    return any(item.line <= n <= item.end for n in keep)
+
+
 def main() -> int:
     base_ref = os.environ.get("EQP_BASE_REF", "").strip()
     globs = os.environ.get("EQP_GLOBS", DEFAULT_GLOBS).split() or [DEFAULT_GLOBS]
@@ -244,21 +263,13 @@ def main() -> int:
         except OSError:
             continue
         for item in exercises(lines):
-            if wanted[rel] is None or paragraph_touched(lines, item, wanted[rel]):
+            if touched(item, wanted[rel]):
                 findings += 1
                 print(f"::{severity} file={rel},line={item.line}::Paragraph "
                       f"'{item.snippet}...' mixes scenario information with the "
                       f"task. Fix: {ADVICE}")
     print(f"Examined {len(wanted)} file(s); {findings} paragraph(s) flagged.")
     return 1 if findings and fail else 0
-
-
-def paragraph_touched(lines: List[str], item: Finding, keep: Set[int]) -> bool:
-    """Whether the diff adds a line of the paragraph that starts at item.line."""
-    end = item.line
-    while end < len(lines) and lines[end].strip():
-        end += 1
-    return any(item.line <= n <= end for n in keep)
 
 
 if __name__ == "__main__":
