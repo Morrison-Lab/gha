@@ -1951,7 +1951,7 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'website/reference/*.qmd'
+          globs: 'build-dependency-graph/tests/fixture/ok/*.qmd'
       - name: Check again with no base, expecting a skip
         uses: ./check-heading-levels
         with:

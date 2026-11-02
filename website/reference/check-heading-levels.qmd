@@ -6,7 +6,8 @@ Diff-scoped check that flags a heading that breaks its page's outline.
 It fails by default, since agents ignore warnings (Ezra, 2026-11-02).
 A page's title is not a numbered level,
 so the body starts at level 1 (Ezra, 2026-11-02, correcting 2026-10-30):
-a body that starts at level 2 numbers its sections 0.1, 0.2 under `number-sections: true`.
+a body that starts at level 2
+numbers its sections 0.1, 0.2 under `number-sections: true`.
 Each heading is at most one level deeper than the one before it.
 Pages split out of larger pages kept the headings of the page they came from,
 and a shared include opened ten chapters one level too deep.
