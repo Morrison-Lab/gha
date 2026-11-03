@@ -1184,7 +1184,7 @@ cookieconsent.run({
 
 
 <p>Diff-scoped check that flags self-referential prose. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). The notes write about their content, not their own structure (Ezra, 2026-11-03): “The negative gradient decreases the cost the most”, not “This exercise shows that the negative gradient is the best answer”. The rule text is in psw, “Avoid forward references”.</p>
-<p>The check flags a sentence that starts with “This” or “These”, then a structural noun (exercise, solution, section, chapter, lecture, page, handout or problem), optionally “and the ones that follow it”, then a verb that reports what the structure does: shows, establishes, explains, says, derives, proves, covers, introduces, demonstrates, illustrates, describes, computes, handles, does or “is about”.</p>
+<p>The check flags a sentence that starts with “This” or “These”, then a structural noun (exercise, solution, section, chapter, lecture, page, handout), optionally “and the ones that follow it”, then a verb that reports what the structure does: shows, establishes, explains, says, derives, proves, covers, introduces, demonstrates, illustrates, describes, computes, handles or “is about”.</p>
 <p>The check does not count:</p>
 <ul>
 <li>a line inside a code fence, an HTML comment or the YAML front matter;</li>
@@ -1254,7 +1254,7 @@ cookieconsent.run({
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-self-reference.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Diff-scoped check: flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a structural noun (exercise, solution, section, chapter, lecture, page, handout, problem) and a verb such as shows, establishes, explains, covers or "is about".</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Diff-scoped check: flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a structural noun (exercise, solution, section, chapter, lecture, page, handout) and a verb such as shows, establishes, explains, covers or "is about".</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Fails by default.</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Only contents:read is needed (the default), so no permissions block is required.</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check self-referential prose</span></span>
