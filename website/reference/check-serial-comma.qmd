@@ -10,10 +10,10 @@ whether the last two items form a pair.
 
 The check joins each paragraph before matching,
 so a list split across lines by semantic line breaks is still found.
-It reduces math, code, links and citations to placeholders,
+It reduces math, code, links, and citations to placeholders,
 and skips an introductory phrase followed by a pair ("However, x and y"),
 "such as" and "for example" phrases, code fences, HTML comments,
-YAML front matter and table rows.
+YAML front matter, and table rows.
 A line carrying `<!-- check-serial-comma: allow -->` is exempt.
 
 An untouched line is never reflagged.

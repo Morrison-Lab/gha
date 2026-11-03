@@ -49,6 +49,8 @@ def test_missing_serial_comma_is_flagged(text):
     "We fit linear models and trees.",
     "However, x and y differ.",
     "In practice, a and b differ.",
+    "The check skips a pair (\"However, x and y\") after a phrase.",
+    "The means differ, however, x and y agree.",
     "If the sample is large, the mean and median agree.",
     "For example, a and b differ.",
     "Use e.g., means and medians.",

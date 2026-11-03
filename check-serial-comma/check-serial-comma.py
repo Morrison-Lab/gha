@@ -54,13 +54,21 @@ INTRO_WORDS = frozenset("""
     still even only both either neither
 """.split())
 
+# A word that ends an introductory or interrupting phrase ("..., however, x and y"):
+# the comma after it is not a list comma.
+INTERJECTIONS = frozenset("""
+    eg ie however then thus hence therefore instead also first second third
+    finally next moreover furthermore indeed again similarly otherwise meanwhile
+    overall specifically typically usually often sometimes now here there
+""".split())
+
 CLAUSE_WORDS = frozenset("""
     such including especially particularly notably namely example instance
     we you they it he she this these those is are was were has have had do does
     can will would should may might must
 """.split())
 
-FENCE_RE =re.compile(r"^[ \t]*(`{3,}|~{3,})")
+FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 DIV_RE = re.compile(r"^ {0,3}:{3,}")
 MARKER_RE = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:[-*+]|\d{1,2}[.)]|\(?[a-z][.)]|\([a-z]\))[ \t]+")
 HEADING_RE = re.compile(r"^#{1,6}\s")
@@ -160,7 +168,7 @@ def missing_serial(sentence: str) -> Optional[int]:
         second = parts[i + 1]
         if not first or re.match(r"\s*(and|or|but)\b", second):
             continue
-        if re.sub(r"\W", "", first.split()[-1]).lower() in ("eg", "ie"):
+        if re.sub(r"\W", "", first.split()[-1]).lower() in INTERJECTIONS:
             continue
         m = CONJ_RE.search(" " + second + " ")
         if not m:
