@@ -32,6 +32,11 @@ inputs:
       ^PR edits workflow files; restored
       ^Claude review verdict is not clean \(verdict: .+\)\.$
       ^Skipping element-level diff highlighting: \d+ old / \d+ new candidate elements exceed the \d+-element cap
+      ^Attempt 1 produced a stub review or short-circuited; the retry recovered cleanly\.$
+      ^Claude review produced no execution output \(action exited non-zero or short-circuited
+      ^Action failed with error: Failed to install Claude Code after \d+ attempts
+      ^No files were found with the provided path: .*claude-execution-output\.json
+      ^execution_file output not set; falling back to
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always
