@@ -118,7 +118,22 @@ def test_failed_ssh_exits_70(tmp_path):
 def test_failed_copy_exits_70_without_submitting(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], STUB_RSYNC_RC="23")
     assert proc.returncode == 70
-    assert _count(calls, "ssh ") == 0
+    assert _count(calls, "condor_submit") == 0
+
+
+def test_failed_copy_sweeps_only_old_run_directories_then_retries(tmp_path):
+    ci = tmp_path / "ci"
+    for name in ("1", "99", "image"):
+        (ci / name).mkdir(parents=True)
+    old = 1_000_000_000
+    for name in ("1", "image"):
+        os.utime(ci / name, (old, old))
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RSYNC_RC="23")
+    assert proc.returncode == 70
+    assert _count(calls, "rsync ") == 2
+    assert not (ci / "1").exists()
+    assert (ci / "99").exists()
+    assert (ci / "image").exists()
 
 
 def test_held_or_aborted_job_exits_70(tmp_path):
