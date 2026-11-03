@@ -187,7 +187,7 @@ check "prune: low space removes the oldest checkouts until 10 GB are free" "$(le
 new_work
 out=$(run_prune STUB_BASE_KB=$((6 * gb)))
 check "prune: the current checkout and _tool survive when space stays low" "$(left)" "_tool cur "
-check "prune: still-low space is reported" "$(grep -c 'still has under 10 GB' <<< "$out")" "1"
+check "prune: still-low space is reported" "$(grep -c 'GB free, under 10 GB' <<< "$out")" "1"
 
 new_work
 out=$(env PATH="$work/bin:$PATH" GITHUB_WORKSPACE=relative STUB_BASE_KB=$((6 * gb)) bash -e -o pipefail "$prune"; echo "rc=$?")
@@ -215,17 +215,14 @@ mkdir -p "$w/R/library"
 run_prune STUB_BASE_KB=$((6 * gb)) > /dev/null
 check "prune: a recent non-checkout directory survives low space" "$(left)" "R _tool cur "
 
-# Last resort: _actions is removed only when space stays low, and the warning
-# names the largest folders.
+# The low-space warning names the folder, filesystem and mount it measured.
 new_work
-mkdir -p "$w/_actions/x"
 out=$(run_prune STUB_BASE_KB=$((6 * gb)))
-check "prune: low space after every checkout removes _actions" "$(left)" "_tool cur "
-check "prune: the warning names the largest folders" "$(grep -c 'Largest folders in the work folder: .*GB' <<< "$out")" "1"
+check "prune: the warning names the measured folder and mount" "$(grep -c "measured $w on stub mounted on /: [0-9]* GB free" <<< "$out")" "1"
 new_work
 mkdir -p "$w/_actions/x"
-run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
-check "prune: _actions survives when space is fine" "$(left)" "_actions _tool a b c cur d "
+run_prune STUB_BASE_KB=$((6 * gb)) > /dev/null
+check "prune: _actions is never removed" "$(left)" "_actions _tool cur "
 
 # A failing df stops pruning with a warning and still exits 0 under -e.
 new_work

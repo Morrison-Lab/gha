@@ -1,6 +1,6 @@
-- **The runner cleanup hook frees `_actions` and names the largest folders when the disk stays low** --
+- **The runner cleanup hook's low-space warning says what it measured** --
   when `scripts/prune-runner-workdir.sh` has removed every other checkout and the disk is still under the limit,
-  it now also removes the runner's `_actions` folder, which the runner re-downloads,
-  and its warning lists the largest folders in the work folder.
-  Runner `private-cf463-01-5` kept warning "still has under 10 GB free", which fails the Annotation gate,
-  with no hint of what held the space.
+  its warning now names the folder it measured, the filesystem and mount point `df` answered for,
+  the free space, and the sizes of the work folder and the current job's checkout.
+  Runner `private-cf463-01-5` warned "still has under 10 GB free", which fails the Annotation gate,
+  while `/var` showed 17 GB free afterwards, and the old warning gave no way to tell a wrong mount from a transient peak.

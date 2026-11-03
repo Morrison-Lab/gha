@@ -19,8 +19,7 @@
 #      (default 10) free, delete the oldest remaining one.
 # Only a checkout is touched: a directory <repo> holding <repo>/<repo>, the
 # layout the runner creates. The runner's own `_*` directories (_tool,
-# _temp, ...; _actions only in a last-resort third pass, because the runner
-# re-downloads it) and anything else a job keeps in the work folder, such
+# _actions, _temp, ...) and anything else a job keeps in the work folder, such
 # as the R library r-lib/setup-r installs under R/, are never touched.
 #
 # A failure here warns and exits 0 rather than failing: the job has already
@@ -116,19 +115,13 @@ done < <(candidates)
 
 free=$(free_kb)
 if [ -n "$free" ] && [ "$free" -lt "$min_free_kb" ] && [ "$pruned_all" = 1 ]; then
-  # Pass 3: the runner re-downloads _actions (the actions it cloned for jobs)
-  # on the next job that needs them, and no job is running now.
-  if [ -d "$work/_actions" ]; then
-    remove "$work/_actions" "under ${min_free_gb} GB free, re-downloaded on demand"
-  fi
-  free=$(free_kb)
-fi
-if [ -n "$free" ] && [ "$free" -lt "$min_free_kb" ] && [ "$pruned_all" = 1 ]; then
-  # Name the largest consumers, so the warning says what to clear by hand.
-  # They may be outside the work folder: it shares its filesystem with
-  # whatever else lives there.
-  top=$(du -xk --max-depth=1 "$work" 2> /dev/null | sort -rn | sed -n '2,6p' |
-    awk '{ printf "%s%.1f GB %s", sep, $1 / 1048576, $2; sep = "; " }')
-  warn "$work still has under ${min_free_gb} GB free after removing every other checkout; the next jobs will re-clone them. Largest folders in the work folder: ${top:-unknown}."
+  # Say what was measured, so a reader can tell a full disk from a wrong mount:
+  # the folder df was asked about, the filesystem and mount point it answered
+  # for, and the sizes of the work folder and the current job's checkout, which
+  # is still on disk because this hook runs before the runner cleans up.
+  mount=$(df -Pk "$work" 2> /dev/null | awk 'NR == 2 { print $1 " mounted on " $6 }')
+  work_kb=$(du -skx "$work" 2> /dev/null | awk '{ print $1 }')
+  cur_kb=$(du -skx "$current" 2> /dev/null | awk '{ print $1 }')
+  warn "measured $work on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
 fi
 exit 0
