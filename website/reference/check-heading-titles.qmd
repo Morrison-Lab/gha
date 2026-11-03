@@ -16,7 +16,8 @@ The check reports two mistakes:
 - **Interrogative start.**
   The heading, or any phrase after a colon in it, begins with
   who, whom, whose, what, when, where, why, how or which.
-  A word that only begins with one of these, such as "Whatever" or "Howell's", does not count.
+  A word that only begins with one of these,
+  such as "Whatever" or "Howell's", does not count.
 
 The check does not count:
 
