@@ -93,6 +93,21 @@ def test_an_untrusted_certificate_warns_whatever_the_base_ref(tmp_path, base_ref
     assert "1 demoted warning" in summary
 
 
+def test_a_cached_repeat_of_an_untrusted_certificate_warns(tmp_path):
+    cached = entry("https://web.stanford.edu/class/cs109/", None, 3, text="Error (cached)")
+    rep = report({"a.md": [STANFORD_TLS], "b.md": [cached]})
+    proc, _ = run(tmp_path, rep)
+    assert proc.returncode == 0, proc.stdout
+    assert "::error" not in proc.stdout
+    assert "2 demoted warning" in proc.stdout
+
+
+def test_a_cached_error_with_no_untrusted_certificate_still_fails(tmp_path):
+    cached = entry("https://example.org/gone", None, 3, text="Error (cached)")
+    proc, _ = run(tmp_path, report({"b.md": [cached]}))
+    assert proc.returncode == 1
+
+
 def test_a_dead_link_still_fails_beside_an_untrusted_certificate(tmp_path):
     proc, _ = run(tmp_path, report({"README.md": [STANFORD_TLS, DEAD_404]}))
     assert proc.returncode == 1

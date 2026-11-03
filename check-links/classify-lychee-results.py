@@ -184,6 +184,18 @@ def untrusted_certificate(key: str, entry: dict) -> bool:
     return key == "error_map" and _UNTRUSTED_CERTIFICATE in text
 
 
+def cached_untrusted_certificate(key: str, entry: dict, untrusted_urls: set) -> bool:
+    """True for a repeat of a link whose certificate lychee already rejected.
+
+    lychee reports a URL it meets again in another file as "Error (cached)",
+    with none of the first report's wording, so the text test above misses it
+    and the repeat blocks while the first warns (rme#1439: web.stanford.edu).
+    """
+    text = (entry.get("status") or {}).get("text") or ""
+    is_cached_error = key == "error_map" and text.startswith("Error (cached)")
+    return is_cached_error and entry.get("url") in untrusted_urls
+
+
 def classify(
     listed: List[Tuple[str, str, dict]], blocks_5xx: Callable[[str, dict], bool]
 ) -> Tuple[List[Tuple[str, dict]], List[Tuple[str, dict]]]:
@@ -193,10 +205,17 @@ def classify(
     """
     blocking: List[Tuple[str, dict]] = []
     demoted: List[Tuple[str, dict]] = []
+    untrusted_urls = {
+        e.get("url") for k, _, e in listed if untrusted_certificate(k, e)
+    }
     for key, path, entry in listed:
         code = _status_code(entry)
         transient = key == "error_map" and code is not None and 500 <= code <= 599
-        if untrusted_certificate(key, entry) or (transient and not blocks_5xx(path, entry)):
+        if (
+            untrusted_certificate(key, entry)
+            or cached_untrusted_certificate(key, entry, untrusted_urls)
+            or (transient and not blocks_5xx(path, entry))
+        ):
             demoted.append((path, entry))
         else:
             blocking.append((path, entry))
@@ -321,7 +340,7 @@ def main() -> int:
     blocking, demoted = classify(listed, _scope(base_ref))
     root = _repo_root()
     for path, entry in demoted:
-        if _UNTRUSTED_CERTIFICATE in _describe(entry):
+        if _UNTRUSTED_CERTIFICATE in _describe(entry) or "(cached)" in _describe(entry):
             why = (" (the host's certificate is not trusted, so the link is unverified, "
                    "not known dead; not failing the check)")
         else:
