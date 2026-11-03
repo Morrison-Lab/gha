@@ -41,6 +41,9 @@ def flagged(tmp_path, body):
     "This solution derives the update.",
     "Go downhill. This exercise shows which way.",
     "this lecture introduces the model.",
+    "The next exercises establish the properties of the sigmoid.",
+    "Go downhill. The previous section defined the cost.",
+    "The following exercises make this precise.",
 ])
 def test_self_reference_is_flagged(tmp_path, sentence):
     assert flagged(tmp_path, sentence + "\n")
@@ -58,6 +61,10 @@ def test_self_reference_is_flagged(tmp_path, sentence):
     "This problem does not have a closed form.",
     "This solution shows up twice in the table.",
     "This section does the bookkeeping.",
+    "Exercises @exr-a through @exr-b establish the properties.",
+    "The next step is to differentiate the cost.",
+    "The following equation holds for every x.",
+    "In the next section we derive the update.",
 ])
 def test_content_sentences_pass(tmp_path, sentence):
     assert flagged(tmp_path, sentence + "\n") == []

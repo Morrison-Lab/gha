@@ -92,6 +92,17 @@ ADVICE = ("state the content directly, and put an overview of a group of "
           "items in its own paragraph before the first item (psw, Avoid "
           "forward references), or add <!-- check-self-reference: allow -->")
 
+# "The next exercises establish ...", "The previous section defined ...", at
+# the start of a sentence: an item named by position instead of by label.
+POSITION_PATTERN = re.compile(
+    r"(?:^|[.!?]\s+)[\"'(\[*_\s]*The\s+(?:next|previous|preceding|following)"
+    r"\s+(?:\w+\s+)?(?:exercises?|solutions?|sections?|chapters?|lectures?"
+    r"|examples?)\b", re.IGNORECASE)
+POSITION_ADVICE = ("name the items by cross-reference, as in \"Exercises "
+                   "@exr-a through @exr-b establish ...\", not by position "
+                   "(psw, Avoid forward references), or add "
+                   "<!-- check-self-reference: allow -->")
+
 
 class Finding(NamedTuple):
     path: str
@@ -143,6 +154,11 @@ def prose_lines(lines: List[str]) -> List[Tuple[int, str]]:
 
 def line_findings(text: str) -> Optional[str]:
     """The message for one line of prose, or None."""
+    pos = POSITION_PATTERN.search(text)
+    if pos:
+        phrase = text[pos.start():pos.end()].strip(" .!?\"'([*_")
+        return (f"'{phrase}...' names items by position. "
+                f"Fix: {POSITION_ADVICE}")
     m = PATTERN.search(text)
     if not m:
         return None
