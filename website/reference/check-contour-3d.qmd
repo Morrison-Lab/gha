@@ -43,7 +43,7 @@ With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.
 Set `whole-tree: true` to scan every tracked file on purpose,
 which measures how many existing contour figures lack a 3D plot.
-Every run prints how many lines, files and contour figures it examined.
+Every run prints how many lines, files, and contour figures it examined.
 
 ## Inputs
 

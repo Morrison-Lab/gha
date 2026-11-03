@@ -1,5 +1,5 @@
 - `check-contour-3d`:
-  add a diff-scoped, warn-only composite action and reusable workflow that flags a
+  add a diff-scoped, warn-only composite action plus a reusable workflow that flags a
   contour or level-curve plot with no 3D surface plot of the same function
   when a pull request adds a line to its code chunk
   ([#1443](https://github.com/Morrison-Lab/gha/issues/1443)).
