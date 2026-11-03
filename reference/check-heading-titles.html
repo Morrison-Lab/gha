@@ -1189,9 +1189,9 @@ cookieconsent.run({
 <li><strong>Question.</strong> The heading text ends with <code>?</code>.</li>
 <li><strong>Interrogative start.</strong> The heading, or any phrase after a colon in it, begins with who, whom, whose, what, when, where, why, how or which. A word that only begins with one of these, such as “Whatever” or “Howell’s”, does not count.</li>
 </ul>
+<p>The check also reads the title of a fenced div or callout: the <code>####</code> heading inside a definition, example or exercise div, or a <code>title="..."</code> attribute on the div’s opening fence.</p>
 <p>The check does not count:</p>
 <ul>
-<li>a heading inside any fenced div, or in a file included from inside one (the <code>####</code> title of a definition or exercise div is the lab’s convention);</li>
 <li>a heading inside a code fence, an HTML comment or the YAML front matter;</li>
 <li>a heading on a line carrying <code>&lt;!-- check-heading-titles: allow --&gt;</code>.</li>
 </ul>

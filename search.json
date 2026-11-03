@@ -7051,7 +7051,7 @@
     "href": "reference/check-heading-titles.html",
     "title": "check-heading-titles.yml",
     "section": "",
-    "text": "Diff-scoped check that flags a clickbait heading. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). A heading is a plain noun phrase that names its content (Ezra, 2026-11-03): it is not a question, and neither it nor a phrase after a colon begins with who, whom, whose, what, when, where, why, how or which. The rule text is in psw, “Subsection headings”.\nThe check reports two mistakes:\nThe check does not count:",
+    "text": "Diff-scoped check that flags a clickbait heading. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). A heading is a plain noun phrase that names its content (Ezra, 2026-11-03): it is not a question, and neither it nor a phrase after a colon begins with who, whom, whose, what, when, where, why, how or which. The rule text is in psw, “Subsection headings”.\nThe check reports two mistakes:\nThe check also reads the title of a fenced div or callout: the #### heading inside a definition, example or exercise div, or a title=\"...\" attribute on the div’s opening fence.\nThe check does not count:",
     "crumbs": [
       "Overview",
       "Reference",
