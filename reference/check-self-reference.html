@@ -1185,6 +1185,7 @@ cookieconsent.run({
 
 <p>Diff-scoped check that flags self-referential prose. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). The notes write about their content, not their own structure (Ezra, 2026-11-03): “The negative gradient decreases the cost the most”, not “This exercise shows that the negative gradient is the best answer”. The rule text is in psw, “Avoid forward references”.</p>
 <p>The check flags a sentence that starts with “This” or “These”, then a structural noun (exercise, solution, section, chapter, lecture, page, handout), optionally “and the ones that follow it”, then a verb that reports what the structure does: shows, establishes, explains, says, derives, proves, covers, introduces, demonstrates, illustrates, describes, computes, handles or “is about”.</p>
+<p>The check also flags a sentence that starts with “The next”, “The previous”, “The preceding” or “The following” and then exercise, solution, section, chapter, lecture or example (plural allowed), such as “The next exercises establish the properties”. Name the items by cross-reference instead: “Exercises <strong>?@exr-a</strong> through <strong>?@exr-b</strong> establish the properties” (psw, “Avoid forward references”).</p>
 <p>The check does not count:</p>
 <ul>
 <li>a line inside a code fence, an HTML comment or the YAML front matter;</li>
