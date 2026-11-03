@@ -15,6 +15,11 @@ DEFAULT = [
     r"^PR edits workflow files; restored",
     r"^Claude review verdict is not clean \(verdict: .+\)\.$",
     r"^Skipping element-level diff highlighting: \d+ old / \d+ new candidate elements exceed the \d+-element cap",
+    r"^Attempt 1 produced a stub review or short-circuited; the retry recovered cleanly\.$",
+    r"^Claude review produced no execution output \(action exited non-zero or short-circuited",
+    r"^Action failed with error: Failed to install Claude Code after \d+ attempts",
+    r"^No files were found with the provided path: .*claude-execution-output\.json",
+    r"^execution_file output not set; falling back to",
 ]
 
 
@@ -180,6 +185,22 @@ def test_non_clean_review_verdict_pattern_is_anchored():
         "Claude review verdict is not clean (verdict: needs-more-work). Extra text",
     ):
         assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_recovered_review_attempt_annotations_are_allowed():
+    for level, msg in (
+        ("notice", "Attempt 1 produced a stub review or short-circuited; the retry recovered cleanly."),
+        ("failure", "Claude review produced no execution output (action exited non-zero or short-circuited; gha#368, gha#906) - check the log."),
+        ("failure", "Action failed with error: Failed to install Claude Code after 3 attempts: Error: Install failed with exit code 127"),
+        ("warning", "No files were found with the provided path: /tmp/gha-work/x/_temp/claude-execution-output.json. No artifacts will be uploaded."),
+        ("warning", "execution_file output not set; falling back to /tmp/gha-work/x/_temp/claude-execution-output.json"),
+    ):
+        assert not g.find_violations([ann(level, msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_recovered_review_patterns_are_anchored():
+    msg = "Error: Action failed with error: Failed to install Claude Code after 3 attempts"
+    assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def run(wid, event, number, status="completed", name=None, rid=None):
