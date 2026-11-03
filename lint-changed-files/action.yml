@@ -120,7 +120,7 @@ runs:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
         set -euo pipefail
-        Rscript -e 'extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; pak::local_install_dev_deps(dependencies = TRUE); pak::pkg_install(c("gh", "lintr", extra))'
+        bash "${{ github.action_path }}/../scripts/with-r-install-lock.sh" Rscript -e 'extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; pak::local_install_dev_deps(dependencies = TRUE); pak::pkg_install(c("gh", "lintr", extra))'
 
     - name: Set up R dependencies (DESCRIPTION)
       if: inputs.preinstalled-toolchain != 'true' && inputs.use-renv != 'true' && steps.desc.outputs.present == 'true'
