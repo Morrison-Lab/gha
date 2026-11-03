@@ -115,6 +115,13 @@ done < <(candidates)
 
 free=$(free_kb)
 if [ -n "$free" ] && [ "$free" -lt "$min_free_kb" ] && [ "$pruned_all" = 1 ]; then
-  warn "$work still has under ${min_free_gb} GB free after removing every other checkout; the next jobs will re-clone them."
+  # Say what was measured, so a reader can tell a full disk from a wrong mount:
+  # the folder df was asked about, the filesystem and mount point it answered
+  # for, and the sizes of the work folder and the current job's checkout, which
+  # is still on disk because this hook runs before the runner cleans up.
+  mount=$(df -Pk "$work" 2> /dev/null | awk 'NR == 2 { print $1 " mounted on " $6 }')
+  work_kb=$(du -skx "$work" 2> /dev/null | awk '{ print $1 }')
+  cur_kb=$(du -skx "$current" 2> /dev/null | awk '{ print $1 }')
+  warn "measured $work on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
 fi
 exit 0
