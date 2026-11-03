@@ -1,0 +1,38 @@
+---
+title: "check-serial-comma.yml"
+---
+
+Diff-scoped check that fails when a pull request adds a list of three or more items
+with no comma before the final "and" or "or".
+The lab's rule (Ezra, 2026-11-03; Morrison-Lab/psw grammar chapter) is to write
+"mean, median, and mode", so the reader never has to guess
+whether the last two items form a pair.
+
+The check joins each paragraph before matching,
+so a list split across lines by semantic line breaks is still found.
+It reduces math, code, links, and citations to placeholders,
+and skips an introductory phrase followed by a pair ("However, x and y"),
+"such as" and "for example" phrases, code fences, HTML comments,
+YAML front matter, and table rows.
+A line carrying `<!-- check-serial-comma: allow -->` is exempt.
+
+An untouched line is never reflagged.
+With no base ref the check skips instead of scanning the whole tree;
+`whole-tree` measures a corpus.
+The match is a heuristic, not a parser, so the allow marker is the escape hatch.
+
+## Usage
+
+Copy
+[`examples/check-serial-comma.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-serial-comma.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd *.md` | Space-separated git pathspecs of tracked files to check |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every file, not only a PR's additions |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
