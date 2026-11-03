@@ -1,0 +1,70 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    export PATH=/opt/TinyTeX/bin/x86_64-linux:/opt/julia/bin:/usr/local/bin:$PATH
+    # The empty first entry is the writable per-run depot (~/.julia); the baked depot is the fallback.
+    export JULIA_DEPOT_PATH=:/opt/julia-depot
+    export QUARTO_PATH=/opt/quarto/bin/quarto
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl wget gnupg git xz-utils bzip2 unzip make g++ gfortran pkg-config \
+        python3 python3-venv python3-pip python3-yaml librsvg2-bin \
+        libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev libfreetype6-dev \
+        libharfbuzz-dev libfribidi-dev libpng-dev libtiff5-dev libjpeg-dev libgit2-dev \
+        libicu-dev libcairo2-dev libxt-dev libx11-dev libglpk-dev libsodium-dev libuv1-dev \
+        fonts-dejavu-core fonts-liberation locales perl
+
+    # R 4.5 from CRAN's Ubuntu repository.
+    wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc \
+        > /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+    echo "deb https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/" \
+        > /etc/apt/sources.list.d/cran.list
+    apt-get update
+    apt-get install -y --no-install-recommends r-base r-base-dev
+
+    # Quarto, the version the lds CI reports (1.10.18).
+    curl -fsSL -o /tmp/quarto.deb \
+        https://github.com/quarto-dev/quarto-cli/releases/download/v1.10.18/quarto-1.10.18-linux-amd64.deb
+    apt-get install -y /tmp/quarto.deb
+    rm /tmp/quarto.deb
+
+    # uv (Python package manager), installed to /usr/local/bin.
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin UV_NO_MODIFY_PATH=1 sh
+
+    # Julia 1.11 from the official tarball.
+    curl -fsSL https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.6-linux-x86_64.tar.gz \
+        | tar -xz -C /opt
+    ln -s /opt/julia-1.11.6 /opt/julia
+
+    # R packages, binary where Posit Package Manager has them.
+    export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages(c("remotes", "knitr", "rmarkdown", "reticulate", "tidymodels", "ggplot2", "dplyr", "purrr", "readr", "parameters", "performance", "sjPlot", "plotly", "see", "downlit", "xml2", "tinytex", "JuliaCall", "exams", "exams2forms", "gtsummary", "patchwork", "kernlab", "discrim", "naivebayes", "SyncRNG"))'
+    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO"))); remotes::install_github("Morrison-Lab/qnp", upgrade = "never")'
+
+    # Julia packages JuliaCall needs, baked into a world-readable depot so a render needs no network or build.
+    JULIA_DEPOT_PATH=/opt/julia-depot R_HOME=/usr/lib/R /opt/julia/bin/julia -e 'using Pkg; Pkg.add(["RCall", "Conda", "Suppressor"]); Pkg.build("RCall"); using RCall, Conda, Suppressor'
+    chmod -R a+rX /opt/julia-depot
+
+    # TinyTeX under /opt, world-readable.
+    Rscript -e 'tinytex::install_tinytex(dir = "/opt/TinyTeX", force = TRUE)'
+    # LaTeX packages the lds PDF renders need; Quarto cannot install them at render time because /opt/TinyTeX is read-only.
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr option repository https://tlnet.yihui.org
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr update --self
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr install caption ctablestack environ fontawesome5 fp luatexbase pdfcol pgf tcolorbox tikzfill trimspaces
+    chmod -R a+rX /opt/TinyTeX
+
+%test
+    set -e
+    quarto --version
+    Rscript -e 'library(knitr); library(reticulate)'
+    julia --version
+    uv --version
+    rsvg-convert --version
