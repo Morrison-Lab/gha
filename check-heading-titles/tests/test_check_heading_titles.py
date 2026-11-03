@@ -8,6 +8,7 @@ skip-not-fallback guard, and the defaults the action and script must agree on.
 """
 
 import importlib.util
+import re
 import subprocess
 from pathlib import Path
 
@@ -126,8 +127,24 @@ def test_no_base_skips(tmp_path, monkeypatch):
     assert report.skipped and not report.findings
 
 
-def test_defaults_agree_with_action():
+def input_default(text, name):
+    """The ``default:`` of the input ``name`` in an action or workflow file."""
+    match = re.search(
+        rf"^( +){name}:\n(?:\1 +.*\n)*?\1 +default: *'?([^'\n]*)'?$",
+        text, re.MULTILINE)
+    assert match, f"no default for input {name}"
+    return match.group(2)
+
+
+def test_defaults_agree_across_script_action_and_workflow():
     action = (_DIR / "action.yml").read_text()
+    workflow = (_DIR.parent / ".github" / "workflows"
+                / "check-heading-titles.yml").read_text()
     assert "HTT_FAIL: ${{ inputs.fail }}" in action
-    assert "default: 'true'" in action
+    assert "HTT_GLOBS: ${{ inputs.globs }}" in action
     assert htt._DEFAULT_FAIL is True
+    assert htt.DEFAULT_GLOBS == "*.qmd"
+    for text in (action, workflow):
+        assert input_default(text, "fail") == "true"
+        assert input_default(text, "globs") == htt.DEFAULT_GLOBS
+        assert input_default(text, "whole-tree") == "false"
