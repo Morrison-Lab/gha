@@ -1,0 +1,1 @@
+- `condor-batch` no longer fails with `$4: unbound variable` when no `image` is set (gha#1434).
