@@ -102,6 +102,13 @@ def test_a_cached_repeat_of_an_untrusted_certificate_warns(tmp_path):
     assert "2 demoted warning" in proc.stdout
 
 
+def test_a_cached_5xx_is_not_described_as_an_untrusted_certificate(tmp_path):
+    cached = entry("https://example.org/busy", 503, 3, text="Error (cached)")
+    proc, _ = run(tmp_path, report({"b.md": [cached]}))
+    assert proc.returncode == 0, proc.stdout
+    assert "certificate" not in proc.stdout
+
+
 def test_a_cached_error_with_no_untrusted_certificate_still_fails(tmp_path):
     cached = entry("https://example.org/gone", None, 3, text="Error (cached)")
     proc, _ = run(tmp_path, report({"b.md": [cached]}))

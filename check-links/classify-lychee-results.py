@@ -190,6 +190,7 @@ def cached_untrusted_certificate(key: str, entry: dict, untrusted_urls: set) -> 
     lychee reports a URL it meets again in another file as "Error (cached)",
     with none of the first report's wording, so the text test above misses it
     and the repeat blocks while the first warns (rme#1439: web.stanford.edu).
+    The "Error (cached)" wording was read from rme's lychee 0.24 log on 2026-11-03.
     """
     text = (entry.get("status") or {}).get("text") or ""
     is_cached_error = key == "error_map" and text.startswith("Error (cached)")
@@ -338,9 +339,14 @@ def main() -> int:
         return 2
 
     blocking, demoted = classify(listed, _scope(base_ref))
+    untrusted_urls = {
+        e.get("url") for _, e in demoted if _UNTRUSTED_CERTIFICATE in _describe(e)
+    }
     root = _repo_root()
     for path, entry in demoted:
-        if _UNTRUSTED_CERTIFICATE in _describe(entry) or "(cached)" in _describe(entry):
+        if _UNTRUSTED_CERTIFICATE in _describe(entry) or cached_untrusted_certificate(
+            "error_map", entry, untrusted_urls
+        ):
             why = (" (the host's certificate is not trusted, so the link is unverified, "
                    "not known dead; not failing the check)")
         else:
