@@ -151,6 +151,26 @@ def test_image_is_passed_to_the_job_and_used_by_the_run_script(tmp_path):
     assert "--pwd /work --home /work/.home" in run
 
 
+def test_image_steps_execute_through_apptainer(tmp_path):
+    """Run the generated .condor-run.sh with a stub apptainer that execs its command."""
+    _run(tmp_path, ["echo one > one.txt", "echo two > two.txt"], STUB_RV="0", CONDOR_IMAGE="/c/x.sif")
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / ".condor-steps").write_text("echo one > one.txt\necho two > two.txt\n")
+    bin_dir = tmp_path / "abin"
+    bin_dir.mkdir()
+    _stub(bin_dir / "apptainer", 'echo "$@" >> "$STUB_LOG.app"\nwhile [ "$1" != "/c/x.sif" ]; do shift; done\nshift\nexec "$@"\n')
+    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "STUB_LOG": str(tmp_path / "calls.log")}
+    proc = subprocess.run(
+        ["bash", str(tmp_path / "calls.log.run"), str(work), "/c/x.sif"],
+        env=env, capture_output=True, text=True, check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert (work / "one.txt").read_text() == "one\n"
+    assert (work / "two.txt").read_text() == "two\n"
+    assert (tmp_path / "calls.log.app").read_text().count("/c/x.sif") == 2
+
+
 def test_run_dir_is_removed_after_a_normal_end_even_with_a_failing_step(tmp_path):
     for rv in ("0", "3"):
         case_dir = tmp_path / rv

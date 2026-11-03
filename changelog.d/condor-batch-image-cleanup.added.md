@@ -7,3 +7,4 @@
   The run directory is now deleted when the job ends normally, whatever a step exited with,
   so runs stay inside the cluster home's quota.
   A job that did not end normally keeps its directory so `condor.log` can be read.
+- **`condor-batch` composite gains an `image` input** ([#1381](https://github.com/Morrison-Lab/gha/issues/1381)). It sets `CONDOR_IMAGE` for the script. A failed delete of the run directory now prints a message and no longer replaces the job's exit code.

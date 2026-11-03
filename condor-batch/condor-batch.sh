@@ -100,7 +100,7 @@ condor_wait condor.log || wait_rc=$?
 rv=
 [ ! -f condor.log ] || rv=$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)
 if [ -n "$rv" ]; then
-  cd / && rm -rf "$dir"
+  cd / && rm -rf "$dir" || echo "could not remove $dir" >&2
   case "$rv" in 70|71|255) exit 1 ;; esac
   exit "$rv"
 fi
