@@ -55,8 +55,26 @@ case "$key" in
 esac
 ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
 transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
-rsync -a --mkpath --delete -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/" || transfer_failed
-rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps" || transfer_failed
+# A job that did not end normally keeps its run directory, and enough of them
+# fill the cluster home's quota, after which every copy fails ("Disk quota
+# exceeded") and every later run falls back to the runner. When the first copy
+# fails, remove the run directories older than STALE_MINUTES (default 120, well
+# past the longest job) and copy once more. Only digit-led names are removed,
+# so an image directory beside them is never touched.
+copied=0
+for attempt in 1 2; do
+  if rsync -a --mkpath --delete -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/" &&
+    rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps"; then
+    copied=1
+    break
+  fi
+  [ "$attempt" = 1 ] || break
+  echo "copy failed; removing run directories older than ${STALE_MINUTES:-120} minutes from $root" >&2
+  ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root" "${STALE_MINUTES:-120}" <<'SWEEP' || true
+find "$1" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*' -mmin +"$2" -exec rm -rf {} +
+SWEEP
+done
+[ "$copied" = 1 ] || transfer_failed
 
 # The remote script runs on the head: it writes the job and submits it once.
 rc=0
