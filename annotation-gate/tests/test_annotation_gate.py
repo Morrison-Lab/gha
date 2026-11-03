@@ -20,6 +20,7 @@ DEFAULT = [
     r"^Action failed with error: Failed to install Claude Code after \d+ attempts",
     r"^No files were found with the provided path: .*claude-execution-output\.json",
     r"^execution_file output not set; falling back to",
+    r"^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead",
 ]
 
 
@@ -324,3 +325,19 @@ def test_without_defer_an_unfinished_run_does_not_stop_the_gate(monkeypatch):
     runs = [run(1, "push", 1, rid=10), run(2, "push", 1, status="in_progress", rid=20)]
     code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0})
     assert code == 0 and len(posted) == 1
+
+
+DEMOTED = (
+    "https://web.stanford.edu/class/stats300a/: Network error: SSL certificate not trusted."
+    " Use --insecure if site is trusted (the host's certificate is not trusted,"
+    " so the link is unverified, not known dead; not failing the check)"
+)
+
+
+def test_demoted_untrusted_certificate_warning_is_allowed():
+    assert not g.find_violations([ann("warning", DEMOTED)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_undemoted_certificate_error_is_still_a_violation():
+    msg = DEMOTED.split(" (the host")[0]
+    assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
