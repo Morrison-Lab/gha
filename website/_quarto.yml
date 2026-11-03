@@ -89,6 +89,7 @@ website:
           - reference/cancel-superseded.qmd
           - reference/check-def-commentary.qmd
           - reference/check-unexplained-contrasts.qmd
+          - reference/check-unexplained-choices.qmd
           - reference/check-solution-citations.qmd
           - reference/check-exercise-before-result.qmd
           - reference/check-caller-permissions.qmd

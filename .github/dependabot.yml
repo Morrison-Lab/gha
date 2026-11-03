@@ -43,6 +43,7 @@ updates:
       - "/check-pr-concerns"
       - "/check-def-commentary"
       - "/check-unexplained-contrasts"
+      - "/check-unexplained-choices"
       - "/check-solution-citations"
       - "/check-exercise-before-result"
       - "/check-caller-permissions"

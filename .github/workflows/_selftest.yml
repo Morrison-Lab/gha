@@ -2654,6 +2654,79 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-unexplained-contrasts || true
           rm -rf _ci-unexplained-contrasts
+  # check-unexplained-choices is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-unexplained-choices@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  unexplained-choices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-unexplained-choices unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-unexplained-choices/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-unexplained-choices
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no analysis pages, so stage a page whose chunk makes an
+      # unexplained choice; the warn-only call passes, the blocking call fails.
+      - name: Stage a chunk with an unexplained choice
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-unexplained-choices
+          printf '%s\n' '```{r}' 'set.seed(1)' '```' > _ci-unexplained-choices/page.qmd
+          git add -f _ci-unexplained-choices/page.qmd
+      - name: Check the staged page, warn-only, expecting a pass
+        uses: ./check-unexplained-choices
+        with:
+          whole-tree: 'true'
+      - name: Check the staged page with fail on, expecting a failure
+        id: unexplained-choices-expected-failure
+        continue-on-error: true
+        uses: ./check-unexplained-choices
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.unexplained-choices-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-unexplained-choices to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-unexplained-choices
+        with:
+          base-ref: ''
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-unexplained-choices
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-unexplained-choices'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-unexplained-choices || true
+          rm -rf _ci-unexplained-choices
   # check-axis-titles is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-axis-titles@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit
