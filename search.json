@@ -6919,7 +6919,7 @@
     "href": "reference/check-serial-comma.html#inputs",
     "title": "check-serial-comma.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd *.md\nSpace-separated git pathspecs of tracked files to check\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every file, not only a PR’s additions\n\n\nruns-on\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd *.md\nSpace-separated git pathspecs of tracked files to check\n\n\npaths-ignore\nempty\nComma- or newline-separated git pathspecs to skip, such as _extensions/**,latex-macros/**\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every file, not only a PR’s additions\n\n\nruns-on\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
     "crumbs": [
       "Overview",
       "Reference",

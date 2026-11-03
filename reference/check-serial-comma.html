@@ -1181,21 +1181,26 @@ cookieconsent.run({
 <td>Space-separated git pathspecs of tracked files to check</td>
 </tr>
 <tr class="even">
+<td><code>paths-ignore</code></td>
+<td>empty</td>
+<td>Comma- or newline-separated git pathspecs to skip, such as <code>_extensions/**,latex-macros/**</code></td>
+</tr>
+<tr class="odd">
 <td><code>fail</code></td>
 <td><code>true</code></td>
 <td>Fail the workflow on a finding instead of warning</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>whole-tree</code></td>
 <td><code>false</code></td>
 <td>Scan every file, not only a PR’s additions</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>runs-on</code></td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
 <td>Runner label; self-hosted only for a private repository</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>python-version</code></td>
 <td><code>3.x</code></td>
 <td>Python version to set up</td>
