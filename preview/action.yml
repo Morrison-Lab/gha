@@ -355,7 +355,7 @@ runs:
         R_PACKAGES: ${{ inputs.r-packages }}
       run: |
         set -euo pipefail
-        Rscript -e 'pkgs <- Sys.getenv("R_PACKAGES"); pkgs <- trimws(strsplit(pkgs, "[[:space:],]+")[[1]]); pkgs <- pkgs[nzchar(pkgs)]; pak::pkg_install(pkgs)'
+        bash "${{ github.action_path }}/../scripts/with-r-install-lock.sh" Rscript -e 'pkgs <- Sys.getenv("R_PACKAGES"); pkgs <- trimws(strsplit(pkgs, "[[:space:],]+")[[1]]); pkgs <- pkgs[nzchar(pkgs)]; pak::pkg_install(pkgs)'
 
     - name: Install local package
       if: github.event.action != 'closed' && inputs.install-package == 'true'

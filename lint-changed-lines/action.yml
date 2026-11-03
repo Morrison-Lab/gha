@@ -116,11 +116,12 @@ runs:
 
     - name: Install R packages (no DESCRIPTION)
       if: inputs.use-renv != 'true' && (inputs.install-package != 'true' || hashFiles(format('{0}/DESCRIPTION', inputs.path)) == '')
-      shell: Rscript {0}
+      shell: bash
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
         RENV_CONFIG_AUTOLOADER_ENABLED: 'false'
       run: |
+        bash "${{ github.action_path }}/../scripts/with-r-install-lock.sh" Rscript - <<'EOF_R'
         extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
         pkgs <- unique(c("gh", "lintr", sub("^.*::", "", extra[nzchar(extra)])))
         repos <- getOption("repos")
@@ -141,6 +142,7 @@ runs:
         }
         install.packages(pkgs, repos = repos)
         stopifnot(all(pkgs %in% rownames(installed.packages())))
+        EOF_R
 
     - name: Restore R dependencies (renv)
       if: inputs.use-renv == 'true'
@@ -163,7 +165,7 @@ runs:
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
-        Rscript -e '
+        bash "${{ github.action_path }}/../scripts/with-r-install-lock.sh" Rscript -e '
           req <- c("gh", "lintr")
           extra_str <- Sys.getenv("EXTRA_PACKAGES")
           extra <- strsplit(extra_str, "[[:space:],]+")[[1]]
@@ -184,18 +186,20 @@ runs:
 
     - name: Install lms (shared linter configuration)
       if: inputs.lms-ref != ''
-      shell: Rscript {0}
+      shell: bash
       env:
         GITHUB_PAT: ${{ github.token }}
         LMS_REF: ${{ inputs.lms-ref }}
         RENV_CONFIG_AUTOLOADER_ENABLED: ${{ inputs.use-renv == 'true' }}
       run: |
+        bash "${{ github.action_path }}/../scripts/with-r-install-lock.sh" Rscript - <<'EOF_R'
         if (!requireNamespace("remotes", quietly = TRUE)) {
           install.packages("remotes", repos = "https://cloud.r-project.org")
         }
         remotes::install_github(
           paste0("Morrison-Lab/psc/lms@", Sys.getenv("LMS_REF"))
         )
+        EOF_R
 
     - name: Lint lines changed by this PR
       shell: bash

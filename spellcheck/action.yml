@@ -54,7 +54,7 @@ runs:
         GITHUB_PAT: ${{ github.token }}
       run: |
         set -euo pipefail
-        Rscript -e 'if (!requireNamespace("spelling", quietly = TRUE)) pak::pkg_install("spelling")'
+        bash "${{ github.action_path }}/../scripts/with-r-install-lock.sh" Rscript -e 'if (!requireNamespace("spelling", quietly = TRUE)) pak::pkg_install("spelling")'
 
     - name: Set up R dependencies
       if: inputs.preinstalled-toolchain != 'true'

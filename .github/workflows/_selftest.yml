@@ -381,6 +381,9 @@ jobs:
       - name: Run check-node-version unit tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-check-node-version-tests.sh
+      - name: Run with-r-install-lock unit tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-with-r-install-lock-tests.sh
 
   summary-tests:
     runs-on: ubuntu-latest

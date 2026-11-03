@@ -38,7 +38,7 @@ runs:
         GITHUB_PAT: ${{ github.token }}
       run: |
         set -euo pipefail
-        Rscript -e 'pak::pkg_install(c("bib2df", "httr", "jsonlite", "stringr"))'
+        bash "${{ github.action_path }}/../scripts/with-r-install-lock.sh" Rscript -e 'pak::pkg_install(c("bib2df", "httr", "jsonlite", "stringr"))'
 
     - name: Set up R dependencies
       if: inputs.preinstalled-toolchain != 'true'
