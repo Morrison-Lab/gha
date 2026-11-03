@@ -1,0 +1,21 @@
+# Copy to .github/workflows/check-self-reference.yml in your repo.
+# Diff-scoped check: flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a structural noun (exercise, solution, section, chapter, lecture, page, handout) and a verb such as shows, establishes, explains, covers or "is about".
+# Fails by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check self-referential prose
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-self-reference.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: false                            # warn instead of block (defaults to true)
+    #   whole-tree: true                       # scan every page, not just a PR's additions
