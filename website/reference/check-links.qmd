@@ -18,6 +18,11 @@ auto-filed issue when links break on `main`.
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 A 404, a network error, or a timeout fails the check wherever the link is.
+The one exception is a network error that says the host's certificate is not trusted
+("SSL certificate not trusted"):
+it is a fault of the host's certificate chain or the runner's trust store, so the link is unverified, not known dead.
+It is reported as a warning annotation naming the URL on every line,
+and does not fail the run (gha#1416).
 A 5xx server error is usually a host that is briefly down rather than a dead link,
 so it fails a pull request only when the link is on a line the PR adds.
 Any other 5xx is reported as a warning annotation and in the job summary,
