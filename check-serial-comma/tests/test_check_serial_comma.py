@@ -10,6 +10,7 @@ The script's name has a hyphen, so load it by path.
 """
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -92,5 +93,8 @@ def test_defaults_agree():
     )
     for text in (action, workflow):
         assert "default: '*.qmd *.md'" in text
-        assert "default: 'true'" in text or "default: true" in text
+    fail_default = re.compile(r"\n  fail:\n(?:    .*\n)*?    default: '?true'?\n")
+    assert fail_default.search(action)
+    assert fail_default.search(workflow)
+    assert sc._flag("SC_FAIL_UNSET_FOR_TEST", True) is True
     assert sc.DEFAULT_GLOBS == "*.qmd *.md"
