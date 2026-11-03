@@ -2095,6 +2095,92 @@ jobs:
         if: always()
         shell: bash
         run: git rm -rf --cached -q _ci-heading-titles || true
+  # check-self-reference is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-self-reference@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the rules and both scopes; the composite calls below prove
+  # action.yml wires each input through.
+  self-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-self-reference unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-self-reference/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-self-reference
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          paths-ignore: 'website/**'
+      # Stage a page with a self-referential sentence, and assert that the call,
+      # which fails by default, really fails.
+      - name: Stage a page with a self-referential sentence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-self-reference
+          printf '%s\n' '---' 'title: "T"' '---' '' 'This exercise shows the result.' > _ci-self-reference/page.qmd
+          git add -f _ci-self-reference/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: self-reference-expected-failure
+        continue-on-error: true
+        uses: ./check-self-reference
+        with:
+          whole-tree: 'true'
+          paths-ignore: 'website/**'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.self-reference-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-self-reference to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With fail turned off, the same finding must pass.
+      - name: Check the staged page with fail turned off
+        uses: ./check-self-reference
+        with:
+          whole-tree: 'true'
+          fail: 'false'
+          paths-ignore: 'website/**'
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-self-reference
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: |
+            _ci-self-reference
+            website/**
+      - name: Check again with globs excluding the page
+        uses: ./check-self-reference
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'build-dependency-graph/tests/fixture/ok/*.qmd'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-self-reference
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: git rm -rf --cached -q _ci-self-reference || true
   # check-page-length is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-page-length@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit
