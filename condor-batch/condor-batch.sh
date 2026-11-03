@@ -69,14 +69,12 @@ cat > .condor-run.sh <<'RUN'
 # Steps are read on fd 3 and each step gets /dev/null as stdin, so no step can
 # eat the steps file (which dropped the first step's output).
 cd "$1"; img=${2:-}; export TMPDIR="$1/.tmp"; mkdir -p "$TMPDIR" .home; rc=0; i=0
-run_step() {
-  if [ -z "$img" ]; then bash -c "$1" < /dev/null; return; fi
-  apptainer exec --containall --bind "$PWD:/work" --bind "$TMPDIR:/tmp" --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp --env UV_CACHE_DIR=/work/.uvcache --env UV_PYTHON_INSTALL_DIR=/work/.uvpy "$img" bash -c "$1" < /dev/null
-}
+wrap=()
+[ -z "$img" ] || wrap=(apptainer exec --containall --bind "$PWD:/work" --bind "$TMPDIR:/tmp" --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp --env UV_CACHE_DIR=/work/.uvcache --env UV_PYTHON_INSTALL_DIR=/work/.uvpy "$img")
 while IFS= read -r cmd <&3; do
   [ -n "${cmd//[[:space:]]/}" ] || continue
   i=$((i+1)); echo "::step $i: $cmd"
-  run_step "$cmd" || { rc=$?; echo "::step $i failed rc=$rc"; }
+  "${wrap[@]}" bash -c "$cmd" < /dev/null || { rc=$?; echo "::step $i failed rc=$rc"; }
 done 3< "$1/.condor-steps"
 exit $rc
 RUN
