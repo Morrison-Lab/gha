@@ -127,6 +127,22 @@ x <- cut(a, breaks = 3)
     assert hits(text) == [(4, "cut")]
 
 
+def test_a_reason_in_display_math_does_not_count():
+    text = f"""::: {{#fig-a}}
+
+{FENCE}{{r}}
+x <- cut(a, breaks = 3)
+{FENCE}
+
+$$
+x = y \\text{{ because it is a choice}}
+$$
+
+:::
+"""
+    assert hits(text) == [(4, "cut")]
+
+
 def _git(repo: Path, *args: str) -> str:
     return subprocess.run(
         ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True

@@ -80,7 +80,7 @@ CHOICE_RE = re.compile(
 REASON_RE = re.compile(
     r"\b(?:because|chose|chosen|choice|choose|so that|compromise|rather than|"
     r"trade-?off|in order to|why|reason|arbitrary|alternatives?|picked|"
-    r"reproducib\w+|steady|noisy|stable)\b",
+    r"reproducib\w+)\b",
     re.IGNORECASE,
 )
 
