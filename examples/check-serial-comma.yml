@@ -18,5 +18,6 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-serial-comma.yml@v3
     # with:
     #   globs: '*.qmd *.md'   # pathspecs to check
-    #   fail: false           # warn only (defaults to true)
+    #   paths-ignore: '_extensions/**,latex-macros/**'   # vendored content to skip
+    #   fail: false         # warn only (defaults to true)
     #   whole-tree: true      # scan every file, not just a PR's additions

@@ -11,6 +11,7 @@ The script's name has a hyphen, so load it by path.
 
 import importlib.util
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -86,6 +87,33 @@ def test_non_prose_is_skipped(body):
 def test_added_lines_scope():
     diff = "+++ b/a.qmd\n@@ -0,0 +2,2 @@\n+x\n+y\n+++ b/b.qmd\n@@ -3 +3 @@\n+z\n"
     assert sc.added_lines(diff) == {"a.qmd": {2, 3}, "b.qmd": {3}}
+
+
+def test_split_list_accepts_commas_and_newlines():
+    assert sc.split_list("a/**, b\n\nc ,") == ["a/**", "b", "c"]
+    assert sc.split_list("") == []
+
+
+def test_exclude_specs_use_glob_magic_only_for_wildcards():
+    assert sc.exclude_specs(["vendor/", "a/**"]) == [
+        ":(exclude)vendor/", ":(exclude,glob)a/**"]
+
+
+def test_paths_ignore_skips_files_in_a_whole_tree_run(tmp_path, monkeypatch):
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True,
+                       stdout=subprocess.DEVNULL)
+
+    git("init", "-q")
+    for name in ("own.qmd", "vendor/other.qmd"):
+        path = tmp_path / name
+        path.parent.mkdir(exist_ok=True)
+        path.write_text("We fit trees, means and modes.\n", encoding="utf-8")
+    git("add", ".")
+    monkeypatch.chdir(tmp_path)
+    kept = sc.wanted_lines("", ["*.qmd"], True, ["vendor/**"])
+    assert sorted(kept) == ["own.qmd"]
+    assert sorted(sc.wanted_lines("", ["*.qmd"], True)) == ["own.qmd", "vendor/other.qmd"]
 
 
 def test_defaults_agree():
