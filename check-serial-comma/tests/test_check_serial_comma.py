@@ -93,7 +93,7 @@ def test_defaults_agree():
     )
     for text in (action, workflow):
         assert "default: '*.qmd *.md'" in text
-    fail_default = re.compile(r"\n  fail:\n(?:    .*\n)*?    default: '?true'?\n")
+    fail_default = re.compile(r"\n( +)fail:\n(?:\1  .*\n)*?\1  default: '?true'?\n")
     assert fail_default.search(action)
     assert fail_default.search(workflow)
     assert sc._flag("SC_FAIL_UNSET_FOR_TEST", True) is True
