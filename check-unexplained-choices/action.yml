@@ -1,7 +1,7 @@
 name: Check for unexplained analysis choices
 description: >-
-  Diff-scoped, warn-only check that flags an analysis choice in code
-  (cut(), breaks=, bins=, set.seed(), a bandwidth, a train/test split) in a
+  Diff-scoped check that fails when a binning choice in code
+  (cut(), breaks=, bins=, binwidth=) sits in a
   figure, example or section whose prose gives no reason for it (Ezra,
   2026-11-03; ai-config#4905). Scoped to lines a diff adds. Escape hatch:
   `<!-- check-unexplained-choices: allow -->` on the line.
@@ -33,8 +33,8 @@ inputs:
   fail:
     description: >-
       Fail the action when an unexplained analysis choice is found (else
-      non-blocking). Defaults to 'false'.
-    default: 'false'
+      non-blocking). Defaults to 'true'.
+    default: 'true'
 runs:
   using: composite
   steps:

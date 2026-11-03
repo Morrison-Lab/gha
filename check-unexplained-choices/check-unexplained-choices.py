@@ -9,8 +9,8 @@ prose explains the decision in detail. Example: lds `fig-logistic-regression`
 cut age into three-year bins and said nothing about why (lds#1725).
 
 Whether an explanation is good is a judgment no script can make. This check is
-a prompt: it flags a code line that makes a recognized choice (``cut()``,
-``breaks =``, ``bins =``, ``set.seed()``, a bandwidth, a train/test split) in a
+a prompt: it flags a code line that makes a binning choice (``cut()``,
+``breaks =``, ``bins =``, ``binwidth =``) in a
 unit of the page whose prose holds no reason word.
 
 The unit is the outermost div around the code (a figure, example or exercise),
@@ -24,8 +24,8 @@ What is not flagged:
 - a code line starting with ``#`` (a comment or a ``#|`` chunk option);
 - a line carrying ``<!-- check-unexplained-choices: allow -->``.
 
-The pattern list is noisy by design (``seed = 1`` in a plain simulation is
-fine), which is why the check is warn-only by default.
+Only binning is recognized, because a choice that needs no reason (a seed in a
+plain simulation) would make a failing check noisy.
 
 Design notes, in the model of ``check-unexplained-contrasts``:
 
@@ -34,15 +34,16 @@ Design notes, in the model of ``check-unexplained-contrasts``:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``UAC_WHOLE_TREE=true`` scans the
   whole tree, which measures how many existing choices go unexplained.
-- **Warn-only by default** (``UAC_FAIL`` defaults to false).
+- **Failing by default** (``UAC_FAIL`` defaults to true): an agent ignores a
+  warning, so the pattern list is kept narrow to binning.
 
 Configuration (environment variables, set by the composite action):
   UAC_BASE_REF      Git ref/SHA to diff against. Empty and not whole-tree =>
                     skip the check.
   UAC_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   UAC_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  UAC_FAIL          "true" => error annotations and a failing exit;
-                    default "false".
+  UAC_FAIL          "true" => error annotations and a failing exit
+                    (the default); "false" => warnings only.
   UAC_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
@@ -60,7 +61,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 ALLOW_MARKER = "check-unexplained-choices: allow"
 
 ADVICE = (
@@ -74,12 +75,7 @@ CHOICE_RE = re.compile(
     r"(\bcut\s*\("
     r"|\bcut_(?:number|interval|width)\s*\("
     r"|\bpd\.(?:cut|qcut)\s*\("
-    r"|\bnp\.histogram\s*\("
-    r"|\b(?:breaks|bins|binwidth|nbins|n_bins)\s*="
-    r"|\bset\.seed\s*\(|\brandom_state\s*=|\bnp\.random\.seed\s*\("
-    r"|\b(?:bw|bandwidth|span|threshold|cutoff)\s*=\s*[-0-9.]"
-    r"|\b(?:train_test_split|initial_split)\s*\("
-    r"|\btest_size\s*=|\bprop\s*=\s*[0-9.])"
+    r"|\b(?:breaks|bins|binwidth|nbins|n_bins)\s*=)"
 )
 REASON_RE = re.compile(
     r"\b(?:because|chose|chosen|choice|choose|so that|compromise|rather than|"

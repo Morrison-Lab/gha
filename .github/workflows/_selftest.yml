@@ -908,6 +908,7 @@ jobs:
             spellcheck/tests/**
             check-typos/tests/**
             check-extra/tests/**
+            check-unexplained-choices/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
@@ -2688,19 +2689,19 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _ci-unexplained-choices
-          printf '%s\n' '```{r}' 'set.seed(1)' '```' > _ci-unexplained-choices/page.qmd
+          printf '%s\n' '```{r}' 'x <- cut(a, breaks = 3)' '```' > _ci-unexplained-choices/page.qmd
           git add -f _ci-unexplained-choices/page.qmd
       - name: Check the staged page, warn-only, expecting a pass
         uses: ./check-unexplained-choices
         with:
           whole-tree: 'true'
-      - name: Check the staged page with fail on, expecting a failure
+          fail: 'false'
+      - name: Check the staged page with the default fail, expecting a failure
         id: unexplained-choices-expected-failure
         continue-on-error: true
         uses: ./check-unexplained-choices
         with:
           whole-tree: 'true'
-          fail: 'true'
       - name: Assert the failing call actually failed
         shell: bash
         env:

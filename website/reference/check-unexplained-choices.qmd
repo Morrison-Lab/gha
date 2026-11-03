@@ -2,20 +2,20 @@
 title: "check-unexplained-choices.yml"
 ---
 
-Diff-scoped, warn-only check that flags an analysis choice in code
-that the prose around it never explains.
+Diff-scoped check that fails when a binning choice in code
+is never explained by the prose around it.
 The lab's rule (Ezra, 2026-11-03,
 [ai-config#4905](https://github.com/Morrison-Lab/ai-config/issues/4905))
 is that every arbitrary analysis choice, such as binning a variable,
 is explained in detail in the prose:
 what was chosen, what the alternatives were, and why this one.
 
-The check reads code lines in a fenced chunk for these choices:
+The check reads code lines in a fenced chunk for a binning choice:
 `cut()`, `cut_number()`, `cut_interval()`, `cut_width()`, `pd.cut()`, `pd.qcut()`,
-`np.histogram()`, `breaks =`, `bins =`, `binwidth =`, `nbins =`,
-`set.seed()`, `random_state =`, `np.random.seed()`,
-a numeric `bw =`, `bandwidth =`, `span =`, `threshold =` or `cutoff =`,
-`train_test_split()`, `initial_split()`, `test_size =` and `prop =`.
+`breaks =`, `bins =`, `binwidth =`, `nbins =` and `n_bins =`.
+Only binning is recognized,
+so that the check can fail by default without flagging choices that need no reason,
+such as a seed in a plain simulation.
 
 A choice is explained when the prose of its unit holds a reason word
 such as "because", "chose", "choice", "compromise", "rather than",
@@ -25,19 +25,20 @@ or, outside any div, the text from the previous heading to the next one.
 
 The check does not read:
 
-- a unit whose prose holds a reason word, outside code fences, display math and HTML comments;
+- a unit whose prose holds a reason word,
+  outside code fences, display math and HTML comments;
 - a code line that starts with `#`, such as a comment or a `#|` chunk option;
 - a line carrying `<!-- check-unexplained-choices: allow -->`.
 
-The pattern list is noisy by design,
-since a seed in a plain simulation is fine,
-which is why `fail` defaults to `false`.
-Whether an explanation is good is a judgment the author makes.
+Whether an explanation is good is a judgment the author makes;
+the check asks only that one exists.
+Set `fail: false` to get warnings instead of a failing check.
 
 ## Scope
 
 Only an added line is reported.
-The whole file is parsed, since the explaining prose may sit far from the changed line.
+The whole file is parsed,
+since the explaining prose may sit far from the changed line.
 With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.
 Set `whole-tree: true` to scan every tracked file on purpose,
@@ -55,7 +56,7 @@ to `.github/workflows/` in your repository.
 | --- | --- | --- |
 | `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
 | `paths-ignore` | empty | Comma- or newline-separated glob patterns to skip |
-| `fail` | `false` | Fail the workflow on a finding instead of warning |
+| `fail` | `true` | Fail the workflow on a finding; `false` warns instead |
 | `whole-tree` | `false` | Scan every choice, not only a pull request's additions |
 | `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |
 | `python-version` | `3.x` | Python version to set up |

@@ -55,23 +55,23 @@ def test_a_reason_inside_a_nested_tabset_div_counts_for_the_outer_unit():
 ::: {{.panel-tabset}}
 
 {FENCE}{{r}}
-set.seed(1)
+x <- cut(a, breaks = 3)
 {FENCE}
 
 :::
 
-We fix the seed so that the draws reproduce.
+We chose three groups because the data hold three clusters.
 
 :::
 """
     assert hits(text) == []
 
 
-def test_a_seed_outside_any_div_is_read_against_its_section():
+def test_a_bin_outside_any_div_is_read_against_its_section():
     text = f"""# Simulation
 
 {FENCE}{{r}}
-set.seed(1)
+x <- cut(a, breaks = 3)
 {FENCE}
 
 The draws are shown below.
@@ -80,7 +80,19 @@ The draws are shown below.
 
 Because the seed matters here, it is stated.
 """
-    assert hits(text) == [(4, "set.seed")]
+    assert hits(text) == [(4, "cut")]
+
+
+def test_a_seed_is_not_a_recognized_choice():
+    text = f"""{FENCE}{{r}}
+set.seed(1)
+{FENCE}
+"""
+    assert hits(text) == []
+
+
+def test_the_default_fails_and_false_warns():
+    assert uac._DEFAULT_FAIL is True
 
 
 def test_ordinary_code_and_comments_are_not_flagged():
@@ -95,7 +107,7 @@ fit <- lm(y ~ x, data = d)
 
 def test_the_allow_marker_exempts_a_line():
     text = f"""{FENCE}{{r}}
-set.seed(1)  # check-unexplained-choices: allow
+x <- cut(a, breaks = 3)  # check-unexplained-choices: allow
 {FENCE}
 """
     assert hits(text) == []

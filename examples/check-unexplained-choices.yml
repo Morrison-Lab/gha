@@ -1,7 +1,7 @@
 # Copy to .github/workflows/check-unexplained-choices.yml in your repo.
-# Diff-scoped, warn-only check: flags an analysis choice in code (cut(), breaks=,
-# bins=, set.seed(), a bandwidth, a train/test split) when a PR adds the line and
-# the figure, example or section's prose gives no reason for it.
+# Diff-scoped check: fails when a PR adds a binning choice in code (cut(),
+# breaks=, bins=, binwidth=) and the figure, example or section's prose gives no
+# reason for it.
 # Only contents:read is needed.
 name: Check for unexplained analysis choices
 
@@ -18,5 +18,5 @@ jobs:
     # with:
     #   globs: '*.qmd'                          # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
-    #   fail: true                              # block instead of warn (defaults to false)
+    #   fail: false                             # warn instead of block (defaults to true)
     #   whole-tree: true                        # scan every choice, not just a PR's additions

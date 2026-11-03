@@ -31,9 +31,9 @@ on:
       fail:
         description: >-
           Fail the workflow when an unexplained analysis choice is found (else
-          non-blocking). Defaults to false (warning annotations only).
+          non-blocking). Defaults to true; false gives warning annotations only.
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-unexplained-choices:
