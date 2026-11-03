@@ -1178,8 +1178,8 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags an analysis choice in code that the prose around it never explains. The lab’s rule (Ezra, 2026-11-03, <a href="https://github.com/Morrison-Lab/ai-config/issues/4905">ai-config#4905</a>) is that every arbitrary analysis choice, such as binning a variable, is explained in detail in the prose: what was chosen, what the alternatives were, and why this one.</p>
-<p>The check reads code lines in a fenced chunk for these choices: <code>cut()</code>, <code>cut_number()</code>, <code>cut_interval()</code>, <code>cut_width()</code>, <code>pd.cut()</code>, <code>pd.qcut()</code>, <code>np.histogram()</code>, <code>breaks =</code>, <code>bins =</code>, <code>binwidth =</code>, <code>nbins =</code>, <code>set.seed()</code>, <code>random_state =</code>, <code>np.random.seed()</code>, a numeric <code>bw =</code>, <code>bandwidth =</code>, <code>span =</code>, <code>threshold =</code> or <code>cutoff =</code>, <code>train_test_split()</code>, <code>initial_split()</code>, <code>test_size =</code> and <code>prop =</code>.</p>
+<p>Diff-scoped check that fails when a binning choice in code is never explained by the prose around it. The lab’s rule (Ezra, 2026-11-03, <a href="https://github.com/Morrison-Lab/ai-config/issues/4905">ai-config#4905</a>) is that every arbitrary analysis choice, such as binning a variable, is explained in detail in the prose: what was chosen, what the alternatives were, and why this one.</p>
+<p>The check reads code lines in a fenced chunk for a binning choice: <code>cut()</code>, <code>cut_number()</code>, <code>cut_interval()</code>, <code>cut_width()</code>, <code>pd.cut()</code>, <code>pd.qcut()</code>, <code>breaks =</code>, <code>bins =</code>, <code>binwidth =</code>, <code>nbins =</code> and <code>n_bins =</code>. Only binning is recognized, so that the check can fail by default without flagging choices that need no reason, such as a seed in a plain simulation.</p>
 <p>A choice is explained when the prose of its unit holds a reason word such as “because”, “chose”, “choice”, “compromise”, “rather than”, “alternative” or “arbitrary”. The unit is the outermost div around the chunk (a figure, example or exercise), or, outside any div, the text from the previous heading to the next one.</p>
 <p>The check does not read:</p>
 <ul>
@@ -1187,7 +1187,7 @@ cookieconsent.run({
 <li>a code line that starts with <code>#</code>, such as a comment or a <code>#|</code> chunk option;</li>
 <li>a line carrying <code>&lt;!-- check-unexplained-choices: allow --&gt;</code>.</li>
 </ul>
-<p>The pattern list is noisy by design, since a seed in a plain simulation is fine, which is why <code>fail</code> defaults to <code>false</code>. Whether an explanation is good is a judgment the author makes.</p>
+<p>Whether an explanation is good is a judgment the author makes; the check asks only that one exists. Set <code>fail: false</code> to get warnings instead of a failing check.</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
 <p>Only an added line is reported. The whole file is parsed, since the explaining prose may sit far from the changed line. With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to scan every tracked file on purpose, which measures how many existing choices go unexplained.</p>
@@ -1224,8 +1224,8 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td><code>fail</code></td>
-<td><code>false</code></td>
-<td>Fail the workflow on a finding instead of warning</td>
+<td><code>true</code></td>
+<td>Fail the workflow on a finding; <code>false</code> warns instead</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>
