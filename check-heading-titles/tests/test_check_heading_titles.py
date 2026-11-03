@@ -100,7 +100,7 @@ def git(cwd, *args):
 
 def init_repo(tmp_path, body):
     git(tmp_path, "init", "-q", "-b", "main")
-    git(tmp_path, "config", "user.email", "t@example.com")
+    git(tmp_path, "config", "user.email", "t@example.com")  # phi-allow
     git(tmp_path, "config", "user.name", "T")
     (tmp_path / "page.qmd").write_text(f'---\ntitle: "T"\n---\n\n{body}')
     git(tmp_path, "add", ".")
