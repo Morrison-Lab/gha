@@ -19,6 +19,11 @@ inputs:
   globs:
     description: Space-separated git pathspecs of tracked files to check.
     default: '*.qmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated git pathspecs to skip, such as
+      `_extensions/**,latex-macros/**`.
+    default: ''
   fail:
     description: Fail the action on a finding (else warnings only).
     default: 'true'
@@ -36,5 +41,6 @@ runs:
         SC_BASE_REF: ${{ inputs.base-ref }}
         SC_WHOLE_TREE: ${{ inputs.whole-tree }}
         SC_GLOBS: ${{ inputs.globs }}
+        SC_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         SC_FAIL: ${{ inputs.fail }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-serial-comma.py"

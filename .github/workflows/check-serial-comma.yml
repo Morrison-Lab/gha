@@ -22,6 +22,12 @@ on:
         description: Space-separated git pathspecs of tracked files to check.
         type: string
         default: '*.qmd *.md'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated git pathspecs to skip, such as
+          `_extensions/**,latex-macros/**`.
+        type: string
+        default: ''
       fail:
         description: Fail the workflow on a finding (else warnings only).
         type: boolean
@@ -46,6 +52,7 @@ jobs:
           python-version: ${{ inputs.python-version }}
           whole-tree: ${{ inputs.whole-tree }}
           globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
           fail: ${{ inputs.fail }}
           # On pull_request, HEAD^1 is the base tip GitHub built the merge ref on
           # (see check-one-div-per-subfile, gha#1007); on push there is no base.

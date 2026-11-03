@@ -32,6 +32,7 @@ to `.github/workflows/` in your repository.
 | Input | Default | Meaning |
 | --- | --- | --- |
 | `globs` | `*.qmd *.md` | Space-separated git pathspecs of tracked files to check |
+| `paths-ignore` | empty | Comma- or newline-separated git pathspecs to skip, such as `_extensions/**,latex-macros/**` |
 | `fail` | `true` | Fail the workflow on a finding instead of warning |
 | `whole-tree` | `false` | Scan every file, not only a PR's additions |
 | `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |

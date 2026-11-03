@@ -25,6 +25,7 @@ no base ref the check skips rather than scanning the whole tree.
 Configuration (environment variables, set by the composite action):
   SC_BASE_REF    Git ref/SHA to diff against. Empty and not whole-tree => skip.
   SC_GLOBS       Space-separated git pathspecs (default: '*.qmd *.md').
+  SC_PATHS_IGNORE  Comma/newline-separated git pathspecs to skip.
   SC_FAIL        "false" => warnings only; default "true" => exit 1.
   SC_WHOLE_TREE  "true" => scan every tracked matching file in full.
 """
@@ -241,9 +242,22 @@ def _git(args: List[str]) -> Optional[str]:
     return res.stdout if res.returncode == 0 else None
 
 
-def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool
+def exclude_specs(patterns: List[str]) -> List[str]:
+    """Git exclude pathspecs for the ``paths-ignore`` patterns."""
+    return [(":(exclude,glob)" if "*" in p or "?" in p else ":(exclude)") + p
+            for p in patterns]
+
+
+def split_list(value: str) -> List[str]:
+    """Split a comma- or newline-separated list, dropping blanks."""
+    return [p.strip() for p in re.split(r"[,\n]", value) if p.strip()]
+
+
+def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool,
+                 ignore: Optional[List[str]] = None
                  ) -> Optional[Dict[str, Optional[Set[int]]]]:
     """Files to scan, each with its added lines (None = every line)."""
+    globs = [*globs, *exclude_specs(ignore or [])]
     if whole_tree:
         out = _git(["ls-files", "--", *globs])
         return None if out is None else {p: None for p in out.splitlines() if p}
@@ -267,7 +281,8 @@ def main() -> int:
     globs = os.environ.get("SC_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
     fail = _flag("SC_FAIL", True)
     whole = _flag("SC_WHOLE_TREE", False)
-    wanted = wanted_lines(base_ref, globs, whole)
+    ignore = split_list(os.environ.get("SC_PATHS_IGNORE", ""))
+    wanted = wanted_lines(base_ref, globs, whole, ignore)
     if wanted is None:
         level = "::warning::" if base_ref else ""
         print(f"{level}Skipping the serial comma check for this run "
