@@ -10,7 +10,8 @@ The notes write about their content, not their own structure (Ezra, 2026-11-03):
 The rule text is in psw, "Avoid forward references".
 
 The check flags a sentence that starts with "This" or "These",
-then a structural noun (exercise, solution, section, chapter, lecture, page, handout or problem),
+then a structural noun
+(exercise, solution, section, chapter, lecture, page, handout or problem),
 optionally "and the ones that follow it",
 then a verb that reports what the structure does:
 shows, establishes, explains, says, derives, proves, covers, introduces,
@@ -19,10 +20,12 @@ demonstrates, illustrates, describes, computes, handles, does or "is about".
 The check does not count:
 
 - a line inside a code fence, an HTML comment or the YAML front matter;
-- a sentence about a figure, table or example placed beside it, such as "Table 2 shows the estimates";
+- a sentence about a figure, table or example placed beside it,
+  such as "Table 2 shows the estimates";
 - a line carrying `<!-- check-self-reference: allow -->`.
 
-Where an overview of a group of items goes (in its own paragraph before the first item) cannot be detected,
+Where an overview of a group of items goes
+(in its own paragraph before the first item) cannot be detected,
 so this check covers only the self-reference half of the rule.
 
 ## Scope
