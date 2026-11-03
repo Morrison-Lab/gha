@@ -69,10 +69,14 @@ jobs:
             done
           done
           for id in $all_ids; do
-            if gh api -X POST "repos/$REPO/actions/runs/$id/cancel" > /dev/null; then
+            if err=$(gh api -X POST "repos/$REPO/actions/runs/$id/cancel" 2>&1 > /dev/null); then
               cancelled=$((cancelled + 1))
+            elif grep -q 'HTTP 409' <<< "$err"; then
+              # The run finished between the listing and the cancel, which is
+              # the outcome we wanted, so it is not an annotation (gha#1437).
+              echo "Run $id had already finished."
             else
-              echo "::warning::could not cancel run $id"
+              echo "::warning::could not cancel run $id: $err"
             fi
           done
           echo "Cancelled $cancelled superseded run(s)."
