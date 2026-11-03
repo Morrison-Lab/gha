@@ -15,7 +15,10 @@ SSH_STUB = """\
 echo "ssh $*" >> "$STUB_LOG"
 [ -z "${STUB_SSH_RC:-}" ] || exit "$STUB_SSH_RC"
 while [ "$1" != bash ]; do shift; done
-exec "$@"
+# Real ssh joins its arguments into one command string that the remote shell
+# splits again, so an empty argument vanishes; eval reproduces that.
+args="$*"
+eval "exec $args"
 """
 
 RSYNC_STUB = """\

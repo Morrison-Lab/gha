@@ -62,7 +62,7 @@ rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condo
 rc=0
 ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${CONDOR_IMAGE:-}" <<'REMOTE' || rc=$?
 set -euo pipefail
-dir=$1 cpus=$2 mem=$3 image=$4
+dir=$1 cpus=$2 mem=$3 image=${4:-}
 cd "$dir"
 cat > .condor-run.sh <<'RUN'
 #!/usr/bin/env bash
