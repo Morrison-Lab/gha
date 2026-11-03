@@ -25,6 +25,17 @@ if [ "$(echo "$listeners" | wc -w)" != 1 ]; then
 fi
 listener=$listeners
 
+# Read the PATH before stopping anything: an empty one would make the relaunch
+# fail after the listener is gone.
+runner_path=""
+if [ -f .path ]; then
+  runner_path=$(head -n 1 .path)
+fi
+if [ -z "$runner_path" ]; then
+  echo "No PATH recorded in $RUNNER_DIR/.path; not restarting." >&2
+  exit 1
+fi
+
 has_worker() { pgrep -P "$listener" -f Runner.Worker > /dev/null; }
 
 # Check twice, a second apart, to narrow the gap in which a job can start.
@@ -43,5 +54,14 @@ if kill -0 "$listener" 2> /dev/null; then
   exit 1
 fi
 
-PATH="$(head -n 1 .path)" setsid nohup ./run.sh >> runner.log 2>&1 < /dev/null &
-echo "Runner restarted (log: $RUNNER_DIR/runner.log)."
+PATH="$runner_path" setsid nohup ./run.sh >> runner.log 2>&1 < /dev/null &
+# run.sh starts the listener through run-helper.sh, so give it a moment.
+for _ in $(seq 30); do
+  if pgrep -f "^${physical_dir}/bin/Runner.Listener" > /dev/null; then
+    echo "Runner restarted (log: $RUNNER_DIR/runner.log)."
+    exit 0
+  fi
+  sleep 1
+done
+echo "No listener came up within 30 seconds; see $RUNNER_DIR/runner.log." >&2
+exit 1
