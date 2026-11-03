@@ -74,7 +74,41 @@ def test_untouched_503_with_an_empty_base_ref_is_a_warning(tmp_path):
     assert proc.returncode == 0, proc.stdout
     assert "::warning file=AGENTS.md,line=4::[503]" in proc.stdout
     assert "::error" not in proc.stdout
-    assert "1 demoted 5xx" in summary
+    assert "1 demoted warning" in summary
+
+
+STANFORD_TLS = entry(
+    "https://web.stanford.edu/class/cs109/", None, 9,
+    text="Network error: SSL certificate not trusted. Use --insecure if site is trusted",
+)
+
+
+@pytest.mark.parametrize("base_ref", ["", "all"])
+def test_an_untrusted_certificate_warns_whatever_the_base_ref(tmp_path, base_ref):
+    proc, summary = run(tmp_path, report({"README.md": [STANFORD_TLS]}), base_ref=base_ref)
+    assert proc.returncode == 0, proc.stdout
+    assert "::warning file=README.md,line=9::https://web.stanford.edu/class/cs109/" in proc.stdout
+    assert "not known dead" in proc.stdout
+    assert "::error" not in proc.stdout
+    assert "1 demoted warning" in summary
+
+
+def test_a_dead_link_still_fails_beside_an_untrusted_certificate(tmp_path):
+    proc, _ = run(tmp_path, report({"README.md": [STANFORD_TLS, DEAD_404]}))
+    assert proc.returncode == 1
+    assert "::error file=README.md,line=7::[404] https://example.org/gone" in proc.stdout
+    assert "::warning file=README.md,line=9::" in proc.stdout
+
+
+def test_other_network_errors_are_not_mistaken_for_untrusted_certificates(tmp_path):
+    e = entry("https://nowhere.invalid/", None, 2, text="Network error: dns error")
+    proc, _ = run(tmp_path, report({"a.md": [e]}))
+    assert proc.returncode == 1
+
+
+def test_an_untrusted_certificate_in_the_timeout_map_still_fails(tmp_path):
+    proc, _ = run(tmp_path, report(timeouts={"a.md": [STANFORD_TLS]}))
+    assert proc.returncode == 1
 
 
 def test_counts_are_written_as_step_outputs(tmp_path):

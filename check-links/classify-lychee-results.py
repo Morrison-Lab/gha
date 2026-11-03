@@ -169,16 +169,34 @@ def failures(report: dict) -> List[Tuple[str, str, dict]]:
     return listed
 
 
+_UNTRUSTED_CERTIFICATE = "SSL certificate not trusted"
+
+
+def untrusted_certificate(key: str, entry: dict) -> bool:
+    """True for an error_map entry whose host's certificate chain lychee rejects.
+
+    That is a fault of the host's chain or the runner's trust store, not a
+    dead link (gha#1416: web.stanford.edu on 2026-11-03), so it warns on
+    every line, as a 5xx does off the diff. lychee words it
+    "Network error: SSL certificate not trusted. Use --insecure ...".
+    """
+    text = (entry.get("status") or {}).get("text") or ""
+    return key == "error_map" and _UNTRUSTED_CERTIFICATE in text
+
+
 def classify(
     listed: List[Tuple[str, str, dict]], blocks_5xx: Callable[[str, dict], bool]
 ) -> Tuple[List[Tuple[str, dict]], List[Tuple[str, dict]]]:
-    """Split failures into (blocking, demoted); only an error_map 5xx can be demoted."""
+    """Split failures into (blocking, demoted).
+
+    Only an error_map 5xx off the diff, or an untrusted certificate, is demoted.
+    """
     blocking: List[Tuple[str, dict]] = []
     demoted: List[Tuple[str, dict]] = []
     for key, path, entry in listed:
         code = _status_code(entry)
         transient = key == "error_map" and code is not None and 500 <= code <= 599
-        if transient and not blocks_5xx(path, entry):
+        if untrusted_certificate(key, entry) or (transient and not blocks_5xx(path, entry)):
             demoted.append((path, entry))
         else:
             blocking.append((path, entry))
@@ -241,8 +259,9 @@ def _annotate(level: str, path: str, entry: dict, suffix: str = "",
 
 def _summary(blocking, demoted, root: Optional[str] = None) -> str:
     out = ["## Link check", ""]
-    out.append(f"{len(blocking)} blocking failure(s), {len(demoted)} demoted 5xx warning(s).")
-    for title, rows in (("Blocking", blocking), ("Demoted 5xx (not on an added line)", demoted)):
+    out.append(f"{len(blocking)} blocking failure(s), {len(demoted)} demoted warning(s).")
+    for title, rows in (("Blocking", blocking),
+                        ("Demoted (a 5xx not on an added line, or an untrusted certificate)", demoted)):
         if rows:
             out += ["", f"### {title}", ""]
             out += [f"- {_code_span(_display_path(p, root))}: {_describe(e)}" for p, e in rows]
@@ -302,9 +321,12 @@ def main() -> int:
     blocking, demoted = classify(listed, _scope(base_ref))
     root = _repo_root()
     for path, entry in demoted:
-        print(_annotate("warning", path, entry,
-                        " (server error on a line this change does not add; not failing the check)",
-                        root))
+        if _UNTRUSTED_CERTIFICATE in _describe(entry):
+            why = (" (the host's certificate is not trusted, so the link is unverified, "
+                   "not known dead; not failing the check)")
+        else:
+            why = " (server error on a line this change does not add; not failing the check)"
+        print(_annotate("warning", path, entry, why, root))
     for path, entry in blocking:
         print(_annotate("error", path, entry, root=root))
 
@@ -318,7 +340,7 @@ def main() -> int:
             fh.write(f"blocking={len(blocking)}\ndemoted={len(demoted)}\n")
 
     print(f"lychee checked {total} link(s): {len(blocking)} blocking failure(s), "
-          f"{len(demoted)} demoted 5xx warning(s).")
+          f"{len(demoted)} demoted warning(s).")
 
     if fail_if_empty and total == 0:
         print("::error::No links were found. This usually indicates a configuration error.")
