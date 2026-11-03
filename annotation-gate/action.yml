@@ -37,6 +37,7 @@ inputs:
       ^Action failed with error: Failed to install Claude Code after \d+ attempts
       ^No files were found with the provided path: .*claude-execution-output\.json
       ^execution_file output not set; falling back to
+      ^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always

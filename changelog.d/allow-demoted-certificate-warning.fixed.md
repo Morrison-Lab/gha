@@ -1,0 +1,1 @@
+- `annotation-gate` allows the `check-links` warning for a link whose host serves an untrusted certificate chain, so the warning from gha#1419 no longer fails the gate on every added Stanford link (#1416).
