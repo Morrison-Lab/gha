@@ -19,10 +19,12 @@ The check reports two mistakes:
   A word that only begins with one of these,
   such as "Whatever" or "Howell's", does not count.
 
+The check also reads the title of a fenced div or callout:
+the `####` heading inside a definition, example or exercise div,
+or a `title="..."` attribute on the div's opening fence.
+
 The check does not count:
 
-- a heading inside any fenced div, or in a file included from inside one
-  (the `####` title of a definition or exercise div is the lab's convention);
 - a heading inside a code fence, an HTML comment or the YAML front matter;
 - a heading on a line carrying `<!-- check-heading-titles: allow -->`.
 

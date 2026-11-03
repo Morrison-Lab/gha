@@ -1,8 +1,8 @@
 """Unit tests for check-heading-titles.
 
 Covers the two rules (a question, an interrogative start including after a
-colon), what is not counted (code fences, comments, fenced divs, the allow
-marker, plain headings that merely contain an interrogative later), diff
+colon), div and callout titles (checked), what is not counted (code fences,
+comments, the allow marker, plain headings that merely contain an interrogative later), diff
 scoping (an untouched heading is not reflagged, an added one is), the
 skip-not-fallback guard, and the defaults the action and script must agree on.
 """
@@ -79,7 +79,6 @@ def test_not_counted_places(tmp_path):
     body = (
         "```\n# What is in a fence\n```\n\n"
         "<!-- # What is in a comment -->\n\n"
-        "::: {#def-x}\n#### What a div title says\n:::\n\n"
         "# Why allowed <!-- check-heading-titles: allow -->\n"
     )
     assert kinds(tmp_path, body) == []
@@ -148,3 +147,26 @@ def test_defaults_agree_across_script_action_and_workflow():
         assert input_default(text, "fail") == "true"
         assert input_default(text, "globs") == htt.DEFAULT_GLOBS
         assert input_default(text, "whole-tree") == "false"
+
+
+def test_div_titles_are_checked(tmp_path):
+    body = (
+        "::: {#exr-x}\n#### What the logistic function does\n:::\n\n"
+        '::: {.callout-note title="Why this works"}\n:::\n\n'
+        "::: {#exr-y}\n#### Properties of the logistic function\n:::\n"
+    )
+    assert kinds(tmp_path, body) == [("interrogative", 6), ("interrogative", 9)]
+
+
+def test_div_title_allow_marker_and_fences(tmp_path):
+    body = (
+        "::: {#exr-x}\n"
+        "#### Why allowed <!-- check-heading-titles: allow -->\n:::\n\n"
+        "::: {#exr-y}\n```\n#### What in a fence\n```\n:::\n"
+    )
+    assert kinds(tmp_path, body) == []
+
+
+def test_hyphenated_title_attribute_is_not_a_title(tmp_path):
+    body = "::: {.x data-title=\"What is this\"}\n:::\n"
+    assert kinds(tmp_path, body) == []
