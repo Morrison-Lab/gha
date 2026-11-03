@@ -17,10 +17,13 @@ Flagged, in a heading the diff adds:
 - **An interrogative start.** The heading, or any phrase after a colon in it,
   begins with one of the words above.
 
-What is not counted: headings inside code fences, HTML comments, YAML front
-matter or any fenced div (``####`` titles of definition and exercise divs are
-the lab's convention); a line carrying ``<!-- check-heading-titles: allow
--->``.
+Also flagged, by the same two rules: the title of a fenced div or callout,
+which is a heading written inside the div (the ``####`` line that opens a
+definition, example or exercise) or a ``title="..."`` attribute on the div's
+opening fence (Ezra, 2026-11-03: "titles like this").
+
+What is not counted: headings inside code fences, HTML comments or YAML front
+matter; a line carrying ``<!-- check-heading-titles: allow -->``.
 
 Design notes, in the model of ``check-heading-levels`` (whose heading scanner
 this reuses):
@@ -110,8 +113,58 @@ def heading_findings(text: str) -> List[Tuple[str, str]]:
     return out
 
 
+TITLE_ATTR_RE = re.compile(r"""\btitle\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+
+
+def div_titles(path: str) -> List[Tuple[int, str]]:
+    """(line, text) of each title written inside a fenced div in ``path``.
+
+    A title is a heading line inside a div, or the ``title`` attribute on a
+    div's opening fence. Code fences, comments and front matter are skipped.
+    """
+    lines = hl.read_lines(path)
+    if lines is None:
+        return []
+    out: List[Tuple[int, str]] = []
+    fence: Optional[Tuple[str, int]] = None
+    in_comment = False
+    in_yaml = bool(lines) and lines[0].strip() == "---"
+    depth = 0
+    for idx, original in enumerate(lines):
+        if in_yaml:
+            if idx > 0 and original.strip() in ("---", "..."):
+                in_yaml = False
+            continue
+        raw = original
+        if fence is None:
+            raw, in_comment = ods.strip_comments(raw, in_comment)
+        m = ods.FENCE_RE.match(raw)
+        if fence is not None:
+            if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+                    and not m.group(2).strip()):
+                fence = None
+            continue
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence = (m.group(1)[0], len(m.group(1)))
+            continue
+        dm = ods.DIV_RE.match(raw)
+        if dm:
+            if dm.group(2):
+                depth += 1
+                tm = TITLE_ATTR_RE.search(dm.group(2))
+                if tm:
+                    out.append((idx + 1, tm.group(1) or tm.group(2)))
+            else:
+                depth = max(0, depth - 1)
+            continue
+        hm = hl.HEADING_RE.match(raw)
+        if hm and depth > 0:
+            out.append((idx + 1, hm.group(2)))
+    return out
+
+
 def scan_file(path: str, root: str) -> List[Finding]:
-    """Findings for the headings written in ``path`` itself."""
+    """Findings for the headings and div titles written in ``path`` itself."""
     lines = hl.read_lines(path) or []
     found: List[Finding] = []
     for heading, own in hl.scan_headings(path, root):
@@ -121,6 +174,11 @@ def scan_file(path: str, root: str) -> List[Finding]:
             continue
         for kind, message in heading_findings(heading.text):
             found.append(Finding(heading.path, heading.line, kind, message))
+    for line, text in div_titles(path):
+        if ALLOW_MARKER in lines[line - 1]:
+            continue
+        for kind, message in heading_findings(text):
+            found.append(Finding(path, line, kind, message))
     return found
 
 

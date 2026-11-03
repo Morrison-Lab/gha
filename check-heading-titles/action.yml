@@ -3,7 +3,8 @@ description: >-
   Diff-scoped check that flags a clickbait heading when the diff adds it: a
   question, or a heading (or a phrase after a colon) that starts with who,
   whom, whose, what, when, where, why, how or which (Ezra, 2026-11-03).
-  Headings inside fenced divs, code fences and comments are not counted.
+  The title of a fenced div or callout (a heading inside it, or its title
+  attribute) is checked too. Code fences and comments are not counted.
   Fails by default.
 inputs:
   python-version:
