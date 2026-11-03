@@ -21,10 +21,20 @@ if ! flock -n 9; then
   echo "A restart of $RUNNER_DIR is already waiting." >&2
   exit 1
 fi
-# The listener's command line holds the physical path.
+# The listener's command line holds the physical path. Compare it as a string,
+# since a directory name may hold characters a pgrep -f pattern would misread.
 physical_dir=$(pwd -P)
+find_listeners() {
+  local pid
+  for pid in $(pgrep -x Runner.Listener || true); do
+    if [ "$(tr '\0' '\n' < "/proc/$pid/cmdline" 2> /dev/null | head -n 1)" \
+      = "$physical_dir/bin/Runner.Listener" ]; then
+      echo "$pid"
+    fi
+  done
+}
 
-listeners=$(pgrep -f "^${physical_dir}/bin/Runner.Listener" || true)
+listeners=$(find_listeners)
 if [ "$(echo "$listeners" | wc -w)" != 1 ]; then
   echo "Expected one listener in $physical_dir, found: ${listeners:-none}." >&2
   exit 1
@@ -48,12 +58,17 @@ has_worker() { pgrep -P "$listener" -f Runner.Worker > /dev/null; }
 # next job before it starts a worker, so require IDLE_SECONDS with no worker.
 # That narrows the gap in which a job can be cut off; it cannot close it.
 idle_seconds=${IDLE_SECONDS:-10}
+if ! [ "$idle_seconds" -ge 1 ] 2> /dev/null; then
+  echo "IDLE_SECONDS must be a whole number of seconds, at least 1." >&2
+  exit 1
+fi
 idle=0
 while [ "$idle" -lt "$idle_seconds" ]; do
   if has_worker; then idle=0; else idle=$((idle + 1)); fi
   sleep 1
 done
-kill -TERM "$listener"
+# The listener may have exited on its own meanwhile; relaunch either way.
+kill -TERM "$listener" 2> /dev/null || true
 for _ in $(seq 120); do
   kill -0 "$listener" 2> /dev/null || break
   sleep 1
@@ -68,11 +83,12 @@ fi
 PATH="$runner_path" setsid nohup ./run.sh >> runner.log 2>&1 < /dev/null 9>&- &
 # run.sh starts the listener through run-helper.sh, so give it a moment.
 for _ in $(seq 30); do
-  if pgrep -f "^${physical_dir}/bin/Runner.Listener" > /dev/null; then
+  if [ -n "$(find_listeners)" ]; then
     echo "Runner restarted (log: $RUNNER_DIR/runner.log)."
     exit 0
   fi
   sleep 1
 done
-echo "No listener came up within 30 seconds; see $RUNNER_DIR/runner.log." >&2
+echo "No listener came up within 30 seconds; run.sh may still be starting." \
+  "Read $RUNNER_DIR/runner.log before starting it again." >&2
 exit 1
