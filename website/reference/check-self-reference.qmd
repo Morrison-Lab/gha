@@ -11,11 +11,11 @@ The rule text is in psw, "Avoid forward references".
 
 The check flags a sentence that starts with "This" or "These",
 then a structural noun
-(exercise, solution, section, chapter, lecture, page, handout or problem),
+(exercise, solution, section, chapter, lecture, page, handout),
 optionally "and the ones that follow it",
 then a verb that reports what the structure does:
 shows, establishes, explains, says, derives, proves, covers, introduces,
-demonstrates, illustrates, describes, computes, handles, does or "is about".
+demonstrates, illustrates, describes, computes, handles or "is about".
 
 The check does not count:
 
@@ -56,7 +56,7 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 
 ```yaml
 # Copy to .github/workflows/check-self-reference.yml in your repo.
-# Diff-scoped check: flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a structural noun (exercise, solution, section, chapter, lecture, page, handout, problem) and a verb such as shows, establishes, explains, covers or "is about".
+# Diff-scoped check: flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a structural noun (exercise, solution, section, chapter, lecture, page, handout) and a verb such as shows, establishes, explains, covers or "is about".
 # Fails by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check self-referential prose

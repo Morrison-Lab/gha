@@ -1,5 +1,5 @@
 # Copy to .github/workflows/check-self-reference.yml in your repo.
-# Diff-scoped check: flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a structural noun (exercise, solution, section, chapter, lecture, page, handout, problem) and a verb such as shows, establishes, explains, covers or "is about".
+# Diff-scoped check: flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a structural noun (exercise, solution, section, chapter, lecture, page, handout) and a verb such as shows, establishes, explains, covers or "is about".
 # Fails by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check self-referential prose

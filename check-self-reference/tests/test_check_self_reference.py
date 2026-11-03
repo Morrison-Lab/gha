@@ -55,6 +55,9 @@ def test_self_reference_is_flagged(tmp_path, sentence):
     "The exercise shows nothing, as a word in a longer sentence.",
     "In this exercise we compute the cost.",
     "This exercises the muscles.",
+    "This problem does not have a closed form.",
+    "This solution shows up twice in the table.",
+    "This section does the bookkeeping.",
 ])
 def test_content_sentences_pass(tmp_path, sentence):
     assert flagged(tmp_path, sentence + "\n") == []

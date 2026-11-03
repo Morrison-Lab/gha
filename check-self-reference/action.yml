@@ -1,7 +1,7 @@
 name: Check self-referential prose
 description: >-
   Diff-scoped check that flags self-referential prose when a PR adds it: a sentence that starts with "This" or "These" and a
-  structural noun (exercise, solution, section, chapter, lecture, page, handout, problem) and a verb such as shows, establishes, explains, covers or "is about".
+  structural noun (exercise, solution, section, chapter, lecture, page, handout) and a verb such as shows, establishes, explains, covers or "is about".
   Code fences, comments and front matter are not counted.
   Fails by default.
 inputs:

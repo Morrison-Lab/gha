@@ -14,10 +14,10 @@ references".
 
 Flagged, in a line the diff adds: a sentence that starts with "This" or
 "These" and a structural noun (exercise, solution, section, chapter, lecture,
-page, handout, problem), optionally followed by "and the ones that follow it",
+page, handout), optionally followed by "and the ones that follow it",
 and then a verb that reports what the structure does: shows, establishes,
 explains, says, derives, proves, covers, introduces, demonstrates, illustrates,
-describes, computes, handles, does, or "is about".
+describes, computes, handles, or "is about".
 
 What is not counted: code fences, HTML comments, YAML front matter; a
 sentence that names a figure or table placed beside it ("Table 2 shows the
@@ -77,16 +77,16 @@ _DEFAULT_FAIL = True
 ALLOW_MARKER = "check-self-reference: allow"
 
 NOUNS = ("exercise", "solution", "section", "chapter", "lecture", "page",
-         "handout", "problem")
+         "handout")
 VERBS = ("shows?", "establish(?:es)?", "explains?", "says?", "derives?",
          "proves?", "covers?", "introduces?", "demonstrates?", "illustrates?",
-         "describes?", "computes?", "handles?", "does", "is about")
+         "describes?", "computes?", "handles?", "is about")
 # "This exercise shows", "These exercises prove", "This exercise and the ones
 # that follow it establish", at the start of a sentence.
 PATTERN = re.compile(
     r"(?:^|[.!?]\s+)[\"'(\[*_\s]*(?:This|These|this|these)\s+(?:"
     + "|".join(NOUNS) + r")s?\b(?:\s+and\s+the\s+\w+\s+that\s+follow(?:s)?"
-    r"(?:\s+it)?)?\s+(" + "|".join(VERBS) + r")\b",
+    r"(?:\s+it)?)?\s+(" + "|".join(VERBS) + r")\b(?!\s+(?:up|off|out)\b)",
     re.IGNORECASE)
 ADVICE = ("state the content directly, and put an overview of a group of "
           "items in its own paragraph before the first item (psw, Avoid "
