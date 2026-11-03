@@ -78,6 +78,7 @@ website:
           - reference/check-self-credits.qmd
           - reference/check-one-div-per-subfile.qmd
           - reference/check-heading-levels.qmd
+          - reference/check-heading-titles.qmd
           - reference/check-page-length.qmd
           - reference/check-heading-siblings.qmd
           - reference/check-figure-placement.qmd
