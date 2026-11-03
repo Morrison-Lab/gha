@@ -1,0 +1,60 @@
+name: Check heading titles
+description: >-
+  Diff-scoped check that flags a clickbait heading when the diff adds it: a
+  question, or a heading (or a phrase after a colon) that starts with who,
+  whom, whose, what, when, where, why, how or which (Ezra, 2026-11-03).
+  Headings inside fenced divs, code fences and comments are not counted.
+  Fails by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every heading the corpus already carries.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an added heading is clickbait (else
+      non-blocking). Defaults to 'true': agents ignore warnings.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check heading titles
+      shell: bash
+      env:
+        HTT_BASE_REF: ${{ inputs.base-ref }}
+        HTT_WHOLE_TREE: ${{ inputs.whole-tree }}
+        HTT_GLOBS: ${{ inputs.globs }}
+        HTT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        HTT_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-heading-titles.py"
