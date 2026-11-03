@@ -113,7 +113,7 @@ def heading_findings(text: str) -> List[Tuple[str, str]]:
     return out
 
 
-TITLE_ATTR_RE = re.compile(r"""\btitle\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+TITLE_ATTR_RE = re.compile(r"""(?<![\w-])title\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 
 
 def div_titles(path: str) -> List[Tuple[int, str]]:

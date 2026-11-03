@@ -1,8 +1,8 @@
 """Unit tests for check-heading-titles.
 
 Covers the two rules (a question, an interrogative start including after a
-colon), what is not counted (code fences, comments, fenced divs, the allow
-marker, plain headings that merely contain an interrogative later), diff
+colon), div and callout titles (checked), what is not counted (code fences,
+comments, the allow marker, plain headings that merely contain an interrogative later), diff
 scoping (an untouched heading is not reflagged, an added one is), the
 skip-not-fallback guard, and the defaults the action and script must agree on.
 """
@@ -164,4 +164,9 @@ def test_div_title_allow_marker_and_fences(tmp_path):
         "#### Why allowed <!-- check-heading-titles: allow -->\n:::\n\n"
         "::: {#exr-y}\n```\n#### What in a fence\n```\n:::\n"
     )
+    assert kinds(tmp_path, body) == []
+
+
+def test_hyphenated_title_attribute_is_not_a_title(tmp_path):
+    body = "::: {.x data-title=\"What is this\"}\n:::\n"
     assert kinds(tmp_path, body) == []

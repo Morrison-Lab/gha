@@ -3,7 +3,7 @@
   when a pull request adds it: a question, or a heading (or a phrase after a colon)
   that starts with who, whom, whose, what, when, where, why, how or which.
   The rule is in psw, "Subsection headings".
-  Headings inside fenced divs, code fences, comments and front matter do not count,
+  Headings inside code fences, comments and front matter do not count,
   and `<!-- check-heading-titles: allow -->` exempts a line.
   Like `check-heading-levels` it scopes to added lines, so existing headings are not swept,
   skips rather than scanning the whole tree when there is no base to diff against,
