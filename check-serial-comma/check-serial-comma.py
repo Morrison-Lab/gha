@@ -76,7 +76,7 @@ def clean(line: str) -> str:
     """Reduce one source line to plain words; math, code and the like become X."""
     line = re.sub(r"^[ \t]*(?:>[ \t]*)+", "", line)
     line = re.sub(r"[❌✅]", "", line)
-    line = re.sub(r"<!--.*?-->", "", line)
+    line = re.sub(r"<!--[\s\S]*?-->", "", line)
     line = re.sub(r"\{\{<.*?>\}\}", "", line)
     line = re.sub(r"\\\$", "", line)
     line = re.sub(r"\$\$.*?\$\$|\$[^$]*\$", "X", line)
