@@ -125,10 +125,16 @@ def prose_lines(lines: List[str]) -> List[Tuple[int, str]]:
                 stripped = stripped.split("-->", 1)[1]
             else:
                 continue
-        stripped = re.sub(r"<!--.*?-->", "", stripped)
-        if "<!--" in stripped:
-            in_comment = True
-            stripped = stripped.split("<!--", 1)[0]
+        # Cut each complete comment on the line, then an unterminated opener.
+        # Lines are split before this point, so no comment spans a newline here.
+        while "<!--" in stripped:
+            head, _, rest = stripped.partition("<!--")
+            if "-->" in rest:
+                stripped = head + rest.split("-->", 1)[1]
+            else:
+                in_comment = True
+                stripped = head
+                break
         if ALLOW_MARKER in text:
             continue
         out.append((number, stripped))
