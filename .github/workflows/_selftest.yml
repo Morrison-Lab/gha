@@ -3244,6 +3244,89 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-exm || true
           rm -rf _ci-exm
+  # check-contour-3d is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-contour-3d@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  contour-3d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-contour-3d unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-contour-3d/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-contour-3d
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no contour plots, so stage one with no 3D plot and
+      # assert that the blocking call really fails.
+      - name: Stage a contour plot with no 3D plot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-c3d
+          printf '%s\n' '```{r}' 'contour(x, y, z)' '```' > _ci-c3d/page.qmd
+          git add -f _ci-c3d/page.qmd
+      - name: Check the staged plot, expecting a failure
+        id: c3d-expected-failure
+        continue-on-error: true
+        uses: ./check-contour-3d
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.c3d-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-contour-3d to fail on a staged plot, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is warn-only, so the same finding must pass with no fail input.
+      - name: Check the staged plot with the default fail
+        uses: ./check-contour-3d
+        with:
+          whole-tree: 'true'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-contour-3d
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Check again with the plot exempted through paths-ignore
+        uses: ./check-contour-3d
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-c3d'
+      - name: Check again with globs excluding the plot
+        uses: ./check-contour-3d
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged plot
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-c3d || true
+          rm -rf _ci-c3d
   # check-visualization-figures is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-visualization-figures@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The

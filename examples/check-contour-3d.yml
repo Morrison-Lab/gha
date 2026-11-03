@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-contour-3d.yml in your repo.
+# Diff-scoped check: flags a contour or level-curve plot with no 3D surface
+# plot of the same function when a PR adds a line to its code chunk.
+# Add a sibling <name>-3d.qmd subfile, or <!-- no-3d: reason --> in the file.
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check contour 3D plots
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-contour-3d.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block on a finding (defaults to false)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
