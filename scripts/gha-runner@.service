@@ -1,0 +1,20 @@
+# systemd --user template unit that supervises one self-hosted runner.
+# Install with scripts/install-runner-systemd-unit.sh. The instance name is the
+# runner directory's suffix: gha-runner@gate-1 runs ~/actions-runner-private-gate-1.
+#
+# Restart=always matters: when the login session ended, run.sh exited 0, which
+# its wrapper treats as a final stop (gha#1411). PATH comes from the runner's
+# .path file, so ~/.local/bin (rsvg-convert) is on it after every restart.
+[Unit]
+Description=GitHub Actions self-hosted runner %i
+
+[Service]
+WorkingDirectory=%h/actions-runner-private-%i
+ExecStart=/bin/bash -c 'PATH="$(head -n 1 .path)" exec ./run.sh'
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=120
+
+[Install]
+WantedBy=default.target
