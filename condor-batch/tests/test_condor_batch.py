@@ -27,7 +27,11 @@ if [ -f "$src" ]; then mkdir -p "$(dirname "$dest")"; cp "$src" "$dest"
 else mkdir -p "$dest"; fi
 """
 
-SUBMIT_STUB = 'echo "condor_submit $*" >> "$STUB_LOG"\n'
+SUBMIT_STUB = """\
+echo "condor_submit $*" >> "$STUB_LOG"
+cp .condor.sub "$STUB_LOG.sub"
+cp .condor-run.sh "$STUB_LOG.run"
+"""
 
 WAIT_STUB = """\
 echo "condor_wait $*" >> "$STUB_LOG"
@@ -125,6 +129,59 @@ def test_ssh_key_with_whitespace_is_refused(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], CONDOR_SSH_KEY="/tmp/my key")
     assert proc.returncode == 64
     assert calls == []
+
+
+def _arguments(tmp_path: Path) -> str:
+    sub = (tmp_path / "calls.log.sub").read_text().splitlines()
+    return next(line for line in sub if line.startswith("arguments = "))
+
+
+def test_no_image_submits_only_the_run_dir(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert _arguments(tmp_path).strip().endswith("/42")
+
+
+def test_image_is_passed_to_the_job_and_used_by_the_run_script(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_IMAGE="/c/lds-ci.sif")
+    assert proc.returncode == 0, proc.stderr
+    assert _arguments(tmp_path).endswith(" /c/lds-ci.sif")
+    run = (tmp_path / "calls.log.run").read_text()
+    assert "apptainer exec --containall" in run
+    assert "--pwd /work --home /work/.home" in run
+
+
+def test_image_steps_execute_through_apptainer(tmp_path):
+    """Run the generated .condor-run.sh with a stub apptainer that execs its command."""
+    _run(tmp_path, ["echo one > one.txt", "echo two > two.txt"], STUB_RV="0", CONDOR_IMAGE="/c/x.sif")
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / ".condor-steps").write_text("echo one > one.txt\necho two > two.txt\n")
+    bin_dir = tmp_path / "abin"
+    bin_dir.mkdir()
+    _stub(bin_dir / "apptainer", 'echo "$@" >> "$STUB_LOG.app"\nwhile [ "$1" != "/c/x.sif" ]; do shift; done\nshift\nexec "$@"\n')
+    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "STUB_LOG": str(tmp_path / "calls.log")}
+    proc = subprocess.run(
+        ["bash", str(tmp_path / "calls.log.run"), str(work), "/c/x.sif"],
+        env=env, capture_output=True, text=True, check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert (work / "one.txt").read_text() == "one\n"
+    assert (work / "two.txt").read_text() == "two\n"
+    assert (tmp_path / "calls.log.app").read_text().count("/c/x.sif") == 2
+
+
+def test_run_dir_is_removed_after_a_normal_end_even_with_a_failing_step(tmp_path):
+    for rv in ("0", "3"):
+        case_dir = tmp_path / rv
+        case_dir.mkdir()
+        _run(case_dir, ["a", "b"], STUB_RV=rv)
+        assert not (case_dir / "ci" / "42").exists(), rv
+
+
+def test_run_dir_is_kept_when_the_job_did_not_end_normally(tmp_path):
+    _run(tmp_path, ["a", "b"], STUB_WAIT_RC="1")
+    assert (tmp_path / "ci" / "42" / ".condor.sub").exists()
 
 
 ACTION = Path(__file__).resolve().parents[2] / ".github/actions/condor-batch/action.yml"
