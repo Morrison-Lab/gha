@@ -52,8 +52,6 @@ if [ -z "$runner_path" ]; then
   exit 1
 fi
 
-has_worker() { pgrep -P "$listener" -f Runner.Worker > /dev/null; }
-
 # The listener reports a job's result after its worker exits, and accepts the
 # next job before it starts a worker, so require IDLE_SECONDS with no worker.
 # That narrows the gap in which a job can be cut off; it cannot close it.
@@ -64,7 +62,7 @@ if ! [ "$idle_seconds" -ge 1 ] 2> /dev/null; then
 fi
 idle=0
 while [ "$idle" -lt "$idle_seconds" ]; do
-  if has_worker; then idle=0; else idle=$((idle + 1)); fi
+  if pgrep -P "$listener" -f Runner.Worker > /dev/null; then idle=0; else idle=$((idle + 1)); fi
   sleep 1
 done
 # The listener may have exited on its own meanwhile; relaunch either way.
