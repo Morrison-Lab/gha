@@ -49,6 +49,7 @@ updates:
       - "/check-exercise-before-result"
       - "/check-caller-permissions"
       - "/check-exm-figures"
+      - "/check-contour-3d"
       - "/check-figure-placement"
       - "/check-axis-titles"
       - "/check-tree-lists"

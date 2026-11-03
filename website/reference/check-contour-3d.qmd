@@ -1,0 +1,81 @@
+---
+title: "check-contour-3d.yml"
+---
+
+Diff-scoped check that flags a contour or level-curve plot
+with no 3D surface plot of the same function.
+The lab's rule (Ezra, 2026-11-03) is that every contour plot
+of a function of two variables gets a matching 3D surface plot.
+This implements
+[gha#1443](https://github.com/Morrison-Lab/gha/issues/1443).
+It warns by default while the notes repositories catch up.
+
+A contour call, inside a code fence, is one of these:
+
+- `geom_contour`, `geom_contour_filled`, `stat_contour`;
+- plotly's `add_contour` or `type = "contour"`;
+- base R's `contour(` and `filled.contour(`;
+- matplotlib's `.contour(` and `.contourf(`;
+- `Plot.contour`.
+
+A file is satisfied when any of these holds:
+
+- it holds a 3D call in a code fence
+  (`add_surface`, `plot_surface`, `plot_trisurf`, `persp`, `type = "surface"`);
+- it includes a 3D figure subfile (`{{< include ..._3d.qmd >}}` or `...-3d.qmd`);
+- a sibling subfile named `<stem>-3d.qmd` sits beside it;
+- it holds an HTML comment `<!-- no-3d: reason -->` with a non-empty reason,
+  for a contour plot that is not of a function of two variables,
+  such as a density estimated from data.
+
+Use `paths-ignore` to exempt whole paths.
+The test is per file, so a file with two contour figures and one 3D plot passes.
+Put each figure in its own subfile to get a per-figure test.
+
+## Scope
+
+Only a contour figure whose code fence holds a line a pull request adds is reported,
+so existing figures are never reflagged.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose,
+which measures how many existing contour figures lack a 3D plot.
+Every run prints how many lines, files and contour figures it examined.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`       | Fail the workflow when a contour plot has no 3D plot. The default is warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-contour-3d.yml in your repo.
+name: Check contour 3D plots
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-contour-3d.yml@v3
+    # with:
+    #   fail: true         # block on a finding (defaults to false)
+```
