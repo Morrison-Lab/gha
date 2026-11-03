@@ -1,0 +1,40 @@
+name: Check serial comma
+description: >-
+  Diff-scoped check that flags a list of three or more items with no comma
+  before the final "and" or "or", when the diff adds the line (Ezra,
+  2026-11-03; Morrison-Lab/psw grammar chapter). Fails by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only added lines are checked. Needs the base
+      commit in history (fetch-depth: 0). Without it the check is skipped.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked matching file in full; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd *.md'
+  fail:
+    description: Fail the action on a finding (else warnings only).
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check serial comma
+      shell: bash
+      env:
+        SC_BASE_REF: ${{ inputs.base-ref }}
+        SC_WHOLE_TREE: ${{ inputs.whole-tree }}
+        SC_GLOBS: ${{ inputs.globs }}
+        SC_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-serial-comma.py"
