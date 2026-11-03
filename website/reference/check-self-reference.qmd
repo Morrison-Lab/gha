@@ -19,7 +19,8 @@ demonstrates, illustrates, describes, computes, handles or "is about".
 
 The check also flags a sentence that starts with
 "The next", "The previous", "The preceding" or "The following"
-and then exercise, solution, section, chapter, lecture or example (plural allowed),
+and then exercise, solution, section, chapter, lecture or example
+(plural allowed),
 such as "The next exercises establish the properties".
 Name the items by cross-reference instead:
 "Exercises @exr-a through @exr-b establish the properties"
