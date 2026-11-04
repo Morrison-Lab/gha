@@ -230,6 +230,8 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "site": a.site,
+        # Where the pages are published, so a tree of several sites can link a node to its page.
+        "base": f"https://morrison-lab.github.io/{a.site}/" + ("" if a.pages == "." else a.pages.strip("/") + "/"),
         "meaning": "edge [A, B] means A uses B: B is a prerequisite of A, A a postrequisite of B",
         "nodes": sorted(nodes.values(), key=lambda n: n["id"]),
         "edges": [list(e) for e in edges],
