@@ -204,7 +204,7 @@
     "href": "reference/check-div-ids.html",
     "title": "check-div-ids.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags a fenced div with a theorem-type class but no id with the matching prefix. Quarto and the lab’s callouty-theorem and custom-callout extensions build a callout, a number and a cross-reference target from the id, so a div written ::: {.remark} renders as a plain block quote (Morrison-Lab/lds#1600).\nThe check reports a div when the pull request adds its opening line. It does not look inside code fences, HTML comments or blockquotes, and it reports nothing for a div that was already in the file. Other classes on the div, such as .notes, are fine.\nWith no base ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to measure a corpus.",
+    "text": "Diff-scoped, failing-by-default check that flags a fenced div with a theorem-type class but no id with the matching prefix. Quarto and the lab’s callouty-theorem and custom-callout extensions build a callout, a number and a cross-reference target from the id, so a div written ::: {.remark} renders as a plain block quote (Morrison-Lab/lds#1600).\nThe check reports a div when the pull request adds its opening line. It does not look inside code fences, HTML comments or blockquotes, and it reports nothing for a div that was already in the file. Other classes on the div, such as .notes, are fine.\nWith no base ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to measure a corpus.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -216,7 +216,7 @@
     "href": "reference/check-div-ids.html#inputs",
     "title": "check-div-ids.yml",
     "section": "Inputs",
-    "text": "Inputs\n\nglobs: git pathspecs of files to check (default *.qmd).\npaths-ignore: glob patterns to skip.\nfail: block instead of warn (default false).\nwhole-tree: scan every matching file, not only a pull request’s additions.",
+    "text": "Inputs\n\nglobs: git pathspecs of files to check (default *.qmd).\npaths-ignore: glob patterns to skip.\nfail: warn instead of block when false (default true).\nwhole-tree: scan every matching file, not only a pull request’s additions.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -4975,7 +4975,7 @@
     "href": "reference/check-definite-antecedents.html",
     "title": "check-definite-antecedents.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only heuristic that flags a div whose first sentence opens with a definite phrase and no link. The lab’s rule (Ezra, 2026-10-19) is that a definite noun phrase needs a clear antecedent, linked to where it is introduced unless that is in the same div or passage. This implements the check for psw#291.\nA grammar-aware check is out of reach, so the check covers the clearest case. The first sentence of a div’s body (or of a file with no div) starts with “The”, “These”, “Those”, “This” or “That”, and holds no Markdown link, no @ cross-reference and no include shortcode. Nothing earlier in that div can be the antecedent, so the reader has none unless a link supplies one. The finding sits on that line.\nThe check does not count:\nA definition that starts “The covariance function must be …” is reported although it may be fine, which is why the check never fails by default.",
+    "text": "Diff-scoped heuristic that flags a div whose first sentence opens with a definite phrase and no link, and a demonstrative (this, that, these, those) standing alone as a pronoun (gha#1460). The bare-demonstrative finding is detected by what follows the word (a verb, preposition, conjunction, sentence end, or a predicate adjective after “make”); &lt;!-- check-definite-antecedents: allow --&gt; on a line exempts it. A line gets at most one demonstrative finding. A whole-tree run (whole-tree: true) on an existing corpus reports many hits, so add allow comments or fix them before adopting it that way. Both findings fail by default. The lab’s rule (Ezra, 2026-10-19) is that a definite noun phrase needs a clear antecedent, linked to where it is introduced unless that is in the same div or passage. This implements the check for psw#291.\nA grammar-aware check is out of reach, so the check covers the clearest case. The first sentence of a div’s body (or of a file with no div) starts with “The”, “These”, “Those”, “This” or “That”, and holds no Markdown link, no @ cross-reference and no include shortcode. Nothing earlier in that div can be the antecedent, so the reader has none unless a link supplies one. The finding sits on that line.\nThe check does not count:\nA definition that starts “The covariance function must be …” is reported although it may be fine, which is why the check never fails by default.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -4999,7 +4999,7 @@
     "href": "reference/check-definite-antecedents.html#inputs",
     "title": "check-definite-antecedents.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\nfalse\nFail the workflow when a div opens with an unlinked definite phrase. The default gives warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow on a finding. Set false for warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
       "Reference",

@@ -1158,7 +1158,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a fenced div with a theorem-type class but no id with the matching prefix. Quarto and the lab’s <code>callouty-theorem</code> and <code>custom-callout</code> extensions build a callout, a number and a cross-reference target from the id, so a div written <code>::: {.remark}</code> renders as a plain block quote (Morrison-Lab/lds#1600).</p>
+<p>Diff-scoped, failing-by-default check that flags a fenced div with a theorem-type class but no id with the matching prefix. Quarto and the lab’s <code>callouty-theorem</code> and <code>custom-callout</code> extensions build a callout, a number and a cross-reference target from the id, so a div written <code>::: {.remark}</code> renders as a plain block quote (Morrison-Lab/lds#1600).</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -1208,7 +1208,7 @@ cookieconsent.run({
 <ul>
 <li><code>globs</code>: git pathspecs of files to check (default <code>*.qmd</code>).</li>
 <li><code>paths-ignore</code>: glob patterns to skip.</li>
-<li><code>fail</code>: block instead of warn (default false).</li>
+<li><code>fail</code>: warn instead of block when <code>false</code> (default true).</li>
 <li><code>whole-tree</code>: scan every matching file, not only a pull request’s additions.</li>
 </ul>
 </section>
