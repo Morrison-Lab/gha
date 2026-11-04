@@ -24,9 +24,8 @@ Morrison-Lab/gha#1351):
   inside inline or display math, code and comments are not read.
 
 The diff model, Markdown masking (code fences, spans, HTML comments, front
-matter), skip-not-fall-back and the warn-only default come from
-``check-write-idiom``, whose engine this script reuses; the div tracking and
-rules are its own. Silence a line with ``<!-- check-proof-statements: allow
+matter), skip-not-fall-back come from ``check-write-idiom``, whose engine this script
+reuses; the div tracking, rules and warn-only default are its own. Silence a line with ``<!-- check-proof-statements: allow
 -->`` on it or on the line before.
 
 Configuration (environment variables, set by the composite action):

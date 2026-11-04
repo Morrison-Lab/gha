@@ -6,7 +6,7 @@ description: >-
   name the action literally (psw#297). Does not flag `Write $...$ for ...`
   (notation) or `Write down`. Skips code fences and spans, HTML comments and
   front matter. Scoped to lines a diff adds (an added line whose exact text
-  was also deleted in the same diff counts as moved). Warn-only by default.
+  was also deleted in the same diff counts as moved). Fails by default.
 inputs:
   python-version:
     description: Python version to set up.
