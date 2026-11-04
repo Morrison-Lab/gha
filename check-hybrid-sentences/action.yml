@@ -1,8 +1,8 @@
 name: Check hybrid sentences
 description: >-
-  Diff-scoped, warn-only heuristic check that flags a sentence stating one
+  Diff-scoped, failing-by-default heuristic check that flags a sentence stating one
   condition in words and another as a relation between math expressions (a hybrid
-  sentence). `<!-- hybrid-ok: reason -->` exempts a paragraph. Warns by default.
+  sentence). `<!-- hybrid-ok: reason -->` exempts a paragraph. Fails by default.
 inputs:
   python-version:
     description: Python version to set up.
@@ -31,9 +31,8 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action on a finding. Defaults to 'false' (warning annotations
-      only), because the check is a heuristic.
-    default: 'false'
+      Fail the action on a finding. Defaults to 'true' (Ezra, 2026-11-04; gha#1456).
+    default: 'true'
 runs:
   using: composite
   steps:

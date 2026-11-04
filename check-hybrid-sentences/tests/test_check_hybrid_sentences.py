@@ -106,3 +106,12 @@ def test_finding_reports_paragraph_start_line():
 def test_membership_declaration_is_not_a_condition():
     text = "Let the sample be nonempty and $x \\in S$ for the example here."
     assert msgs(text) == []
+
+
+def test_fails_by_default():
+    assert hs._DEFAULT_FAIL is True
+    root = Path(__file__).resolve().parent.parent
+    action = (root / "action.yml").read_text()
+    workflow = (root.parent / ".github" / "workflows" / "check-hybrid-sentences.yml").read_text()
+    assert "default: 'true'" in action.split("  fail:")[1].split("runs:")[0]
+    assert "default: true" in workflow.split("      fail:")[1].split("jobs:")[0]
