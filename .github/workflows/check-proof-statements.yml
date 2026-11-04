@@ -33,8 +33,8 @@ on:
         default: ''
       fail:
         description: >-
-          Fail the workflow when a hidden proof or statement
-          reasoning is found (else non-blocking). Defaults to true (Ezra, 2026-11-04;
+          Fail the workflow when reasoning is found in a theorem
+          statement (else non-blocking). Defaults to true (Ezra, 2026-11-04;
           gha#1471). Set false for warning annotations only.
         type: boolean
         default: true

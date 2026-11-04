@@ -1,10 +1,9 @@
 name: Check proof statements
 description: >-
-  Diff-scoped check for two of the lab's proof rules (psw#426): a proof inside
-  a content-hidden wrapper for revealjs is flagged when a PR touches the file
-  (every proof is shown on slides), and reasoning words such as "so" and
-  "because" are flagged on an added line inside a theorem, lemma, corollary or
-  proposition statement (the proof carries the reasoning). Skips code fences
+  Diff-scoped check for a proof rule (psw#426): reasoning words such as "so"
+  and "because" are flagged on an added line inside a theorem, lemma, corollary
+  or proposition statement (the proof carries the reasoning). A proof hidden
+  from the slides is a deliberate choice and is never flagged. Skips code fences
   and spans, HTML comments, front matter and math. Fails by default.
 inputs:
   python-version:
@@ -39,8 +38,9 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action when a hidden proof or statement reasoning is found
-      (else non-blocking). Defaults to 'false' (warning annotations only).
+      Fail the action when reasoning is found in a theorem statement
+      (else non-blocking). Defaults to 'true' (Ezra, 2026-11-04; gha#1471).
+      Set 'false' for warning annotations only.
     default: 'true'
 runs:
   using: composite

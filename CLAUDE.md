@@ -474,10 +474,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
-- `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426): a proof inside a `content-hidden` wrapper for `revealjs`, in any file a PR touches, and reasoning words ("so", "because" and others) on an added line inside a `#thm-`, `#lem-`, `#cor-` or `#prp-` statement.
+- `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because" and others) on an added line inside a `#thm-`, `#lem-`, `#cor-` or `#prp-` statement (psw#426).
+  A proof hidden from the slides is deliberate and is never flagged (Ezra, 2026-11-04, gha#1491).
   It loads `check-write-idiom`'s engine like `check-avoided-words`.
-  It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set and reports its findings as returned,
-  because the hidden-proof rule is file-level, not line-level.
+  It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set.
   Its env vars use the `CPS_` prefix.
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
