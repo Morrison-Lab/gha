@@ -5,9 +5,11 @@ condor_wait record their calls, so the real remote logic is exercised.
 """
 
 import os
+import signal
 import stat
 from pathlib import Path
 import subprocess
+import time
 
 SCRIPT = Path(__file__).resolve().parent.parent / "condor-batch.sh"
 
@@ -32,17 +34,22 @@ else mkdir -p "$dest"; fi
 
 SUBMIT_STUB = """\
 echo "condor_submit $*" >> "$STUB_LOG"
+echo "1 job(s) submitted to cluster 77."
 cp .condor.sub "$STUB_LOG.sub"
 cp .condor-run.sh "$STUB_LOG.run"
 """
 
 WAIT_STUB = """\
 echo "condor_wait $*" >> "$STUB_LOG"
+[ -z "${STUB_WAIT_SLEEP:-}" ] || sleep "$STUB_WAIT_SLEEP"
 if [ -n "${STUB_RV:-}" ]; then
   echo "004 (1.0) Job terminated. (1) Normal termination (return value $STUB_RV)" >> condor.log
 fi
 exit "${STUB_WAIT_RC:-0}"
 """
+
+
+RM_STUB = 'echo "condor_rm $*" >> "$STUB_LOG"\n'
 
 
 def _stub(path: Path, body: str) -> None:
@@ -58,6 +65,7 @@ def _run(tmp_path: Path, steps: list[str], **extra_env: str):
     _stub(bin_dir / "rsync", RSYNC_STUB)
     _stub(bin_dir / "condor_submit", SUBMIT_STUB)
     _stub(bin_dir / "condor_wait", WAIT_STUB)
+    _stub(bin_dir / "condor_rm", RM_STUB)
     checkout = tmp_path / "checkout"
     checkout.mkdir()
     steps_file = tmp_path / "steps.txt"
@@ -200,6 +208,41 @@ def test_run_dir_is_removed_after_a_normal_end_even_with_a_failing_step(tmp_path
 def test_run_dir_is_kept_when_the_job_did_not_end_normally(tmp_path):
     _run(tmp_path, ["a", "b"], STUB_WAIT_RC="1")
     assert (tmp_path / "ci" / "42" / ".condor.sub").exists()
+
+
+def test_cancelled_run_removes_its_cluster_job_and_directory(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "calls.log"
+    for name, body in [("ssh", SSH_STUB), ("rsync", RSYNC_STUB), ("condor_submit", SUBMIT_STUB),
+                       ("condor_wait", WAIT_STUB), ("condor_rm", RM_STUB)]:
+        _stub(bin_dir / name, body)
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    steps_file = tmp_path / "steps.txt"
+    steps_file.write_text("a\nb\n")
+    env = {
+        **os.environ,
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "RUN_ID": "42",
+        "CLUSTER_CI_ROOT": str(tmp_path / "ci"),
+        "STUB_LOG": str(log),
+        "STUB_WAIT_SLEEP": "30",
+    }
+    proc = subprocess.Popen(
+        ["bash", str(SCRIPT), str(checkout), str(steps_file)],
+        env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+    )
+    cluster_id = tmp_path / "ci" / "42" / ".cluster-id"
+    for _ in range(100):
+        if cluster_id.exists() and cluster_id.read_text().strip():
+            break
+        time.sleep(0.1)
+    os.killpg(proc.pid, signal.SIGTERM)
+    proc.wait(timeout=20)
+    calls = log.read_text().splitlines()
+    assert "condor_rm 77" in calls
+    assert not (tmp_path / "ci" / "42").exists()
 
 
 ACTION = Path(__file__).resolve().parents[2] / ".github/actions/condor-batch/action.yml"
