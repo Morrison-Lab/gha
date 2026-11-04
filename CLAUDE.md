@@ -474,7 +474,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
-- `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because" and others) on an added line inside a `#thm-`, `#lem-`, `#cor-` or `#prp-` statement (psw#426).
+- `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement (psw#426).
   A proof hidden from the slides is deliberate and is never flagged (Ezra, 2026-11-04, gha#1491).
   It loads `check-write-idiom`'s engine like `check-avoided-words`.
   It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set.

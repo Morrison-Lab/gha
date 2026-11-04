@@ -3,25 +3,30 @@
 r"""
 Flag reasoning inside a theorem statement.
 
-A rule from Ezra (2026-10-29, Morrison-Lab/mds#534 review; Morrison-Lab/psw#426;
-Morrison-Lab/gha#1351). A proof hidden from the slides (``::: {.content-hidden
-when-format="revealjs"}``) is a deliberate choice and is never flagged
-(Ezra, 2026-11-04, gha#1491).
+A rule from Ezra (2026-10-29, Morrison-Lab/mds#534 review, Morrison-Lab/psw#426,
+Morrison-Lab/gha#1351).
+A proof hidden from the slides (``::: {.content-hidden when-format="revealjs"}``)
+is a deliberate choice and is never flagged (Ezra, 2026-11-04, gha#1491).
 
 - **reasoning in a theorem statement**: a line the pull request adds, inside a
   ``#thm-``, ``#lem-``, ``#cor-`` or ``#prp-`` div and outside any proof div it
   holds, that uses "so", "because", "hence", "therefore", "thus" or "since",
   or an aside such as "without loss of generality", "moreover" or
-  "furthermore" (Halmos, "How to Write Mathematics", 1970, section 10: these
-  "do not belong in the statement of a theorem"; Morrison-Lab/psw#422).
+  "furthermore".
+  Halmos ("How to Write Mathematics", 1970, section 10) says these
+  "do not belong in the statement of a theorem" (Morrison-Lab/psw#422).
   A statement gives the result and its hypotheses; the proof gives the
-  reasoning. Fails by default (gha#1471: a whole-tree run found every sampled hit real): "so that" and "so-called" pass, and words
-  inside inline or display math, code and comments are not read.
+  reasoning.
+  "so that" and "so-called" pass, and words inside inline or display math,
+  code and comments are not read.
 
+The check fails by default (gha#1471: a whole-tree run found every sampled hit real).
 The diff model, Markdown masking (code fences, spans, HTML comments, front
-matter), skip-not-fall-back come from ``check-write-idiom``, whose engine this script
-reuses; the div tracking, rules and failing default are its own. Silence a line with ``<!-- check-proof-statements: allow
--->`` on it or on the line before.
+matter), and skip-not-fall-back come from ``check-write-idiom``, whose engine
+this script reuses.
+The div tracking, rules and failing default are its own.
+Silence a line with ``<!-- check-proof-statements: allow -->``
+on it or on the line before.
 
 Configuration (environment variables, set by the composite action):
   CPS_BASE_REF, CPS_GLOBS, CPS_PATHS_IGNORE, CPS_FAIL, CPS_WHOLE_TREE
