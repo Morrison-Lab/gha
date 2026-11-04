@@ -12,6 +12,8 @@ Env (all optional except where noted):
   PRS_MAX_FILES     file cap (default 10)
   PRS_MAX_LINES     added plus deleted line cap (default 300)
   PRS_PATHS_IGNORE  comma/newline-separated globs not counted
+The lines (not the files) of a newly added `_fig-*` subfile are not counted
+(ai-config#4928).
   PRS_EXEMPT        'true' when the PR carries the exemption label
   PRS_FAIL          'false' to warn instead of block (default true)
 """
@@ -30,6 +32,10 @@ BUILTIN_IGNORE = [
     "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.svg", "**/*.pdf",
     "**/*.csv", "**/*.rds", "**/*.RData", "**/*.min.js", "docs/**",
 ]
+
+# New figure subfiles are plotting code in several languages. Their lines do not
+# count toward the line cap, but each still counts as a file (ai-config#4928).
+NEW_FIGURE_LINES_FREE = "**/_fig-*"
 
 
 def glob_to_regex(pattern):
@@ -80,9 +86,12 @@ def parse_numstat(text):
     return rows
 
 
-def measure(rows, regexes):
+def measure(rows, regexes, added=frozenset()):
+    """File and line counts; the lines of a newly added figure subfile are free."""
+    free = glob_to_regex(NEW_FIGURE_LINES_FREE)
     kept = [(p, n) for p, n in rows if not is_ignored(p, regexes)]
-    return len(kept), sum(n for _, n in kept), kept
+    lines = sum(0 if p in added and free.match(p) else n for p, n in kept)
+    return len(kept), lines, kept
 
 
 def verdict(files, lines, max_files, max_lines):
@@ -102,6 +111,13 @@ def read_int(name, default):
         print(f"::error::{name} must be a positive integer, got {raw!r}")
         sys.exit(2)
     return int(raw)
+
+
+def added_paths(base):
+    """Paths the diff adds as new files (a rename is not an addition)."""
+    out = subprocess.run(["git", "diff", "--name-only", "--diff-filter=A", "-M", base, "HEAD"],
+                         capture_output=True, text=True)
+    return frozenset(out.stdout.splitlines()) if out.returncode == 0 else frozenset()
 
 
 def diff_rows(base):
@@ -132,7 +148,7 @@ def main():
         return 0
     patterns = BUILTIN_IGNORE + parse_patterns(os.environ.get("PRS_PATHS_IGNORE", ""))
     regexes = [glob_to_regex(p) for p in patterns]
-    files, lines, _ = measure(rows, regexes)
+    files, lines, _ = measure(rows, regexes, added_paths(base))
     print(f"check-pr-size: {files} file(s), {lines} changed line(s) "
           f"(caps {max_files} files, {max_lines} lines).")
     problems = verdict(files, lines, max_files, max_lines)

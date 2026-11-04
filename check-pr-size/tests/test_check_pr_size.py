@@ -97,6 +97,27 @@ def test_paths_ignore_exempts_a_directory(tmp_path):
     assert run(repo, PRS_PATHS_IGNORE="gen/**")[0] == 0
 
 
+def test_new_figure_subfile_lines_are_free_but_files_count(tmp_path):
+    repo = make_repo(tmp_path, {"c/_fig-a-3d.qmd": 250, "c/_fig-b-3d.qmd": 250, "c/x.qmd": 10})
+    code, out = run(repo)
+    assert code == 0, out
+    assert "3 file(s), 10 changed line(s)" in out
+
+
+def test_new_figure_subfiles_still_count_toward_the_file_cap(tmp_path):
+    repo = make_repo(tmp_path, {f"c/_fig-{i}.qmd": 5 for i in range(11)})
+    code, _ = run(repo)
+    assert code == 1
+
+
+def test_edited_figure_subfile_lines_still_count(tmp_path):
+    (tmp_path / "c").mkdir()
+    (tmp_path / "c" / "_fig-a.qmd").write_text("old\n")
+    repo = make_repo(tmp_path, {"c/_fig-a.qmd": 400})
+    code, out = run(repo)
+    assert code == 1, out
+
+
 def test_exempt_label_lifts_the_cap(tmp_path):
     repo = make_repo(tmp_path, {f"f{i}.qmd": 2 for i in range(40)})
     code, out = run(repo, PRS_EXEMPT="true")
