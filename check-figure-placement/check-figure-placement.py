@@ -30,7 +30,7 @@ helpers come from ``check-one-div-per-subfile``:
   line. No base ref, or an uncomputable diff, skips with a warning.
   ``FPL_WHOLE_TREE=true`` measures a corpus.
 - **Per page, not per site.** A citation on another page does not count.
-- **Warn-only by default** (``FPL_FAIL`` defaults to false).
+- **Fails by default** (``FPL_FAIL`` defaults to true).
 
 Configuration (environment variables, set by the composite action):
   FPL_BASE_REF, FPL_GLOBS, FPL_PATHS_IGNORE, FPL_FAIL, FPL_WHOLE_TREE.
@@ -63,7 +63,7 @@ def _load_sibling(name: str):
 ods = _load_sibling("check-one-div-per-subfile")
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 
 FIG_ID_RE = re.compile(r"\{[^}]*#(fig-[\w:.-]+)")
 CHUNK_LABEL_RE = re.compile(r"^\s*#\|\s*label:\s*(fig-[\w:.-]+)")

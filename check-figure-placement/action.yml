@@ -2,7 +2,7 @@ name: Check figure placement
 description: >-
   Diff-scoped check that flags a figure the diff adds to when no sentence on
   its page cites it with `@fig-id`, or when it sits directly after an example,
-  exercise or solution div instead of inside it (Ezra, 2026-11-02). Warn-only
+  exercise or solution div instead of inside it (Ezra, 2026-11-02). Fails
   by default; `<!-- figure-placement: allow -->` on a figure's line or in its
   div exempts it (a figure shared by several examples sits outside every div).
 inputs:
@@ -37,8 +37,8 @@ inputs:
   fail:
     description: >-
       Fail the action when a figure is uncited or unnested (else warning
-      annotations only). Defaults to 'false'.
-    default: 'false'
+      annotations only). Defaults to 'true' (Ezra, 2026-11-04; gha#1474).
+    default: 'true'
 runs:
   using: composite
   steps:

@@ -2432,10 +2432,11 @@ jobs:
             echo "::error::expected check-figure-placement to fail on a staged figure, got outcome='$OUTCOME'"
             exit 1
           fi
-      - name: Check the staged figure with the default, which only warns
+      - name: Check the staged figure with fail off, which only warns
         uses: ./check-figure-placement
         with:
           whole-tree: 'true'
+          fail: 'false'
           globs: '_ci-fig/*.qmd'
       - name: Check again with no base, expecting a skip
         uses: ./check-figure-placement
