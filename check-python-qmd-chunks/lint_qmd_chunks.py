@@ -1,3 +1,4 @@
+# check-one-function-per-file: allow-multiple
 """Lint the Python chunks of Quarto files with the lab's Ruff configuration.
 
 The chunks of one `.qmd` file share a Python session, so they are joined
