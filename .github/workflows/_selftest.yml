@@ -4133,23 +4133,23 @@ jobs:
           mkdir -p _ci-hybrid-sentences
           printf '%s\n' 'The risk is zero if and only if $f = g$.' > _ci-hybrid-sentences/page.qmd
           git add -f _ci-hybrid-sentences/page.qmd
-      - name: Check the staged sentence, expecting a warning only
+      - name: Check the staged sentence with fail off, expecting a warning only
         shell: bash
         env:
           HS_WHOLE_TREE: 'true'
+          HS_FAIL: 'false'
         run: |
           set -euo pipefail
           out=$(python3 check-hybrid-sentences/check-hybrid-sentences.py)
           echo "$out"
           grep -q '^::warning file=_ci-hybrid-sentences/page.qmd' <<<"$out" \
             || { echo "::error::expected a warning for the staged hybrid sentence"; exit 1; }
-      - name: Check again with fail on, expecting a failure
+      - name: Check again with the default fail, expecting a failure
         id: hybrid-sentences-expected-failure
         continue-on-error: true
         uses: ./check-hybrid-sentences
         with:
           whole-tree: 'true'
-          fail: 'true'
       - name: Assert the failing call actually failed
         shell: bash
         env:
