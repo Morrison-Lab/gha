@@ -1,7 +1,7 @@
 # Copy to .github/workflows/check-definite-antecedents.yml in your repo.
-# Diff-scoped, warn-only heuristic: flags a div (or a file with no div) whose first
-# sentence starts with an unlinked The, These, Those, This or That, so nothing
-# earlier in the div can be the antecedent. Warn-only by default.
+# Diff-scoped heuristic: flags a div (or a file with no div) whose first
+# sentence starts with an unlinked The, These, Those, This or That, and a bare
+# demonstrative pronoun such as "make this precise". Fails by default.
 # Only contents:read is needed, and the caller job states it: zizmor's
 # excessive-permissions audit fails a caller job with no permissions block.
 name: Check definite antecedents
@@ -21,5 +21,5 @@ jobs:
     # with:
     #   globs: '*.qmd'                        # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
-    #   fail: true                             # block instead of warn (defaults to false)
+    #   fail: false                            # warn instead of block (defaults to true)
     #   whole-tree: true                       # scan every file, not just a PR's additions

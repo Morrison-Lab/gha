@@ -2,8 +2,14 @@
 title: "check-definite-antecedents.yml"
 ---
 
-Diff-scoped, warn-only heuristic that flags a div
-whose first sentence opens with a definite phrase and no link.
+Diff-scoped heuristic that flags a div
+whose first sentence opens with a definite phrase and no link,
+and a demonstrative (`this`, `that`, `these`, `those`) standing alone as a pronoun,
+such as "make this precise" ([gha#1460](https://github.com/Morrison-Lab/gha/issues/1460)).
+The bare-demonstrative finding is detected by what follows the word
+(a verb, preposition, conjunction, sentence end, or a predicate adjective after "make");
+`<!-- check-definite-antecedents: allow -->` on a line exempts it.
+Both findings fail by default.
 The lab's rule (Ezra, 2026-10-19) is that a definite noun phrase
 needs a clear antecedent,
 linked to where it is introduced unless that is in the same div or passage.
@@ -45,7 +51,7 @@ Every run prints how many lines, files and divs it examined.
 | -------------- | ------- | ---------- | ----------- |
 | `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`         | boolean | `false`    | Fail the workflow when a div opens with an unlinked definite phrase. The default gives warning annotations only. |
+| `fail`         | boolean | `true`     | Fail the workflow on a finding. Set `false` for warning annotations only. |
 | `whole-tree`   | boolean | `false`    | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string | `'3.x'`   | Python version to set up. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |

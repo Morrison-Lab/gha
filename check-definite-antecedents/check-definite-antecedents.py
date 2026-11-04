@@ -1,9 +1,26 @@
 #!/usr/bin/env python3
 # check-one-function-per-file: allow-multiple
 r"""
-Flag a div whose first sentence opens with an unlinked definite phrase.
+Flag unlinked definite openers of divs, and bare demonstrative pronouns.
 
-The lab's rule (Ezra, 2026-10-19; Morrison-Lab/psw#291): a definite noun
+Two findings share this check, both enforcing psw's pages on definite
+references (psw#291; grammar/demonstrative-pronouns):
+
+- ``opener``: a div whose first sentence opens with an unlinked definite phrase.
+- ``demonstrative``: ``this``, ``these``, ``those`` or ``that`` standing alone
+  as a pronoun ("make this precise", "This is because", "avoids this."),
+  which leaves the reader to search backward for the referent. Follow it with
+  the noun it points to ("this bias"). Detected by what follows the word: a
+  verb, a preposition or conjunction, the end of the clause, or a predicate
+  adjective after "make". ``that`` is flagged only where it cannot be a
+  relative pronoun or conjunction: opening a sentence before a verb, or
+  ending one. Exempt: "That is, ...", "this:" and "these days". A deliberate
+  use takes ``<!-- check-definite-antecedents: allow -->`` on the line.
+
+Both fail by default (Ezra, 2026-11-04; gha#1458, gha#1460); set ``fail`` to
+false to only warn.
+
+The opener rule (Ezra, 2026-10-19; Morrison-Lab/psw#291): a definite noun
 phrase needs a clear antecedent, and a phrase whose antecedent is not in the
 same div or passage links to where the antecedent is introduced.
 
@@ -12,8 +29,8 @@ case: the first sentence of a div's body (or of a file with no div) begins with
 "The", "These", "Those", "This" or "That" and holds no link and no
 cross-reference. Nothing earlier in that div can be the antecedent, so the
 reader has none unless a link supplies one. The finding sits on that line.
-It is warn-only: a definition that starts "The covariance function must be..."
-is reported although it may be fine, which is why it never fails by default.
+It is a heuristic: a definition that starts "The covariance function must be..."
+is reported although it may be fine, so the allow comment exists.
 
 Not counted: code fences, HTML comments, YAML headers, headings, a first
 sentence that defines a bolded term ("The **mean** of ..."), and a first
@@ -25,7 +42,7 @@ warning; ``ODA_WHOLE_TREE=true`` scans every tracked file instead.
 
 Configuration (environment variables, set by the composite action):
   ODA_BASE_REF, ODA_GLOBS (default '*.qmd'), ODA_PATHS_IGNORE, ODA_FAIL
-  (default false), ODA_WHOLE_TREE.
+  (default true), ODA_WHOLE_TREE.
 """
 
 import os
@@ -42,7 +59,8 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
+ALLOW_RE = re.compile(r"<!--\s*check-definite-antecedents:\s*allow\s*-->")
 
 ADVICE = (
     "name the referent in this div, or link the phrase to where it is "
@@ -59,9 +77,87 @@ LINKED_RE = re.compile(r"\]\(|(?<!\w)@[A-Za-z]+-|\{\{<")
 class Hit(NamedTuple):
     line: int
     phrase: str
+    kind: str = "opener"
 
 
 CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
+
+DEMO_RE = re.compile(r"(?<![\w'’-])(this|these|those|that)(?![\w'’-])", re.I)
+VERBS = frozenset(
+    "is are was were be been being means mean meant shows show showed shown "
+    "implies imply implied gives give gave makes make made has have had can "
+    "could will would should must may might does do did holds hold follows "
+    "follow followed happens happen occurs occur works work leads lead lets "
+    "allows allow suggests suggest explains explain requires require ensures "
+    "ensure tells tell says say helps help remains remain depends depend "
+    "corresponds correspond reflects reflect indicates indicate illustrates "
+    "illustrate proves prove yields yield produces produce causes cause "
+    "turns turn appears appear seems seem becomes become also only even "
+    "never always just here there not still thus then again too instead "
+    "simply already often usually typically".split()
+)
+FUNCTION = frozenset(
+    "and or but to in for with by on at as if when because so since while "
+    "than from into about using without until before after whenever where "
+    "which who whose through during against".split()
+)
+PREDICATE_ADJ = frozenset(
+    "precise explicit rigorous concrete formal clear clearer exact specific "
+    "precisely explicitly rigorously".split()
+)
+MAKE_RE = re.compile(r"(?i)\b(?:make|makes|made|making|keep|keeps|render|renders)\s*$")
+MATH_RE = re.compile(r"\$\$.*?\$\$|\$[^$]*\$")
+TAG_RE = re.compile(r"\{\{<.*?>\}\}|\{[#.=][^}]*\}|</?[A-Za-z][^>]*>")
+LINK_RE = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+XREF_RE = re.compile(r"@[A-Za-z][\w-]*")
+
+
+def mask_prose(raw: str) -> str:
+    """One prose line with code, math, link targets, tags and emphasis removed."""
+    text = CODE_SPAN_RE.sub(" CODE ", raw)
+    text = MATH_RE.sub(" MATH ", text)
+    text = TAG_RE.sub(" ", text)
+    text = LINK_RE.sub(r"\1", text)
+    text = XREF_RE.sub(" REF ", text)
+    return re.sub(r"[*_]+", "", text)
+
+
+def is_bare(typed: str, token: str, before: str, after_token: str) -> bool:
+    """Whether a demonstrative with this next token stands alone.
+
+    A line that ends with no punctuation after the word is never bare: in
+    semantic line breaks the clause continues on the next line ("the axis
+    that" / "is longest"). ``that`` is bare only before ``.``, ``!`` or ``?``,
+    or when it opens a sentence (capitalized) before a verb.
+    """
+    word = typed.lower()
+    if MAKE_RE.search(before) and token in PREDICATE_ADJ:
+        return True
+    if token == "":
+        return False
+    if word == "that":
+        if token in ".!?":
+            return True
+        appositive = token == "is" and after_token.startswith(",")
+        return typed[0].isupper() and token in VERBS and not appositive
+    if word == "these" and token == "days":
+        return False
+    if token in ".,;!?)":
+        return True
+    return token in VERBS or (token in FUNCTION and word != "those")
+
+
+def bare_demonstratives(masked: str) -> List[str]:
+    """Phrases where a demonstrative word stands alone as a pronoun."""
+    found: List[str] = []
+    for m in DEMO_RE.finditer(masked):
+        rest = masked[m.end():]
+        nxt = re.match(r"\s*([A-Za-z']+|[^\sA-Za-z]|$)", rest)
+        token = (nxt.group(1) if nxt else "").lower()
+        after_token = rest[nxt.end():] if nxt else ""
+        if is_bare(m.group(1), token, masked[:m.start()], after_token):
+            found.append(masked[max(0, m.start() - 20):m.end() + len(token) + 2].strip())
+    return found
 
 
 def drop_closed_comments(text: str) -> str:
@@ -109,6 +205,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Hit], int]:
     in_comment = False
     in_yaml = bool(lines) and lines[0].strip() == "---"
     waiting = not in_yaml  # looking for the first text line of a div or file
+    in_math = False
     if not in_yaml:
         examined += 1
     for idx, raw in enumerate(lines):
@@ -137,6 +234,11 @@ def scan_file(lines: List[str]) -> Tuple[List[Hit], int]:
             else:
                 waiting = False
             continue
+        if raw.count("$$") % 2 == 1:
+            in_math = not in_math
+        elif not in_math and not ALLOW_RE.search(lines[idx]):
+            for phrase in bare_demonstratives(mask_prose(raw)):
+                hits.append(Hit(idx + 1, phrase, "demonstrative"))
         text = raw.strip()
         if not waiting or not text or text.startswith("#"):
             continue
@@ -144,12 +246,24 @@ def scan_file(lines: List[str]) -> Tuple[List[Hit], int]:
         text = LIST_MARKER_RE.sub("", text)
         sentence = first_sentence(text)
         opener = DEFINITE_RE.match(sentence)
-        if opener and not LINKED_RE.search(sentence):
+        if (opener and not LINKED_RE.search(sentence)
+                and not ALLOW_RE.search(lines[idx])):
             hits.append(Hit(idx + 1, f"{opener.group(1)} {opener.group(2)}"))
     return hits, examined
 
 
-def format_message(phrase: str) -> str:
+DEMO_ADVICE = (
+    "follow the demonstrative with the noun it points to, for example "
+    "'this bias' instead of 'this'; add <!-- check-definite-antecedents: "
+    "allow --> only if the referent is unmistakable"
+)
+
+
+def format_message(phrase: str, kind: str = "opener") -> str:
+    if kind == "demonstrative":
+        return (f"A demonstrative stands alone as a pronoun in '{phrase}', so "
+                f"the reader must search backward for its referent. "
+                f"Fix: {DEMO_ADVICE}")
     return (f"This div opens with the definite phrase '{phrase} ...' and no "
             f"link, so no earlier text in the div can be its antecedent. "
             f"Fix: {ADVICE}")
@@ -254,7 +368,7 @@ def _env_flag(name: str, default: bool) -> bool:
 
 
 class Report(NamedTuple):
-    findings: List[Tuple[str, int, str]]  # (path, line, phrase)
+    findings: List[Tuple[str, int, str, str]]  # (path, line, phrase, kind)
     files: int
     lines: int
     divs: int
@@ -300,7 +414,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
             wanted[rel] = {n for n, text in numbered.items()
                            if text.strip() and text not in deleted}
 
-    findings: List[Tuple[str, int, str]] = []
+    findings: List[Tuple[str, int, str, str]] = []
     files = lines = divs = 0
     for rel in sorted(wanted):
         content = _read_lines(rel)
@@ -313,7 +427,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         divs += seen
         for hit in hits:
             if keep is None or hit.line in keep:
-                findings.append((rel, hit.line, hit.phrase))
+                findings.append((rel, hit.line, hit.phrase, hit.kind))
     return Report(findings, files, lines, divs, False)
 
 
@@ -343,12 +457,12 @@ def main() -> int:
         f"{report.divs} div(s) or files (scope: {scope})."
     )
     severity = "error" if fail else "warning"
-    for rel, line, phrase in report.findings:
-        print(f"::{severity} file={rel},line={line}::{format_message(phrase)}")
+    for rel, line, phrase, kind in report.findings:
+        print(f"::{severity} file={rel},line={line}::{format_message(phrase, kind)}")
     if not report.findings:
-        print("No div opens with an unlinked definite phrase.")
+        print("No unlinked definite opener or bare demonstrative.")
         return 0
-    print(f"\n{len(report.findings)} div(s) open with an unlinked definite phrase.")
+    print(f"\n{len(report.findings)} unlinked definite opener(s) or bare demonstrative(s).")
     return 1 if fail else 0
 
 
