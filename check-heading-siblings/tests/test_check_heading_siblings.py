@@ -137,8 +137,7 @@ def test_end_to_end_in_a_git_repo(tmp_path, monkeypatch):
     assert chs.run_check("", ["*.qmd"], [], False, 7).skipped
 
 
-def test_fails_by_default(monkeypatch):
-    monkeypatch.delenv("CHS_FAIL", raising=False)
+def test_fails_by_default():
     root = Path(__file__).resolve().parent.parent
     action = (root / "action.yml").read_text()
     workflow = (root.parent / ".github" / "workflows" / "check-heading-siblings.yml").read_text()

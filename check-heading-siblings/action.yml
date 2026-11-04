@@ -2,8 +2,7 @@ name: Check heading siblings
 description: >-
   Diff-scoped check that flags a heading a pull request adds to a group of more
   than 7 sibling headings (same level, same parent heading, with includes
-  expanded), so a reader scanning the headings can hold them in mind. failing by default
-  by default.
+  expanded), so a reader scanning the headings can hold them in mind. Fails by default.
 inputs:
   python-version:
     description: Python version to set up.
