@@ -1196,7 +1196,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a heading a pull request adds to a group of too many sibling headings. Sibling headings are headings of the same level under the same parent heading; the top-level headings of a page are siblings under the page. The lab’s guideline (Ezra, 2026-11-02) is to aim for at most about five and to split or group past seven, so a reader scanning the headings can hold them all in mind. Miller’s <a href="https://en.wikipedia.org/wiki/The_Magical_Number_Seven,_Plus_or_Minus_Two">“magical number seven”</a> and Cowan’s later <a href="https://www.cambridge.org/core/journals/behavioral-and-brain-sciences/article/magical-number-4-in-shortterm-memory-a-reconsideration-of-mental-storage-capacity/44023F1147D4A1D44BDC0AD226838496">estimate of about four chunks</a> motivate the guideline; both concern memory, and a reader can rescan a table of contents, so the check fires at the seven where the guideline says to act, not at five.</p>
+<p>Diff-scoped, failing-by-default check that flags a heading a pull request adds to a group of too many sibling headings. Sibling headings are headings of the same level under the same parent heading; the top-level headings of a page are siblings under the page. The lab’s guideline (Ezra, 2026-11-02) is to aim for at most about five and to split or group past seven, so a reader scanning the headings can hold them all in mind. Miller’s <a href="https://en.wikipedia.org/wiki/The_Magical_Number_Seven,_Plus_or_Minus_Two">“magical number seven”</a> and Cowan’s later <a href="https://www.cambridge.org/core/journals/behavioral-and-brain-sciences/article/magical-number-4-in-shortterm-memory-a-reconsideration-of-mental-storage-capacity/44023F1147D4A1D44BDC0AD226838496">estimate of about four chunks</a> motivate the guideline; both concern memory, and a reader can rescan a table of contents, so the check fires at the seven where the guideline says to act, not at five.</p>
 <section id="what-it-measures" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-measures">What it measures</h2>
 <p>The check counts headings on the <em>expanded</em> page, the page’s own text with each <code>{{&lt; include &gt;}}</code> shortcode replaced by the file it names, since a chapter’s headings are often split across subfiles. Headings inside fenced code blocks and HTML comments do not count. A heading’s parent is the nearest earlier heading of a lower level.</p>
@@ -1249,8 +1249,8 @@ cookieconsent.run({
 <tr class="even">
 <td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Fail the workflow when a touched group is over the limit. The default gives warning annotations only.</td>
+<td><code>true</code></td>
+<td>Fail the workflow when a touched group is over the limit. Set <code>false</code> for warning annotations only.</td>
 </tr>
 <tr class="odd">
 <td><code>whole-tree</code></td>
