@@ -4392,6 +4392,41 @@ jobs:
             echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
             exit 1
           fi
+      # A term defined only in a prerequisite directory must reach the script
+      # through terms-dirs: the page alone has no definition of it (gha#1462).
+      - name: Stage a prerequisite site that defines a term the page uses
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/prereq-site" _ci-term-links-prereq
+          printf '%s\n' '::: {#def-okapi}' '' '#### Okapi' '' 'An **okapi** has stripes.' '' ':::' > "$RUNNER_TEMP/prereq-site/def.qmd"
+          printf '%s\n' '::: {#exm-b}' '' 'The okapi ran.' '' ':::' > _ci-term-links-prereq/page.qmd
+          git add -f _ci-term-links-prereq
+      - name: Check the page without terms-dirs, expecting a pass
+        uses: ./check-term-links
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-term-links-prereq/*.qmd'
+      - name: Check the page with terms-dirs, expecting a failure
+        id: term-links-prereq-expected-failure
+        continue-on-error: true
+        uses: ./check-term-links
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-term-links-prereq/*.qmd'
+          terms-dirs: ${{ runner.temp }}/prereq-site
+      - name: Assert terms-dirs made the term known
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.term-links-prereq-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-term-links to fail once terms-dirs defines the term, got outcome='$OUTCOME'"
+            exit 1
+          fi
       - name: Check again with no base, expecting a skip
         uses: ./check-term-links
         with:

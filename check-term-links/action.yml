@@ -41,6 +41,13 @@ inputs:
       Path to a file of extra technical terms, one per line (`#` starts a
       comment), for terms defined on a site this repository does not link yet.
     default: ''
+  terms-dirs:
+    description: >-
+      Space-separated directories holding prerequisite sites (for example
+      checkouts of mds, pds and sds). Their `.qmd` definitions make their
+      terms known here, so a term they define must be linked at its first use
+      in each div. The directories are read, never scanned for findings.
+    default: ''
   allow-file:
     description: >-
       Path to a file of terms to leave alone, one per line (`#` starts a
@@ -67,6 +74,7 @@ runs:
         TERM_LINKS_GLOBS: ${{ inputs.globs }}
         TERM_LINKS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         TERM_LINKS_TERMS_FILE: ${{ inputs.terms-file }}
+        TERM_LINKS_TERMS_DIRS: ${{ inputs.terms-dirs }}
         TERM_LINKS_ALLOW_FILE: ${{ inputs.allow-file }}
         TERM_LINKS_FAIL: ${{ inputs.fail }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-term-links.py"

@@ -28,6 +28,12 @@ The check learns them from the files it scans, so it needs no list:
   "risk" a term.
 - **A terms file.**
   `terms-file` adds terms by hand, one per line.
+- **Prerequisite sites.**
+  `terms-from` clones other repositories, such as mds, pds, and sds,
+  and reads their definitions, so a term defined there must be linked
+  at its first use in each div here too
+  ([gha#1462](https://github.com/Morrison-Lab/gha/issues/1462)).
+  Those repositories are read for terms and never checked.
 
 A term is one to five words of letters, at least three characters, and not
 a label such as "note" or "example".
@@ -89,6 +95,7 @@ jobs:
 | `globs` | `*.qmd` | Space-separated git pathspecs of files to learn from and check |
 | `paths-ignore` | `''` | Comma/newline-separated globs to skip (`*`, `?`, `**`) |
 | `terms-file` | `''` | File of extra terms, one per line |
+| `terms-from` | `''` | Space-separated `owner/repo` prerequisite sites (such as mds, pds, sds), cloned shallowly; their definitions make their terms known. A private one needs the optional `WORKFLOW_TOKEN` secret |
 | `allow-file` | `''` | File of terms to leave alone, one per line |
 | `whole-tree` | `false` | Report every finding, not only those on added lines |
 | `fail` | `true` | Fail the job on a finding (`false`: warning annotations only) |

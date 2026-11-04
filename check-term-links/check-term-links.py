@@ -14,6 +14,11 @@ Which words are terms: the check learns them from the corpus itself.
    defined on another site (`[risk](https://example.com/ch.html#def-risk)`) is known once
    anyone links it.
 3. `--terms-file` adds terms by hand, one per line.
+4. `--terms-dirs` names directories (space-separated) of prerequisite sites, such as
+   checkouts of mds, pds and sds. Their `.qmd` files are read for the same def-div
+   titles and bold terms, so a term defined there is known here, and its first use
+   in each div must be linked (gha#1462). Those directories are never scanned for
+   findings.
 
 Findings:
 - `unlinked-first-use`: the first occurrence of a known term in a passage is plain
@@ -516,6 +521,30 @@ def read_term_list(path: str) -> Set[str]:
     return keys
 
 
+def harvest_dirs(dirs: Sequence[str], allowed_out: Set[str]) -> Dict[str, Set[str]]:
+    """Terms defined by the `.qmd` files under each directory of a prerequisite site.
+
+    The def ids are dropped: they name divs in another repository, so they must
+    not exempt a passage here (the own-def exemption compares ids).
+    """
+    terms: Dict[str, Set[str]] = {}
+    for d in dirs:
+        base = Path(d)
+        if not base.is_dir():
+            print(f"::warning::check-term-links: terms directory '{d}' not found.", file=sys.stderr)
+            continue
+        for f in sorted(base.rglob("*.qmd")):
+            if ".git" in f.parts or ".quarto" in f.parts:
+                continue
+            text = f.read_text(encoding="utf-8", errors="replace")
+            if FILE_OPT_OUT_RE.search(text):
+                continue
+            masked, _ = preprocess(text.splitlines())
+            for k in harvest_terms(masked, allowed_out):
+                terms.setdefault(k, set())
+    return terms
+
+
 def tracked_files(root: Path, globs: Sequence[str]) -> List[Path]:
     res = subprocess.run(
         ["git", "ls-files", "-z", "--", *globs], cwd=root,
@@ -539,6 +568,7 @@ def main() -> int:
     ap.add_argument("--globs", default=env("TERM_LINKS_GLOBS", DEFAULT_GLOBS))
     ap.add_argument("--paths-ignore", default=env("TERM_LINKS_PATHS_IGNORE", DEFAULT_PATHS_IGNORE))
     ap.add_argument("--terms-file", default=env("TERM_LINKS_TERMS_FILE", ""))
+    ap.add_argument("--terms-dirs", default=env("TERM_LINKS_TERMS_DIRS", ""))
     ap.add_argument("--allow-file", default=env("TERM_LINKS_ALLOW_FILE", ""))
     ap.add_argument("--base-ref", default=env("TERM_LINKS_BASE_REF", ""))
     ap.add_argument("--diff", default=env("TERM_LINKS_DIFF_FILE", ""))
@@ -590,6 +620,8 @@ def main() -> int:
     for k in read_term_list(args.terms_file):
         if usable_term(k, allowed_out):
             terms.setdefault(k, set())
+    for k in harvest_dirs(args.terms_dirs.split(), allowed_out):
+        terms.setdefault(k, set())
     rx = term_regex(list(terms)) if terms else None
 
     findings: List[Finding] = []
