@@ -1196,7 +1196,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags words and phrases a style source advises against, in <code>.qmd</code> and <code>.md</code> prose. This is <a href="https://github.com/Morrison-Lab/psw/pull/418">psw#418</a>.</p>
+<p>Diff-scoped check that flags words and phrases a style source advises against, in <code>.qmd</code> and <code>.md</code> prose. This is <a href="https://github.com/Morrison-Lab/psw/pull/418">psw#418</a>.</p>
 <section id="rules" class="level2">
 <h2 class="anchored" data-anchor-id="rules">Rules</h2>
 <ul>
@@ -1205,8 +1205,10 @@ cookieconsent.run({
 <li><strong>Time-relative words.</strong> <code>currently</code>, <code>recently</code>, <code>nowadays</code>, <code>at present</code>, <code>at the moment</code>, <code>these days</code>. Source: Google, “Timeless documentation”. The guide lists <code>now</code> and <code>new</code> too, but this check does not flag them, because “now we compute” and the term “new observation” are correct uses a regex cannot tell apart. <code>recently</code> is psw’s own extension.</li>
 <li><strong>Generic placeholders.</strong> A domain, codomain, range or sample space named by a bare capital letter (“domain A”) or by “some” (“some domain”). Name the specific set, such as “the range of X”. Source: psw’s “be as specific as feasible” (psw#427). A regex cannot know whether a specific object exists, so a finding only asks the author to check.</li>
 <li><strong>Back-references to a setup.</strong> “The setup of <strong>?@exr-x</strong>” or “the same setup as”. Name the data, variables or model the part reuses. Source: psw’s “Talk about the ideas, not the notes” (psw#442).</li>
-<li><strong>Trailing parenthetical links.</strong> A crossref after a word, such as <code>differentiable at $c$ (@def-differentiable)</code>, or a <code>([why](url))</code> link after a claim. Link the term itself, or make the whole claim the link text. <code>(see @thm-x)</code> passes, since no word can carry that link. Source: Ezra’s review of mds, 2026-11-02 (gha#1402). This is the one rule that fails the run whatever <code>fail</code> says; the other rules warn unless <code>fail</code> is true.</li>
+<li><strong>Trailing parenthetical links.</strong> A crossref after a word, such as <code>differentiable at $c$ (@def-differentiable)</code>, or a <code>([why](url))</code> link after a claim. Link the term itself, or make the whole claim the link text. <code>(see @thm-x)</code> passes, since no word can carry that link. Source: Ezra’s review of mds, 2026-11-02 (gha#1402). This rule fails the run whatever <code>fail</code> says.</li>
+<li><strong>The word “thing”.</strong> <code>thing</code> or <code>things</code> as a whole word; <code>something</code>, <code>anything</code>, and <code>nothing</code> pass. Name the object, quantity, step, or idea instead. Source: psw’s “Say which thing” (gha#1454). This rule also fails the run whatever <code>fail</code> says, and <code>&lt;!-- check-avoided-words: allow --&gt;</code> exempts a deliberate use. A consumer on the <code>v3</code> tag sees its check turn red on any added line containing the word.</li>
 </ul>
+<p>The other rules warn unless <code>fail</code> is true.</p>
 <p>The check does not flag a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, <code>&lt;!-- check-avoided-words: allow --&gt;</code>. It reports at most one finding per rule per line.</p>
 </section>
 <section id="scope" class="level2">
@@ -1243,7 +1245,7 @@ cookieconsent.run({
 <td><code>fail</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Fail the workflow when an avoided word is found. Other rules warn unless this is true; a trailing parenthetical link always fails.</td>
+<td>Fail the workflow when an avoided word is found. Other rules warn unless this is true; a trailing parenthetical link and the words “thing” and “things” always fail.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>
