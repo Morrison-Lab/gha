@@ -37,6 +37,7 @@ echo "condor_submit $*" >> "$STUB_LOG"
 echo "1 job(s) submitted to cluster 77."
 cp .condor.sub "$STUB_LOG.sub"
 cp .condor-run.sh "$STUB_LOG.run"
+tar -tzf checkout.tar.gz > "$STUB_LOG.tar"
 """
 
 WAIT_STUB = """\
@@ -68,6 +69,11 @@ def _run(tmp_path: Path, steps: list[str], **extra_env: str):
     _stub(bin_dir / "condor_rm", RM_STUB)
     checkout = tmp_path / "checkout"
     checkout.mkdir()
+    (checkout / ".git").mkdir()
+    (checkout / ".git" / "pack").write_text("x")
+    (checkout / "node_modules").mkdir()
+    (checkout / "node_modules" / "m.js").write_text("x")
+    (checkout / "keep.txt").write_text("x")
     steps_file = tmp_path / "steps.txt"
     steps_file.write_text("\n".join(steps) + "\n")
     env = {
@@ -144,25 +150,45 @@ def test_failed_copy_sweeps_only_old_run_directories_then_retries(tmp_path):
     assert (ci / "image").exists()
 
 
-def test_rsync_exclude_patterns_reach_the_checkout_copy_only(tmp_path):
-    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0", RSYNC_EXCLUDE=".git  node_modules")
+def _tar_listing(tmp_path: Path) -> str:
+    return (tmp_path / "calls.log.tar").read_text()
+
+
+def test_exclude_patterns_keep_paths_out_of_the_tarball(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", RSYNC_EXCLUDE=".git  node_modules")
     assert proc.returncode == 0, proc.stderr
-    copies = [line for line in calls if line.startswith("rsync ")]
-    assert "--exclude=.git --exclude=node_modules" in copies[0]
-    assert "--exclude" not in copies[1]
+    listing = _tar_listing(tmp_path)
+    assert "keep.txt" in listing
+    assert ".git" not in listing
+    assert "node_modules" not in listing
 
 
-def test_rsync_exclude_wildcards_are_not_expanded_by_the_shell(tmp_path):
-    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0", RSYNC_EXCLUDE="*")
+def test_no_exclude_by_default(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0")
     assert proc.returncode == 0, proc.stderr
-    copies = [line for line in calls if line.startswith("rsync ")]
-    assert "--exclude=* " in copies[0]
+    assert ".git/pack" in _tar_listing(tmp_path)
 
 
-def test_no_rsync_exclude_by_default(tmp_path):
+def test_only_two_files_are_copied_to_the_home(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0")
     assert proc.returncode == 0, proc.stderr
-    assert not any("--exclude" in line for line in calls)
+    copies = [line for line in calls if line.startswith("rsync ")]
+    assert len(copies) == 2
+    assert "checkout.tar.gz" in copies[0]
+    assert ".condor-steps" in copies[1]
+
+
+def test_job_uses_file_transfer_and_runs_in_scratch(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    sub = (tmp_path / "calls.log.sub").read_text()
+    assert "should_transfer_files = YES" in sub
+    assert "transfer_input_files = " in sub and "checkout.tar.gz" in sub
+    assert "request_disk = 20GB" in sub
+    run = (tmp_path / "calls.log.run").read_text()
+    assert 'scratch=$PWD' in run
+    assert "tar -xzf checkout.tar.gz" in run
+    assert 'cd "$1"' not in run
 
 
 def test_held_or_aborted_job_exits_70(tmp_path):
@@ -186,13 +212,13 @@ def _arguments(tmp_path: Path) -> str:
 def test_no_image_submits_only_the_run_dir(tmp_path):
     proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0")
     assert proc.returncode == 0, proc.stderr
-    assert _arguments(tmp_path).strip().endswith("/42")
+    assert _arguments(tmp_path).strip() == "arguments ="
 
 
 def test_image_is_passed_to_the_job_and_used_by_the_run_script(tmp_path):
     proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_IMAGE="/c/lds-ci.sif")
     assert proc.returncode == 0, proc.stderr
-    assert _arguments(tmp_path).endswith(" /c/lds-ci.sif")
+    assert _arguments(tmp_path).endswith("= /c/lds-ci.sif")
     run = (tmp_path / "calls.log.run").read_text()
     assert "apptainer exec --containall" in run
     assert "--pwd /work --home /work/.home" in run
@@ -204,15 +230,20 @@ def test_image_steps_execute_through_apptainer(tmp_path):
     work = tmp_path / "work"
     work.mkdir()
     (work / ".condor-steps").write_text("echo one > one.txt\necho two > two.txt\n")
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    (seed / "seed.txt").write_text("x")
+    subprocess.run(["tar", "-czf", str(work / "checkout.tar.gz"), "-C", str(seed), "."], check=True)
     bin_dir = tmp_path / "abin"
     bin_dir.mkdir()
     _stub(bin_dir / "apptainer", 'echo "$@" >> "$STUB_LOG.app"\nwhile [ "$1" != "/c/x.sif" ]; do shift; done\nshift\nexec "$@"\n')
     env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "STUB_LOG": str(tmp_path / "calls.log")}
     proc = subprocess.run(
-        ["bash", str(tmp_path / "calls.log.run"), str(work), "/c/x.sif"],
-        env=env, capture_output=True, text=True, check=False,
+        ["bash", str(tmp_path / "calls.log.run"), "/c/x.sif"],
+        cwd=work, env=env, capture_output=True, text=True, check=False,
     )
     assert proc.returncode == 0, proc.stderr
+    work = work / "work"
     assert (work / "one.txt").read_text() == "one\n"
     assert (work / "two.txt").read_text() == "two\n"
     assert (tmp_path / "calls.log.app").read_text().count("/c/x.sif") == 2
