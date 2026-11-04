@@ -18,5 +18,5 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-code-messages.yml@v3
     # with:
     #   globs: '*.qmd *.Rmd *.R'    # pathspecs to lint (recursive)
-    #   fail: true                  # block instead of warn (defaults to false)
+    #   fail: false                 # warn instead of block (defaults to true)
     #   whole-tree: true            # lint every file, not just a PR's additions
