@@ -135,3 +135,12 @@ def test_end_to_end_in_a_git_repo(tmp_path, monkeypatch):
     assert not report.skipped and len(report.findings) == 1
     assert report.findings[0].count == 8
     assert chs.run_check("", ["*.qmd"], [], False, 7).skipped
+
+
+def test_fails_by_default():
+    root = Path(__file__).resolve().parent.parent
+    action = (root / "action.yml").read_text()
+    workflow = (root.parent / ".github" / "workflows" / "check-heading-siblings.yml").read_text()
+    assert "default: 'true'" in action.split("  fail:")[1].split("runs:")[0]
+    assert "default: true" in workflow.split("      fail:")[1].split("jobs:")[0]
+    assert 'fail = _env_flag("CHS_FAIL", True)' in (root / "check-heading-siblings.py").read_text()

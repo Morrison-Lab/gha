@@ -2,7 +2,7 @@
 title: "check-heading-siblings.yml"
 ---
 
-Diff-scoped, warn-only check that flags a heading a pull request adds
+Diff-scoped, failing-by-default check that flags a heading a pull request adds
 to a group of too many sibling headings.
 Sibling headings are headings of the same level under the same parent heading;
 the top-level headings of a page are siblings under the page.
@@ -56,7 +56,7 @@ Set `whole-tree: true` to measure every tracked page in full.
 | `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. |
 | `max`          | string  | `'7'`      | Largest number of sibling headings under one parent. |
-| `fail`         | boolean | `false`    | Fail the workflow when a touched group is over the limit. The default gives warning annotations only. |
+| `fail`         | boolean | `true`     | Fail the workflow when a touched group is over the limit. Set `false` for warning annotations only. |
 | `whole-tree`   | boolean | `false`    | Measure every tracked page in full instead of only touched pages. |
 
 ## Usage
