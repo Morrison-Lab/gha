@@ -5,7 +5,7 @@ title: "check-definite-antecedents.yml"
 Diff-scoped heuristic that flags a div
 whose first sentence opens with a definite phrase and no link,
 and a demonstrative (`this`, `that`, `these`, `those`) standing alone as a pronoun,
-(for example a `this` that ends a sentence, [gha#1460](https://github.com/Morrison-Lab/gha/issues/1460)).
+([gha#1460](https://github.com/Morrison-Lab/gha/issues/1460)).
 The bare-demonstrative finding is detected by what follows the word
 (a verb, preposition, conjunction, sentence end, or a predicate adjective after "make");
 `<!-- check-definite-antecedents: allow -->` on a line exempts it.
