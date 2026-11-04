@@ -1,10 +1,9 @@
 name: Check definite antecedents
 description: >-
-  Diff-scoped, warn-only heuristic that flags a div (or a file with no div)
-  whose first sentence starts with The, These, Those, This or That and holds
-  no link or cross-reference: nothing earlier in the div can be the
-  antecedent of that definite phrase, so it should name or link it
-  (Ezra, 2026-10-19; psw#291). Scoped to lines a diff adds.
+  Diff-scoped, failing-by-default heuristic with two findings: a div (or a file
+  with no div) whose first sentence starts with The, These, Those, This or That
+  and holds no link or cross-reference (psw#291), and a bare demonstrative
+  pronoun such as "make this precise" (gha#1460). Scoped to lines a diff adds.
 inputs:
   python-version:
     description: Python version to set up.
@@ -38,9 +37,9 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action when a div opens with an unlinked definite phrase (else
-      non-blocking). Defaults to 'false' (warning annotations only).
-    default: 'false'
+      Fail the action on a finding (else non-blocking warning annotations).
+      Defaults to 'true' (Ezra, 2026-11-04; gha#1458).
+    default: 'true'
 runs:
   using: composite
   steps:

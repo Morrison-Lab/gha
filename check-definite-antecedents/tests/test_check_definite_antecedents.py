@@ -24,7 +24,69 @@ _spec.loader.exec_module(oda)
 
 def hits(text: str):
     found, _ = oda.scan_file(text.split("\n"))
-    return [(h.line, h.phrase) for h in found]
+    return [(h.line, h.phrase) for h in found if h.kind == "opener"]
+
+
+def demos(text: str):
+    found, _ = oda.scan_file(text.split("\n"))
+    return [h.line for h in found if h.kind == "demonstrative"]
+
+
+@pytest.mark.parametrize("line", [
+    "Exercise 9 asks you to make this precise.",
+    "This is because the loss is convex.",
+    "The second model avoids this.",
+    "These are the same.",
+    "Those are not the same.",
+    "That means the step size shrinks.",
+    "We can show this in two steps.",
+    "Apply this to the data.",
+    "Fit the model and then plot this, which is odd.",
+    "Compare these with the truth.",
+    "**This** shows the bias.",
+    "We keep that.",
+])
+def test_bare_demonstratives_are_flagged(line):
+    assert demos(line) == [1]
+
+
+@pytest.mark.parametrize("line", [
+    "This overfitting poses a problem.",
+    "The result of this bias is large.",
+    "a function that is convex",
+    "We show that the estimate is unbiased.",
+    "That is, the loss is convex.",
+    "Consider this:",
+    "Those who attend pass.",
+    "Those samples were held out.",
+    "In these days of data, we vary.",
+    "In this way, the bias shrinks.",
+    "Let `this` and $this$ be code and math.",
+    "That's fine.",
+    "The first-order Taylor expansion at this point is exact.",
+    "Make this precise. <!-- check-definite-antecedents: allow -->",
+])
+def test_named_or_exempt_demonstratives_pass(line):
+    assert demos(line) == []
+
+
+def test_demonstratives_in_code_math_and_comments_are_ignored():
+    text = "```r\nprint('this is')\n```\n\n$$\nx = this\n$$\n\n<!-- This is a note. -->\n"
+    assert demos(text) == []
+
+
+def test_demonstrative_in_a_div_body_is_flagged_on_its_line():
+    text = "::: {#exr-a}\nFit a line.\nMake this precise.\n:::"
+    assert demos(text) == [3]
+
+
+def test_one_demonstrative_finding_per_line():
+    assert demos("Use this or that.") == [1]
+
+
+def test_allow_comment_also_exempts_an_opener():
+    text = "::: {#exr-a}\nThe labels are bad. <!-- check-definite-antecedents: allow -->\n:::"
+    assert hits(text) == []
 
 
 def test_flags_unlinked_definite_opener():
@@ -74,8 +136,8 @@ def test_list_marker_stripped():
     assert hits("::: {#exr-a}\n1. The labels are bad.\n:::") == [(2, "The labels")]
 
 
-def test_defaults_are_warn_only():
-    assert oda._DEFAULT_FAIL is False
+def test_defaults_fail():
+    assert oda._DEFAULT_FAIL is True
     assert oda.DEFAULT_GLOBS == "*.qmd"
 
 
