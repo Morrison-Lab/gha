@@ -9656,3 +9656,72 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-format-output-files || true
           rm -rf _ci-format-output-files
+
+  # check-python-qmd-chunks is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-python-qmd-chunks@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  python-qmd-chunks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-python-qmd-chunks unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet ruff==0.16.9
+          python3 -m unittest discover -s check-python-qmd-chunks/tests -v
+      - name: Stage a clean and a bad page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-qmd-chunks
+          printf '%s\n' '```{python}' 'x = 1' 'x' '```' > _ci-qmd-chunks/clean.qmd
+          printf '%s\n' '```{python}' 'x = 1' 'if x == None:' '    pass' '```' > _ci-qmd-chunks/bad.qmd
+          git add -f _ci-qmd-chunks/clean.qmd _ci-qmd-chunks/bad.qmd
+      - name: Check the clean page
+        uses: ./check-python-qmd-chunks
+        with:
+          config: check-python-qmd-chunks/tests/ruff.toml
+          whole-tree: 'true'
+          globs: '_ci-qmd-chunks/clean.qmd'
+      - name: Check the bad page, expecting a failure
+        id: qmd-chunks-expected-failure
+        continue-on-error: true
+        uses: ./check-python-qmd-chunks
+        with:
+          config: check-python-qmd-chunks/tests/ruff.toml
+          whole-tree: 'true'
+          globs: '_ci-qmd-chunks/bad.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.qmd-chunks-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-python-qmd-chunks to fail on a staged bad page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check the bad page with fail off
+        uses: ./check-python-qmd-chunks
+        with:
+          config: check-python-qmd-chunks/tests/ruff.toml
+          whole-tree: 'true'
+          globs: '_ci-qmd-chunks/bad.qmd'
+          fail: 'false'
+      - name: Remove the staged pages
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-qmd-chunks || true
+          rm -rf _ci-qmd-chunks

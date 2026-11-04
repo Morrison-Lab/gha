@@ -1,0 +1,40 @@
+---
+title: "check-python-qmd-chunks.yml"
+---
+
+Diff-scoped check that lints the Python chunks of the `.qmd` files
+a pull request changes, with the repository's Ruff configuration.
+The lab's Python style is an amendment of Google's guide,
+and its Ruff configuration is `python/ruff.toml` in `Morrison-Lab/psc`.
+
+The chunks of one `.qmd` file share a Python session,
+so the check joins them in document order and lints them together.
+It reports each finding at its line in the `.qmd` file.
+Chunks that sit inside a callout or a list item are dedented first,
+and a closing fence may be longer than its opener.
+
+The check ignores the rules that a chunk of a page cannot satisfy:
+missing docstrings, imports after code, unsorted imports,
+a bare expression that shows a value, a trailing semicolon after a plot call,
+undefined names that an earlier chunk defines, and unused imports.
+It does not run the formatter.
+
+With no base to diff against, the check skips with a warning
+unless `whole-tree` is `true`.
+It fails on a finding by default.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `config` | `ruff.toml` | Path to the Ruff configuration |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `fail` | `true` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Lint every matching file, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+
+## Usage
+
+Copy `examples/check-python-qmd-chunks.yml` to
+`.github/workflows/check-python-qmd-chunks.yml`,
+and copy `python/ruff.toml` from `Morrison-Lab/psc` to the repository root.

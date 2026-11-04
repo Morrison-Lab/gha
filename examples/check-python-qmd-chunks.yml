@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-python-qmd-chunks.yml in your repo, and copy
+# python/ruff.toml from Morrison-Lab/psc to the repository root as ruff.toml.
+# Diff-scoped check: lints the Python chunks of the .qmd files a PR changes
+# with the repository's Ruff configuration, and fails on any finding.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check Python chunks in qmd files
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-python-qmd-chunks.yml@v3
+    # with:
+    #   config: ruff.toml          # path to the Ruff configuration
+    #   globs: '*.qmd'             # pathspecs to check (recursive)
+    #   fail: false                # warn instead of blocking (defaults to true)
+    #   whole-tree: true           # check every matching file, not just a PR's changes
