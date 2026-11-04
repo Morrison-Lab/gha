@@ -1200,7 +1200,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a figure a pull request adds when the page does not discuss it or places it away from its example. The lab’s rule (Ezra, 2026-11-02) is that every figure is discussed and cross-referenced in prose, and that a figure specific to one example or exercise is nested inside that example’s or exercise’s div.</p>
+<p>Diff-scoped, failing-by-default check that flags a figure a pull request adds when the page does not discuss it or places it away from its example. The lab’s rule (Ezra, 2026-11-02) is that every figure is discussed and cross-referenced in prose, and that a figure specific to one example or exercise is nested inside that example’s or exercise’s div.</p>
 <section id="what-it-flags" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-flags">What it flags</h2>
 <ul>
@@ -1243,8 +1243,8 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Fail the workflow when a figure is uncited or unnested. The default gives warning annotations only.</td>
+<td><code>true</code></td>
+<td>Fail the workflow when a figure is uncited or unnested. Set <code>false</code> for warning annotations only.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>

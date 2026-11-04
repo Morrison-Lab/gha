@@ -1202,7 +1202,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a page a pull request adds to when the page has grown too long. The lab’s rule (Ezra, 2026-10-31) is that a page should load and finish rendering its math in under 5 seconds, and that its scroll bar should not shrink to its smallest length. A page that fails either goal is split into several pages.</p>
+<p>Diff-scoped, failing-by-default check that flags a page a pull request adds to when the page has grown too long. The lab’s rule (Ezra, 2026-10-31) is that a page should load and finish rendering its math in under 5 seconds, and that its scroll bar should not shrink to its smallest length. A page that fails either goal is split into several pages.</p>
 <section id="what-it-measures" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-measures">What it measures</h2>
 <p>The check runs without a browser, which the lab bans for agents, so it measures two proxies on the <em>expanded</em> page, the page’s own text with each <code>{{&lt; include &gt;}}</code> shortcode replaced by the file it names:</p>
@@ -1265,8 +1265,8 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Fail the workflow when a touched page is over a limit. The default gives warning annotations only.</td>
+<td><code>true</code></td>
+<td>Fail the workflow when a touched page is over a limit. Set <code>false</code> for warning annotations only.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>

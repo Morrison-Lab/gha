@@ -4435,7 +4435,7 @@
     "href": "reference/check-figure-placement.html",
     "title": "check-figure-placement.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags a figure a pull request adds when the page does not discuss it or places it away from its example. The lab’s rule (Ezra, 2026-11-02) is that every figure is discussed and cross-referenced in prose, and that a figure specific to one example or exercise is nested inside that example’s or exercise’s div.",
+    "text": "Diff-scoped, failing-by-default check that flags a figure a pull request adds when the page does not discuss it or places it away from its example. The lab’s rule (Ezra, 2026-11-02) is that every figure is discussed and cross-referenced in prose, and that a figure specific to one example or exercise is nested inside that example’s or exercise’s div.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -4459,7 +4459,7 @@
     "href": "reference/check-figure-placement.html#inputs",
     "title": "check-figure-placement.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nfail\nboolean\nfalse\nFail the workflow when a figure is uncited or unnested. The default gives warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nCheck every tracked file in full instead of only added lines.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nfail\nboolean\ntrue\nFail the workflow when a figure is uncited or unnested. Set false for warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nCheck every tracked file in full instead of only added lines.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -5215,7 +5215,7 @@
     "href": "reference/check-page-length.html",
     "title": "check-page-length.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags a page a pull request adds to when the page has grown too long. The lab’s rule (Ezra, 2026-10-31) is that a page should load and finish rendering its math in under 5 seconds, and that its scroll bar should not shrink to its smallest length. A page that fails either goal is split into several pages.",
+    "text": "Diff-scoped, failing-by-default check that flags a page a pull request adds to when the page has grown too long. The lab’s rule (Ezra, 2026-10-31) is that a page should load and finish rendering its math in under 5 seconds, and that its scroll bar should not shrink to its smallest length. A page that fails either goal is split into several pages.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -5263,7 +5263,7 @@
     "href": "reference/check-page-length.html#inputs",
     "title": "check-page-length.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nmax-math\nstring\n'600'\nLargest number of math expressions a page may have.\n\n\nmax-lines\nstring\n'5000'\nLargest number of source lines a page may have, includes expanded.\n\n\nfail\nboolean\nfalse\nFail the workflow when a touched page is over a limit. The default gives warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nMeasure every tracked page in full instead of only touched pages.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nmax-math\nstring\n'600'\nLargest number of math expressions a page may have.\n\n\nmax-lines\nstring\n'5000'\nLargest number of source lines a page may have, includes expanded.\n\n\nfail\nboolean\ntrue\nFail the workflow when a touched page is over a limit. Set false for warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nMeasure every tracked page in full instead of only touched pages.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -6967,7 +6967,7 @@
     "href": "reference/check-code-messages.html#inputs",
     "title": "check-code-messages.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\nInput\nMeaning\n\n\n\n\nglobs\nSpace-separated pathspecs to lint (default *.qmd *.Rmd *.R)\n\n\nfail\nFail on a finding instead of warning (default false)\n\n\nwhole-tree\nLint every tracked file, not just a PR’s additions\n\n\nruns-on, python-version\nRunner and Python version",
+    "text": "Inputs\n\n\n\n\n\n\n\nInput\nMeaning\n\n\n\n\nglobs\nSpace-separated pathspecs to lint (default *.qmd *.Rmd *.R)\n\n\nfail\nFail on a finding instead of warning (default true; set false to warn only)\n\n\nwhole-tree\nLint every tracked file, not just a PR’s additions\n\n\nruns-on, python-version\nRunner and Python version",
     "crumbs": [
       "Overview",
       "Reference",

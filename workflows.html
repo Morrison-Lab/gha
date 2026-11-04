@@ -1416,7 +1416,7 @@ cookieconsent.run({
 </tr>
 <tr class="even">
 <td><a href="./reference/check-code-messages.html"><code>check-code-messages.yml</code></a></td>
-<td>Diff-scoped, warn-only check that flags a <code>geom_smooth()</code> or <code>stat_smooth()</code> call missing <code>method</code> or <code>formula</code>, and a <code>geom_histogram()</code> or <code>stat_bin()</code> call with no <code>bins</code>, <code>binwidth</code> or <code>breaks</code>, when a PR adds a line to it; the action also scans a rendered site for <code>cell-output-stderr</code> blocks</td>
+<td>Diff-scoped, failing-by-default check that flags a <code>geom_smooth()</code> or <code>stat_smooth()</code> call missing <code>method</code> or <code>formula</code>, and a <code>geom_histogram()</code> or <code>stat_bin()</code> call with no <code>bins</code>, <code>binwidth</code> or <code>breaks</code>, when a PR adds a line to it; the action also scans a rendered site for <code>cell-output-stderr</code> blocks</td>
 <td><code>globs</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
@@ -1446,7 +1446,7 @@ cookieconsent.run({
 </tr>
 <tr class="even">
 <td><a href="./reference/check-page-length.html"><code>check-page-length.yml</code></a></td>
-<td>Diff-scoped, warn-only check that flags a page a PR adds to when the page, with its includes expanded, has more than 600 math expressions or 5000 source lines.</td>
+<td>Diff-scoped, failing-by-default check that flags a page a PR adds to when the page, with its includes expanded, has more than 600 math expressions or 5000 source lines.</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>max-math</code>, <code>max-lines</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
@@ -1456,7 +1456,7 @@ cookieconsent.run({
 </tr>
 <tr class="even">
 <td><a href="./reference/check-figure-placement.html"><code>check-figure-placement.yml</code></a></td>
-<td>Diff-scoped, warn-only check that flags a figure a PR adds when no prose cites it with <code>@fig-id</code> or when it sits directly after an example or exercise div instead of inside it.</td>
+<td>Diff-scoped, failing-by-default check that flags a figure a PR adds when no prose cites it with <code>@fig-id</code> or when it sits directly after an example or exercise div instead of inside it.</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="odd">
