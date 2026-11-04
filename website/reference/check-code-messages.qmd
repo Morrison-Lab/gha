@@ -37,6 +37,6 @@ calls the action in its own render job.
 | Input | Meaning |
 | --- | --- |
 | `globs` | Space-separated pathspecs to lint (default `*.qmd *.Rmd *.R`) |
-| `fail` | Fail on a finding instead of warning (default `false`) |
+| `fail` | Fail on a finding instead of warning (default `true`; set `false` to warn only) |
 | `whole-tree` | Lint every tracked file, not just a PR's additions |
 | `runs-on`, `python-version` | Runner and Python version |

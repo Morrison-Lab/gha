@@ -25,9 +25,9 @@ on:
       fail:
         description: >-
           Fail the workflow on a finding (else non-blocking). Defaults to
-          false (warning annotations only).
+          true (Ezra, 2026-11-04; gha#1476).
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-code-messages:

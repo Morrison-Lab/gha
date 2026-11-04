@@ -1944,11 +1944,12 @@ jobs:
           echo "$out"
           grep -q 'file=_ci-ccm/page.qmd,line=2::`geom_smooth()` needs both' <<< "$out"
           grep -q 'cell-output-stderr\|warning or message block' <<< "$out"
-      - name: Check the staged files with the default fail (warn-only)
+      - name: Check the staged files with fail off (warn-only)
         uses: ./check-code-messages
         with:
           site-dir: _ci-ccm/_site
           whole-tree: 'true'
+          fail: 'false'
   # check-heading-levels is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-heading-levels@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit

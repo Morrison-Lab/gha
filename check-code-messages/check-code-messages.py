@@ -40,8 +40,8 @@ Configuration (environment variables, set by the composite action):
   CCM_SITE_DIR     Directory of rendered HTML to scan. Empty => skip.
   CCM_SITE_IGNORE  Comma/newline-separated glob patterns, relative to the
                    site directory, to skip.
-  CCM_FAIL         "true" => exit 1 on a finding; default "false" => warning
-                   annotations only.
+  CCM_FAIL         "true" => exit 1 on a finding; default "true" (set "false" for warning
+                   annotations only).
 """
 
 import fnmatch
@@ -332,7 +332,7 @@ def main() -> int:
     whole_tree = _env_flag("CCM_WHOLE_TREE", False)
     site_dir = os.environ.get("CCM_SITE_DIR", "").strip()
     ignores = [p.strip() for p in re.split(r"[,\n]", os.environ.get("CCM_SITE_IGNORE", "")) if p.strip()]
-    fail = _env_flag("CCM_FAIL", False)
+    fail = _env_flag("CCM_FAIL", True)
     level = "error" if fail else "warning"
     total = 0
 
