@@ -2,7 +2,7 @@
 title: "check-hybrid-sentences.yml"
 ---
 
-Diff-scoped, warn-only heuristic check for the lab's rule
+Diff-scoped, failing-by-default heuristic check for the lab's rule
 (Ezra, 2026-10-29)
 that a sentence is entirely in words or entirely in math.
 A sentence such as "The risk is zero if and only if `f = g` in math"
@@ -31,7 +31,7 @@ A paragraph is checked when the pull request adds a line in it.
 With no base to diff against,
 the check skips instead of scanning the whole tree,
 so existing sentences are fixed when someone edits them anyway.
-It warns by default; `fail: true` blocks.
+It fails by default; `fail: false` only warns.
 
 ## Inputs
 
@@ -39,7 +39,7 @@ It warns by default; `fail: true` blocks.
 | --- | --- | --- |
 | `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
 | `paths-ignore` | none | Comma or newline separated globs to skip |
-| `fail` | `false` | Fail on a finding; `false` warns |
+| `fail` | `true` | Fail on a finding; `false` warns |
 | `whole-tree` | `false` | Check every paragraph, to measure a corpus |
 | `python-version` | `3.x` | Python version |
 | `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |

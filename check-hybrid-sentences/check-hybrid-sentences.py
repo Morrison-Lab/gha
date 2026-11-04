@@ -21,7 +21,7 @@ and flags the sentence when
 - the clause on the other side holds three or more words and no such relation.
 
 Two relations joined by a connective ("with $a = 1$ and $b = 2$") are all math and
-are not flagged. The check is a heuristic: it is warn-only by default, and
+are not flagged. The check is a heuristic: it fails by default, and
 ``<!-- hybrid-ok: reason -->`` in the paragraph exempts it.
 
 A paragraph is checked when the diff adds a line in it, or always with
@@ -31,7 +31,7 @@ Configuration (environment variables, set by the composite action):
   HS_BASE_REF      Git ref/SHA to diff against; empty and not whole-tree => skip.
   HS_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   HS_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  HS_FAIL          "true" => blocking; default "false" (warning annotations).
+  HS_FAIL          "false" => warning annotations only; default "true" (blocking).
   HS_WHOLE_TREE    "true" => check every paragraph in the tree.
 """
 
@@ -49,7 +49,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 
 ADVICE = (
     "state the result in one sentence in words and again in one displayed "

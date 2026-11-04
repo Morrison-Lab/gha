@@ -33,10 +33,9 @@ on:
         default: ''
       fail:
         description: >-
-          Fail the workflow on a finding. Defaults to false (warning annotations
-          only), because the check is a heuristic.
+          Fail the workflow on a finding. Defaults to true (Ezra, 2026-11-04; gha#1456).
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-hybrid-sentences:
