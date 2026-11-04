@@ -2,7 +2,7 @@
 
 Graphs of definitions and results by prerequisite and postrequisite.
 An edge from A to B means A uses B, so B is a prerequisite of A and A is a postrequisite of B.
-Edges come from the `@id`, `page.qmd#id` and cross-site links already inside each `#def-`, `#thm-`, `#lem-`, `#prp-`, and `#cor-` div,
+Edges come from the `@id`, `page.qmd#id`, and cross-site links already inside each `#def-`, `#thm-`, `#lem-`, `#prp-`, and `#cor-` div,
 and inside a `::: proof` div written right after it, since what a proof cites is what its result depends on.
 No hand-written tags are needed.
 Lean `leanblueprint` and KnowTeX build the same kind of graph from hand-written `\uses` tags.
