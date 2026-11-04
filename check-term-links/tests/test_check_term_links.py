@@ -335,3 +335,65 @@ def test_parse_added_lines_drops_lines_the_diff_also_deletes(tmp_path):
     )
     out = ctl.parse_added_lines(diff, tmp_path)
     assert out[tmp_path / "b.qmd"] == {2}
+
+
+TAYLOR_DEF = """\
+:::{#def-linear-approximation}
+
+#### Linear approximation (first-order Taylor approximation, first-order Taylor expansion)
+
+The **linear approximation** (also called the **first-order Taylor expansion**) of $f$ is a line.
+
+:::
+"""
+
+
+@pytest.fixture
+def prereq_repo(tmp_path):
+    """A repo whose page uses a term that only a prerequisite site defines."""
+    site = tmp_path / "prereq-site"
+    site.mkdir()
+    (site / "calculus.qmd").write_text(TAYLOR_DEF)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    (repo / "base.qmd").write_text("# Base\n\nText.\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "base")
+    git(repo, "checkout", "-q", "-b", "pr")
+    (repo / "ex.qmd").write_text(
+        "::: {#exr-a}\n\nWrite the first-order Taylor expansion of the cost.\n\n:::\n"
+    )
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "pr")
+    return repo, site
+
+
+def test_cli_terms_from_a_prerequisite_site_are_enforced(prereq_repo):
+    repo, site = prereq_repo
+    res = run_cli(repo, BASE_REF="main", FAIL="true", TERMS_DIRS=str(site))
+    assert res.returncode == 1
+    assert "ex.qmd:3" in res.stdout and "first-order taylor expansion" in res.stdout.lower()
+    assert "calculus.qmd" not in res.stdout
+
+
+def test_cli_without_terms_dirs_the_prerequisite_term_is_unknown(prereq_repo):
+    repo, _ = prereq_repo
+    res = run_cli(repo, BASE_REF="main", FAIL="true")
+    assert res.returncode == 0
+
+
+def test_cli_linked_prerequisite_term_passes(prereq_repo):
+    repo, site = prereq_repo
+    (repo / "ex.qmd").write_text(
+        "::: {#exr-a}\n\nWrite the [first-order Taylor expansion](https://x.org/c.html#def-linear-approximation) of the cost.\n\n:::\n"
+    )
+    git(repo, "commit", "-q", "-am", "link")
+    res = run_cli(repo, BASE_REF="main", FAIL="true", TERMS_DIRS=str(site))
+    assert res.returncode == 0
+
+
+def test_cli_missing_terms_dir_warns_and_continues(prereq_repo):
+    repo, _ = prereq_repo
+    res = run_cli(repo, BASE_REF="main", FAIL="true", TERMS_DIRS="/no/such/dir")
+    assert res.returncode == 0 and "not found" in res.stderr

@@ -36,6 +36,14 @@ on:
           Path to a file of extra technical terms, one per line.
         type: string
         default: ''
+      terms-from:
+        description: >-
+          Space-separated `owner/repo` names of prerequisite sites (for example
+          `Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds`). Each is cloned
+          shallowly and its definitions make its terms known here (gha#1462).
+          A private repository needs the `terms-from-token` secret.
+        type: string
+        default: ''
       allow-file:
         description: >-
           Path to a file of terms to leave alone, one per line.
@@ -47,6 +55,11 @@ on:
           Defaults to true; false reports warning annotations only.
         type: boolean
         default: true
+
+    secrets:
+      WORKFLOW_TOKEN:
+        description: Optional GitHub token with read access to private `terms-from` repositories.
+        required: false
 
 jobs:
   check-term-links:
@@ -61,9 +74,28 @@ jobs:
           # Full history so PR runs can diff added lines against the base.
           fetch-depth: 0
 
+      - name: Fetch prerequisite sites for their terms
+        id: terms-from
+        if: inputs.terms-from != ''
+        shell: bash
+        env:
+          TERMS_FROM: ${{ inputs.terms-from }}
+          GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          dirs=""
+          for repo in $TERMS_FROM; do
+            dest="$RUNNER_TEMP/terms-from/${repo//\//__}"
+            git clone --quiet --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${repo}.git" "$dest"
+            rm -rf "$dest/.git"
+            dirs="$dirs $dest"
+          done
+          echo "dirs=${dirs# }" >> "$GITHUB_OUTPUT"
+
       - name: Check term links at first use
         uses: Morrison-Lab/gha/check-term-links@v3
         with:
+          terms-dirs: ${{ steps.terms-from.outputs.dirs }}
           python-version: ${{ inputs.python-version }}
           whole-tree: ${{ inputs.whole-tree }}
           globs: ${{ inputs.globs }}
