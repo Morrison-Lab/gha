@@ -58,7 +58,7 @@ transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
 # A job that did not end normally keeps its run directory, and enough of them
 # fill the cluster home's quota, after which every copy fails ("Disk quota
 # exceeded") and every later run falls back to the runner. When the first copy
-# fails, remove the run directories older than STALE_MINUTES (default 120, well
+# fails, remove the run directories older than STALE_MINUTES (default 60, well
 # past the longest job) and copy once more. Only digit-led names are removed,
 # so an image directory beside them is never touched.
 copied=0
@@ -69,12 +69,21 @@ for attempt in 1 2; do
     break
   fi
   [ "$attempt" = 1 ] || break
-  echo "copy failed; removing run directories older than ${STALE_MINUTES:-120} minutes from $root" >&2
-  ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root" "${STALE_MINUTES:-120}" <<'SWEEP' || true
+  echo "copy failed; removing run directories older than ${STALE_MINUTES:-60} minutes from $root" >&2
+  ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root" "${STALE_MINUTES:-60}" <<'SWEEP' || true
 find "$1" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*' -mmin +"$2" -exec rm -rf {} +
 SWEEP
 done
 [ "$copied" = 1 ] || transfer_failed
+
+# A cancelled workflow run kills this script, not the cluster job, which keeps
+# running and keeps its run directory (the quota filled this way on
+# 2026-11-03). On SIGTERM, SIGINT or SIGHUP, remove the job and the directory.
+clean_script='cd "$1" 2>/dev/null || exit 0
+[ ! -f .cluster-id ] || condor_rm "$(cat .cluster-id)" || true
+sleep 3
+cd / && rm -rf "$1"'
+trap 'printf "%s\n" "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" || true; exit 143' TERM INT HUP
 
 # The remote script runs on the head: it writes the job and submits it once.
 rc=0
@@ -110,7 +119,8 @@ log = $dir/condor.log
 should_transfer_files = NO
 queue 1
 SUB
-condor_submit .condor.sub
+condor_submit .condor.sub | tee .submit.out
+sed -n 's/.*submitted to cluster \([0-9][0-9]*\)\..*/\1/p' .submit.out > .cluster-id
 wait_rc=0
 condor_wait condor.log || wait_rc=$?
 [ ! -f out.log ] || cat out.log
@@ -125,5 +135,6 @@ fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
 exit 70
 REMOTE
+trap - TERM INT HUP
 [ "$rc" -ne 255 ] || { echo "ssh to the cluster head failed" >&2; exit 70; }
 exit "$rc"
