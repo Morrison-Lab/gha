@@ -104,13 +104,14 @@ BACKREF_RE = re.compile(
     r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?set-?up\s+(?:of|from|in)\b"
     r"|(?:same|identical)\s+set-?up\s+as\b)"
 )
+THING_RE = re.compile(r"(?i)\bthings?\b")
 PARENREF_RE = re.compile(
     r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
     r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
 )
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
 # failing check; the other rules stay warn-only by default).
-ALWAYS_FAIL = frozenset({"parenref"})
+ALWAYS_FAIL = frozenset({"parenref", "thing"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -129,6 +130,10 @@ RULES = (
      'Name the data, variables, or model a back-reference reuses instead of '
      '"the setup of ..."; write about content, not the structure of the '
      "notes (psw#442)."),
+    ("thing", THING_RE,
+     'Name the object, quantity, step or idea instead of "thing" or "things" '
+     '(psw word-choice.qmd, "Say which thing"; Ezra, 2026-11-04; gha#1454). '
+     "A deliberate use takes the check-avoided-words allow comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '

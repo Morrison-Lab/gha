@@ -35,7 +35,7 @@ on:
         description: >-
           Fail the workflow when an avoided word is
           found (else non-blocking). Defaults to false (warning annotations
-          only), except the parenref rule, which always fails.
+          only), except the parenref and thing rules, which always fail.
         type: boolean
         default: false
 

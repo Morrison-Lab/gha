@@ -1,7 +1,7 @@
 # Copy to .github/workflows/check-avoided-words.yml in your repo.
 # Diff-scoped check: flags a line a PR adds that uses "above"/"below" for a place in
 # the document, "just"/"easy"/"easily", a time-relative word such as "currently", or a generic placeholder set such as "domain A".
-# Warn-only by default, except a trailing parenthetical link, which always fails.
+# Warn-only by default, except a trailing parenthetical link and the words "thing" and "things", which always fail.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check avoided words
 

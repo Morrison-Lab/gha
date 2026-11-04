@@ -62,9 +62,17 @@ def found(text: str):
      "parenref", "([why](https://x.org/a#thm-k))"),
     ("The bound ([proof](page.qmd#thm-b)) holds.", "parenref",
      "([proof](page.qmd#thm-b))"),
+    ("Name two things that this argument omits.", "thing", "things"),
+    ("The main thing to check is the residuals.", "thing", "thing"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
+
+
+def test_thing_passes_compounds_code_and_allow_comment():
+    assert found("Something, anything and nothing are fine.") == {}
+    assert found("Use `things` in code.") == {}
+    assert found("A <!-- check-avoided-words: allow --> thing here.") == {}
 
 
 def test_parenref_passes_linked_term_and_see():
