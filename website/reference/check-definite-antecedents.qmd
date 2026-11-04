@@ -4,11 +4,16 @@ title: "check-definite-antecedents.yml"
 
 Diff-scoped heuristic that flags a div
 whose first sentence opens with a definite phrase and no link,
-and a demonstrative (`this`, `that`, `these`, `those`) standing alone as a pronoun,
+and a demonstrative (`this`, `that`, `these`, `those`)
+standing alone as a pronoun
 ([gha#1460](https://github.com/Morrison-Lab/gha/issues/1460)).
 The bare-demonstrative finding is detected by what follows the word
-(a verb, preposition, conjunction, sentence end, or a predicate adjective after "make");
+(a verb, preposition, conjunction, sentence end,
+or a predicate adjective after "make");
 `<!-- check-definite-antecedents: allow -->` on a line exempts it.
+A line gets at most one demonstrative finding.
+A whole-tree run (`whole-tree: true`) on an existing corpus reports many hits,
+so add allow comments or fix them before adopting it that way.
 Both findings fail by default.
 The lab's rule (Ezra, 2026-10-19) is that a definite noun phrase
 needs a clear antecedent,

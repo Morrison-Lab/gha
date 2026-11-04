@@ -80,6 +80,10 @@ def test_demonstrative_in_a_div_body_is_flagged_on_its_line():
     assert demos(text) == [3]
 
 
+def test_one_demonstrative_finding_per_line():
+    assert demos("Use this or that.") == [1]
+
+
 def test_allow_comment_also_exempts_an_opener():
     text = "::: {#exr-a}\nThe labels are bad. <!-- check-definite-antecedents: allow -->\n:::"
     assert hits(text) == []

@@ -237,8 +237,9 @@ def scan_file(lines: List[str]) -> Tuple[List[Hit], int]:
         if raw.count("$$") % 2 == 1:
             in_math = not in_math
         elif not in_math and not ALLOW_RE.search(lines[idx]):
-            for phrase in bare_demonstratives(mask_prose(raw)):
-                hits.append(Hit(idx + 1, phrase, "demonstrative"))
+            phrases = bare_demonstratives(mask_prose(raw))
+            if phrases:  # one finding per line, so "this or that." reports once
+                hits.append(Hit(idx + 1, phrases[0], "demonstrative"))
         text = raw.strip()
         if not waiting or not text or text.startswith("#"):
             continue
