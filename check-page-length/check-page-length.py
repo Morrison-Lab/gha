@@ -39,13 +39,13 @@ Design notes, in the model of ``check-heading-levels``:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``CPL_WHOLE_TREE=true`` scans
   every page, to measure a corpus.
-- **Warn-only by default** (``CPL_FAIL`` defaults to false).
+- **Fails by default** (``CPL_FAIL`` defaults to true).
 
 Configuration (environment variables, set by the composite action):
   CPL_BASE_REF      Git ref/SHA to diff against.
   CPL_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   CPL_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  CPL_FAIL          "true" => exit 1 on a finding; default "false".
+  CPL_FAIL          "true" => exit 1 on a finding; default "true" (set "false" to warn only).
   CPL_WHOLE_TREE    "true" => scan every tracked matching page in full.
   CPL_MAX_MATH      Math-expression limit (default 600).
   CPL_MAX_LINES     Source-line limit (default 5000).
@@ -351,7 +351,7 @@ def main() -> int:
     base_ref = os.environ.get("CPL_BASE_REF", "").strip()
     globs = os.environ.get("CPL_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
     ignores = compile_ignores(_split_list(os.environ.get("CPL_PATHS_IGNORE", "")))
-    fail = _env_flag("CPL_FAIL", False)
+    fail = _env_flag("CPL_FAIL", True)
     whole_tree = _env_flag("CPL_WHOLE_TREE", False)
     max_math = _env_int("CPL_MAX_MATH", DEFAULT_MAX_MATH)
     max_lines = _env_int("CPL_MAX_LINES", DEFAULT_MAX_LINES)

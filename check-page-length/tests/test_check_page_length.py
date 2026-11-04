@@ -138,4 +138,4 @@ def test_action_defaults_match_script():
 
     assert default("max-math") == str(cpl.DEFAULT_MAX_MATH)
     assert default("max-lines") == str(cpl.DEFAULT_MAX_LINES)
-    assert default("fail") == "false"
+    assert default("fail") == "true"

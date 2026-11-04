@@ -2,7 +2,7 @@
 title: "check-page-length.yml"
 ---
 
-Diff-scoped, warn-only check that flags a page a pull request adds to
+Diff-scoped, failing-by-default check that flags a page a pull request adds to
 when the page has grown too long.
 The lab's rule (Ezra, 2026-10-31) is that a page should load
 and finish rendering its math in under 5 seconds,
@@ -62,7 +62,7 @@ Set `whole-tree: true` to measure every tracked page in full.
 | `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. |
 | `max-math`     | string  | `'600'`    | Largest number of math expressions a page may have. |
 | `max-lines`    | string  | `'5000'`   | Largest number of source lines a page may have, includes expanded. |
-| `fail`         | boolean | `false`    | Fail the workflow when a touched page is over a limit. The default gives warning annotations only. |
+| `fail`         | boolean | `true`     | Fail the workflow when a touched page is over a limit. Set `false` for warning annotations only. |
 | `whole-tree`   | boolean | `false`    | Measure every tracked page in full instead of only touched pages. |
 
 ## Usage
