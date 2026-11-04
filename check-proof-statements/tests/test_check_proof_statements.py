@@ -284,18 +284,18 @@ def _main_env(monkeypatch, repo, **extra):
         monkeypatch.setenv(key, value)
 
 
-def test_main_warns_by_default_and_fails_on_request(tmp_path, monkeypatch, capsys):
+def test_main_fails_by_default_and_warns_when_fail_is_off(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "thm.qmd").write_text(MDS_534)
     git("add", "-A")
     _main_env(monkeypatch, repo)
+    assert cps.main() == 1
+    assert "::error file=thm.qmd,line=18::" in capsys.readouterr().out
+    monkeypatch.setenv("CPS_FAIL", "false")
     assert cps.main() == 0
     out = capsys.readouterr().out
     assert "::warning file=thm.qmd,line=8::" in out
     assert "::warning file=thm.qmd,line=18::Show every proof on slides" in out
-    monkeypatch.setenv("CPS_FAIL", "true")
-    assert cps.main() == 1
-    assert "::error file=thm.qmd,line=18::" in capsys.readouterr().out
 
 
 def test_main_flags_a_hidden_proof_in_a_file_only_touched_elsewhere(tmp_path, monkeypatch, capsys):
@@ -348,7 +348,7 @@ def test_other_prefixes_are_not_read(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "thm.qmd").write_text(MDS_534)
     git("add", "-A")
-    _main_env(monkeypatch, repo)
+    _main_env(monkeypatch, repo, CPS_FAIL="false")
     monkeypatch.setenv("CAW_FAIL", "true")
     monkeypatch.setenv("CWI_FAIL", "true")
     assert cps.main() == 0
@@ -361,9 +361,9 @@ def test_defaults_agree_across_action_workflow_and_script():
     workflow = (_DIR.parent / ".github/workflows/check-proof-statements.yml").read_text()
     for text in (action, workflow):
         assert f"default: '{cps.DEFAULT_GLOBS}'" in text
-    assert cps._DEFAULT_FAIL is False
-    assert "default: 'false'" in action
-    assert re.search(r"fail:\n(?:.*\n)*?\s+default: false", workflow)
+    assert cps._DEFAULT_FAIL is True
+    assert "default: 'true'" in action
+    assert re.search(r"fail:\n(?:.*\n)*?\s+default: true", workflow)
 
 
 def test_action_passes_every_input_to_the_script_under_the_cps_prefix():
@@ -425,7 +425,7 @@ def test_main_finds_files_under_mnemonic_prefix_and_quoted_paths(tmp_path, monke
     (repo / "ch" / 'q"u.qmd').write_text(page)
     (repo / "plain.qmd").write_text(page)
     git("add", "-A")
-    _main_env(monkeypatch, repo)
+    _main_env(monkeypatch, repo, CPS_FAIL="false")
     for key, value in (("GIT_CONFIG_COUNT", "1"),
                        ("GIT_CONFIG_KEY_0", "diff.mnemonicPrefix"),
                        ("GIT_CONFIG_VALUE_0", "true")):

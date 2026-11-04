@@ -20,12 +20,12 @@ Morrison-Lab/gha#1351):
   "furthermore" (Halmos, "How to Write Mathematics", 1970, section 10: these
   "do not belong in the statement of a theorem"; Morrison-Lab/psw#422).
   A statement gives the result and its hypotheses; the proof gives the
-  reasoning. Heuristic, so warn-only: "so that" and "so-called" pass, and words
+  reasoning. Fails by default (gha#1471: a whole-tree run found every sampled hit real): "so that" and "so-called" pass, and words
   inside inline or display math, code and comments are not read.
 
 The diff model, Markdown masking (code fences, spans, HTML comments, front
 matter), skip-not-fall-back come from ``check-write-idiom``, whose engine this script
-reuses; the div tracking, rules and warn-only default are its own. Silence a line with ``<!-- check-proof-statements: allow
+reuses; the div tracking, rules and failing default are its own. Silence a line with ``<!-- check-proof-statements: allow
 -->`` on it or on the line before.
 
 Configuration (environment variables, set by the composite action):
@@ -46,7 +46,7 @@ engine = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(engine)
 
 DEFAULT_GLOBS = engine.DEFAULT_GLOBS
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 ALLOW_RE = re.compile(r"<!--\s*check-proof-statements:\s*allow\s*-->")
 NEVER_RE = re.compile(r"(?!x)x")
 

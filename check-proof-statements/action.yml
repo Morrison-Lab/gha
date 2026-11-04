@@ -5,7 +5,7 @@ description: >-
   (every proof is shown on slides), and reasoning words such as "so" and
   "because" are flagged on an added line inside a theorem, lemma, corollary or
   proposition statement (the proof carries the reasoning). Skips code fences
-  and spans, HTML comments, front matter and math. Warn-only by default.
+  and spans, HTML comments, front matter and math. Fails by default.
 inputs:
   python-version:
     description: Python version to set up.
@@ -41,7 +41,7 @@ inputs:
     description: >-
       Fail the action when a hidden proof or statement reasoning is found
       (else non-blocking). Defaults to 'false' (warning annotations only).
-    default: 'false'
+    default: 'true'
 runs:
   using: composite
   steps:

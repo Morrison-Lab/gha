@@ -34,10 +34,10 @@ on:
       fail:
         description: >-
           Fail the workflow when a hidden proof or statement
-          reasoning is found (else non-blocking). Defaults to false (warning annotations
-          only).
+          reasoning is found (else non-blocking). Defaults to true (Ezra, 2026-11-04;
+          gha#1471). Set false for warning annotations only.
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-proof-statements:

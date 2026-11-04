@@ -5055,9 +5055,10 @@ jobs:
             '' \
             ':::' > _ci-proof-statements/page.qmd
           git add -f _ci-proof-statements/page.qmd
-      - name: Check the staged page, warn-only by default
+      - name: Check the staged page with fail off
         uses: ./check-proof-statements
         with:
+          fail: 'false'
           whole-tree: 'true'
           globs: '_ci-proof-statements/*.qmd'
       - name: Check the staged page, expecting a failure
