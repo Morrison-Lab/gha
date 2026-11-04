@@ -51,7 +51,8 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   Source: psw's "Say which thing" (gha#1454).
   This rule also fails the run whatever `fail` says,
   and `<!-- check-avoided-words: allow -->` exempts a deliberate use.
-  A consumer on the `v3` tag sees any added line containing the word turn its check red.
+  A consumer on the `v3` tag sees its check turn red
+  on any added line containing the word.
 
 The other rules warn unless `fail` is true.
 
