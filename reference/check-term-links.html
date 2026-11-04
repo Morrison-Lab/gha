@@ -1204,6 +1204,7 @@ cookieconsent.run({
 <li><strong>Definition divs.</strong> Each <code>::: {#def-...}</code> div contributes its title (any heading inside it) and its bold terms. A parenthetical gloss, and an alias after a comma, <code>or</code>, <code>also called</code> or <code>known as</code>, is split into its own term.</li>
 <li><strong>Links to definitions.</strong> Each link whose target ends in <code>#def-...</code> contributes its link text. This is how a term defined on another site becomes known: <code>[risk](https://example.com/ch.html#def-risk)</code> anywhere in the corpus makes “risk” a term.</li>
 <li><strong>A terms file.</strong> <code>terms-file</code> adds terms by hand, one per line.</li>
+<li><strong>Prerequisite sites.</strong> <code>terms-from</code> clones other repositories, such as mds, pds, and sds, and reads their definitions, so a term defined there must be linked at its first use in each div here too (<a href="https://github.com/Morrison-Lab/gha/issues/1462">gha#1462</a>). Those repositories are read for terms and never checked.</li>
 </ul>
 <p>A term is one to five words of letters, at least three characters, and not a label such as “note” or “example”. <code>allow-file</code> removes terms that are ordinary English in the corpus.</p>
 </section>
@@ -1258,26 +1259,31 @@ cookieconsent.run({
 <td>File of extra terms, one per line</td>
 </tr>
 <tr class="even">
+<td><code>terms-from</code></td>
+<td><code>''</code></td>
+<td>Space-separated <code>owner/repo</code> prerequisite sites (such as mds, pds, sds), cloned shallowly; their definitions make their terms known. A private one needs the optional <code>WORKFLOW_TOKEN</code> secret</td>
+</tr>
+<tr class="odd">
 <td><code>allow-file</code></td>
 <td><code>''</code></td>
 <td>File of terms to leave alone, one per line</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>whole-tree</code></td>
 <td><code>false</code></td>
 <td>Report every finding, not only those on added lines</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>fail</code></td>
 <td><code>true</code></td>
 <td>Fail the job on a finding (<code>false</code>: warning annotations only)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>python-version</code></td>
 <td><code>3.x</code></td>
 <td>Python version to set up</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>runs-on</code></td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
 <td>Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (<a href="https://github.com/Morrison-Lab/gha/issues/1167">#1167</a>).</td>

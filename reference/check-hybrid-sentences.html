@@ -1158,14 +1158,14 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-10-29) that a sentence is entirely in words or entirely in math. A sentence such as “The risk is zero if and only if <code>f = g</code> in math” states its first condition in words and its second as a relation between expressions. Write two sentences instead: one entirely in words, where single inline expressions are fine, and one displayed entirely in math.</p>
+<p>Diff-scoped, failing-by-default heuristic check for the lab’s rule (Ezra, 2026-10-29) that a sentence is entirely in words or entirely in math. A sentence such as “The risk is zero if and only if <code>f = g</code> in math” states its first condition in words and its second as a relation between expressions. Write two sentences instead: one entirely in words, where single inline expressions are fine, and one displayed entirely in math.</p>
 <p>The check reads each prose paragraph outside code fences, display math and HTML comments, and flags a sentence when</p>
 <ul>
 <li>the clause on one side of “if and only if”, “iff”, “and” or “or” starts or ends with an inline relation between expressions (<code>=</code>, <code>\neq</code>, <code>&lt;</code>, <code>\le</code>, <code>\subseteq</code>, <code>\approx</code>, <code>\iff</code> and the like), and</li>
 <li>the clause on the other side holds three or more words and no such relation.</li>
 </ul>
 <p>A relation inside brackets or <code>\text{}</code> does not count. Two relations joined by a connective, as in “with <code>a = 1</code> and <code>b = 2</code> in math”, are all math and are not flagged. A paragraph with a counter-example mark (the cross emoji), or one that holds <code>&lt;!-- hybrid-ok: reason --&gt;</code>, is exempt.</p>
-<p>A paragraph is checked when the pull request adds a line in it. With no base to diff against, the check skips instead of scanning the whole tree, so existing sentences are fixed when someone edits them anyway. It warns by default; <code>fail: true</code> blocks.</p>
+<p>A paragraph is checked when the pull request adds a line in it. With no base to diff against, the check skips instead of scanning the whole tree, so existing sentences are fixed when someone edits them anyway. It fails by default; <code>fail: false</code> only warns.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -1194,7 +1194,7 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td><code>fail</code></td>
-<td><code>false</code></td>
+<td><code>true</code></td>
 <td>Fail on a finding; <code>false</code> warns</td>
 </tr>
 <tr class="even">
