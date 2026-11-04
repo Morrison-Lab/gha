@@ -20,8 +20,11 @@ lockfiles, `renv.lock`, `_freeze/`, `docs/`, images, PDFs,
 CSV and R data files, and minified scripts.
 Add more with `paths-ignore`.
 
-The lines of a newly added `_fig-*` subfile are not counted either, since figure code in several languages is long but mechanical ([ai-config#4928](https://github.com/Morrison-Lab/ai-config/issues/4928)).
-Each such file still counts as a file, and editing an existing `_fig-*` file still counts its lines.
+The lines of a newly added `_fig-*` subfile are not counted either,
+since figure code in several languages is long but mechanical
+([ai-config#4928](https://github.com/Morrison-Lab/ai-config/issues/4928)).
+Each such file still counts as a file,
+and editing an existing `_fig-*` file still counts its lines.
 
 ## Inputs
 
