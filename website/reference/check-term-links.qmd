@@ -29,7 +29,7 @@ The check learns them from the files it scans, so it needs no list:
 - **A terms file.**
   `terms-file` adds terms by hand, one per line.
 - **Prerequisite sites.**
-  `terms-from` clones other repositories, such as mds, pds and sds,
+  `terms-from` clones other repositories, such as mds, pds, and sds,
   and reads their definitions, so a term defined there must be linked
   at its first use in each div here too
   ([gha#1462](https://github.com/Morrison-Lab/gha/issues/1462)).
