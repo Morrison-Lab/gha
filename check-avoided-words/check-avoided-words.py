@@ -48,7 +48,7 @@ flagged before ``before``, ``after``, ``as``, ``like``, ``then``, ``enough``,
 The diff model, Markdown masking (code fences and spans, HTML comments, front
 matter), the ``<!-- check-avoided-words: allow -->`` comment, skip-not-fall-back
 come from ``check-write-idiom``, whose engine this script reuses; only the
-rules below, the warn-only default and the ``CAW_`` env prefix are its own.
+rules below, the failing default and the ``CAW_`` env prefix are its own.
 It reports at most one finding per rule per line.
 
 Configuration (environment variables, set by the composite action):
@@ -69,7 +69,7 @@ engine = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(engine)
 
 DEFAULT_GLOBS = engine.DEFAULT_GLOBS
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 ALLOW_RE = re.compile(r"<!--\s*check-avoided-words:\s*allow\s*-->")
 
 POSITION_NOUNS = (
@@ -110,7 +110,7 @@ PARENREF_RE = re.compile(
     r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
 )
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
-# failing check; the other rules stay warn-only by default).
+# failing check; since gha#1473 every rule fails by default).
 ALWAYS_FAIL = frozenset({"parenref", "thing"})
 RULES = (
     ("position", POSITION_RE,

@@ -7,8 +7,8 @@ description: >-
   generic placeholder set such as "domain A" (psw#427). Skips code
   fences and spans, HTML comments and front matter. Scoped to lines a diff
   adds (an added line whose exact text was also deleted in the same diff
-  counts as moved). Warn-only by default, except the trailing-parenthetical-link and "thing" rules,
-  which always fail.
+  counts as moved). Fails by default; the trailing-parenthetical-link and "thing"
+  rules fail even with fail off.
 inputs:
   python-version:
     description: Python version to set up.
@@ -43,9 +43,10 @@ inputs:
   fail:
     description: >-
       Fail the action when an avoided word is found
-      (else non-blocking). Defaults to 'false' (warning annotations only),
-      except the `parenref` and `thing` rules, which always fail.
-    default: 'false'
+      (else non-blocking). Defaults to 'true' (Ezra, 2026-11-04; gha#1473).
+      Set 'false' for warning annotations only; the `parenref` and `thing`
+      rules always fail.
+    default: 'true'
 runs:
   using: composite
   steps:

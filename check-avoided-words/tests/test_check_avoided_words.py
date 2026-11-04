@@ -190,25 +190,25 @@ def _main_env(monkeypatch, repo, **extra):
         monkeypatch.setenv(key, value)
 
 
-def test_main_warns_by_default_and_fails_on_request(tmp_path, monkeypatch, capsys):
+def test_main_fails_by_default_and_warns_when_fail_is_off(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("prose\nSee the table above.\n")
     git("add", "-A")
     _main_env(monkeypatch, repo)
-    assert wi.main() == 0
-    out = capsys.readouterr().out
-    assert "::warning file=page.qmd,line=2::" in out
-    assert "(psw#418;" in out
-    monkeypatch.setenv("CAW_FAIL", "true")
     assert wi.main() == 1
-    assert "::error file=page.qmd,line=2::" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "::error file=page.qmd,line=2::" in out
+    assert "(psw#418;" in out
+    monkeypatch.setenv("CAW_FAIL", "false")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
 
 
-def test_parenref_fails_by_default_while_other_rules_warn(tmp_path, monkeypatch, capsys):
+def test_parenref_fails_with_fail_off_while_other_rules_warn(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("prose\nSee the table above.\n")
     git("add", "-A")
-    _main_env(monkeypatch, repo)
+    _main_env(monkeypatch, repo, CAW_FAIL="false")
     assert wi.main() == 0
     (repo / "page.qmd").write_text(
         "prose\nSee the table above.\n$f$ is not differentiable at $c$ (@def-differentiable).\n")
@@ -242,7 +242,7 @@ def test_write_idiom_prefix_is_not_read(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("See the table above.\n")
     git("add", "-A")
-    _main_env(monkeypatch, repo)
+    _main_env(monkeypatch, repo, CAW_FAIL="false")
     monkeypatch.setenv("CWI_FAIL", "true")
     assert wi.main() == 0
 
@@ -254,9 +254,9 @@ def test_defaults_agree_across_action_workflow_and_script():
     workflow = (_DIR.parent / ".github/workflows/check-avoided-words.yml").read_text()
     for text in (action, workflow):
         assert f"default: '{wi.DEFAULT_GLOBS}'" in text
-    assert wi._DEFAULT_FAIL is False
-    assert "default: 'false'" in action
-    assert re.search(r"fail:\n(?:.*\n)*?\s+default: false", workflow)
+    assert wi._DEFAULT_FAIL is True
+    assert "default: 'true'" in action
+    assert re.search(r"fail:\n(?:.*\n)*?\s+default: true", workflow)
 
 
 def test_action_passes_every_input_to_the_script_under_the_caw_prefix():

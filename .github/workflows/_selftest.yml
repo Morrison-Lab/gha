@@ -4985,9 +4985,10 @@ jobs:
           mkdir -p _ci-avoided-words
           echo 'See the table above.' > _ci-avoided-words/page.qmd
           git add -f _ci-avoided-words/page.qmd
-      - name: Check the staged page, warn-only by default
+      - name: Check the staged page with fail off
         uses: ./check-avoided-words
         with:
+          fail: 'false'
           whole-tree: 'true'
           globs: '_ci-avoided-words/*.qmd'
       - name: Check the staged page, expecting a failure
