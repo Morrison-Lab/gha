@@ -144,6 +144,27 @@ def test_failed_copy_sweeps_only_old_run_directories_then_retries(tmp_path):
     assert (ci / "image").exists()
 
 
+def test_rsync_exclude_patterns_reach_the_checkout_copy_only(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0", RSYNC_EXCLUDE=".git  node_modules")
+    assert proc.returncode == 0, proc.stderr
+    copies = [line for line in calls if line.startswith("rsync ")]
+    assert "--exclude=.git --exclude=node_modules" in copies[0]
+    assert "--exclude" not in copies[1]
+
+
+def test_rsync_exclude_wildcards_are_not_expanded_by_the_shell(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0", RSYNC_EXCLUDE="*")
+    assert proc.returncode == 0, proc.stderr
+    copies = [line for line in calls if line.startswith("rsync ")]
+    assert "--exclude=* " in copies[0]
+
+
+def test_no_rsync_exclude_by_default(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert not any("--exclude" in line for line in calls)
+
+
 def test_held_or_aborted_job_exits_70(tmp_path):
     # No "return value" line in condor.log, and condor_wait itself failed.
     proc, _ = _run(tmp_path, ["a", "b"], STUB_WAIT_RC="1")
