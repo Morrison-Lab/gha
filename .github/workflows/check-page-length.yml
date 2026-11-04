@@ -42,9 +42,9 @@ on:
       fail:
         description: >-
           Fail the workflow when a touched page is over a limit
-          (else non-blocking). Defaults to false (warning annotations only).
+          (else non-blocking). Defaults to true (Ezra, 2026-11-04; gha#1475).
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-page-length:
