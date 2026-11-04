@@ -87,6 +87,28 @@ class LintQmdChunks(unittest.TestCase):
         self.assertIn("page.qmd:5: E711", result.stdout)
         self.assertIn("page.qmd:10: E731", result.stdout)
 
+    def test_longer_closing_fence_closes_the_chunk(self):
+        text = BAD.replace("pass\n```\n", "pass\n````\n", 1)
+        result = lint(text)
+        self.assertIn("page.qmd:5: E711", result.stdout)
+        self.assertIn("page.qmd:10: E731", result.stdout)
+        self.assertNotIn("invalid-syntax", result.stdout)
+
+    def test_missing_ruff_is_reported_plainly(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            path = Path(scratch) / "page.qmd"
+            path.write_text(BAD, encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--config", str(CONFIG), str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+                env={"PATH": scratch},
+            )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("could not run ruff", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_non_python_chunks_are_ignored(self):
         self.assertEqual(lint(R_ONLY).returncode, 0)
 

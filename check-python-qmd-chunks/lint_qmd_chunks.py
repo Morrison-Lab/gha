@@ -54,7 +54,9 @@ def extract_chunks(text):
                     source.extend(["", ""])
                     line_map.extend([number, number])
             continue
-        if line.strip() == fence:
+        stripped = line.strip()
+        # CommonMark: a closing fence is at least as long as the opener.
+        if stripped.startswith(fence) and not stripped.strip("`"):
             fence = None
             continue
         # A chunk inside a callout or list item is indented as a whole.
@@ -65,9 +67,12 @@ def extract_chunks(text):
 
 def run_ruff(args):
     """Run ruff with the arguments and return the completed process."""
-    return subprocess.run(
-        ["ruff", *args], capture_output=True, text=True, check=False
-    )
+    try:
+        return subprocess.run(
+            ["ruff", *args], capture_output=True, text=True, check=False
+        )
+    except FileNotFoundError:
+        sys.exit("could not run ruff: it is not on PATH (pip install ruff)")
 
 
 def lint_file(path, config):
