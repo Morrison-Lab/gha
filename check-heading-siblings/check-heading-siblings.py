@@ -32,13 +32,13 @@ Design notes, in the model of ``check-page-length``:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``CHS_WHOLE_TREE=true`` scans
   every page, to measure a corpus.
-- **Warn-only by default** (``CHS_FAIL`` defaults to false).
+- **Fails by default** (``CHS_FAIL`` defaults to true).
 
 Configuration (environment variables, set by the composite action):
   CHS_BASE_REF      Git ref/SHA to diff against.
   CHS_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   CHS_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  CHS_FAIL          "true" => exit 1 on a finding; default "false".
+  CHS_FAIL          "true" => exit 1 on a finding; default "true" (set "false" to warn only).
   CHS_WHOLE_TREE    "true" => scan every tracked matching page in full.
   CHS_MAX           Largest number of sibling headings (default 7).
 """
@@ -371,7 +371,7 @@ def main() -> int:
     base_ref = os.environ.get("CHS_BASE_REF", "").strip()
     globs = os.environ.get("CHS_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
     ignores = compile_ignores(_split_list(os.environ.get("CHS_PATHS_IGNORE", "")))
-    fail = _env_flag("CHS_FAIL", False)
+    fail = _env_flag("CHS_FAIL", True)
     whole_tree = _env_flag("CHS_WHOLE_TREE", False)
     limit = _env_int("CHS_MAX", DEFAULT_MAX)
 
