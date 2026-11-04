@@ -22,6 +22,8 @@
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/home/morri313/ci), RUN_ID (default GITHUB_RUN_ID or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
+# RSYNC_EXCLUDE (default none: space-separated rsync exclude patterns, such as
+# .git, for paths the job does not need on the cluster home),
 # CONDOR_IMAGE (default none: a path to an Apptainer image on the cluster home;
 # when set, every step runs inside it with the checkout bound at /work, and the
 # home, TMPDIR and uv caches under /work because the contained /tmp and home
@@ -61,9 +63,13 @@ transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
 # fails, remove the run directories older than STALE_MINUTES (default 60, well
 # past the longest job) and copy once more. Only digit-led names are removed,
 # so an image directory beside them is never touched.
+# RSYNC_EXCLUDE (space-separated patterns) keeps paths such as .git, whose pack
+# files are the largest part of a checkout, off the cluster home.
+excludes=()
+for pattern in ${RSYNC_EXCLUDE:-}; do excludes+=("--exclude=$pattern"); done
 copied=0
 for attempt in 1 2; do
-  if rsync -a --mkpath --delete -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/" &&
+  if rsync -a --mkpath --delete ${excludes[@]+"${excludes[@]}"} -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/" &&
     rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps"; then
     copied=1
     break
