@@ -204,9 +204,9 @@ def test_defaults_agree_across_script_action_and_workflow():
     action = (_DIR / "action.yml").read_text(encoding="utf-8")
     workflow = (_DIR.parent / ".github" / "workflows"
                 / "check-div-ids.yml").read_text(encoding="utf-8")
-    assert cdi._DEFAULT_FAIL is False
-    assert "default: 'false'" in action.split("  fail:")[1].split("runs:")[0]
-    assert "default: false" in workflow.split("      fail:")[1].split("jobs:")[0]
+    assert cdi._DEFAULT_FAIL is True
+    assert "default: 'true'" in action.split("  fail:")[1].split("runs:")[0]
+    assert "default: true" in workflow.split("      fail:")[1].split("jobs:")[0]
     assert f"default: '{cdi.DEFAULT_GLOBS}'" in action
     assert f"default: '{cdi.DEFAULT_GLOBS}'" in workflow
     for name in ("BASE_REF", "WHOLE_TREE", "GLOBS", "PATHS_IGNORE", "FAIL"):
@@ -216,6 +216,6 @@ def test_defaults_agree_across_script_action_and_workflow():
 def test_main_exit_codes(repo, monkeypatch):
     _commit(repo, "a.qmd", BAD)
     monkeypatch.setenv("CDI_WHOLE_TREE", "true")
-    assert cdi.main() == 0
-    monkeypatch.setenv("CDI_FAIL", "true")
     assert cdi.main() == 1
+    monkeypatch.setenv("CDI_FAIL", "false")
+    assert cdi.main() == 0

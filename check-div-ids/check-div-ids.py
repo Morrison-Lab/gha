@@ -33,7 +33,7 @@ Design notes, in the model of ``check-one-div-per-subfile``:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``CDI_WHOLE_TREE=true`` asks for
   the whole tree explicitly.
-- **Warn-only by default** (``CDI_FAIL`` defaults to false).
+- **Fails by default** (``CDI_FAIL`` defaults to true).
 
 Configuration (environment variables, set by the composite action):
   CDI_BASE_REF      Git ref/SHA to diff against. Empty and not whole-tree =>
@@ -41,7 +41,7 @@ Configuration (environment variables, set by the composite action):
   CDI_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   CDI_PATHS_IGNORE  Comma/newline-separated glob patterns (relative paths) to
                     skip. Supports ``*``, ``?`` and recursive ``**``.
-  CDI_FAIL          "true" => exit 1 on a finding; default "false".
+  CDI_FAIL          "true" => exit 1 on a finding; default "true".
   CDI_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
@@ -59,7 +59,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 
 PREFIX_FOR_CLASS = {
     "definition": "def",

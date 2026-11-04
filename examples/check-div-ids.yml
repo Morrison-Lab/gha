@@ -2,7 +2,7 @@
 # Diff-scoped check: flags a fenced div with a theorem-type class (.remark,
 # .definition, ...) but no matching id (#rem-, #def-, ...) when a PR adds its
 # opening line. Without the id the div renders as a plain block quote.
-# Warn-only by default.
+# Fails by default.
 name: Check div ids
 
 on:
@@ -20,5 +20,5 @@ jobs:
     # with:
     #   globs: '*.qmd'              # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
-    #   fail: true                             # block instead of warn (defaults to false)
+    #   fail: false                            # warn instead of block (defaults to true)
     #   whole-tree: true                       # scan every div, not just a PR's additions
