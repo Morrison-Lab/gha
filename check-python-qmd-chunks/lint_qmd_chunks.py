@@ -72,7 +72,8 @@ def run_ruff(args):
             ["ruff", *args], capture_output=True, text=True, check=False
         )
     except FileNotFoundError:
-        sys.exit("could not run ruff: it is not on PATH (pip install ruff)")
+        sys.stderr.write("could not run ruff: it is not on PATH (pip install ruff)\n")
+        sys.exit(2)
 
 
 def lint_file(path, config):
@@ -98,7 +99,8 @@ def lint_file(path, config):
             ]
         )
         if check.returncode not in (0, 1):
-            sys.exit(f"ruff check failed: {check.stderr}")
+            sys.stderr.write(f"ruff check failed: {check.stderr}\n")
+            sys.exit(2)
         for finding in json.loads(check.stdout or "[]"):
             row = finding["location"]["row"]
             problems.append(

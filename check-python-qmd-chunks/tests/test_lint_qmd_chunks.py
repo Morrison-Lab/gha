@@ -105,9 +105,24 @@ class LintQmdChunks(unittest.TestCase):
                 check=False,
                 env={"PATH": scratch},
             )
-        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.returncode, 2)
         self.assertIn("could not run ruff", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
+
+    def test_malformed_config_is_a_could_not_run_exit(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            page = Path(scratch) / "page.qmd"
+            page.write_text(BAD, encoding="utf-8")
+            config = Path(scratch) / "ruff.toml"
+            config.write_text("line-length = [\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--config", str(config), str(page)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("ruff check failed", result.stderr)
 
     def test_non_python_chunks_are_ignored(self):
         self.assertEqual(lint(R_ONLY).returncode, 0)

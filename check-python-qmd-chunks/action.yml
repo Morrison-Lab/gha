@@ -77,6 +77,12 @@ runs:
           echo "No findings in ${#files[@]} file(s)."
           exit 0
         fi
+        # Exit 2 means ruff could not run (missing binary, bad config), which
+        # is not a finding, so it fails the step even when fail is off.
+        if [ "$status" -eq 2 ]; then
+          echo "::error::The Python chunk check could not run; see the log above."
+          exit 1
+        fi
         level=error
         if [ "$QMD_FAIL" != 'true' ]; then level=warning; fi
         sed -E "s#^([^:]+):([0-9]+): (.*)#::${level} file=\\1,line=\\2::\\3#" findings.txt
