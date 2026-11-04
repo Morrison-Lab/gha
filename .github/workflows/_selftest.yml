@@ -1940,7 +1940,7 @@ jobs:
           CCM_WHOLE_TREE: 'true'
         run: |
           set -uo pipefail
-          out=$(python3 check-code-messages/check-code-messages.py)
+          out=$(python3 check-code-messages/check-code-messages.py || true)
           echo "$out"
           grep -q 'file=_ci-ccm/page.qmd,line=2::`geom_smooth()` needs both' <<< "$out"
           grep -q 'cell-output-stderr\|warning or message block' <<< "$out"
