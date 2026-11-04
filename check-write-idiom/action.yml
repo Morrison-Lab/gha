@@ -6,7 +6,7 @@ description: >-
   name the action literally (psw#297). Does not flag `Write $...$ for ...`
   (notation) or `Write down`. Skips code fences and spans, HTML comments and
   front matter. Scoped to lines a diff adds (an added line whose exact text
-  was also deleted in the same diff counts as moved). Warn-only by default.
+  was also deleted in the same diff counts as moved). Fails by default.
 inputs:
   python-version:
     description: Python version to set up.
@@ -41,8 +41,9 @@ inputs:
   fail:
     description: >-
       Fail the action when a line opening with a vague `Write ...` is found
-      (else non-blocking). Defaults to 'false' (warning annotations only).
-    default: 'false'
+      (else non-blocking). Defaults to 'true' (Ezra, 2026-11-04; gha#1472).
+      Set 'false' for warning annotations only.
+    default: 'true'
 runs:
   using: composite
   steps:

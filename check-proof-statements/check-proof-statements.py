@@ -24,9 +24,8 @@ Morrison-Lab/gha#1351):
   inside inline or display math, code and comments are not read.
 
 The diff model, Markdown masking (code fences, spans, HTML comments, front
-matter), skip-not-fall-back and the warn-only default come from
-``check-write-idiom``, whose engine this script reuses; the div tracking and
-rules are its own. Silence a line with ``<!-- check-proof-statements: allow
+matter), skip-not-fall-back come from ``check-write-idiom``, whose engine this script
+reuses; the div tracking, rules and warn-only default are its own. Silence a line with ``<!-- check-proof-statements: allow
 -->`` on it or on the line before.
 
 Configuration (environment variables, set by the composite action):
@@ -47,7 +46,7 @@ engine = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(engine)
 
 DEFAULT_GLOBS = engine.DEFAULT_GLOBS
-_DEFAULT_FAIL = engine._DEFAULT_FAIL
+_DEFAULT_FAIL = False
 ALLOW_RE = re.compile(r"<!--\s*check-proof-statements:\s*allow\s*-->")
 NEVER_RE = re.compile(r"(?!x)x")
 
@@ -185,7 +184,7 @@ def main() -> int:
         scan=scan_file, prefix="CPS_", name="proof-statements",
         clean="No hidden proof and no reasoning in a theorem statement found.",
         summary="hide a proof from slides or put reasoning in a theorem statement.",
-        format_finding=format_message)
+        format_finding=format_message, default_fail=_DEFAULT_FAIL)
 
 
 if __name__ == "__main__":

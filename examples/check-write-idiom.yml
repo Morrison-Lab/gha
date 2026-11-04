@@ -2,7 +2,7 @@
 # Diff-scoped check: flags a line a PR adds that opens with `Write the`, `Write a` or
 # `Write an` (after an optional list marker and label), since "Write ..." hides whether
 # to derive, express, state or give.
-# Warn-only by default.
+# Fails by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check "Write ..." instructions
 
@@ -19,5 +19,5 @@ jobs:
     # with:
     #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
-    #   fail: true                              # block instead of warn (defaults to false)
+    #   fail: false                             # warn instead of block (defaults to true)
     #   whole-tree: true                        # scan every line, not just a PR's additions
