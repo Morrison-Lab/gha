@@ -4519,7 +4519,7 @@
     "href": "reference/check-heading-siblings.html",
     "title": "check-heading-siblings.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags a heading a pull request adds to a group of too many sibling headings. Sibling headings are headings of the same level under the same parent heading; the top-level headings of a page are siblings under the page. The lab’s guideline (Ezra, 2026-11-02) is to aim for at most about five and to split or group past seven, so a reader scanning the headings can hold them all in mind. Miller’s “magical number seven” and Cowan’s later estimate of about four chunks motivate the guideline; both concern memory, and a reader can rescan a table of contents, so the check fires at the seven where the guideline says to act, not at five.",
+    "text": "Diff-scoped, failing-by-default check that flags a heading a pull request adds to a group of too many sibling headings. Sibling headings are headings of the same level under the same parent heading; the top-level headings of a page are siblings under the page. The lab’s guideline (Ezra, 2026-11-02) is to aim for at most about five and to split or group past seven, so a reader scanning the headings can hold them all in mind. Miller’s “magical number seven” and Cowan’s later estimate of about four chunks motivate the guideline; both concern memory, and a reader can rescan a table of contents, so the check fires at the seven where the guideline says to act, not at five.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -4567,7 +4567,7 @@
     "href": "reference/check-heading-siblings.html#inputs",
     "title": "check-heading-siblings.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nmax\nstring\n'7'\nLargest number of sibling headings under one parent.\n\n\nfail\nboolean\nfalse\nFail the workflow when a touched group is over the limit. The default gives warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nMeasure every tracked page in full instead of only touched pages.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nmax\nstring\n'7'\nLargest number of sibling headings under one parent.\n\n\nfail\nboolean\ntrue\nFail the workflow when a touched group is over the limit. Set false for warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nMeasure every tracked page in full instead of only touched pages.",
     "crumbs": [
       "Overview",
       "Reference",
