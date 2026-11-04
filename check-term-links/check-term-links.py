@@ -106,6 +106,19 @@ EMPHASIS_WORDS = frozenset({
     "before", "without", "with", "than", "more", "less", "most", "least", "one",
     "two", "three", "first", "second", "third", "last", "next", "also", "too",
 })
+# Words that are never a term to link, however a prerequisite site tags them
+# (gha#1488): logic definitions carry aliases such as "and" and "not", and
+# `#def-` links wrap words such as "number".  A project adds more through
+# `allow-file`.
+FUNCTION_WORDS = frozenset({
+    "the", "an", "and", "but", "nor", "for", "yet", "not", "that", "this", "these",
+    "those", "there", "here", "when", "where", "while", "which", "who", "whom",
+    "what", "why", "how", "from", "into", "onto", "upon", "over", "under", "than",
+    "such", "some", "other", "another", "are", "was", "were", "been", "being", "has",
+    "have", "had", "did", "will", "would", "should", "could", "may", "might", "its",
+    "their", "them", "they", "our", "you", "your", "his", "her", "she", "also", "just",
+})
+GENERIC_NOUNS = frozenset({"number", "numbers", "value", "values"})
 LEADING_ARTICLE_RE =re.compile(r"^(?:the|a|an)\s+", re.I)
 MIN_TERM_LEN = 3
 MAX_TERM_WORDS = 5
@@ -151,7 +164,9 @@ def usable_term(term: str, allowed_out: Set[str]) -> bool:
     key = term_key(term)
     if len(key) < MIN_TERM_LEN or len(key.split()) > MAX_TERM_WORDS:
         return False
-    if key in COMMON_LABELS or key in allowed_out:
+    if key in COMMON_LABELS or key in FUNCTION_WORDS or key in EMPHASIS_WORDS:
+        return False
+    if key in GENERIC_NOUNS or key in allowed_out:
         return False
     # Words only: a term with math, a colon or other markup is not a prose term.
     return re.fullmatch(r"[a-z][a-z0-9' \-]*", key) is not None

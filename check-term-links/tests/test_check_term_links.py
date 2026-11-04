@@ -397,3 +397,21 @@ def test_cli_missing_terms_dir_warns_and_continues(prereq_repo):
     repo, _ = prereq_repo
     res = run_cli(repo, BASE_REF="main", FAIL="true", TERMS_DIRS="/no/such/dir")
     assert res.returncode == 0 and "not found" in res.stderr
+
+
+def test_function_words_and_generic_nouns_are_not_terms():
+    # gha#1488: a prerequisite site tags "and", "not" and "number" as terms.
+    for word in ("and", "not", "number", "values", "that", "also"):
+        assert not ctl.usable_term(word, set()), word
+    assert ctl.usable_term("risk", set())
+    assert ctl.usable_term("test set", set())
+
+
+def test_ordinary_words_defined_in_a_prerequisite_are_not_flagged():
+    defs = (
+        "::: {#def-conjunction}\n\n#### Conjunction\n\n"
+        "A **conjunction** holds when both parts hold, written with **and**; "
+        "a [number](#def-number) has a [value](#def-value).\n\n:::\n"
+    )
+    page = "::: {#exm-a}\n\nThe sum and the number of values are not equal.\n\n:::\n"
+    assert run_text(page, {"d.qmd": defs}) == []
