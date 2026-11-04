@@ -242,18 +242,18 @@ def _main_env(monkeypatch, repo, **extra):
         monkeypatch.setenv(key, value)
 
 
-def test_main_warns_by_default_and_fails_on_request(tmp_path, monkeypatch, capsys):
+def test_main_fails_by_default_and_warns_when_fail_is_off(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("prose\nWrite the x.\n")
     git("add", "-A")
     _main_env(monkeypatch, repo)
-    assert wi.main() == 0
-    out = capsys.readouterr().out
-    assert "::warning file=page.qmd,line=2::" in out
-    assert "(psw#297)" in out
-    monkeypatch.setenv("CWI_FAIL", "true")
     assert wi.main() == 1
-    assert "::error file=page.qmd,line=2::" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "::error file=page.qmd,line=2::" in out
+    assert "(psw#297)" in out
+    monkeypatch.setenv("CWI_FAIL", "false")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
 
 
 def test_main_passes_notation_and_write_down(tmp_path, monkeypatch, capsys):
@@ -305,9 +305,9 @@ def test_defaults_agree_across_action_workflow_and_script():
     workflow = (_DIR.parent / ".github/workflows/check-write-idiom.yml").read_text()
     for text in (action, workflow):
         assert f"default: '{wi.DEFAULT_GLOBS}'" in text
-    assert wi._DEFAULT_FAIL is False
-    assert "default: 'false'" in action
-    assert re.search(r"fail:\n(?:.*\n)*?\s+default: false", workflow)
+    assert wi._DEFAULT_FAIL is True
+    assert "default: 'true'" in action
+    assert re.search(r"fail:\n(?:.*\n)*?\s+default: true", workflow)
 
 
 def test_action_passes_every_input_to_the_script_under_the_cwi_prefix():

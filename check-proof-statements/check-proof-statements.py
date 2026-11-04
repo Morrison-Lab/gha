@@ -47,7 +47,7 @@ engine = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(engine)
 
 DEFAULT_GLOBS = engine.DEFAULT_GLOBS
-_DEFAULT_FAIL = engine._DEFAULT_FAIL
+_DEFAULT_FAIL = False
 ALLOW_RE = re.compile(r"<!--\s*check-proof-statements:\s*allow\s*-->")
 NEVER_RE = re.compile(r"(?!x)x")
 
@@ -185,7 +185,7 @@ def main() -> int:
         scan=scan_file, prefix="CPS_", name="proof-statements",
         clean="No hidden proof and no reasoning in a theorem statement found.",
         summary="hide a proof from slides or put reasoning in a theorem statement.",
-        format_finding=format_message)
+        format_finding=format_message, default_fail=_DEFAULT_FAIL)
 
 
 if __name__ == "__main__":

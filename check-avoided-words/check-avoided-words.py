@@ -69,7 +69,7 @@ engine = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(engine)
 
 DEFAULT_GLOBS = engine.DEFAULT_GLOBS
-_DEFAULT_FAIL = engine._DEFAULT_FAIL
+_DEFAULT_FAIL = False
 ALLOW_RE = re.compile(r"<!--\s*check-avoided-words:\s*allow\s*-->")
 
 POSITION_NOUNS = (
@@ -175,7 +175,7 @@ def main() -> int:
         clean="No avoided word or trailing parenthetical link found.",
         summary="use a word a style source advises against.",
         format_finding=format_message,
-        always_fail=ALWAYS_FAIL)
+        always_fail=ALWAYS_FAIL, default_fail=_DEFAULT_FAIL)
 
 
 if __name__ == "__main__":

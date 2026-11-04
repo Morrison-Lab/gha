@@ -29,7 +29,7 @@ Markdown masking are copied here rather than imported:
   is treated as moved. ``CWI_WHOLE_TREE=true`` scans everything.
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning instead of scanning the whole tree.
-- **Warn-only by default** (``CWI_FAIL`` defaults to false).
+- **Fails by default** (``CWI_FAIL`` defaults to true).
 - **The search space is reported.** Every run prints how many files and lines
   it examined.
 
@@ -39,7 +39,8 @@ Configuration (environment variables, set by the composite action):
   CWI_GLOBS         Space-separated git pathspecs.
   CWI_PATHS_IGNORE  Comma/newline-separated glob patterns to skip (``*``,
                     ``?`` and recursive ``**``).
-  CWI_FAIL          "true" => exit 1 on a finding.
+  CWI_FAIL          "true" => exit 1 on a finding; default "true" (set "false"
+                    to warn only).
   CWI_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
@@ -57,7 +58,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd *.md"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 
 # Optional whitespace, an optional list marker, an optional label, then the
 # idiom. "Write" is case-sensitive; the trailing space keeps `Write $x$` and
@@ -388,15 +389,19 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
 def main(scan=None, prefix: str = "CWI_", name: str = "write-idiom",
          clean: str = 'No line opens with "Write the", "Write a" or "Write an".',
          summary: str = 'open with a vague "Write ...".',
-         format_finding=None, always_fail=frozenset()) -> int:
+         format_finding=None, always_fail=frozenset(),
+         default_fail=None) -> int:
     """Run the check from the environment; the keyword arguments let a sibling
     check reuse the engine with its own scanner, env prefix and wording.
     A finding whose ``rule`` is in ``always_fail`` is an error and fails the
-    run whatever the FAIL flag says."""
+    run whatever the FAIL flag says.
+    ``default_fail`` is the FAIL default for a sibling check; None uses this
+    check's own ``_DEFAULT_FAIL``."""
     base_ref = os.environ.get(prefix + "BASE_REF", "").strip()
     globs = os.environ.get(prefix + "GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
     ignores = compile_globs(_split_list(os.environ.get(prefix + "PATHS_IGNORE", "")))
-    fail = _env_flag(prefix + "FAIL", _DEFAULT_FAIL)
+    fail = _env_flag(prefix + "FAIL",
+                     _DEFAULT_FAIL if default_fail is None else default_fail)
     whole_tree = _env_flag(prefix + "WHOLE_TREE", False)
     describe = format_finding or format_message
 
