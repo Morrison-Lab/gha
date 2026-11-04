@@ -152,6 +152,13 @@ def test_rsync_exclude_patterns_reach_the_checkout_copy_only(tmp_path):
     assert "--exclude" not in copies[1]
 
 
+def test_rsync_exclude_wildcards_are_not_expanded_by_the_shell(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0", RSYNC_EXCLUDE="*")
+    assert proc.returncode == 0, proc.stderr
+    copies = [line for line in calls if line.startswith("rsync ")]
+    assert "--exclude=* " in copies[0]
+
+
 def test_no_rsync_exclude_by_default(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0")
     assert proc.returncode == 0, proc.stderr

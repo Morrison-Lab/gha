@@ -66,7 +66,8 @@ transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
 # RSYNC_EXCLUDE (space-separated patterns) keeps paths such as .git, whose pack
 # files are the largest part of a checkout, off the cluster home.
 excludes=()
-for pattern in ${RSYNC_EXCLUDE:-}; do excludes+=("--exclude=$pattern"); done
+read -ra patterns <<< "${RSYNC_EXCLUDE:-}"
+for pattern in ${patterns[@]+"${patterns[@]}"}; do excludes+=("--exclude=$pattern"); done
 copied=0
 for attempt in 1 2; do
   if rsync -a --mkpath --delete ${excludes[@]+"${excludes[@]}"} -e "ssh ${ssh_opts[*]}" "$checkout"/ "$head_host:$root/$run/" &&
