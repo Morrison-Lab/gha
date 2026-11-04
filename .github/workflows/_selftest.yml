@@ -2598,11 +2598,12 @@ jobs:
             echo "::error::expected check-div-ids to fail on a staged page, got outcome='$OUTCOME'"
             exit 1
           fi
-      # The default is warn-only, so the same finding must pass.
-      - name: Check the staged page with the default fail
+      # With fail off the check only warns, so the same finding must pass.
+      - name: Check the staged page with fail off
         uses: ./check-div-ids
         with:
           whole-tree: 'true'
+          fail: 'false'
       - name: Check again with the page exempted through paths-ignore
         uses: ./check-div-ids
         with:
