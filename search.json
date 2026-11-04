@@ -6667,7 +6667,7 @@
     "href": "reference/check-write-idiom.html",
     "title": "check-write-idiom.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only check that flags a line opening with Write the, Write a or Write an. In an exercise, “Write …” means derive, express, state or give, and the instruction should name the action literally (“Derive an expression for”, “Express”, “State”, “Give”). This is gha#1121, from psw#297.\nThe check flags a line a pull request adds, in .qmd and .md files, that begins, after optional whitespace, an optional list marker (-, *, 1., 1)) and an optional label such as (a) or a), with Write followed by the, a or an (Write is case-sensitive).\nThe check does not flag:",
+    "text": "Diff-scoped, failing-by-default check that flags a line opening with Write the, Write a or Write an. In an exercise, “Write …” means derive, express, state or give, and the instruction should name the action literally (“Derive an expression for”, “Express”, “State”, “Give”). This is gha#1121, from psw#297.\nThe check flags a line a pull request adds, in .qmd and .md files, that begins, after optional whitespace, an optional list marker (-, *, 1., 1)) and an optional label such as (a) or a), with Write followed by the, a or an (Write is case-sensitive).\nThe check does not flag:",
     "crumbs": [
       "Overview",
       "Reference",
@@ -6691,7 +6691,7 @@
     "href": "reference/check-write-idiom.html#inputs",
     "title": "check-write-idiom.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\nfalse\nFail the workflow when a vague Write ... line is found. Warn-only by default.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when a vague Write ... line is found. Set false for warnings only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -6715,7 +6715,7 @@
     "href": "reference/check-write-idiom.html#example",
     "title": "check-write-idiom.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-write-idiom.yml in your repo.\nname: Check \"Write ...\" instructions\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-write-idiom.yml@v3\n    # with:\n    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)\n    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths\n    #   fail: true                              # block instead of warn (defaults to false)\n    #   whole-tree: true                        # scan every line, not just a PR's additions\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-write-idiom.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/check-write-idiom.yml in your repo.\nname: Check \"Write ...\" instructions\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-write-idiom.yml@v3\n    # with:\n    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)\n    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths\n    #   fail: false                             # warn instead of block (defaults to true)\n    #   whole-tree: true                        # scan every line, not just a PR's additions\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-write-idiom.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",

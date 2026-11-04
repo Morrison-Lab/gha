@@ -1201,7 +1201,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a line opening with <code>Write the</code>, <code>Write a</code> or <code>Write an</code>. In an exercise, “Write …” means derive, express, state or give, and the instruction should name the action literally (“Derive an expression for”, “Express”, “State”, “Give”). This is <a href="https://github.com/Morrison-Lab/gha/issues/1121">gha#1121</a>, from psw#297.</p>
+<p>Diff-scoped, failing-by-default check that flags a line opening with <code>Write the</code>, <code>Write a</code> or <code>Write an</code>. In an exercise, “Write …” means derive, express, state or give, and the instruction should name the action literally (“Derive an expression for”, “Express”, “State”, “Give”). This is <a href="https://github.com/Morrison-Lab/gha/issues/1121">gha#1121</a>, from psw#297.</p>
 <p>The check flags a line a pull request adds, in <code>.qmd</code> and <code>.md</code> files, that begins, after optional whitespace, an optional list marker (<code>-</code>, <code>*</code>, <code>1.</code>, <code>1)</code>) and an optional label such as <code>(a)</code> or <code>a)</code>, with <code>Write</code> followed by <code>the</code>, <code>a</code> or <code>an</code> (<code>Write</code> is case-sensitive).</p>
 <p>The check does not flag:</p>
 <ul>
@@ -1244,8 +1244,8 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Fail the workflow when a vague <code>Write ...</code> line is found. Warn-only by default.</td>
+<td><code>true</code></td>
+<td>Fail the workflow when a vague <code>Write ...</code> line is found. Set <code>false</code> for warnings only.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>
@@ -1290,7 +1290,7 @@ cookieconsent.run({
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                              # block instead of warn (defaults to false)</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false                             # warn instead of block (defaults to true)</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   whole-tree: true                        # scan every line, not just a PR's additions</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-write-idiom.yml"><code>examples/check-write-idiom.yml</code></a> for the full caller stub.</p>
