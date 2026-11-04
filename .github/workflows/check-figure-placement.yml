@@ -34,9 +34,9 @@ on:
       fail:
         description: >-
           Fail the workflow when a figure is uncited or unnested
-          (else non-blocking). Defaults to false.
+          (else non-blocking). Defaults to true (Ezra, 2026-11-04; gha#1474).
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-figure-placement:

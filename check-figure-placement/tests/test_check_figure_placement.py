@@ -110,8 +110,8 @@ def test_no_base_ref_skips_instead_of_scanning():
 
 
 def test_defaults_agree_across_script_action_and_workflow():
-    assert fpl._DEFAULT_FAIL is False
+    assert fpl._DEFAULT_FAIL is True
     action = (_DIR / "action.yml").read_text()
-    assert "default: 'false'" in action.split("fail:")[1]
+    assert "default: 'true'" in action.split("fail:")[1]
     wf = (_DIR.parent / ".github" / "workflows" / "check-figure-placement.yml").read_text()
-    assert "default: false" in wf.split("      fail:")[1]
+    assert "default: true" in wf.split("      fail:")[1]

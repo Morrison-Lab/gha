@@ -2,7 +2,7 @@
 title: "check-figure-placement.yml"
 ---
 
-Diff-scoped, warn-only check that flags a figure a pull request adds
+Diff-scoped, failing-by-default check that flags a figure a pull request adds
 when the page does not discuss it or places it away from its example.
 The lab's rule (Ezra, 2026-11-02) is that every figure is discussed
 and cross-referenced in prose,
@@ -37,7 +37,7 @@ Set `whole-tree: true` to measure every tracked file in full.
 | -------------- | ------- | --------- | ----------- |
 | `globs`        | string  | `'*.qmd'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore` | string  | `''`      | Comma- or newline-separated glob patterns (relative paths) to skip. |
-| `fail`         | boolean | `false`   | Fail the workflow when a figure is uncited or unnested. The default gives warning annotations only. |
+| `fail`         | boolean | `true`    | Fail the workflow when a figure is uncited or unnested. Set `false` for warning annotations only. |
 | `whole-tree`   | boolean | `false`   | Check every tracked file in full instead of only added lines. |
 
 ## Usage
