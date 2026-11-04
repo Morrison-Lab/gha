@@ -1162,6 +1162,7 @@ cookieconsent.run({
 <p>Diff-scoped, blocking check that fails a pull request changing more than 10 files or 300 lines. Every PR should be as small and focused as it can be while completely solving its stated task. A sweep goes out as minimal batches, one PR per batch of one concern. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1188">gha#1188</a>.</p>
 <p>The check counts the files a PR changes and the lines it adds plus deletes, measured from the merge base to <code>HEAD</code>. A rename counts as one file. A binary file counts as one file and no lines.</p>
 <p>These paths are not counted, since nobody writes them by hand: lockfiles, <code>renv.lock</code>, <code>_freeze/</code>, <code>docs/</code>, images, PDFs, CSV and R data files, and minified scripts. Add more with <code>paths-ignore</code>.</p>
+<p>The lines of a newly added <code>_fig-*</code> subfile are not counted either, since figure code in several languages is long but mechanical (<a href="https://github.com/Morrison-Lab/ai-config/issues/4928">ai-config#4928</a>). Each such file still counts as a file, and editing an existing <code>_fig-*</code> file still counts its lines.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
