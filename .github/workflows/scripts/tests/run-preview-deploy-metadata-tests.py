@@ -57,7 +57,8 @@ def step_script() -> str:
     raise SystemExit(f"::error::No step named {STEP_NAME!r} in {WORKFLOW}")
 
 
-def run_case(script: str, pr_number: str, action: str, head_repo: str, head_branch: str):
+def run_case(script: str, pr_number: str, action: str, head_repo: str, head_branch: str,
+             has_artifact: str = "true", remove_pr: str = ""):
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = pathlib.Path(tmp)
         meta = tmp_path / "_preview_download" / "meta"
@@ -78,6 +79,8 @@ def run_case(script: str, pr_number: str, action: str, head_repo: str, head_bran
             "GH_TOKEN": "unused",
             "HEAD_REPO": head_repo,
             "HEAD_BRANCH": head_branch,
+            "HAS_ARTIFACT": has_artifact,
+            "REMOVE_PR": remove_pr,
             "STUB_PULLS": "\n".join(f"{k}={v}" for k, v in PULLS.items()),
         }
         result = subprocess.run(
@@ -123,8 +126,16 @@ def main() -> int:
             print(f"  stdout={result.stdout!r} stderr={result.stderr!r}")
         else:
             print(f"ok: {desc}")
+    # No artifact: the gate found the run's own PR closed and names it (gha#1528).
+    result, outputs = run_case(script, "", "", "", "", has_artifact="false", remove_pr="7")
+    if result.returncode == 0 and outputs == "pr-number=7\naction=remove\n":
+        print("ok: a closed PR the gate names is removed without an artifact")
+    else:
+        failures += 1
+        print("::error::FAIL: a closed PR the gate names is removed without an artifact")
+        print(f"  exit={result.returncode} outputs={outputs!r} stderr={result.stderr!r}")
     if failures:
-        print(f"::error::{failures} of {len(CASES)} cases failed")
+        print(f"::error::{failures} cases failed")
         return 1
     print(f"All {len(CASES)} cases passed.")
     return 0
