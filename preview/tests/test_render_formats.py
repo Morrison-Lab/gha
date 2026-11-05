@@ -140,3 +140,29 @@ def test_no_notice_when_skip_docx_already_off(tmp_path, render_script):
     )
     assert to_formats(renders) == ["html", "docx"]
     assert NOTICE not in stdout
+
+
+FINGERPRINT = REPO_ROOT / "preview" / "freeze-fingerprint.sh"
+
+
+def fingerprint(directory):
+    result = subprocess.run(
+        ["bash", str(FINGERPRINT)], capture_output=True, text=True, check=True,
+        env={**os.environ, "FREEZE_DIR": str(directory)},
+    )
+    return result.stdout.strip()
+
+
+def test_freeze_fingerprint_tracks_changes(tmp_path):
+    freeze = tmp_path / "_freeze"
+    (freeze / "chapters" / "a").mkdir(parents=True)
+    page = freeze / "chapters" / "a" / "html.json"
+    page.write_text("{}", encoding="utf-8")
+    first = fingerprint(freeze)
+    assert fingerprint(freeze) == first
+    page.write_text('{"x": 1}', encoding="utf-8")
+    second = fingerprint(freeze)
+    assert second != first
+    page.unlink()
+    assert fingerprint(freeze) != second
+    assert fingerprint(tmp_path / "missing") == fingerprint(tmp_path / "also-missing")
