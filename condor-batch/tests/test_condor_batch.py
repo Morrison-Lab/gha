@@ -366,3 +366,76 @@ def test_no_head_answering_exits_70(tmp_path):
     assert proc.returncode == 70
     assert "no cluster head answered" in proc.stderr
     assert _count(calls, "condor_submit") == 0
+
+
+def _desktop_run(tmp_path: Path, **extra_env: str):
+    image = tmp_path / "lds-ci.sif"
+    image.write_text("sif")
+    return _run(
+        tmp_path, ["a", "b"], STUB_RV="0", CONDOR_HEAD="desk.example:922",
+        CONDOR_DESKTOP_HEADS="desk.example", CONDOR_IMAGE_FILE=str(image), **extra_env,
+    )
+
+
+def _submit_lines(tmp_path: Path) -> list[str]:
+    return (tmp_path / "calls.log.sub").read_text().splitlines()
+
+
+def test_desktop_head_uses_its_port_for_ssh_and_rsync(tmp_path):
+    proc, calls = _desktop_run(tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    transfers = [c for c in calls if c.startswith(("ssh ", "rsync "))]
+    assert transfers
+    assert all("-p 922" in c for c in transfers), transfers
+    assert all("desk.example:922" not in c for c in transfers), transfers
+
+
+def test_desktop_head_requests_the_desktop_pool_and_a_home_relative_root(tmp_path):
+    proc, calls = _desktop_run(tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "+CSCI_GrpDesktop = True" in _submit_lines(tmp_path)
+    assert any("desk.example:lds-ci/42/checkout.tar.gz" in c for c in calls), calls
+
+
+def test_desktop_head_transfers_the_image_with_the_job(tmp_path):
+    proc, calls = _desktop_run(tmp_path, CONDOR_IMAGE="/cluster/home/x/lds-ci.sif")
+    assert proc.returncode == 0, proc.stderr
+    assert any("desk.example:lds-ci/42/lds-ci.sif" in c for c in calls), calls
+    lines = _submit_lines(tmp_path)
+    transfer = next(line for line in lines if line.startswith("transfer_input_files"))
+    assert transfer.endswith("/lds-ci.sif")
+    assert "arguments = lds-ci.sif" in lines
+    run = (tmp_path / "calls.log.run").read_text()
+    assert '"$scratch/$img"' in run
+
+
+def test_cluster_head_ignores_the_image_file_and_the_desktop_pool(tmp_path):
+    image = tmp_path / "lds-ci.sif"
+    image.write_text("sif")
+    proc, calls = _run(
+        tmp_path, ["a", "b"], STUB_RV="0", CONDOR_HEAD="a.example",
+        CONDOR_IMAGE="/c/x.sif", CONDOR_IMAGE_FILE=str(image),
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "+CSCI_GrpDesktop = True" not in _submit_lines(tmp_path)
+    assert "arguments = /c/x.sif" in _submit_lines(tmp_path)
+    assert not any("lds-ci.sif" in c for c in calls if c.startswith("rsync "))
+
+
+def test_unreadable_desktop_image_file_exits_70(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="desk.example:922",
+        CONDOR_DESKTOP_HEADS="desk.example", CONDOR_IMAGE_FILE=str(tmp_path / "missing.sif"),
+    )
+    assert proc.returncode == 70
+    assert _count(calls, "condor_submit") == 0
+
+
+def test_unreachable_desktop_head_falls_back_with_its_port_probed(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], STUB_RV="0", STUB_SSH_FAIL_HOST="a.example",
+        CONDOR_HEAD="a.example desk.example:922", CONDOR_DESKTOP_HEADS="desk.example",
+    )
+    assert proc.returncode == 0, proc.stderr
+    probe = next(c for c in calls if c.endswith(" true") and "desk.example" in c)
+    assert "-p 922" in probe, probe

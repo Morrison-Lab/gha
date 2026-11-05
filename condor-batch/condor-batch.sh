@@ -25,8 +25,8 @@
 # reported as 1, so no step failure can look like an infrastructure failure.
 #
 # Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu; a space- or
-# comma-separated list spreads runs over the heads and falls back to the next
-# one when a head does not answer ssh),
+# comma-separated list of host or host:port entries spreads runs over the heads
+# and falls back to the next one when a head does not answer ssh),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
@@ -38,7 +38,14 @@
 # CONDOR_IMAGE (default none: a path to an Apptainer image on the cluster home,
 # read in place; when set, every step runs inside it with the unpacked checkout
 # bound at /work, and the home, TMPDIR and uv caches under /work because the
-# contained /tmp and home are small tmpfs).
+# contained /tmp and home are small tmpfs),
+# CONDOR_DESKTOP_HEADS (default csci-lab-head*: space-separated patterns for
+# heads of the CSCI desktop pool, such as csci-lab-head.cs.wwu.edu:922. Such a head
+# has no /cluster, so the run directory is CONDOR_DESKTOP_ROOT (default lds-ci)
+# under the login home, the job asks for +CSCI_GrpDesktop, and the image is the
+# file CONDOR_IMAGE_FILE on the runner, copied to the run directory and
+# transferred with the job into the scratch directory, never read from the
+# desktop head's home: CONDOR_IMAGE does not apply there).
 # The run directory (tarball, steps file and log) is deleted after a normal job
 # end (any step exit code), to keep the research directory inside its quota; it is
 # kept when the job did not end normally, so condor.log stays readable.
@@ -67,26 +74,45 @@ case "$key" in
   *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
 esac
 ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
-# CONDOR_HEAD may list several heads, separated by spaces or commas. Each run
-# starts at head (run number mod count), spreading runs over the heads, and
-# takes the first head that answers ssh; none answering is exit 70. One head
-# is used as given, with no extra ssh call.
+# CONDOR_HEAD may list several heads, separated by spaces or commas, each as
+# host or host:port. Each run starts at head (run number mod count), spreading
+# runs over the heads, and takes the first head that answers ssh; none answering
+# is exit 70. One head is used as given, with no extra ssh call.
 read -ra head_list <<< "${heads_in//,/ }"
 [ "${#head_list[@]}" -gt 0 ] || { echo "CONDOR_HEAD names no head" >&2; exit 64; }
-head_host="${head_list[0]}"
+head_entry="${head_list[0]}"
 if [ "${#head_list[@]}" -gt 1 ]; then
   run_num="${run//[^0-9]/}"
   start=$(( 10#${run_num:-0} % ${#head_list[@]} ))
-  head_host=
+  head_entry=
   for offset in $(seq 0 $(( ${#head_list[@]} - 1 ))); do
     candidate="${head_list[$(( (start + offset) % ${#head_list[@]} ))]}"
-    if ssh "${ssh_opts[@]}" -o ConnectTimeout=15 "$candidate" true; then
-      head_host="$candidate"
+    cport=(); [[ "$candidate" != *:* ]] || cport=(-p "${candidate##*:}")
+    if ssh "${ssh_opts[@]}" ${cport[@]+"${cport[@]}"} -o ConnectTimeout=15 "${candidate%%:*}" true; then
+      head_entry="$candidate"
       break
     fi
     echo "head $candidate did not answer ssh; trying the next" >&2
   done
-  [ -n "$head_host" ] || { echo "no cluster head answered ssh" >&2; exit 70; }
+  [ -n "$head_entry" ] || { echo "no cluster head answered ssh" >&2; exit 70; }
+fi
+head_host="${head_entry%%:*}"
+[[ "$head_entry" != *:* ]] || ssh_opts+=(-p "${head_entry##*:}")
+# A head in the CSCI desktop pool (CONDOR_DESKTOP_HEADS, default csci-lab-head*)
+# has no /cluster, so the run directory lives under the login home (CONDOR_DESKTOP_ROOT,
+# default lds-ci), its job needs +CSCI_GrpDesktop, and the Apptainer image is
+# transferred with the job from CONDOR_IMAGE_FILE instead of read in place.
+desktop=0
+read -ra pools <<< "${CONDOR_DESKTOP_HEADS:-csci-lab-head*}"
+for pool in "${pools[@]}"; do
+  # shellcheck disable=SC2254
+  case "$head_host" in $pool) desktop=1 ;; esac
+done
+image_file=
+if [ "$desktop" = 1 ]; then
+  root="${CONDOR_DESKTOP_ROOT:-lds-ci}"
+  image_file="${CONDOR_IMAGE_FILE:-}"
+  [ -z "$image_file" ] || [ -r "$image_file" ] || { echo "CONDOR_IMAGE_FILE is not readable: $image_file" >&2; exit 70; }
 fi
 transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
 # A job that did not end normally keeps its run directory, and enough of them
@@ -106,7 +132,8 @@ tar -czf "$pack_dir/checkout.tar.gz" ${excludes[@]+"${excludes[@]}"} -C "$checko
 copied=0
 for attempt in 1 2; do
   if rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$pack_dir/checkout.tar.gz" "$head_host:$root/$run/checkout.tar.gz" &&
-    rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps"; then
+    rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$steps" "$head_host:$root/$run/.condor-steps" &&
+    { [ -z "$image_file" ] || rsync -a -e "ssh ${ssh_opts[*]}" "$image_file" "$head_host:$root/$run/$(basename "$image_file")"; }; then
     copied=1
     break
   fi
@@ -129,10 +156,18 @@ trap 'printf "%s\n" "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s 
 
 # The remote script runs on the head: it writes the job and submits it once.
 rc=0
-ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "${CONDOR_IMAGE:-}" <<'REMOTE' || rc=$?
+# A desktop head has no cluster home, so a cluster-home image path never applies.
+[ "$desktop" != 1 ] || CONDOR_IMAGE=
+ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-}" <<'REMOTE' || rc=$?
 set -euo pipefail
-dir=$1 cpus=$2 mem=$3 disk=$4 image=${5:-}
+# ssh drops an empty argument, so the optional image comes last and a bare dot
+# stands for "no transferred image".
+dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-}
 cd "$dir"
+dir=$PWD
+extra_input= extra_attr=
+if [ "$desktop" = 1 ]; then extra_attr='+CSCI_GrpDesktop = True'; fi
+if [ "$sent_image" != . ]; then image=$sent_image; extra_input=", $dir/$sent_image"; fi
 cat > .condor-run.sh <<'RUN'
 #!/usr/bin/env bash
 # Runs in the execute node's scratch directory (HTCondor's working directory):
@@ -141,6 +176,8 @@ cat > .condor-run.sh <<'RUN'
 # Steps are read on fd 3 and each step gets /dev/null as stdin, so no step can
 # eat the steps file (which dropped the first step's output).
 img=${1:-}; scratch=$PWD
+# A transferred image arrives as a bare file name in the scratch directory.
+[ -z "$img" ] || [[ "$img" == /* ]] || img="$scratch/$img"
 mkdir -p "$scratch/work/.home" "$scratch/.tmp"
 tar -xzf checkout.tar.gz -C "$scratch/work"
 export TMPDIR="$scratch/.tmp"; cd "$scratch/work"; rc=0; i=0
@@ -167,7 +204,8 @@ error = $dir/err.log
 log = $dir/condor.log
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
-transfer_input_files = $dir/checkout.tar.gz, $dir/.condor-steps
+transfer_input_files = $dir/checkout.tar.gz, $dir/.condor-steps$extra_input
+$extra_attr
 transfer_output_files = ""
 queue 1
 SUB
