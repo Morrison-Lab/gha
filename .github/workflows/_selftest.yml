@@ -5041,23 +5041,20 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-proof-statements/tests/ check-write-idiom/tests/ -v
-      - name: Stage a page that hides a proof from slides
+      - name: Stage a page with reasoning in a theorem statement
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p _ci-proof-statements
           printf '%s\n' \
-            '::: {.content-hidden when-format="revealjs"}' \
-            '' \
-            '::: proof' \
-            'Trivial.' \
-            ':::' \
-            '' \
+            '::: {#thm-ci}' \
+            'The sum is finite, so the mean exists.' \
             ':::' > _ci-proof-statements/page.qmd
           git add -f _ci-proof-statements/page.qmd
-      - name: Check the staged page, warn-only by default
+      - name: Check the staged page with fail off
         uses: ./check-proof-statements
         with:
+          fail: 'false'
           whole-tree: 'true'
           globs: '_ci-proof-statements/*.qmd'
       - name: Check the staged page, expecting a failure

@@ -1,6 +1,6 @@
 r"""Unit tests for check-proof-statements.
 
-Covers the hidden-proof rule (wrapper forms, includes, the touched-file scope),
+Covers the exemption of proofs hidden from the slides (wrapper forms, includes),
 the statement-reasoning rule (what counts, what passes, the proof boundary),
 masking, the allow comment, main()'s exit codes under the CPS_ prefix, and the
 defaults the action, the reusable workflow and the script must agree on. The
@@ -69,13 +69,12 @@ def scan(text: str, keep=None):
 HIDDEN = '::: {.content-hidden when-format="revealjs"}'
 
 
-# -- hidden proofs -----------------------------------------------------------
+# -- proofs hidden from the slides are exempt (Ezra, 2026-11-04, gha#1491) ---
 
-def test_mds_534_theorem_is_flagged_for_both_rules():
+def test_mds_534_statement_is_flagged_and_its_hidden_proof_is_not():
     assert scan(MDS_534) == [
         (8, "statement", "so"),
         (10, "statement", "so"),
-        (18, "proof", "proof"),
     ]
 
 
@@ -85,11 +84,15 @@ def test_mds_534_theorem_is_flagged_for_both_rules():
     '::: {.content-hidden when-format="revealjs pdf"}',
     '::: {.content-visible unless-format="revealjs"}',
     '::::: {.content-hidden when-format="revealjs"}',
+    '::: {when-format="revealjs" .content-hidden}',
+    "::: {.content-hidden when-format=revealjs}",
+    '::: {.content-hidden when-format="html, revealjs"}',
+    '::: {unless-format="revealjs" .content-visible}',
 ])
-def test_hidden_wrapper_forms(wrapper):
+def test_a_proof_hidden_from_the_slides_is_not_flagged(wrapper):
     colons = wrapper.split()[0]
-    text = f"{wrapper}\n\n::: proof\nBy cases.\n:::\n\n{colons}\n"
-    assert scan(text) == [(3, "proof", "proof")]
+    text = f"{wrapper}\n\n::: proof\nBy cases, because $x$.\n:::\n\n{colons}\n"
+    assert scan(text) == []
 
 
 @pytest.mark.parametrize("opening", [
@@ -97,55 +100,32 @@ def test_hidden_wrapper_forms(wrapper):
     "::: {.proof}",
     "::: {#prf-main}",
     "::: {#prf-main .proof}",
+    "::: {.proof-sketch}",
 ])
-def test_proof_div_spellings(opening):
+def test_every_proof_spelling_is_exempt_when_hidden(opening):
     text = f"{HIDDEN}\n{opening}\nBy cases.\n:::\n:::\n"
-    assert scan(text) == [(2, "proof", "proof")]
+    assert scan(text) == []
 
 
-def test_include_of_a_proof_subfile_in_a_hidden_wrapper_is_flagged():
+def test_include_of_a_proof_subfile_in_a_hidden_wrapper_is_not_flagged():
     text = f"{HIDDEN}\n{{{{< include _prf-main.qmd >}}}}\n:::\n"
-    assert scan(text) == [(2, "proof", "proof")]
-
-
-def test_include_of_another_subfile_in_a_hidden_wrapper_passes():
-    text = f"{HIDDEN}\n{{{{< include _exm-main.qmd >}}}}\n:::\n"
     assert scan(text) == []
 
 
-def test_proof_with_the_hidden_class_on_the_same_div_is_flagged():
+def test_proof_with_the_hidden_class_on_the_same_div_is_not_flagged():
     text = '::: {.proof .content-hidden when-format="revealjs"}\nBy cases.\n:::\n'
-    assert scan(text) == [(1, "proof", "proof")]
-
-
-@pytest.mark.parametrize("text", [
-    "::: proof\nBy cases.\n:::\n",
-    '::: {.content-hidden when-format="pdf"}\n::: proof\nBy cases.\n:::\n:::\n',
-    '::: {.content-hidden when-format="html"}\n::: proof\nx\n:::\n:::\n',
-    '::: {.content-visible when-format="revealjs"}\n::: proof\nx\n:::\n:::\n',
-    '::: {.content-visible unless-format="pdf"}\n::: proof\nx\n:::\n:::\n',
-])
-def test_shown_proofs_pass(text):
     assert scan(text) == []
 
 
-def test_proof_after_a_closed_hidden_wrapper_passes():
-    text = f"{HIDDEN}\nHidden note.\n:::\n\n::: proof\nBy cases.\n:::\n"
-    assert scan(text) == []
-
-
-def test_hidden_remark_without_a_proof_passes():
-    assert scan(f"{HIDDEN}\n::: {{#rem-x}}\nA remark.\n:::\n:::\n") == []
-
-
-def test_hidden_proof_is_reported_when_the_file_is_touched_elsewhere():
+def test_hidden_proof_is_not_flagged_when_the_file_is_touched_elsewhere():
     text = f"Intro line.\n{HIDDEN}\n::: proof\nx\n:::\n:::\n"
-    assert scan(text, keep={1}) == [(3, "proof", "proof")]
-
-
-def test_hidden_proof_is_not_reported_in_an_untouched_file():
-    text = f"Intro line.\n{HIDDEN}\n::: proof\nx\n:::\n:::\n"
+    assert scan(text, keep={1}) == []
     assert scan(text, keep=set()) == []
+
+
+def test_a_statement_before_a_hidden_proof_is_still_checked():
+    text = f"::: {{#thm-a}}\nIt holds, so done.\n:::\n\n{HIDDEN}\n::: proof\nx\n:::\n:::\n"
+    assert scan(text) == [(2, "statement", "so")]
 
 
 # -- reasoning in a theorem statement ----------------------------------------
@@ -252,9 +232,7 @@ def test_allow_comment_on_a_div_line_keeps_the_div_state_balanced():
 
 
 def test_messages_name_the_fix_and_the_source():
-    proof = cps.format_message(cps.Finding(1, "proof", "proof"))
     statement = cps.format_message(cps.Finding(1, "statement", "so"))
-    assert "Show every proof on slides" in proof and "psw#426" in proof
     assert '"so"' in statement and "proof" in statement and "psw#426" in statement
 
 
@@ -284,21 +262,21 @@ def _main_env(monkeypatch, repo, **extra):
         monkeypatch.setenv(key, value)
 
 
-def test_main_warns_by_default_and_fails_on_request(tmp_path, monkeypatch, capsys):
+def test_main_fails_by_default_and_warns_when_fail_is_off(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "thm.qmd").write_text(MDS_534)
     git("add", "-A")
     _main_env(monkeypatch, repo)
+    assert cps.main() == 1
+    assert "::error file=thm.qmd,line=8::" in capsys.readouterr().out
+    monkeypatch.setenv("CPS_FAIL", "false")
     assert cps.main() == 0
     out = capsys.readouterr().out
     assert "::warning file=thm.qmd,line=8::" in out
-    assert "::warning file=thm.qmd,line=18::Show every proof on slides" in out
-    monkeypatch.setenv("CPS_FAIL", "true")
-    assert cps.main() == 1
-    assert "::error file=thm.qmd,line=18::" in capsys.readouterr().out
+    assert "::warning file=thm.qmd,line=10::" in out
 
 
-def test_main_flags_a_hidden_proof_in_a_file_only_touched_elsewhere(tmp_path, monkeypatch, capsys):
+def test_main_passes_a_hidden_proof_in_a_file_touched_elsewhere(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     page = repo / "thm.qmd"
     page.write_text(f"Intro.\n{HIDDEN}\n::: proof\nx\n:::\n:::\n")
@@ -306,9 +284,19 @@ def test_main_flags_a_hidden_proof_in_a_file_only_touched_elsewhere(tmp_path, mo
     git("commit", "-q", "-m", "page")
     page.write_text(f"Intro, edited.\n{HIDDEN}\n::: proof\nx\n:::\n:::\n")
     git("add", "-A")
-    _main_env(monkeypatch, repo, CPS_FAIL="true")
-    assert cps.main() == 1
-    assert "::error file=thm.qmd,line=3::" in capsys.readouterr().out
+    _main_env(monkeypatch, repo)
+    assert cps.main() == 0
+    assert "::error" not in capsys.readouterr().out
+
+
+def test_main_passes_a_newly_added_hidden_proof_by_default(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "thm.qmd").write_text(f"Intro.\n{HIDDEN}\n::: proof\nx\n:::\n:::\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo)
+    assert cps.main() == 0
+    out = capsys.readouterr().out
+    assert "::error" not in out and "::warning" not in out
 
 
 def test_main_does_not_sweep_an_untouched_file(tmp_path, monkeypatch, capsys):
@@ -320,7 +308,7 @@ def test_main_does_not_sweep_an_untouched_file(tmp_path, monkeypatch, capsys):
     git("add", "-A")
     _main_env(monkeypatch, repo, CPS_FAIL="true")
     assert cps.main() == 0
-    assert "No hidden proof" in capsys.readouterr().out
+    assert "No reasoning in a theorem statement" in capsys.readouterr().out
 
 
 def test_main_ignores_a_statement_line_the_diff_did_not_add(tmp_path, monkeypatch, capsys):
@@ -348,7 +336,7 @@ def test_other_prefixes_are_not_read(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "thm.qmd").write_text(MDS_534)
     git("add", "-A")
-    _main_env(monkeypatch, repo)
+    _main_env(monkeypatch, repo, CPS_FAIL="false")
     monkeypatch.setenv("CAW_FAIL", "true")
     monkeypatch.setenv("CWI_FAIL", "true")
     assert cps.main() == 0
@@ -361,9 +349,9 @@ def test_defaults_agree_across_action_workflow_and_script():
     workflow = (_DIR.parent / ".github/workflows/check-proof-statements.yml").read_text()
     for text in (action, workflow):
         assert f"default: '{cps.DEFAULT_GLOBS}'" in text
-    assert cps._DEFAULT_FAIL is False
-    assert "default: 'false'" in action
-    assert re.search(r"fail:\n(?:.*\n)*?\s+default: false", workflow)
+    assert cps._DEFAULT_FAIL is True
+    assert "default: 'true'" in action
+    assert re.search(r"fail:\n(?:.*\n)*?\s+default: true", workflow)
 
 
 def test_action_passes_every_input_to_the_script_under_the_cps_prefix():
@@ -373,16 +361,6 @@ def test_action_passes_every_input_to_the_script_under_the_cps_prefix():
 
 
 # -- review findings (gha#1355) ----------------------------------------------
-
-@pytest.mark.parametrize("wrapper", [
-    '::: {when-format="revealjs" .content-hidden}',
-    "::: {.content-hidden when-format=revealjs}",
-    '::: {.content-hidden when-format="html, revealjs"}',
-    '::: {unless-format="revealjs" .content-visible}',
-])
-def test_hidden_wrapper_attribute_order_and_quoting(wrapper):
-    assert scan(f"{wrapper}\n::: proof\nx\n:::\n:::\n") == [(2, "proof", "proof")]
-
 
 def test_a_word_in_a_quoted_attribute_is_not_a_class():
     text = '::: {#thm-a title="a proof of concept"}\nSo x holds.\n:::\n'
@@ -421,11 +399,11 @@ def test_inline_display_pair_then_standalone_pair():
 def test_main_finds_files_under_mnemonic_prefix_and_quoted_paths(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "ch").mkdir()
-    page = f"{HIDDEN}\n::: proof\nx\n:::\n:::\n"
+    page = "::: {#thm-a}\nIt holds, so done.\n:::\n"
     (repo / "ch" / 'q"u.qmd').write_text(page)
     (repo / "plain.qmd").write_text(page)
     git("add", "-A")
-    _main_env(monkeypatch, repo)
+    _main_env(monkeypatch, repo, CPS_FAIL="false")
     for key, value in (("GIT_CONFIG_COUNT", "1"),
                        ("GIT_CONFIG_KEY_0", "diff.mnemonicPrefix"),
                        ("GIT_CONFIG_VALUE_0", "true")):
@@ -435,7 +413,3 @@ def test_main_finds_files_under_mnemonic_prefix_and_quoted_paths(tmp_path, monke
     assert "across 2 file(s)" in out
     assert "::warning file=plain.qmd,line=2::" in out
     assert 'file=ch/q"u.qmd,line=2::' in out
-
-
-def test_proof_class_prefix_is_a_proof():
-    assert scan(f"{HIDDEN}\n::: {{.proof-sketch}}\nx\n:::\n:::\n") == [(2, "proof", "proof")]
