@@ -296,6 +296,9 @@ def main() -> int:
     severity = "error" if fail else "warning"
     findings = 0
     defined = corpus_defined_stems(globs)
+    if not defined:
+        print("::notice::No #def- titles found in the scanned files, so no title word can be "
+              "reported as a defined term; the check reports nothing.")
     for rel in sorted(wanted):
         try:
             with open(rel, encoding="utf-8", errors="replace") as handle:
