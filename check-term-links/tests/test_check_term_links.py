@@ -403,6 +403,8 @@ def test_function_words_and_generic_nouns_are_not_terms():
     # gha#1488: a prerequisite site tags "and", "not" and "number" as terms.
     for word in ("and", "not", "number", "values", "that", "also"):
         assert not ctl.usable_term(word, set()), word
+    for word in ("therefore", "thus", "hence", "computes", "using"):  # gha#1498
+        assert not ctl.usable_term(word, set()), word
     assert ctl.usable_term("risk", set())
     assert ctl.usable_term("test set", set())
 
