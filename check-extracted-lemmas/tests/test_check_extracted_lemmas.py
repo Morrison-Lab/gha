@@ -57,7 +57,20 @@ def test_proof_nested_in_a_theorem_is_flagged():
 
 @pytest.mark.parametrize("word", ["any", "every", "all", "Any"])
 def test_general_words_are_recognized(word):
-    assert len(msgs(div("sol-a", f"For {word} real $x$, $x^2 \\ge 0$."))) == 1
+    assert len(msgs(div("sol-a", f"For {word} real number $x$, $x^2 \\ge 0$."))) == 1
+
+
+@pytest.mark.parametrize("sentence", [
+    "The value is $y$ for every $i$.",
+    "It is negative for every year up to 1950, and $f > 0$ later.",
+    "Each fit uses the same $p$ for every mother.",
+])
+def test_a_quantifier_over_a_setting_specific_index_is_not_flagged(sentence):
+    assert msgs(div("sol-a", sentence)) == []
+
+
+def test_a_quantifier_inside_inline_code_is_not_flagged():
+    assert msgs(div("sol-a", "Run `for all real number x` and see $x$.")) == []
 
 
 def test_theorem_statement_itself_is_not_read():
