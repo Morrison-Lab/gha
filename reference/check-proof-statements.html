@@ -1202,11 +1202,10 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check for two of the lab’s proof rules (<a href="https://github.com/Morrison-Lab/psw/pull/426">psw#426</a>, <a href="https://github.com/Morrison-Lab/gha/issues/1351">gha#1351</a>).</p>
+<p>Diff-scoped, failing-by-default check for one of the lab’s proof rules (<a href="https://github.com/Morrison-Lab/psw/pull/426">psw#426</a>, <a href="https://github.com/Morrison-Lab/gha/issues/1351">gha#1351</a>).</p>
 <section id="rules" class="level2">
 <h2 class="anchored" data-anchor-id="rules">Rules</h2>
 <ul>
-<li><strong>Proof hidden from slides.</strong> A proof div inside <code>::: {.content-hidden when-format="revealjs"}</code> (or <code>.content-visible unless-format="revealjs"</code>), or an include of a <code>_prf-</code> or <code>_proof-</code> subfile there, is flagged on the proof’s opening line. Every proof is shown on slides. The finding is reported when the pull request adds any line to the file, not only the proof’s own lines.</li>
 <li><strong>Reasoning in a theorem statement.</strong> “so”, “because”, “hence”, “therefore”, “thus” or “since”, or an aside such as “without loss of generality”, “moreover” or “furthermore”, on an added line inside a <code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code> div, outside the proof the div holds. A statement gives the result and its hypotheses; the proof gives the reasoning. Heuristic: “so that” and “so-called” pass, and words inside math are not read.</li>
 </ul>
 <p>The check does not read a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, <code>&lt;!-- check-proof-statements: allow --&gt;</code>.</p>
@@ -1244,8 +1243,8 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Fail the workflow when a hidden proof or statement reasoning is found. Warn-only by default.</td>
+<td><code>true</code></td>
+<td>Fail the workflow when reasoning is found in a theorem statement. Set <code>false</code> for warnings only.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>
@@ -1290,7 +1289,7 @@ cookieconsent.run({
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                              # block instead of warn (defaults to false)</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false                             # warn instead of block (defaults to true)</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   whole-tree: true                        # scan every line, not just a PR's additions</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-proof-statements.yml"><code>examples/check-proof-statements.yml</code></a> for the full caller stub.</p>
