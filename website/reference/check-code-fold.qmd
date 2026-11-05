@@ -10,7 +10,7 @@ The lab's rule (Ezra, 2026-11-05) is that every executed chunk is
 because `show` also keeps the code and its output together.
 
 The check reads the option lines at the top of each chunk
-whose fence names an engine, such as `{r}`, `{python}` or `{julia}`.
+whose fence names an engine, such as `{r}`, `{python}`, or `{julia}`.
 A plain fence has no options, and a `code-fold` key in front matter is not examined.
 
 An untouched chunk is never reflagged.
