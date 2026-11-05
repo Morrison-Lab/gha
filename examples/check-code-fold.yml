@@ -1,0 +1,21 @@
+# Copy to .github/workflows/check-code-fold.yml in your repo.
+# Diff-scoped check: fails when a PR adds `#| code-fold: false` to an executed
+# chunk. A chunk is `show` when the prose mentions the code and `true` when it
+# does not. Do not use false.
+# Blocking by default. Only contents:read is needed.
+name: Check code-fold options
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-code-fold.yml@v3
+    # with:
+    #   globs: '*.qmd'        # pathspecs to check
+    #   fail: false           # warn only (defaults to true)
+    #   whole-tree: true      # scan every chunk, not just a PR's additions

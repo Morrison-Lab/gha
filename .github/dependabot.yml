@@ -59,6 +59,7 @@ updates:
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
       - "/check-bare-yes-no"
+      - "/check-code-fold"
       - "/check-serial-comma"
       - "/check-exercise-background"
       - "/check-exercise-question-paragraph"
