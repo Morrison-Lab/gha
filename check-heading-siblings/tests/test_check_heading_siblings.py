@@ -184,3 +184,8 @@ def test_callout_titles_and_unnumbered_headings_are_not_outline_entries():
             "# Body\n\n# References {#references .unnumbered}\n")
     assert [h.title for h in chs.headings(lines(text))] == ["Body"]
     assert chs.lone_top_heading(chs.headings(lines(text)), 2).title == "Body"
+
+
+def test_unnumbered_headings_do_not_count_toward_the_max_rule():
+    text = "# Body\n\n" + "\n\n".join(f"## U{i} {{.unnumbered}}" for i in range(9))
+    assert chs.crowded_groups(chs.headings(lines(text)), 7) == []
