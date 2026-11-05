@@ -1361,7 +1361,7 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-unexplained-contrasts.html"><code>check-unexplained-contrasts.yml</code></a></td>
-<td>Diff-scoped, warn-only check that flags a contrast (“X, not Y”, “does not mean”, “rather than a”) in a <code>#def-</code>, <code>#rem-</code> or <code>#note-</code> div that cites no source; a kept contrast must say who holds the other reading</td>
+<td>Diff-scoped check that flags a contrast (“X, not Y”, “does not mean”, “rather than a”) in a <code>#def-</code>, <code>#rem-</code> or <code>#note-</code> div that cites no source; a kept contrast must say who holds the other reading</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="even">
@@ -1481,7 +1481,7 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-extracted-lemmas.html"><code>check-extracted-lemmas.yml</code></a></td>
-<td>Diff-scoped, warn-only heuristic check that flags a solution, example or proof that states a general fact (“for any”, “for every” or “for all” with math) when a PR edits it and it cites no <code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code> result</td>
+<td>Diff-scoped, warn-only heuristic check that flags a solution, example or proof that states a general fact (“for any”, “for every” or “for all” before a kind of mathematical object, with math) when a PR edits it and it cites no <code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code> result</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>whole-tree</code></td>
 </tr>
 <tr class="even">
