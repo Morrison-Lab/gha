@@ -6,7 +6,7 @@ Diff-scoped, warn-only heuristic check for the lab's rule (Ezra, 2026-10-29)
 to extract a lemma wherever feasible:
 a general fact that does not depend on its setting
 goes in its own `#lem-` div, on the site that owns the topic,
-and the proof, solution or example that uses it links to the lemma.
+and the proof or solution that uses it links to the lemma.
 
 The check reads the body of
 
