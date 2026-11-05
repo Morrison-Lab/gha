@@ -12,5 +12,7 @@
   when a changed path is not reachable from any page,
   when a page was deleted,
   or when more than `incremental-max-pages` pages are stale.
+  The `preview` composite also takes `incremental-full-render-paths`, `incremental-ignore-paths`, and `incremental-max-pages`;
+  `preview.yml` forwards only `incremental`.
   Unchanged pages keep their old navigation, search entry, and cross-reference numbers.
   It defaults to false, so existing callers are unaffected.
