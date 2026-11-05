@@ -292,12 +292,21 @@ def drop_render_chunks(lines: list[str]) -> list[str]:
 
 
 def tidy(text: str) -> str:
-    """Collapse runs of blank lines.
+    """Collapse runs of blank lines outside code fences.
 
+    Blank lines inside a code fence are kept as written: PEP 8 puts two
+    between top-level definitions, and the checker compares code blocks
+    exactly.
     Other trailing spaces are kept: two of them make a hard line break.
     """
     lines = [line if line.strip() else "" for line in text.splitlines()]
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip("\n") + "\n"
+    in_code = code_mask(lines)
+    kept: list[str] = []
+    for line, code in zip(lines, in_code):
+        if not code and not line and kept and not kept[-1]:
+            continue
+        kept.append(line)
+    return "\n".join(kept).strip("\n") + "\n"
 
 
 def drop_yaml_comments(lines: list[str]) -> list[str]:

@@ -124,6 +124,23 @@ def test_generator_inlines_includes_and_drops_answers(project):
     assert "assign.lua" not in text
 
 
+PEP8_CODE = "def f():\n    return 1\n\n\ndef g():\n    return 2\n"
+
+
+@needs_quarto
+def test_generator_keeps_blank_runs_inside_code_fences(project):
+    write(
+        project / "hw" / "hw1.qmd",
+        f"```python\n{PEP8_CODE}```\n\n\n\nAfter the code.\n\n"
+        "::: {.sol}\nThe answer.\n:::\n",
+    )
+    assert generate() == 0
+    text = student(project).read_text()
+    assert f"```python\n{PEP8_CODE}```" in text
+    assert "```\n\nAfter the code." in text
+    assert check() == 0
+
+
 def test_generator_drops_fragment_filters_silently(project, capsys):
     assert generate() == 0
     assert "front matter" not in capsys.readouterr().out
