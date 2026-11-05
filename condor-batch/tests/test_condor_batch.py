@@ -16,7 +16,9 @@ SCRIPT = Path(__file__).resolve().parent.parent / "condor-batch.sh"
 SSH_STUB = """\
 echo "ssh $*" >> "$STUB_LOG"
 [ -z "${STUB_SSH_RC:-}" ] || exit "$STUB_SSH_RC"
-while [ "$1" != bash ]; do shift; done
+case " $* " in *" ${STUB_SSH_FAIL_HOST:-none-} "*) exit 255 ;; esac
+while [ $# -gt 0 ] && [ "$1" != bash ] && [ "$1" != true ]; do shift; done
+[ "${1:-}" != true ] || exit 0
 # Real ssh joins its arguments into one command string that the remote shell
 # splits again, so an empty argument vanishes; eval reproduces that.
 args="$*"
@@ -331,3 +333,36 @@ def test_composite_reruns_locally_only_for_infrastructure_codes(tmp_path):
         case_dir.mkdir()
         code, ran_locally = _run_action(case_dir, rc)
         assert (code, ran_locally) == (final, reruns), rc
+
+
+def test_head_list_is_spread_by_run_number(tmp_path):
+    for run, expected in (("42", "a.example"), ("43", "b.example")):
+        case_dir = tmp_path / run
+        case_dir.mkdir()
+        _, calls = _run(
+            case_dir, ["a", "b"], STUB_RV="0", RUN_ID=run,
+            CONDOR_HEAD="a.example,b.example",
+        )
+        submit_ssh = [c for c in calls if c.startswith("ssh ") and " bash " in c]
+        assert len(submit_ssh) == 1
+        assert expected in submit_ssh[0], (run, submit_ssh)
+
+
+def test_unreachable_head_falls_back_to_the_next(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], STUB_RV="0", STUB_SSH_FAIL_HOST="a.example",
+        CONDOR_HEAD="a.example b.example",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "a.example did not answer" in proc.stderr
+    assert _count(calls, "condor_submit") == 1
+    assert any("b.example bash" in c for c in calls)
+
+
+def test_no_head_answering_exits_70(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], STUB_SSH_RC="255", CONDOR_HEAD="a.example b.example",
+    )
+    assert proc.returncode == 70
+    assert "no cluster head answered" in proc.stderr
+    assert _count(calls, "condor_submit") == 0
