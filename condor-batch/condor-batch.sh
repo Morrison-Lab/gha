@@ -156,6 +156,8 @@ trap 'printf "%s\n" "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s 
 
 # The remote script runs on the head: it writes the job and submits it once.
 rc=0
+# A desktop head has no cluster home, so a cluster-home image path never applies.
+[ "$desktop" != 1 ] || CONDOR_IMAGE=
 ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-}" <<'REMOTE' || rc=$?
 set -euo pipefail
 # ssh drops an empty argument, so the optional image comes last and a bare dot
