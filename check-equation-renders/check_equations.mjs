@@ -60,8 +60,14 @@ const NETWORK_SETTLE_TIMEOUT_MS = 5_000;
 // Pages open at once. Each open page costs a Chromium renderer, which can use
 // 1-2 cores and a few hundred MB, so a self-hosted runner shared with other
 // jobs sets this low through the `max-pages` input (gha#1509).
-const parsedConcurrency = Number.parseInt(process.env.MAX_PAGES ?? '', 10);
-const CONCURRENCY = Number.isInteger(parsedConcurrency) && parsedConcurrency > 0 ? parsedConcurrency : 2;
+const DEFAULT_CONCURRENCY = 2;
+const rawMaxPages = process.env.MAX_PAGES ?? '';
+const parsedConcurrency = rawMaxPages.trim() === '' ? DEFAULT_CONCURRENCY : Number(rawMaxPages);
+const concurrencyIsValid = Number.isInteger(parsedConcurrency) && parsedConcurrency > 0;
+if (!concurrencyIsValid) {
+  console.log(`::warning::max-pages must be a positive integer, got '${rawMaxPages}'; using ${DEFAULT_CONCURRENCY}.`);
+}
+const CONCURRENCY = concurrencyIsValid ? parsedConcurrency : DEFAULT_CONCURRENCY;
 
 function parseArgs(argv) {
   const args = { siteDir: '.', fail: true };
