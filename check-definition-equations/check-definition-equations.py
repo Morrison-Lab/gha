@@ -23,7 +23,11 @@ It cannot tell which side of a single ``a = b`` is the defined symbol, so a
 definition that displays one equation between two expressions is not flagged.
 A display with cases (``\begin{cases}``), or several defining equations that each
 carry their own defining operator, is not flagged for its number of equations.
-The check is a heuristic: it is warn-only by default, and
+Equations separated by ``\quad`` or ``\qquad`` are read one at a time,
+so a display that lists two defining equations, or an index range such as
+``i = 1, \ldots, n``, is not a chain.
+The check fails by default (gha#1479):
+a whole-tree sample over lds, mds, pds, sds and psw found every sampled hit a real violation.
 ``<!-- def-equiv-ok: reason -->`` in the div exempts it.
 
 A div is checked when the diff adds a line inside it, or always with
@@ -33,7 +37,7 @@ Configuration (environment variables, set by the composite action):
   DE_BASE_REF      Git ref/SHA to diff against; empty and not whole-tree => skip.
   DE_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   DE_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  DE_FAIL          "true" => blocking; default "false" (warning annotations).
+  DE_FAIL          "false" => warning annotations only; default "true".
   DE_WHOLE_TREE    "true" => check every definition div in the tree.
 """
 
@@ -59,7 +63,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 
 ADVICE = (
     "keep only the equation linking the defined symbol to its definitional "
@@ -78,6 +82,7 @@ ALIGN_RE = re.compile(r"\\begin\{(align\*?|aligned|eqnarray\*?)\}(.+?)\\end\{\1\
                       re.DOTALL)
 BA_RE = re.compile(r"\\ba\b(.+?)\\ea\b", re.DOTALL)
 CASES_RE = re.compile(r"\\begin\{cases\}.*?\\end\{cases\}", re.DOTALL)
+QQUAD_RE = re.compile(r"\\q?quad")
 TEXT_RE = re.compile(r"\\(?:text|textrm|mathrm|operatorname)\{[^{}]*\}")
 LABEL_RE = re.compile(r"\{#eq-[^}]*\}")
 DEFINER_RE = re.compile(r":=|\\eqdef\b|\\coloneqq\b|\\triangleq\b|\\doteq\b")
@@ -184,11 +189,15 @@ def top_level_equals(math: str) -> List[int]:
 def chained(math: str) -> bool:
     """True when the display chains equalities after, or without, a definer."""
     scrubbed = CASES_RE.sub(" ", math)
-    definer = DEFINER_RE.search(scrubbed)
+    return any(_chained_part(part) for part in QQUAD_RE.split(scrubbed))
+
+
+def _chained_part(part: str) -> bool:
+    """One equation of a display, after splitting on ``\\qquad``."""
+    definer = DEFINER_RE.search(part)
     if definer:
-        after = scrubbed[definer.end():]
-        return bool(top_level_equals(after))
-    return len(top_level_equals(scrubbed)) >= 2
+        return bool(top_level_equals(part[definer.end():]))
+    return len(top_level_equals(part)) >= 2
 
 
 def reasons(div: Div) -> List[str]:

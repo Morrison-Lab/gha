@@ -1,9 +1,10 @@
 name: Check definition equations
 description: >-
-  Diff-scoped, warn-only heuristic check that flags a definition div (`#def-`)
+  Diff-scoped check that flags a definition div (`#def-`)
   that shows more than the equation linking the defined symbol to its definitional
   expression: a chain of equalities, several display equations, or prose stating an
-  equivalence. `<!-- def-equiv-ok: reason -->` exempts a definition. Warns by default.
+  equivalence.
+  `<!-- def-equiv-ok: reason -->` exempts a definition.
 inputs:
   python-version:
     description: Python version to set up.
@@ -32,9 +33,10 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action on a finding. Defaults to 'false' (warning annotations
-      only), because the check is a heuristic.
-    default: 'false'
+      Fail the action on a finding.
+      Defaults to 'true' (gha#1479).
+      Set 'false' for warning annotations only.
+    default: 'true'
 runs:
   using: composite
   steps:
