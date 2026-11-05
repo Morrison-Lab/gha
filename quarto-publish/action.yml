@@ -96,7 +96,7 @@ inputs:
       resumes from the pages that already executed. Only used when
       freeze-cache is true. A run killed outright (a timeout or a lost runner)
       may not get to save.
-    default: 'false'
+    default: 'true'
   preinstalled-toolchain:
     description: >-
       The runner already provides R (with the pak and tinytex packages),
