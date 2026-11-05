@@ -40,4 +40,8 @@ for d in "${dirs[@]}"; do
     failed=1
   fi
 done
+if [ "$failed" = 0 ]; then
+  # Hold the job until the host has memory and CPU to spare (gha#1509).
+  bash "$(dirname "${BASH_SOURCE[0]}")/wait-runner-capacity.sh"
+fi
 exit "$failed"
