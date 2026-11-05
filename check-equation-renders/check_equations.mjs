@@ -57,7 +57,11 @@ const MATHJAX_TIMEOUT_MS = 15_000;
 const PAGE_LOAD_TIMEOUT_MS = 30_000;
 const PAGE_LOAD_ATTEMPTS = 2;
 const NETWORK_SETTLE_TIMEOUT_MS = 5_000;
-const CONCURRENCY = 4;
+// Pages open at once. Each open page costs a Chromium renderer, which can use
+// 1-2 cores and a few hundred MB, so a self-hosted runner shared with other
+// jobs sets this low through the `max-pages` input (gha#1509).
+const parsedConcurrency = Number.parseInt(process.env.MAX_PAGES ?? '', 10);
+const CONCURRENCY = Number.isInteger(parsedConcurrency) && parsedConcurrency > 0 ? parsedConcurrency : 2;
 
 function parseArgs(argv) {
   const args = { siteDir: '.', fail: true };

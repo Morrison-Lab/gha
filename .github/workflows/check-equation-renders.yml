@@ -22,6 +22,12 @@ on:
         description: Fail the workflow run when equation render errors are found.
         type: boolean
         default: true
+      max-pages:
+        description: >-
+          Maximum number of pages open in the headless browser at once.
+          Keep it low on a shared self-hosted runner.
+        type: string
+        default: '2'
 
 jobs:
   # Cheap gate: verify the build job actually ran (vs. being skipped due to an
@@ -89,3 +95,4 @@ jobs:
         with:
           site-dir: _preview_download/site/
           fail: ${{ inputs.fail }}
+          max-pages: ${{ inputs.max-pages }}
