@@ -135,7 +135,7 @@ def main() -> int:
         print("::error::FAIL: a closed PR the gate names is removed without an artifact")
         print(f"  exit={result.returncode} outputs={outputs!r} stderr={result.stderr!r}")
     if failures:
-        print(f"::error::{failures} cases failed")
+        print(f"::error::{failures} of {len(CASES) + 1} cases failed")
         return 1
     print(f"All {len(CASES)} cases passed.")
     return 0

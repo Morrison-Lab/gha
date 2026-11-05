@@ -41,6 +41,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       actions: read
+      pull-requests: read  # the closed-PR lookup below (gha#1528)
     if: github.event.workflow_run.conclusion == 'success'
     outputs:
       has-artifact: ${{ steps.check.outputs.found }}
@@ -65,7 +66,7 @@ jobs:
           echo "found=$([ "$count" -gt 0 ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
           remove_pr=""
           if [ "$count" -eq 0 ] && [ -n "${RUN_PR:-}" ]; then
-            state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RUN_PR}" --jq .state)
+            state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RUN_PR}" --jq .state) || state=""
             if [ "$state" = "closed" ]; then
               remove_pr="$RUN_PR"
             fi
