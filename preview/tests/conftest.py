@@ -129,3 +129,8 @@ def repo_factory(tmp_path):
         return work
 
     return build
+
+
+@pytest.fixture(scope="session")
+def planner():
+    return _load("gha_plan_incremental_render", "plan-incremental-render.py")
