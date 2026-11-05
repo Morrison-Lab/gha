@@ -20,7 +20,7 @@ jobs:
     #   globs: '*.qmd'                         # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
     #   terms-file: .github/terms.txt          # extra terms, one per line
-    #   terms-from: 'Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds'   # prerequisite sites whose definitions count
+    #   terms-from: 'Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds'   # prerequisite sites whose definitions count (empty: the course-sequence predecessors; none: off)
     #   allow-file: .github/terms-allow.txt    # ordinary-English terms to leave alone
     #   fail: false                            # warn instead of block (defaults to true)
     #   whole-tree: true                       # report every finding, not just a PR's additions

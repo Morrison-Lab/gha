@@ -41,6 +41,9 @@ on:
           Space-separated `owner/repo` names of prerequisite sites (for example
           `Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds`). Each is cloned
           shallowly and its definitions make its terms known here (gha#1462).
+          Left empty, it defaults to the sites before the calling repository in
+          the course sequence (mds, pds, sds, lds; gha#1503), and to none for any
+          other repository. Pass `none` to turn the default off.
           A private repository needs the `terms-from-token` secret.
         type: string
         default: ''
@@ -76,19 +79,44 @@ jobs:
 
       - name: Fetch prerequisite sites for their terms
         id: terms-from
-        if: inputs.terms-from != ''
         shell: bash
         env:
           TERMS_FROM: ${{ inputs.terms-from }}
+          REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || github.token }}
         run: |
           set -euo pipefail
+          # Default: the sites before this one in the course sequence
+          # (ai-config shared/writing/course-sequence.md).
+          explicit=true
+          if [ -z "$TERMS_FROM" ]; then
+            explicit=false
+            repo_lc=$(printf '%s' "$REPO" | tr '[:upper:]' '[:lower:]')
+            case "$repo_lc" in
+              morrison-lab/pds | morrison-lab/cds | morrison-lab/mcs) TERMS_FROM="Morrison-Lab/mds" ;;
+              morrison-lab/sds | morrison-lab/ids) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds" ;;
+              morrison-lab/lds | morrison-lab/rme) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds" ;;
+              morrison-lab/mlg) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds Morrison-Lab/lds" ;;
+              *) TERMS_FROM="" ;;
+            esac
+          fi
+          if [ "$TERMS_FROM" = "none" ]; then
+            TERMS_FROM=""
+          fi
           dirs=""
           for repo in $TERMS_FROM; do
             dest="$RUNNER_TEMP/terms-from/${repo//\//__}"
-            git clone --quiet --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${repo}.git" "$dest"
-            rm -rf "$dest/.git"
-            dirs="$dirs $dest"
+            url="https://x-access-token:${GH_TOKEN}@github.com/${repo}.git"
+            if git clone --quiet --depth 1 "$url" "$dest"; then
+              rm -rf "$dest/.git"
+              dirs="$dirs $dest"
+            elif [ "$explicit" = true ]; then
+              exit 1
+            else
+              # A defaulted site the token cannot read (a private repository)
+              # must not turn a previously green job red.
+              echo "::warning::Could not clone ${repo} for its terms; pass WORKFLOW_TOKEN or set terms-from: none."
+            fi
           done
           echo "dirs=${dirs# }" >> "$GITHUB_OUTPUT"
 
