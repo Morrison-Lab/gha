@@ -8,8 +8,8 @@ inputs:
     required: true
   head:
     description: >-
-      Cluster head node, or a space- or comma-separated list of heads: runs
-      are spread over them and fall back to the next head that answers ssh.
+      Cluster head node, or a space- or comma-separated list of heads, each
+      host or host:port (csci-lab-head.cs.wwu.edu:922): runs are spread over them and fall back to the next head that answers ssh.
     default: cse-head.cluster.cs.wwu.edu
   working-directory:
     description: Checkout to copy to the cluster.
@@ -18,6 +18,13 @@ inputs:
     description: >-
       Apptainer image on the cluster home to run every step in.
       Empty runs the steps directly on the execute node.
+    default: ''
+  image-file:
+    description: >-
+      Apptainer image file on the runner, used when the job lands on a CSCI
+      desktop-pool head (csci-lab). It is copied to the head and transferred
+      with the job, so nothing is read from the head's home. Empty runs the
+      steps directly there.
     default: ''
 runs:
   using: composite
@@ -28,6 +35,7 @@ runs:
         STEPS: ${{ inputs.steps }}
         CONDOR_HEAD: ${{ inputs.head }}
         CONDOR_IMAGE: ${{ inputs.image }}
+        CONDOR_IMAGE_FILE: ${{ inputs.image-file }}
         WORKDIR: ${{ inputs.working-directory }}
         SCRIPT: ${{ github.action_path }}/../../../condor-batch/condor-batch.sh
       run: |
