@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Point a self-hosted runner's job-completed hook at
 # scripts/prune-runner-workdir.sh, so old checkouts are removed after each job
-# (gha#1352). The listener reads ACTIONS_RUNNER_HOOK_JOB_COMPLETED from .env
+# (gha#1352), and its job-started hook at scripts/check-runner-disk.sh, so a
+# job fails early when the disk is short (gha#1495). The listener reads ACTIONS_RUNNER_HOOK_JOB_COMPLETED from .env
 # when it starts, so this takes effect at the runner's next start.
 #
 # Usage: RUNNER_DIR=<runner directory> bash scripts/install-runner-cleanup-hook.sh

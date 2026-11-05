@@ -6,7 +6,8 @@
 # scripts/install-runner-cleanup-hook.sh points ACTIONS_RUNNER_HOOK_JOB_STARTED
 # at this script. For each checked directory (CHECK_DISK_DIRS, default the
 # temp folder /tmp and the runner's work folder), it needs CHECK_DISK_MIN_FREE_GB
-# (default 5) free. When a directory is short, it first sweeps stale temp
+# (default 5) free. The sweep covers temp folders only, so a short work folder
+# on another filesystem is reported, not cleaned. When a directory is short, it first sweeps stale temp
 # folders down to one hour old (scripts/sweep-runner-tmp.sh) and measures again.
 # If it is still short it names the filesystem, the free space and the largest
 # folders, and exits 1, which fails the job before it does any work.
