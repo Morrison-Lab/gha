@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # check-one-function-per-file: allow-multiple
 r"""
-Flag a general fact that a proof, solution or example states instead of citing a lemma.
+Flag a general fact that a proof or solution states instead of citing a lemma.
 
 The lab's rule (Ezra, 2026-10-29; psw ``chapters/teaching.qmd``): extract a lemma
 wherever feasible. A general fact that does not depend on its setting (for example
 ``E[Z^2] = Var(Z) + (E Z)^2`` for any random variable ``Z``) goes in its own
-``#lem-`` div on the site that owns the topic, and the proof, solution or example
+``#lem-`` div on the site that owns the topic, and the proof or solution
 that uses it links to the lemma.
 
 The check reads the body of
 
-- each ``#sol-`` and ``#exm-`` div, and
+- each ``#sol-`` div, and
 - the proof of each ``#thm-``, ``#lem-``, ``#cor-`` or ``#prp-`` div (a ``.proof``
   div nested in it or directly after it),
 
@@ -216,12 +216,12 @@ def proof_span(stream: Stream, thm: Div) -> Optional[Tuple[int, int]]:
 
 
 def check_page(stream: Stream, touched: Optional[Dict[str, Set[int]]]) -> List[Finding]:
-    """Findings for the solution, example and proof bodies of one flattened page."""
+    """Findings for the solution and proof bodies of one flattened page."""
     findings: List[Finding] = []
     bodies: List[Tuple[str, int, int]] = []  # (ident, first stream index, last)
     for d in find_divs(stream):
         kind = d.ident.split("-", 1)[0]
-        if kind in ("sol", "exm"):
+        if kind == "sol":
             bodies.append((d.ident, d.start, d.end))
         elif kind in RESULT_KINDS:
             span = proof_span(stream, d)
@@ -397,7 +397,7 @@ def main() -> int:
     for f in report.findings:
         print(f"::{'error' if fail else 'warning'} file={f.path},line={f.line}::{f.message}")
     if not report.findings:
-        print("Every touched solution, example and proof cites a lemma for its general facts.")
+        print("Every touched solution and proof cites a lemma for its general facts.")
         return 0
     print(f"\n{len(report.findings)} body(ies) stating a general fact without a lemma.")
     return 1 if fail else 0

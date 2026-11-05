@@ -76,6 +76,7 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ID_RE = re.compile(r"#((?:exr|sol|thm|lem|cor|prp)-[A-Za-z0-9_-]+)")
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 PART_RE = re.compile(r"-part\d+$")
+HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s")
 ALLOW_RE = re.compile(r"<!--\s*restated-ok\b", re.IGNORECASE)
 COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
 DERIVE_RE = re.compile(
@@ -189,7 +190,7 @@ def group_of(ident: str) -> str:
 def is_derivation(sol: Div, exr: Div) -> bool:
     if any(ALLOW_RE.search(line) for line in sol.body):
         return False
-    ask = prose(exr.body)
+    ask = prose(tuple(line for line in exr.body if not HEADING_RE.match(line)))
     return (bool(DERIVE_RE.search(ask)) and not CITES_RESULT_RE.search(ask)
             and displays_equation(sol.body))
 
