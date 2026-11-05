@@ -363,9 +363,12 @@ BOLD_SPAN_RE = re.compile(r"\*\*(?P<term>[^*\n]+?)\*\*")
 ALIAS_CUE_RE = re.compile(
     r"(?i)\b(?:also\s+(?:called|known\s+as|written|termed)"
     r"|sometimes\s+(?:called|known\s+as)"
-    r"|known\s+as|called|or|aka|a\.k\.a\.|termed)\s*(?:(?:the|a|an)\s*)?$"
+    r"|known\s+as|called|or|aka|a\.k\.a\.|termed"
+    r"|other\s+(?:names?|terms?)|synonyms?)\s*:?\s*(?:(?:the|a|an)\s*)?$"
 )
 DEF_ID_RE = re.compile(r"#def-")
+# The text between two bold aliases of one list: "A, B", "A and B", "A, or B".
+LIST_JOIN_RE = re.compile(r"\s*(?:,\s*)?(?:(?:and|or)\s+)?")
 TITLE_RE = re.compile(r"^#{1,6}\s+(?P<title>.+)$")
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?!\s|\$)[^$\n]*?(?<![\s\\])\$(?!\d)")
 ABBREV_TERM_RE = re.compile(r"^[A-Z][A-Z0-9]{0,5}s?$")
@@ -375,6 +378,40 @@ LINK_RE = re.compile(
 )
 DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>[^:\s].*)$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
+
+
+# Stems of the words in the title of every def div in the scanned files; set by
+# main(). A def div with prose and no link is reported only when its prose uses
+# one of these words (other than its own title): a foundational definition has
+# no other defined term to link. None (the default) reports every such div.
+DEFINED_STEMS: Optional[Set[str]] = None
+STEM_LEN = 5
+
+
+def word_stems(text: str) -> Set[str]:
+    """Stems of the words of five or more letters in ``text``."""
+    words = re.findall(r"[a-z]+", re.sub(r"\]\([^)]*\)", " ", text).lower())
+    return {w[:STEM_LEN] for w in words if len(w) >= STEM_LEN}
+
+
+def defined_title_stems(texts: List[List[str]]) -> Set[str]:
+    """Stems of the title words of the def divs in ``texts`` (lists of lines)."""
+    stems: Set[str] = set()
+    for lines in texts:
+        for idx, raw in enumerate(lines):
+            m_open = DIV_OPEN_RE.match(raw.strip())
+            if not (m_open and DEF_ID_RE.search(m_open.group("attrs"))):
+                continue
+            attr_title = re.search(r'title="([^"]*)"', m_open.group("attrs"))
+            if attr_title:
+                stems |= word_stems(attr_title.group(1))
+                continue
+            for follow in lines[idx + 1 : idx + 4]:
+                tm = TITLE_RE.match(follow.strip())
+                if tm:
+                    stems |= word_stems(tm.group("title"))
+                    break
+    return stems
 
 
 def _blank(match: "re.Match[str]") -> str:
@@ -463,6 +500,8 @@ def scan_def_div_terms(
     opted_out = False
     has_link = False
     has_prose = False
+    div_words: Set[str] = set()  # word stems in the div's prose
+    own_words: Set[str] = set()  # word stems of the div's own title
 
     def flush() -> None:
         touched = added_lines is None or any(
@@ -470,7 +509,10 @@ def scan_def_div_terms(
         )
         if opted_out or not touched:
             return
-        if has_prose and not has_link:
+        needs_link = DEFINED_STEMS is None or bool(
+            div_words - own_words and (div_words - own_words) & DEFINED_STEMS
+        )
+        if has_prose and not has_link and needs_link:
             findings.append(
                 Finding(
                     file=path,
@@ -533,6 +575,7 @@ def scan_def_div_terms(
                 open_line, end_line = idx, idx
                 terms, seen, prev_prose, opted_out = [], set(), "", False
                 has_link, has_prose = False, False
+                div_words, own_words = set(), set()
             continue
         if m_close and stack:
             if len(m_close.group("fence")) >= stack[-1]:
@@ -548,8 +591,13 @@ def scan_def_div_terms(
         if LINE_OPT_OUT_RE.search(raw):
             opted_out = True
         if TITLE_RE.match(stripped) and not terms:
+            own_words |= word_stems(stripped)
             continue
         prose = INLINE_CODE_SPAN_RE.sub(_blank, line)
+        div_words |= word_stems(BOLD_SPAN_RE.sub(" ", INLINE_MATH_RE.sub(" ", prose)))
+        for bold in BOLD_SPAN_RE.finditer(prose):
+            own_words |= word_stems(bold.group("term"))
+        alias_end = -1
         if LINK_RE.search(prose):
             has_link = True
         prose = INLINE_MATH_RE.sub(_blank, prose)
@@ -564,7 +612,12 @@ def scan_def_div_terms(
                 context = before
             key = _term_key(term)
             countable = _is_countable_term(term, before)
-            if key in seen or not countable or _is_alias(context, terms):
+            joins_alias = alias_end >= 0 and LIST_JOIN_RE.fullmatch(
+                before[alias_end:]
+            )
+            if key in seen or not countable or joins_alias or _is_alias(context, terms):
+                if countable and (joins_alias or _is_alias(context, terms)):
+                    alias_end = m.end()
                 seen.add(key)
                 continue
             seen.add(key)
@@ -793,6 +846,15 @@ def main() -> int:
         if _ignored(rel_str, ignores_compiled) or _ignored(f.name, ignores_compiled):
             continue
         filtered_files.append(f)
+
+    global DEFINED_STEMS
+    corpus: List[List[str]] = []
+    for f in filtered_files:
+        try:
+            corpus.append(f.read_text(encoding="utf-8", errors="replace").splitlines())
+        except OSError:
+            continue
+    DEFINED_STEMS = defined_title_stems(corpus)
 
     # Compute diff-added lines if requested
     added_lines_map: Optional[Dict[Path, Set[int]]] = None
