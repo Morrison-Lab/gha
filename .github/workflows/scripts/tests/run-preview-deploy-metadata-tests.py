@@ -38,6 +38,18 @@ STUB_GH = """#!/usr/bin/env bash
 # Answers `gh api repos/<repo>/pulls/<n> --jq ...` from STUB_PULLS.
 url="$2"
 n="${url##*/}"
+case "$*" in
+  *' .state')
+    while IFS='=' read -r key value; do
+      if [ "$key" = "$n" ]; then
+        printf '%s\\n' "$value"
+        exit 0
+      fi
+    done <<< "$STUB_STATES"
+    echo "gh: Not Found (HTTP 404)" >&2
+    exit 1
+    ;;
+esac
 while IFS='=' read -r key value; do
   if [ "$key" = "$n" ]; then
     printf '%s\\n' "$value"
@@ -57,7 +69,8 @@ def step_script() -> str:
     raise SystemExit(f"::error::No step named {STEP_NAME!r} in {WORKFLOW}")
 
 
-def run_case(script: str, pr_number: str, action: str, head_repo: str, head_branch: str):
+def run_case(script: str, pr_number: str, action: str, head_repo: str, head_branch: str,
+             has_artifact: str = "true", remove_pr: str = ""):
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = pathlib.Path(tmp)
         meta = tmp_path / "_preview_download" / "meta"
@@ -78,7 +91,10 @@ def run_case(script: str, pr_number: str, action: str, head_repo: str, head_bran
             "GH_TOKEN": "unused",
             "HEAD_REPO": head_repo,
             "HEAD_BRANCH": head_branch,
+            "HAS_ARTIFACT": has_artifact,
+            "REMOVE_PR": remove_pr,
             "STUB_PULLS": "\n".join(f"{k}={v}" for k, v in PULLS.items()),
+            "STUB_STATES": "7=closed\n8=open",
         }
         result = subprocess.run(
             ["bash", "-c", script],
@@ -123,8 +139,21 @@ def main() -> int:
             print(f"  stdout={result.stdout!r} stderr={result.stderr!r}")
         else:
             print(f"ok: {desc}")
+    # No artifact (gha#1528): only a closed PR's preview is removed.
+    for desc, pr, outputs_expected in (
+        ("a closed PR with no artifact is removed", "7", "pr-number=7\naction=remove\n"),
+        ("an open PR with no artifact does nothing", "8", "action=none\n"),
+        ("an unknown PR with no artifact does nothing", "99", "action=none\n"),
+    ):
+        result, outputs = run_case(script, "", "", "", "", has_artifact="false", remove_pr=pr)
+        if result.returncode == 0 and outputs == outputs_expected:
+            print(f"ok: {desc}")
+        else:
+            failures += 1
+            print(f"::error::FAIL: {desc}")
+            print(f"  exit={result.returncode} outputs={outputs!r} stderr={result.stderr!r}")
     if failures:
-        print(f"::error::{failures} of {len(CASES)} cases failed")
+        print(f"::error::{failures} of {len(CASES) + 3} cases failed")
         return 1
     print(f"All {len(CASES)} cases passed.")
     return 0
