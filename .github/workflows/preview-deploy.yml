@@ -44,22 +44,38 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     outputs:
       has-artifact: ${{ steps.check.outputs.found }}
+      remove-pr: ${{ steps.check.outputs.remove-pr }}
     steps:
+      # A build that was skipped uploads nothing. That is also what a `closed`
+      # same-repo PR looks like, since the build no longer runs for it
+      # (gha#1528). When the run names a PR (from the `workflow_run` event,
+      # which a fork cannot forge), pass it to the deploy job, which holds the
+      # `pull-requests` grant this gate lacks and checks whether the PR is
+      # closed; an open PR means an unrecognized label, which needs nothing.
       - name: Check artifact exists
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
         run: |
           set -euo pipefail
           count=$(gh api \
             "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
             --jq '[.artifacts[] | select(.name == "pr-preview-site")] | length')
           echo "found=$([ "$count" -gt 0 ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
+          remove_pr=""
+          if [ "$count" -eq 0 ]; then
+            case "${RUN_PR:-}" in
+              '' | *[!0-9]*) ;;
+              *) remove_pr="$RUN_PR" ;;
+            esac
+          fi
+          echo "remove-pr=$remove_pr" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: gate
-    if: needs.gate.outputs.has-artifact == 'true'
+    if: needs.gate.outputs.has-artifact == 'true' || needs.gate.outputs.remove-pr != ''
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
     # Serialize deploys to gh-pages so main-site publishes, PR previews, and
@@ -94,6 +110,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download preview artifact
+        if: needs.gate.outputs.has-artifact == 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: pr-preview-site
@@ -119,8 +136,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HAS_ARTIFACT: ${{ needs.gate.outputs.has-artifact }}
+          REMOVE_PR: ${{ needs.gate.outputs.remove-pr }}
         run: |
           set -euo pipefail
+          if [ "$HAS_ARTIFACT" != "true" ]; then
+            # No artifact: a skipped build. Remove the run's own PR's preview
+            # only if that PR is closed (gha#1528); otherwise do nothing, and
+            # no later step runs for action=none.
+            state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${REMOVE_PR}" --jq .state) || state=""
+            if [ "$state" = "closed" ]; then
+              echo "pr-number=$REMOVE_PR" >> "$GITHUB_OUTPUT"
+              echo "action=remove" >> "$GITHUB_OUTPUT"
+            else
+              echo "action=none" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
           pr_number=$(tr -d '[:space:]' < _preview_download/meta/pr-number.txt) || { echo "::error::Missing pr-number.txt in preview artifact"; exit 1; }
           action=$(tr -d '[:space:]' < _preview_download/meta/action.txt) || { echo "::error::Missing action.txt in preview artifact"; exit 1; }
           case "$pr_number" in

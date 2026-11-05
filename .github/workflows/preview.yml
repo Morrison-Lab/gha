@@ -241,10 +241,17 @@ jobs:
   build:
     # Run for all events except label add/remove events for labels other than the recognized preview labels,
     # so an unrelated label add or remove doesn't spin up a (useless) build.
+    # A `closed` event for a same-repo PR also skips the build: preview-deploy
+    # removes the closed PR's preview itself, so no pool slot is spent on
+    # uploading a "remove" artifact (gha#1528). A fork PR still builds, since
+    # `workflow_run.pull_requests` is empty for fork runs and the deploy half
+    # could not tell which PR closed.
     if: >-
-      (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+      (github.event.action != 'closed' ||
+      github.event.pull_request.head.repo.full_name != github.repository) &&
+      ((github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
-      (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name))
+      (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name)))
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # Cancel an in-progress preview build when a newer commit on the same ref
