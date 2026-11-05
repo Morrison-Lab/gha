@@ -24,15 +24,13 @@ esac
 [ "$max_minutes" -gt 0 ] || exit 0
 
 cores=$(nproc)
-mem_available_gb() { awk '/^MemAvailable:/ { print int($2 / 1048576) }' /proc/meminfo; }
-# 1 when the load average is under the cap, otherwise 0.
-load_ok() { awk -v cap="$max_load_per_core" -v cores="$cores" '{ print ($1 < cap * cores) ? 1 : 0 }' /proc/loadavg; }
 
 deadline=$((SECONDS + max_minutes * 60))
 waited=0
 while :; do
-  mem=$(mem_available_gb)
-  ok=$(load_ok)
+  mem=$(awk '/^MemAvailable:/ { print int($2 / 1048576) }' /proc/meminfo)
+  # ok is 1 when the load average is under the cap, otherwise 0.
+  ok=$(awk -v cap="$max_load_per_core" -v cores="$cores" '{ print ($1 < cap * cores) ? 1 : 0 }' /proc/loadavg)
   if [ "${mem:-0}" -ge "$min_mem_gb" ] && [ "$ok" = 1 ]; then
     break
   fi
