@@ -16,7 +16,9 @@ The check reads the body of
   div nested in it or directly after it),
 
 and flags a body whose prose states a fact for ``any``, ``every`` or ``all`` of
-something, in a sentence that also holds math, when the body cites no result
+a kind of mathematical object (a real number, a random variable, a matrix, a function,
+and the rest of ``OBJECTS``), in a sentence that also holds math and no inline code,
+when the body cites no result
 (``@thm-``, ``@lem-``, ``@cor-``, ``@prp-``, or a link to a ``#thm-``, ``#lem-``,
 ``#cor-`` or ``#prp-`` anchor). A theorem's own statement is not read, since a
 theorem is meant to be general.
@@ -65,7 +67,18 @@ ID_RE = re.compile(r"#((?:sol|exm|thm|lem|cor|prp)-[A-Za-z0-9_-]+)")
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 ALLOW_RE = re.compile(r"<!--\s*lemma-ok\b", re.IGNORECASE)
 COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
-GENERAL_RE = re.compile(r"\bfor\s+(?:any|every|all)\b", re.IGNORECASE)
+OBJECTS = (
+    "random variable", "random vector", "real number", "natural number", "integer",
+    "scalar", "vector", "matrix", "matrices", "function", "set", "subset", "distribution",
+    "event", "sequence", "probability", "measure", "random sample", "estimator",
+    "model", "loss", "norm",
+)
+GENERAL_RE = re.compile(
+    r"\bfor\s+(?:any|every|all)\s+(?:[A-Za-z-]+\s+){0,2}?(?:"
+    + "|".join(OBJECTS) + r")(?:s|es)?\b",
+    re.IGNORECASE,
+)
+INLINE_CODE_RE = re.compile(r"`[^`]*`")
 CITES_RESULT_RE = re.compile(r"(?:@|#)(?:thm|lem|cor|prp)-")
 PROOF_OPEN_RE = re.compile(r"^ {0,3}:{3,}\s*\{[^}]*\.proof\b")
 SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
@@ -162,7 +175,7 @@ def prose(body: Tuple[str, ...]) -> str:
 
 def states_general_fact(text: str) -> bool:
     """A sentence with 'for any/every/all' that also holds inline math."""
-    for sentence in SENTENCE_END_RE.split(text):
+    for sentence in SENTENCE_END_RE.split(INLINE_CODE_RE.sub(" ", text)):
         if GENERAL_RE.search(sentence) and "$" in sentence:
             return True
     return False

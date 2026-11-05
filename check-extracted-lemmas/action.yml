@@ -1,8 +1,8 @@
 name: Check extracted lemmas
 description: >-
   Diff-scoped, warn-only heuristic check that flags a solution, example or
-  proof that states a general fact ("for any", "for every" or "for all" with
-  math) and cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result, when the PR
+  proof that states a general fact ("for any", "for every" or "for all" before a
+  kind of mathematical object, with math) and cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result, when the PR
   edits it. `<!-- lemma-ok: reason -->` exempts a body. Warns by default.
 inputs:
   python-version:
