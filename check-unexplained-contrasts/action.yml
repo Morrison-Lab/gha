@@ -33,8 +33,9 @@ inputs:
   fail:
     description: >-
       Fail the action when an unexplained contrast is found (else
-      non-blocking). Defaults to 'false'.
-    default: 'false'
+      non-blocking).
+      Defaults to 'true' (gha#1477).
+    default: 'true'
 runs:
   using: composite
   steps:

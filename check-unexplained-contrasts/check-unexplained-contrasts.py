@@ -14,7 +14,7 @@ it flags the phrasing that usually signals such a contrast, in a ``#def-``,
 ``#rem-`` or ``#note-`` div that holds no citation.
 
 What is flagged, in the prose of such a div: ", not for/as/a/an/the",
-"does not mean", "do not mean", "not to be confused with", "is not a/an" and
+"does not mean", "do not mean", "not to be confused with" and
 "rather than a/an". The finding sits on the line that holds the phrase.
 
 What is not flagged:
@@ -24,8 +24,10 @@ What is not flagged:
 - a line carrying ``<!-- check-unexplained-contrasts: allow -->``;
 - a div whose id is not ``def-``, ``rem-`` or ``note-``.
 
-The phrase list is noisy by design ("is not a tree" is a fine statement), which
-is why the check is warn-only by default.
+"is not a/an" is not in the list, since most plain statements ("H is not a tree")
+use it and a whole-tree run found it was mostly noise.
+The remaining phrases were sampled over lds, mds, pds, sds and psw,
+and each hit read as a real contrast (gha#1477).
 
 Design notes, in the model of ``check-def-commentary``:
 
@@ -35,15 +37,15 @@ Design notes, in the model of ``check-def-commentary``:
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed, the check skips with a warning. ``UCT_WHOLE_TREE=true`` scans the
   whole tree, which measures how many existing contrasts lack a source.
-- **Warn-only by default** (``UCT_FAIL`` defaults to false).
+- **Fails by default** (``UCT_FAIL`` defaults to true, gha#1477).
 
 Configuration (environment variables, set by the composite action):
   UCT_BASE_REF      Git ref/SHA to diff against. Empty and not whole-tree =>
                     skip the check.
   UCT_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   UCT_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  UCT_FAIL          "true" => error annotations and a failing exit;
-                    default "false".
+  UCT_FAIL          "false" => warning annotations only;
+                    default "true".
   UCT_WHOLE_TREE    "true" => scan every tracked matching file in full.
 """
 
@@ -61,7 +63,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 ALLOW_MARKER = "check-unexplained-contrasts: allow"
 
 ADVICE = (
@@ -75,7 +77,6 @@ CONTRAST_RE = re.compile(
     r"(,\s+not\s+(?:for|as|a|an|the)\b"
     r"|\bdoes not mean\b|\bdo not mean\b"
     r"|\bnot to be confused with\b"
-    r"|\bis not (?:a|an)\b"
     r"|\brather than (?:a|an)\b)",
     re.IGNORECASE,
 )

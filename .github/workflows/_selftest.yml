@@ -2743,13 +2743,13 @@ jobs:
         uses: ./check-unexplained-contrasts
         with:
           whole-tree: 'true'
+          fail: 'false'
       - name: Check the staged page with fail on, expecting a failure
         id: unexplained-contrasts-expected-failure
         continue-on-error: true
         uses: ./check-unexplained-contrasts
         with:
           whole-tree: 'true'
-          fail: 'true'
       - name: Assert the failing call actually failed
         shell: bash
         env:
@@ -2768,7 +2768,6 @@ jobs:
         uses: ./check-unexplained-contrasts
         with:
           whole-tree: 'true'
-          fail: 'true'
           paths-ignore: '_ci-unexplained-contrasts'
       - name: Remove the staged page
         if: always()

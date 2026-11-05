@@ -31,9 +31,11 @@ on:
       fail:
         description: >-
           Fail the workflow when an unexplained contrast is found (else
-          non-blocking). Defaults to false (warning annotations only).
+          non-blocking).
+          Defaults to true (gha#1477).
+          Set false for warning annotations only.
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-unexplained-contrasts:
