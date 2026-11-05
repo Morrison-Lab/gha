@@ -1,5 +1,5 @@
 # Copy to .github/workflows/check-extracted-lemmas.yml in your repo.
-# Diff-scoped, warn-only heuristic check: flags a solution, example or proof that a PR
+# Diff-scoped, warn-only heuristic check: flags a solution or proof that a PR
 # edits and that states a general fact ("for any", "for every" or "for all" with math)
 # without citing a #thm-, #lem-, #cor- or #prp- result. <!-- lemma-ok: reason --> exempts one.
 # Only contents:read is needed (the default), so no permissions block is required.
