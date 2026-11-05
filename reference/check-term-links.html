@@ -1267,7 +1267,7 @@ cookieconsent.run({
 <tr class="even">
 <td><code>terms-from</code></td>
 <td><code>''</code></td>
-<td>Space-separated <code>owner/repo</code> prerequisite sites (such as mds, pds, sds), cloned shallowly; their definitions make their terms known. A private one needs the optional <code>WORKFLOW_TOKEN</code> secret</td>
+<td>Space-separated <code>owner/repo</code> prerequisite sites (such as mds, pds, sds), cloned shallowly; their definitions make their terms known. A private one needs the optional <code>WORKFLOW_TOKEN</code> secret. Empty means the repository’s predecessors in the course sequence (mds, pds, sds, lds), and a defaulted site that cannot be cloned only warns. <code>none</code> turns the default off</td>
 </tr>
 <tr class="odd">
 <td><code>allow-file</code></td>
