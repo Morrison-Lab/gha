@@ -949,7 +949,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1 pyyaml
-          python3 -m pytest condor-batch/tests/ -q
+          python3 -m pytest condor-batch/tests/ run-check/tests/ -q
   condor-batch-cluster:
     if: github.event.repository.private && vars.CI_RUNNER && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
