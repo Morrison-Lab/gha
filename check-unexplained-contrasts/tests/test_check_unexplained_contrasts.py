@@ -48,7 +48,6 @@ def test_the_same_contrast_with_a_citation_is_fine():
     ("It does not mean the average.", "does not mean"),
     ("The two words do not mean the same thing.", "do not mean"),
     ("This is not to be confused with the mean.", "not to be confused with"),
-    ("A hyperparameter is not a parameter.", "is not a"),
     ("It is a choice rather than a constant.", "rather than a"),
 ])
 def test_each_phrase_is_flagged(sentence, phrase):
@@ -68,7 +67,7 @@ def test_other_div_kinds_are_not_read():
 
 
 def test_allow_marker_exempts_the_line():
-    text = "::: {#rem-x}\nH is not a tree. <!-- check-unexplained-contrasts: allow -->\n:::"
+    text = "::: {#rem-x}\nH is a word, not a tree. <!-- check-unexplained-contrasts: allow -->\n:::"
     assert hits(text) == []
 
 
@@ -119,12 +118,12 @@ def test_parse_diff_scopes_to_added_lines():
 
 def test_defaults_agree_between_script_action_and_workflow():
     action = (_DIR / "action.yml").read_text(encoding="utf-8")
-    assert uct._DEFAULT_FAIL is False
-    assert "default: 'false'" in action.split("fail:")[1]
+    assert uct._DEFAULT_FAIL is True
+    assert "default: 'true'" in action.split("fail:")[1]
     assert uct.DEFAULT_GLOBS == "*.qmd"
     workflow = (_DIR.parent / ".github" / "workflows"
                 / "check-unexplained-contrasts.yml").read_text(encoding="utf-8")
-    assert "default: false" in workflow.split("fail:")[1]
+    assert "default: true" in workflow.split("fail:")[1]
     assert "default: '*.qmd'" in workflow.split("globs:")[1]
 
 

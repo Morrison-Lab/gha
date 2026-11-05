@@ -2743,13 +2743,13 @@ jobs:
         uses: ./check-unexplained-contrasts
         with:
           whole-tree: 'true'
+          fail: 'false'
       - name: Check the staged page with fail on, expecting a failure
         id: unexplained-contrasts-expected-failure
         continue-on-error: true
         uses: ./check-unexplained-contrasts
         with:
           whole-tree: 'true'
-          fail: 'true'
       - name: Assert the failing call actually failed
         shell: bash
         env:
@@ -2768,7 +2768,6 @@ jobs:
         uses: ./check-unexplained-contrasts
         with:
           whole-tree: 'true'
-          fail: 'true'
           paths-ignore: '_ci-unexplained-contrasts'
       - name: Remove the staged page
         if: always()
@@ -3988,7 +3987,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _ci-extracted-lemmas
-          printf '%s\n' '::: {#sol-a}' 'For any real $x$, $x^2 \ge 0$.' ':::' > _ci-extracted-lemmas/page.qmd
+          printf '%s\n' '::: {#sol-a}' 'For any real number $x$, $x^2 \ge 0$.' ':::' > _ci-extracted-lemmas/page.qmd
           git add -f _ci-extracted-lemmas/page.qmd
       - name: Check the staged solution, expecting a warning only
         uses: ./check-extracted-lemmas

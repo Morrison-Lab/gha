@@ -16,6 +16,8 @@ The check reads the body of
 
 A body is flagged when a sentence of its prose says
 "for any", "for every" or "for all"
+before a kind of mathematical object
+(real number, random variable, matrix, function, and similar),
 and also holds inline math,
 and the body cites no result
 (`@thm-`, `@lem-`, `@cor-`, `@prp-`,
