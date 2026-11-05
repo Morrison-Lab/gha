@@ -57,6 +57,26 @@ def test_generic_task_titles_are_not_flagged(title):
     assert found(exercise(title, "Do the thing.")) == []
 
 
+def test_only_defined_terms_are_reported():
+    text = exercise("Maximizing a gamma-family kernel", "Find the maximum.")
+    defined = exb.defined_stems(["::: {#def-kernel}", "#### Kernel", ":::"])
+    out = [(f.line, f.missing) for f in exb.exercises(text.split("\n"), defined)]
+    assert out == [(2, ["kernel"])]
+
+
+def test_defined_stems_reads_a_title_attribute():
+    assert "gamma" in exb.defined_stems(['::: {#def-g title="Gamma family"}'])
+
+
+def test_a_plural_title_word_matches_its_singular_in_the_body():
+    assert found(exercise("Slope for the means", "The slope uses the mean of $x$.")) == []
+
+
+def test_a_part_that_reuses_an_earlier_setup_is_not_flagged():
+    body = "Use the setup of @exr-a.\nFind the kernel."
+    assert found(exercise("The kernel (part 2)", body)) == []
+
+
 def test_math_in_the_title_is_ignored():
     assert found(exercise("Slope at $w = 1$ of the curve", "The slope of the curve.")) == []
 
@@ -126,3 +146,25 @@ def test_defaults_agree_across_script_action_and_workflow():
     assert "default: false" in input_block(workflow, "fail")
     assert "default: '*.qmd'" in input_block(action, "globs")
     assert "default: '*.qmd'" in input_block(workflow, "globs")
+
+
+def test_corpus_defined_stems_reads_tracked_files_and_is_empty_without_defs(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "a.qmd").write_text("::: {#def-g}\n#### Gamma kernel\n:::\n")
+    (tmp_path / "b.qmd").write_text("Nothing defined here.\n")
+    subprocess.run(["git", "add", "a.qmd", "b.qmd"], check=True)
+    assert exb.corpus_defined_stems(["*.qmd"]) == {"gamma", "kerne"}
+    assert exb.corpus_defined_stems(["b.qmd"]) == set()
+
+
+def test_main_notes_when_no_definitions_exist(tmp_path, monkeypatch, capsys):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "a.qmd").write_text(exercise("Gamma kernel", "Find it."))
+    subprocess.run(["git", "add", "a.qmd"], check=True)
+    monkeypatch.setenv("EXB_WHOLE_TREE", "true")
+    assert exb.main() == 0
+    assert "::notice::No #def- titles" in capsys.readouterr().out

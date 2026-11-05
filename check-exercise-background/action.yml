@@ -1,8 +1,9 @@
 name: Check exercise background
 description: >-
   Diff-scoped, warn-only heuristic check that flags an exercise whose title
-  names an object that its body never mentions, when the diff adds a line of
-  the exercise (Ezra, 2026-10-29). Warns by default.
+  names a defined term (a `#def-` title in the scanned files) that its body
+  never mentions, when the diff adds a line of the exercise (Ezra, 2026-10-29).
+  Warns by default.
 inputs:
   python-version:
     description: Python version to set up.

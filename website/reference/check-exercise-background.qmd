@@ -11,9 +11,15 @@ the body says what a gamma distribution and its kernel are,
 links them, and says why anyone maximizes one.
 
 The check looks at each exercise div (`#exr-...`) with a heading title.
+It reports only a title word that is also a word in some `#def-` title
+in the scanned files, so a word with no definition is never reported.
+When the scanned files hold no `#def-` titles,
+the check prints a notice and reports nothing.
+A part that builds on an earlier exercise ("Use the setup of @exr-...") is skipped.
 A content word of the title counts as present
 when a word in the body shares its first five letters,
-so "Maximizing" matches "maximum".
+so "Maximizing" matches "maximum",
+or when its singular form does.
 Generic task verbs such as find, compute and classify,
 math in the title, code fences and HTML comments are ignored.
 
