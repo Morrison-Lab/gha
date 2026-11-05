@@ -15,6 +15,14 @@ Restart=always
 RestartSec=5
 KillMode=mixed
 TimeoutStopSec=120
+# Keep a job burst from starving the rest of a shared host (gha#1509). Nice and
+# IOSchedulingClass always apply, and every child of the runner inherits them.
+# CPUWeight and MemoryHigh apply only where the user manager has the cpu and
+# memory controllers delegated, and are ignored otherwise.
+Nice=10
+IOSchedulingClass=idle
+CPUWeight=50
+MemoryHigh=3G
 
 [Install]
 WantedBy=default.target
