@@ -117,6 +117,9 @@ FUNCTION_WORDS = frozenset({
     "such", "some", "other", "another", "are", "was", "were", "been", "being", "has",
     "have", "had", "did", "will", "would", "should", "could", "may", "might", "its",
     "their", "them", "they", "our", "you", "your", "his", "her", "she", "also", "just",
+    # Connectives and task verbs that a prerequisite site may tag as an alias (gha#1498).
+    "therefore", "thus", "hence", "because", "since", "so", "let", "compute", "computes",
+    "computed", "computing", "use", "uses", "used", "using", "given", "gives", "give",
 })
 GENERIC_NOUNS = frozenset({"number", "numbers", "value", "values"})
 LEADING_ARTICLE_RE =re.compile(r"^(?:the|a|an)\s+", re.I)
