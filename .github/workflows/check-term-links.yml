@@ -88,8 +88,11 @@ jobs:
           set -euo pipefail
           # Default: the sites before this one in the course sequence
           # (ai-config shared/writing/course-sequence.md).
+          explicit=true
           if [ -z "$TERMS_FROM" ]; then
-            case "${REPO,,}" in
+            explicit=false
+            repo_lc=$(printf '%s' "$REPO" | tr '[:upper:]' '[:lower:]')
+            case "$repo_lc" in
               morrison-lab/pds | morrison-lab/cds | morrison-lab/mcs) TERMS_FROM="Morrison-Lab/mds" ;;
               morrison-lab/sds | morrison-lab/ids) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds" ;;
               morrison-lab/lds | morrison-lab/rme) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds" ;;
@@ -103,9 +106,17 @@ jobs:
           dirs=""
           for repo in $TERMS_FROM; do
             dest="$RUNNER_TEMP/terms-from/${repo//\//__}"
-            git clone --quiet --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${repo}.git" "$dest"
-            rm -rf "$dest/.git"
-            dirs="$dirs $dest"
+            url="https://x-access-token:${GH_TOKEN}@github.com/${repo}.git"
+            if git clone --quiet --depth 1 "$url" "$dest"; then
+              rm -rf "$dest/.git"
+              dirs="$dirs $dest"
+            elif [ "$explicit" = true ]; then
+              exit 1
+            else
+              # A defaulted site the token cannot read (a private repository)
+              # must not turn a previously green job red.
+              echo "::warning::Could not clone ${repo} for its terms; pass WORKFLOW_TOKEN or set terms-from: none."
+            fi
           done
           echo "dirs=${dirs# }" >> "$GITHUB_OUTPUT"
 
