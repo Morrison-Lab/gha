@@ -41,17 +41,17 @@ jobs:
     timeout-minutes: 10
     permissions:
       actions: read
-      pull-requests: read  # the closed-PR lookup below (gha#1528)
     if: github.event.workflow_run.conclusion == 'success'
     outputs:
       has-artifact: ${{ steps.check.outputs.found }}
       remove-pr: ${{ steps.check.outputs.remove-pr }}
     steps:
       # A build that was skipped uploads nothing. That is also what a `closed`
-      # PR looks like, since the build no longer runs for it (gha#1528): when
-      # the run names a PR (from the `workflow_run` event, which a fork cannot
-      # forge) and that PR is closed, remove its preview here. An open PR means
-      # an unrecognized label, which needs nothing.
+      # same-repo PR looks like, since the build no longer runs for it
+      # (gha#1528). When the run names a PR (from the `workflow_run` event,
+      # which a fork cannot forge), pass it to the deploy job, which holds the
+      # `pull-requests` grant this gate lacks and checks whether the PR is
+      # closed; an open PR means an unrecognized label, which needs nothing.
       - name: Check artifact exists
         id: check
         env:
@@ -65,11 +65,11 @@ jobs:
             --jq '[.artifacts[] | select(.name == "pr-preview-site")] | length')
           echo "found=$([ "$count" -gt 0 ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
           remove_pr=""
-          if [ "$count" -eq 0 ] && [ -n "${RUN_PR:-}" ]; then
-            state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${RUN_PR}" --jq .state) || state=""
-            if [ "$state" = "closed" ]; then
-              remove_pr="$RUN_PR"
-            fi
+          if [ "$count" -eq 0 ]; then
+            case "${RUN_PR:-}" in
+              '' | *[!0-9]*) ;;
+              *) remove_pr="$RUN_PR" ;;
+            esac
           fi
           echo "remove-pr=$remove_pr" >> "$GITHUB_OUTPUT"
 
@@ -141,9 +141,16 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$HAS_ARTIFACT" != "true" ]; then
-            # No artifact: the gate found the run's own PR closed (gha#1528).
-            echo "pr-number=$REMOVE_PR" >> "$GITHUB_OUTPUT"
-            echo "action=remove" >> "$GITHUB_OUTPUT"
+            # No artifact: a skipped build. Remove the run's own PR's preview
+            # only if that PR is closed (gha#1528); otherwise do nothing, and
+            # no later step runs for action=none.
+            state=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${REMOVE_PR}" --jq .state) || state=""
+            if [ "$state" = "closed" ]; then
+              echo "pr-number=$REMOVE_PR" >> "$GITHUB_OUTPUT"
+              echo "action=remove" >> "$GITHUB_OUTPUT"
+            else
+              echo "action=none" >> "$GITHUB_OUTPUT"
+            fi
             exit 0
           fi
           pr_number=$(tr -d '[:space:]' < _preview_download/meta/pr-number.txt) || { echo "::error::Missing pr-number.txt in preview artifact"; exit 1; }
