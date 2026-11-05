@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Offline tests for scripts/check-runner-disk.sh (gha#1495): passes with enough
+# free space, fails with a message naming the folder when short, and sweeps
+# stale temp folders before deciding.
+#
+# Usage: bash .github/workflows/scripts/tests/run-check-runner-disk-tests.sh
+set -uo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../../.." && pwd)"
+script="$repo_root/scripts/check-runner-disk.sh"
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+failures=0
+fail() { echo "::error::$1"; failures=$((failures + 1)); }
+
+CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 bash "$script" > /dev/null || fail "enough space should pass"
+
+out=$(CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=999999999 SWEEP_TMP_DIRS="$work" bash "$script")
+status=$?
+[ "$status" = 1 ] || fail "short disk should exit 1, got $status"
+case "$out" in *"$work has"*"GB free"*) ;; *) fail "message should name the folder: $out" ;; esac
+
+mkdir "$work/Rtmp_old"; echo x > "$work/Rtmp_old/f"; touch -d '3 hours ago' "$work/Rtmp_old/f" "$work/Rtmp_old"
+CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=999999999 SWEEP_TMP_DIRS="$work" bash "$script" > /dev/null
+[ -e "$work/Rtmp_old" ] && fail "a short disk should sweep stale temp folders first"
+
+CHECK_DISK_MIN_FREE_GB=abc bash "$script" | grep -q '::warning::' || fail "bad threshold should warn"
+
+[ "$failures" = 0 ] && echo "all check-runner-disk tests passed"
+exit "$failures"
