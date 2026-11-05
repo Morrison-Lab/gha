@@ -1,6 +1,6 @@
 - **`incremental` input on `preview.yml` and the `preview` composite**
   ([gha#1526](https://github.com/Morrison-Lab/gha/issues/1526)).
-  A PR preview restores a cached `_site`, `.quarto` and `_freeze`,
+  A PR preview restores a cached `_site`, `.quarto`, and `_freeze`,
   and `preview/plan-incremental-render.py` lists the pages the PR can affect:
   each changed page, each page that includes a changed file,
   and each page that names a changed data file.
