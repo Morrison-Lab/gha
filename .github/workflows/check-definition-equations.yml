@@ -33,10 +33,11 @@ on:
         default: ''
       fail:
         description: >-
-          Fail the workflow on a finding. Defaults to false (warning annotations
-          only), because the check is a heuristic.
+          Fail the workflow on a finding.
+          Defaults to true (gha#1479).
+          Set false for warning annotations only.
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-definition-equations:

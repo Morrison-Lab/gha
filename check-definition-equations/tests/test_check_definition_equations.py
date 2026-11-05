@@ -47,6 +47,31 @@ def test_escaped_braces_group_like_brackets():
         assert msgs(div(body)) == [], rhs
 
 
+def test_equations_separated_by_quad_are_not_a_chain():
+    for sep in (r"\\qquad", r"\\quad"):
+        body = "$$\nf \\eqdef g(x) " + sep + " h = k\n$$"
+        assert msgs(div(body)) == [], sep
+
+
+def test_index_range_after_quad_is_not_a_chain():
+    body = "$$\nf \\eqdef g_i, \\quad i = 1, \\ldots, n\n$$"
+    assert msgs(div(body)) == []
+
+
+def test_chain_inside_one_equation_before_a_quad_is_still_flagged():
+    body = "$$\nf \\eqdef g = h \\qquad i = 1\n$$"
+    assert len(msgs(div(body))) == 1
+
+
+def test_fails_by_default_in_script_action_and_workflow():
+    assert de._DEFAULT_FAIL is True
+    root = Path(__file__).resolve().parents[2]
+    action = (root / "check-definition-equations" / "action.yml").read_text()
+    workflow = (root / ".github" / "workflows" / "check-definition-equations.yml").read_text()
+    assert "default: 'true'" in action.split("fail:")[1]
+    assert "default: true" in workflow.split("fail:")[1]
+
+
 def test_chain_after_definer_is_flagged():
     out = msgs(div("The **term** is\n\n$$\nf \\eqdef g(x) = h(x).\n$$"))
     assert len(out) == 1 and "#def-a" in out[0] and "chains" in out[0]

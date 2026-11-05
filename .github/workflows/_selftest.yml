@@ -3925,7 +3925,7 @@ jobs:
         uses: ./check-restated-results
         with:
           whole-tree: 'true'
-      - name: Check again with fail on, expecting a failure
+      - name: Check again with the default, expecting a failure
         id: restated-results-expected-failure
         continue-on-error: true
         uses: ./check-restated-results
@@ -3993,7 +3993,7 @@ jobs:
         uses: ./check-extracted-lemmas
         with:
           whole-tree: 'true'
-      - name: Check again with fail on, expecting a failure
+      - name: Check again with the default, expecting a failure
         id: extracted-lemmas-expected-failure
         continue-on-error: true
         uses: ./check-extracted-lemmas
@@ -4049,7 +4049,7 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
       # This repo has no definitions, so stage one that chains equalities and assert
-      # that the check warns by default and blocks with fail on.
+      # that the check warns with fail off and blocks by default.
       - name: Stage a definition that chains equalities
         shell: bash
         run: |
@@ -4057,23 +4057,23 @@ jobs:
           mkdir -p _ci-definition-equations
           printf '%s\n' '::: {#def-a}' '$$' 'f := g = h' '$$' ':::' > _ci-definition-equations/page.qmd
           git add -f _ci-definition-equations/page.qmd
-      - name: Check the staged definition, expecting a warning only
+      - name: Check the staged definition, expecting a warning only (fail off)
         shell: bash
         env:
           DE_WHOLE_TREE: 'true'
+          DE_FAIL: 'false'
         run: |
           set -euo pipefail
           out=$(python3 check-definition-equations/check-definition-equations.py)
           echo "$out"
           grep -q '^::warning file=_ci-definition-equations/page.qmd' <<<"$out" \
             || { echo "::error::expected a warning for the staged definition"; exit 1; }
-      - name: Check again with fail on, expecting a failure
+      - name: Check again with the default, expecting a failure
         id: definition-equations-expected-failure
         continue-on-error: true
         uses: ./check-definition-equations
         with:
           whole-tree: 'true'
-          fail: 'true'
       - name: Assert the failing call actually failed
         shell: bash
         env:

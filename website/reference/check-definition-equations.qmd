@@ -2,7 +2,7 @@
 title: "check-definition-equations.yml"
 ---
 
-Diff-scoped, warn-only heuristic check for the lab's rule
+Diff-scoped check for the lab's rule
 (Ezra, 2026-10-29)
 that a definition div holds only the equation
 linking the symbol of the defined term to its definitional expression.
@@ -32,7 +32,7 @@ A definition is checked when the pull request adds a line inside it.
 With no base to diff against,
 the check skips instead of scanning the whole tree,
 so existing definitions are fixed when someone edits them anyway.
-It warns by default; `fail: true` blocks.
+It fails by default (gha#1479); `fail: false` only warns.
 
 ## Inputs
 
@@ -40,7 +40,7 @@ It warns by default; `fail: true` blocks.
 | --- | --- | --- |
 | `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
 | `paths-ignore` | none | Comma or newline separated globs to skip |
-| `fail` | `false` | Fail on a finding; `false` warns |
+| `fail` | `true` | Fail on a finding; `false` warns |
 | `whole-tree` | `false` | Check every definition, to measure a corpus |
 | `python-version` | `3.x` | Python version |
 | `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
