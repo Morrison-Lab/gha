@@ -41,8 +41,8 @@ def test_solution_stating_a_general_fact_is_flagged():
     assert len(out) == 1 and "#sol-a" in out[0]
 
 
-def test_example_stating_a_general_fact_is_flagged():
-    assert len(msgs(div("exm-a", GENERAL))) == 1
+def test_example_is_not_read():
+    assert msgs(div("exm-a", GENERAL)) == []
 
 
 def test_proof_following_a_theorem_is_flagged():
