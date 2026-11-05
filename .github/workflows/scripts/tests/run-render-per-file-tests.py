@@ -79,6 +79,12 @@ def main():
     if code != 0 or calls != expected:
         errors.append(f"pdf: renders only files that declare it, got {code} {calls}")
 
+    code, calls, out = run(["pdf"])
+    if "Per-file render times" not in out or "| pdf | 2 |" not in out:
+        errors.append(f"the run must end with a timing table by format, got {out}")
+    if "Rendered a.qmd --to pdf in " not in out:
+        errors.append("each render must log how long it took")
+
     code, calls, _ = run(["nonesuch"])
     if code == 0 or calls:
         errors.append("an unmatched format must fail, not pass vacuously")

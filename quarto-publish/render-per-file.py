@@ -23,6 +23,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
@@ -30,6 +31,7 @@ from per_file.front_matter_formats import front_matter_formats  # noqa: E402
 from per_file.project_config import project_config  # noqa: E402
 from per_file.project_inputs import project_inputs  # noqa: E402
 from per_file.quarto_inspect import quarto_inspect  # noqa: E402
+from per_file.timing_summary import timing_summary  # noqa: E402
 
 
 def main(argv):
@@ -44,6 +46,7 @@ def main(argv):
         config = project_config(project)
         inputs = project_inputs(project, config)
     failures = []
+    timings = []
     rendered = 0
     for path in sorted(inputs):
         rel = os.path.relpath(path, project)
@@ -57,16 +60,27 @@ def main(argv):
             if fmt not in have:
                 continue
             print(f"::group::quarto render {rel} --to {fmt}", flush=True)
+            started = time.monotonic()
             code = subprocess.run(
                 ["quarto", "render", rel, "--to", fmt,
                  "--output-dir", output_dir],
                 cwd=project, check=False,
             ).returncode
+            seconds = time.monotonic() - started
+            print(f"Rendered {rel} --to {fmt} in {seconds:.0f} s", flush=True)
             print("::endgroup::", flush=True)
+            timings.append((rel, fmt, seconds))
             rendered += 1
             if code != 0:
                 failures.append(f"{rel} ({fmt})")
     print(f"Rendered {rendered} file/format pairs one file at a time.")
+    if timings:
+        summary = timing_summary(timings)
+        print(summary)
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_path:
+            with open(summary_path, "a", encoding="utf-8") as handle:
+                handle.write(summary)
     if rendered == 0:
         print("::error::per-file-formats matched no file; check the format names.")
         return 1
