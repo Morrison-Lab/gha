@@ -9625,6 +9625,10 @@ jobs:
         shell: bash
         run: bash .github/workflows/scripts/tests/run-check-runner-disk-tests.sh
 
+      - name: Run wait-runner-capacity tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-wait-runner-capacity-tests.sh
+
       - name: Run runner-group-is-private tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-runner-group-is-private-tests.sh
