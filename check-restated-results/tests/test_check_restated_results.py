@@ -58,6 +58,11 @@ def test_data_exercise_is_not_a_derivation():
     assert msgs(div("exr-a", "Fit the model to the data.") + div("sol-a", EQ)) == []
 
 
+def test_derivation_verb_only_in_the_title_is_not_a_derivation():
+    ask = "#### Show that it points the right way (part 3)\n\nCompute the mean."
+    assert msgs(div("exr-a", ask) + div("sol-a", EQ)) == []
+
+
 def test_exercise_citing_a_stated_result_is_a_proof_not_a_derivation():
     assert msgs(div("exr-a", "Prove @thm-mean.") + div("sol-a", EQ)) == []
 
