@@ -1,0 +1,1 @@
+- `check-term-links` defaults `terms-from` to the repository's prerequisite sites in the course sequence (mds, pds, sds, lds), so callers need not list them; `none` turns it off (#1503).
