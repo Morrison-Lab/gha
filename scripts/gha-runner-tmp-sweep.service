@@ -1,0 +1,8 @@
+# systemd --user unit that runs scripts/sweep-runner-tmp.sh once; the timer
+# next to it starts it daily. Install with scripts/install-runner-tmp-sweep.sh (gha#1495).
+[Unit]
+Description=Remove stale temp folders left by self-hosted runner jobs
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/.local/share/gha/sweep-runner-tmp.sh
