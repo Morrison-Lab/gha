@@ -27,6 +27,11 @@ inputs:
   max:
     description: Largest number of sibling headings under one parent.
     default: '7'
+  min:
+    description: >-
+      Fewest top-level headings a page that has any may carry; a page with
+      fewer is flagged when the diff adds its heading. Set '0' to turn it off.
+    default: '2'
   fail:
     description: >-
       Fail the action when a touched group is over the limit (else
@@ -48,5 +53,6 @@ runs:
         CHS_GLOBS: ${{ inputs.globs }}
         CHS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         CHS_MAX: ${{ inputs.max }}
+        CHS_MIN: ${{ inputs.min }}
         CHS_FAIL: ${{ inputs.fail }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-heading-siblings.py"

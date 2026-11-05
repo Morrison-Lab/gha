@@ -61,7 +61,7 @@ def test_yaml_comments_in_front_matter_are_not_headings():
 
 
 def test_attributes_are_stripped_from_titles():
-    assert chs.headings(lines("## Title {#sec-t .unnumbered}"))[0].title == "Title"
+    assert chs.headings(lines("## Title {#sec-t .hl}"))[0].title == "Title"
 
 
 def test_includes_are_expanded_with_origin(tmp_path):
@@ -144,3 +144,48 @@ def test_fails_by_default():
     assert "default: 'true'" in action.split("  fail:")[1].split("runs:")[0]
     assert "default: true" in workflow.split("      fail:")[1].split("jobs:")[0]
     assert 'fail = _env_flag("CHS_FAIL", True)' in (root / "check-heading-siblings.py").read_text()
+
+
+def test_default_minimum_is_two():
+    assert chs.DEFAULT_MIN == 2
+
+
+def test_lone_top_heading_is_found_even_with_subsections():
+    found = chs.headings(lines("# Only\n\ntext\n\n## A\n\n## B\n"))
+    assert chs.lone_top_heading(found, 2).title == "Only"
+
+
+def test_two_top_headings_and_no_headings_are_not_lone():
+    two = chs.headings(lines(sections(2, 1)))
+    assert chs.lone_top_heading(two, 2) is None
+    assert chs.lone_top_heading([], 2) is None
+
+
+def test_minimum_zero_turns_the_rule_off():
+    found = chs.headings(lines("# Only\n"))
+    assert chs.lone_top_heading(found, 0) is None
+
+
+def test_lone_heading_is_flagged_only_when_the_diff_adds_it(tmp_path):
+    page = tmp_path / "page.qmd"
+    page.write_text('---\ntitle: "P"\n---\n\n# Only\n\ntext\n')
+    found = chs.headings(chs.expand(str(page), str(tmp_path)))
+    assert chs.scan_page(str(page), str(tmp_path), {}, 7, 2) == []
+    touched = {found[0].path: [found[0].line]}
+    out = chs.scan_page(str(page), str(tmp_path), touched, 7, 2)
+    assert len(out) == 1 and out[0].lone and out[0].line == found[0].line
+    assert "only top-level heading" in chs.format_message(out[0])
+    assert len(chs.scan_page(str(page), str(tmp_path), None, 7, 2)) == 1
+    assert chs.scan_page(str(page), str(tmp_path), None, 7) == []
+
+
+def test_callout_titles_and_unnumbered_headings_are_not_outline_entries():
+    text = ("::: {.callout-note collapse=true}\n# Source\n\ntext\n:::\n\n"
+            "# Body\n\n# References {#references .unnumbered}\n")
+    assert [h.title for h in chs.headings(lines(text))] == ["Body"]
+    assert chs.lone_top_heading(chs.headings(lines(text)), 2).title == "Body"
+
+
+def test_unnumbered_headings_do_not_count_toward_the_max_rule():
+    text = "# Body\n\n" + "\n\n".join(f"## U{i} {{.unnumbered}}" for i in range(9))
+    assert chs.crowded_groups(chs.headings(lines(text)), 7) == []

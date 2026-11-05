@@ -35,6 +35,12 @@ on:
         description: Largest number of sibling headings under one parent.
         type: string
         default: '7'
+      min:
+        description: >-
+          Fewest top-level headings a page that has any may carry (0 turns
+          the lone-heading rule off).
+        type: string
+        default: '2'
       fail:
         description: >-
           Fail the workflow when a touched group is over the limit
@@ -63,6 +69,7 @@ jobs:
           globs: ${{ inputs.globs }}
           paths-ignore: ${{ inputs.paths-ignore }}
           max: ${{ inputs.max }}
+          min: ${{ inputs.min }}
           fail: ${{ inputs.fail }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there is no base to diff against, so the check is skipped.

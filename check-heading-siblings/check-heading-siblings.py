@@ -22,6 +22,12 @@ What is flagged: a group of more than ``CHS_MAX`` sibling headings, when the
 diff adds one of its headings, in the page or in a file it includes. The
 finding sits on the first added heading of the group.
 
+Also flagged: a page whose top level holds a single heading (fewer than
+``CHS_MIN``, default 2) when the diff adds that heading. The table of contents
+then has one entry, which usually restates the page title above about a
+hundred included files (lds#1893). The top level is the shallowest level with
+no parent heading; a page with no headings is not flagged.
+
 What is not flagged: a group the diff did not add a heading to, and a page
 carrying ``<!-- check-heading-siblings: allow -->`` anywhere in its own file.
 
@@ -41,6 +47,7 @@ Configuration (environment variables, set by the composite action):
   CHS_FAIL          "true" => exit 1 on a finding; default "true" (set "false" to warn only).
   CHS_WHOLE_TREE    "true" => scan every tracked matching page in full.
   CHS_MAX           Largest number of sibling headings (default 7).
+  CHS_MIN           Fewest top-level headings a page with any may have (default 2).
 """
 
 import os
@@ -58,12 +65,15 @@ for _stream in (sys.stdout, sys.stderr):
 
 DEFAULT_GLOBS = "*.qmd"
 DEFAULT_MAX = 7
+DEFAULT_MIN = 2
 ALLOW_MARKER = "check-heading-siblings: allow"
 
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*#*[ \t]*$")
 TITLE_RE = re.compile(r"^title:", re.MULTILINE)
+CALLOUT_RE = re.compile(r"^[ \t]*:::+[ \t]*\{[^}]*\.callout")
+UNNUMBERED_RE = re.compile(r"\{[^}]*\.unnumbered[^}]*\}")
 ATTR_RE = re.compile(r"[ \t]*\{[^}]*\}[ \t]*$")
 
 
@@ -89,6 +99,7 @@ class Finding(NamedTuple):
     parent: str
     count: int
     limit: int
+    lone: bool = False
 
 
 def read_text(path: str) -> Optional[str]:
@@ -142,6 +153,7 @@ def headings(lines: List[Source]) -> List[Heading]:
     found: List[Heading] = []
     fence: Optional[Tuple[str, int]] = None
     in_comment = False
+    prev_line = ""
     in_front_matter: Dict[str, bool] = {}
     for src in lines:
         line = src.text
@@ -168,8 +180,12 @@ def headings(lines: List[Source]) -> List[Heading]:
         if line.lstrip().startswith("<!--") and "-->" not in line:
             in_comment = True
             continue
+        previous, prev_line = prev_line, (line if line.strip() else prev_line)
         h = HEADING_RE.match(line)
         if not h:
+            continue
+        # A callout's title and an unnumbered heading are not outline entries.
+        if CALLOUT_RE.match(previous) or UNNUMBERED_RE.search(h.group(2)):
             continue
         level = len(h.group(1))
         parent = -1
@@ -192,7 +208,28 @@ def crowded_groups(found: List[Heading], limit: int
             if len(members) > limit]
 
 
+def lone_top_heading(found: List[Heading], minimum: int) -> Optional[Heading]:
+    """The page's only top-level heading when there are fewer than ``minimum``.
+
+    The top level is the shallowest level that has no parent heading. A page
+    with no headings has none to flag.
+    """
+    top = [h for h in found if h.parent == -1]
+    if not top:
+        return None
+    shallowest = min(h.level for h in top)
+    group = [h for h in top if h.level == shallowest]
+    return group[0] if len(group) < minimum else None
+
+
 def format_message(f: Finding) -> str:
+    if f.lone:
+        return (f"This is the only top-level heading of the page, so the "
+                f"table of contents has a single entry that duplicates or "
+                f"restates the page title. Fix: add the sections the page "
+                f"already contains as sibling headings (about five), or drop "
+                f"the heading if the page has just one section; move content, "
+                f"do not delete it")
     where = (f"under '{f.parent}'" if f.parent else "at the top level of the page")
     return (f"This heading is one of {f.count} level-{f.level} sibling headings "
             f"{where}, over the limit of {f.limit}. A reader scanning the "
@@ -304,7 +341,7 @@ class Report(NamedTuple):
 
 
 def scan_page(path: str, root: str, touched: Optional[Dict[str, List[int]]],
-              limit: int) -> List[Finding]:
+              limit: int, minimum: int = 0) -> List[Finding]:
     """Findings for the crowded groups of ``path`` the diff added a heading to.
 
     ``touched`` maps a file to its added lines; None means scan regardless
@@ -325,11 +362,16 @@ def scan_page(path: str, root: str, touched: Optional[Dict[str, List[int]]],
         parent_title = found[parent].title if parent >= 0 else ""
         findings.append(Finding(anchor.path, anchor.line, anchor.level,
                                 parent_title, len(members), limit))
+    lone = lone_top_heading(found, minimum)
+    if lone is not None and (touched is None
+                             or lone.line in touched.get(lone.path, ())):
+        findings.append(Finding(lone.path, lone.line, lone.level, "", 1,
+                                limit, lone=True))
     return findings
 
 
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
-              whole_tree: bool, limit: int) -> Report:
+              whole_tree: bool, limit: int, minimum: int = 0) -> Report:
     root = os.getcwd()
     touched: Optional[Dict[str, List[int]]] = None
     if whole_tree:
@@ -360,7 +402,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         if text is None or not is_page(text):
             continue
         pages += 1
-        for f in scan_page(rel, root, touched, limit):
+        for f in scan_page(rel, root, touched, limit, minimum):
             if (f.path, f.line) not in seen:
                 seen.add((f.path, f.line))
                 findings.append(f)
@@ -375,7 +417,9 @@ def main() -> int:
     whole_tree = _env_flag("CHS_WHOLE_TREE", False)
     limit = _env_int("CHS_MAX", DEFAULT_MAX)
 
-    report = run_check(base_ref, globs, ignores, whole_tree, limit)
+    minimum = _env_int("CHS_MIN", DEFAULT_MIN)
+
+    report = run_check(base_ref, globs, ignores, whole_tree, limit, minimum)
     if report.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
         level = "::warning::" if base_ref else ""
