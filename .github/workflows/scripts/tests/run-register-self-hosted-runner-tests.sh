@@ -170,7 +170,7 @@ new_work() {
 }
 # The runner runs a .sh hook as `bash -e -o pipefail`, so the tests do too.
 run_prune() {
-  env PATH="$work/bin:$PATH" GITHUB_WORKSPACE="$w/cur/cur" "$@" bash --noprofile --norc -e -o pipefail "$prune"
+  env PATH="$work/bin:$PATH" SWEEP_TMP_DIRS="$work/home" GITHUB_WORKSPACE="$w/cur/cur" "$@" bash --noprofile --norc -e -o pipefail "$prune"
 }
 left() { find "$w" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tr '\n' ' '; }
 
@@ -190,7 +190,7 @@ check "prune: the current checkout and _tool survive when space stays low" "$(le
 check "prune: still-low space is reported" "$(grep -c 'GB free, under 10 GB' <<< "$out")" "1"
 
 new_work
-out=$(env PATH="$work/bin:$PATH" GITHUB_WORKSPACE=relative STUB_BASE_KB=$((6 * gb)) bash -e -o pipefail "$prune"; echo "rc=$?")
+out=$(env PATH="$work/bin:$PATH" SWEEP_TMP_DIRS="$work/home" GITHUB_WORKSPACE=relative STUB_BASE_KB=$((6 * gb)) bash -e -o pipefail "$prune"; echo "rc=$?")
 check "prune: a malformed workspace removes nothing" "$(left)" "_tool a b c cur d "
 check "prune: a malformed workspace warns and exits 0" "$(grep -c '^::warning::.*nothing pruned' <<< "$out") $(tail -n 1 <<< "$out")" "1 rc=0"
 

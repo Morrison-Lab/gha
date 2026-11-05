@@ -60,6 +60,9 @@ if ! touch "$current"; then
   exit 0
 fi
 
+# Stale temp folders (Rtmp*, quarto-session*) that killed jobs left behind (gha#1495).
+bash "$(dirname "${BASH_SOURCE[0]}")/sweep-runner-tmp.sh"
+
 # Prints the free kilobytes on the work folder's filesystem, or nothing.
 free_kb() {
   local kb
