@@ -14,6 +14,12 @@ inputs:
   fail:
     description: Fail the action when equation render errors are found.
     default: 'true'
+  max-pages:
+    description: >-
+      Maximum number of pages open in the headless browser at once. Each page
+      costs a Chromium renderer, so keep this low on a shared self-hosted
+      runner.
+    default: '2'
 runs:
   using: composite
   steps:
@@ -38,6 +44,7 @@ runs:
       env:
         SITE_DIR: ${{ inputs.site-dir }}
         FAIL: ${{ inputs.fail }}
+        MAX_PAGES: ${{ inputs.max-pages }}
       run: |
         set -euo pipefail
         node "$GITHUB_ACTION_PATH/check_equations.mjs" --site-dir "$SITE_DIR" --fail "$FAIL"
