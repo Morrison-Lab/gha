@@ -672,8 +672,9 @@ page whose own file, included subfiles, or named data files changed since the
 cached render (`preview/prune-stale-freeze.py`), so `clear freezer` is no
 longer needed when only a subfile changed; `quarto-publish.yml` does the same
 when `freeze-cache` is on.
-With `freeze-cache-save-on-failure: true`, a failed render still saves the
-cache, so a re-run resumes from the pages that already executed.
+By default (`freeze-cache-save-on-failure: true`), a failed render still saves
+the cache, so a re-run resumes from the pages that already executed;
+pass `false` to skip that.
 A publish with `freeze-cache: true` also seeds new PRs' previews, which fall
 back to the default branch's latest cache.
 Repos with bespoke build pipelines or custom post-render steps can maintain

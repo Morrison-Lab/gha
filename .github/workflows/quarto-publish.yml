@@ -104,7 +104,7 @@ on:
       freeze-cache-save-on-failure:
         description: Also save the _freeze directory when the render fails, so a re-run resumes from the pages already executed. Only used when freeze-cache is true.
         type: boolean
-        default: false
+        default: true
       deno-v8-options:
         description: Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap cap for large site renders.
         type: string
