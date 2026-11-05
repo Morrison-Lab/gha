@@ -6,4 +6,5 @@
   Diff-scoped like the upper bound, so existing pages are not swept.
   Callout titles and `.unnumbered` headings no longer count as outline entries for either rule,
   so a page over `max` only because of them is no longer flagged.
-  Consumers on the reusable workflow get the new rule without opting in; pass `min: 0` to turn it off.
+  Consumers on the reusable workflow get the new rule without opting in.
+  Pass `min: 0` to turn it off.
