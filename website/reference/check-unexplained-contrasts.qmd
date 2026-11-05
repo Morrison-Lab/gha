@@ -30,7 +30,9 @@ The check does not read:
 - a div whose id is not `def-`, `rem-` or `note-`;
 - a line carrying `<!-- check-unexplained-contrasts: allow -->`.
 
-`fail` defaults to `true`, since a whole-tree sample of the phrases found every hit a real contrast (gha#1477).
+`fail` defaults to `true`,
+since a whole-tree sample of the phrases
+found every hit a real contrast (gha#1477).
 
 ## Scope
 
