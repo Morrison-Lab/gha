@@ -24,7 +24,9 @@
 # steps on the runner for those two only. A step's own exit 70, 71 or 255 is
 # reported as 1, so no step failure can look like an infrastructure failure.
 #
-# Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu),
+# Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu; a space- or
+# comma-separated list spreads runs over the heads and falls back to the next
+# one when a head does not answer ssh),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
@@ -49,7 +51,7 @@ set -euo pipefail
 
 checkout="${1:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
 steps="${2:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
-head_host="${CONDOR_HEAD:-cse-head.cluster.cs.wwu.edu}"
+heads_in="${CONDOR_HEAD:-cse-head.cluster.cs.wwu.edu}"
 key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
 root="${CLUSTER_CI_ROOT:-/cluster/research-groups/morrison/lds-ci}"
 run="${RUN_ID:-${GITHUB_RUN_ID:-$(date +%Y%m%d-%H%M%S)}}"
@@ -65,6 +67,27 @@ case "$key" in
   *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
 esac
 ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
+# CONDOR_HEAD may list several heads, separated by spaces or commas. Each run
+# starts at head (run number mod count), spreading runs over the heads, and
+# takes the first head that answers ssh; none answering is exit 70. One head
+# is used as given, with no extra ssh call.
+read -ra head_list <<< "${heads_in//,/ }"
+[ "${#head_list[@]}" -gt 0 ] || { echo "CONDOR_HEAD names no head" >&2; exit 64; }
+head_host="${head_list[0]}"
+if [ "${#head_list[@]}" -gt 1 ]; then
+  run_num="${run//[^0-9]/}"
+  start=$(( 10#${run_num:-0} % ${#head_list[@]} ))
+  head_host=
+  for offset in $(seq 0 $(( ${#head_list[@]} - 1 ))); do
+    candidate="${head_list[$(( (start + offset) % ${#head_list[@]} ))]}"
+    if ssh "${ssh_opts[@]}" -o ConnectTimeout=15 "$candidate" true; then
+      head_host="$candidate"
+      break
+    fi
+    echo "head $candidate did not answer ssh; trying the next" >&2
+  done
+  [ -n "$head_host" ] || { echo "no cluster head answered ssh" >&2; exit 70; }
+fi
 transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
 # A job that did not end normally keeps its run directory, and enough of them
 # fill the cluster home's quota, after which every copy fails ("Disk quota

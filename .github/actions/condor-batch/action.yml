@@ -7,7 +7,9 @@ inputs:
     description: One shell command per line. Fewer than two are run on the runner.
     required: true
   head:
-    description: Cluster head node.
+    description: >-
+      Cluster head node, or a space- or comma-separated list of heads: runs
+      are spread over them and fall back to the next head that answers ssh.
     default: cse-head.cluster.cs.wwu.edu
   working-directory:
     description: Checkout to copy to the cluster.
