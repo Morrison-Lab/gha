@@ -1202,9 +1202,9 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only check that flags a contrast in a definition, remark or note that cites no source. A contrast the text keeps (“X, not Y”) must say who holds the other reading, with a source, so it is not a straw man. If nobody holds the other reading, the contrast is deleted. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1302">gha#1302</a> and the psw rule “Do not rule out readings no reader would make”.</p>
+<p>Diff-scoped check that flags a contrast in a definition, remark or note that cites no source. A contrast the text keeps (“X, not Y”) must say who holds the other reading, with a source, so it is not a straw man. If nobody holds the other reading, the contrast is deleted. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1302">gha#1302</a> and the psw rule “Do not rule out readings no reader would make”.</p>
 <p>Whether anyone holds the other reading is a fact about the literature, so a script cannot decide it. The check only prompts the author.</p>
-<p>The check reports one of these phrases in a <code>#def-</code>, <code>#rem-</code> or <code>#note-</code> div that holds no citation: “, not for/as/a/an/the”, “does not mean”, “do not mean”, “not to be confused with”, “is not a/an” and “rather than a/an”. The finding sits on the line that holds the phrase.</p>
+<p>The check reports one of these phrases in a <code>#def-</code>, <code>#rem-</code> or <code>#note-</code> div that holds no citation: “, not for/as/a/an/the”, “does not mean”, “do not mean”, “not to be confused with” and “rather than a/an”. The finding sits on the line that holds the phrase.</p>
 <p>The check does not read:</p>
 <ul>
 <li>a div that holds a citation (<code>[@key</code>), since the source is the explanation;</li>
@@ -1213,7 +1213,7 @@ cookieconsent.run({
 <li>a div whose id is not <code>def-</code>, <code>rem-</code> or <code>note-</code>;</li>
 <li>a line carrying <code>&lt;!-- check-unexplained-contrasts: allow --&gt;</code>.</li>
 </ul>
-<p>The phrase list is noisy by design, which is why <code>fail</code> defaults to <code>false</code>.</p>
+<p><code>fail</code> defaults to <code>true</code>, since a whole-tree sample of the phrases found every hit a real contrast (gha#1477).</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
 <p>Only an added line is reported. The whole file is parsed, since the div opens far above the changed line. An added line whose exact text was also deleted in the same diff counts as moved. With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to scan every tracked file on purpose, which measures how many existing contrasts lack a source.</p>
@@ -1250,8 +1250,8 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td><code>fail</code></td>
-<td><code>false</code></td>
-<td>Fail the workflow on a finding instead of warning</td>
+<td><code>true</code></td>
+<td>Fail the workflow on a finding; <code>false</code> only warns</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>
