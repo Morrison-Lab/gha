@@ -1,0 +1,1 @@
+- `check-informal-definitions` narrows two def-div rules: `no-link-in-definition` now reports only a div whose prose uses a word from some other def div title (a foundational definition has nothing to link), and `multiple-terms-in-definition` treats a comma or "and" list of bold terms after "Other names:", "Synonyms:" or "also called" as aliases of one term.
