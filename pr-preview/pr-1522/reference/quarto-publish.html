@@ -1471,7 +1471,7 @@ cookieconsent.run({
 <span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM</span></span>
 <span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)</span></span>
 <span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache: true      # cache Quarto _freeze across runs</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache-save-on-failure: true  # keep it when the render fails</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache-save-on-failure: false  # default true; set false to drop the cache when the render fails</span></span>
 <span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'</span></span>
 <span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log</span></span>
 <span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log</span></span>
