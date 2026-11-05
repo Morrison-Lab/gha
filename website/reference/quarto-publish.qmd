@@ -119,7 +119,7 @@ jobs:
     #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
     #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)
     #   freeze-cache: true      # cache Quarto _freeze across runs
-    #   freeze-cache-save-on-failure: true  # keep it when the render fails
+    #   freeze-cache-save-on-failure: false  # default true; set false to drop the cache when the render fails
     #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
     #   fail-on-render-warning: true # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log
