@@ -11,7 +11,20 @@
 # folders down to one hour old (scripts/sweep-runner-tmp.sh) and measures again.
 # If it is still short it names the filesystem, the free space and the largest
 # folders, and exits 1, which fails the job before it does any work.
+#
+# It also seeds the system Python into the runner's tool cache
+# (scripts/seed-runner-python-toolcache.sh), so a runner whose work folder was
+# moved or cleared after registration still has the entry actions/setup-python
+# needs on Debian 13 (gha#1205). A seeding failure warns and never fails the job.
 set -uo pipefail
+
+# Seed the tool cache (RUNNER_TOOL_CACHE, else <work folder>/_tool from the checkout path).
+tool_cache="${RUNNER_TOOL_CACHE:-${GITHUB_WORKSPACE:+$(dirname "$(dirname "$GITHUB_WORKSPACE")")/_tool}}"
+if [ -n "$tool_cache" ]; then
+  RUNNER_TOOL_CACHE="$tool_cache" RUNNER_DIR="$tool_cache" \
+    bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh" > /dev/null ||
+    echo "::warning::check-runner-disk: Python toolcache seeding failed; Python-based checks may fail."
+fi
 
 min_free_gb="${CHECK_DISK_MIN_FREE_GB:-5}"
 case "$min_free_gb" in

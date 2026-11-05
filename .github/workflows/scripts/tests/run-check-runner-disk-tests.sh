@@ -25,6 +25,13 @@ mkdir "$work/Rtmp_old"; echo x > "$work/Rtmp_old/f"; touch -d '3 hours ago' "$wo
 CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=999999999 SWEEP_TMP_DIRS="$work" bash "$script" > /dev/null
 [ -e "$work/Rtmp_old" ] && fail "a short disk should sweep stale temp folders first"
 
+# The hook seeds the tool cache next to the checkout's work folder (gha#1205).
+version=$(python3 -c 'import platform; print(platform.python_version())')
+case "$(uname -m)" in aarch64 | arm64) arch=arm64 ;; *) arch=x64 ;; esac
+mkdir -p "$work/w/repo/repo"
+(unset RUNNER_TOOL_CACHE; GITHUB_WORKSPACE="$work/w/repo/repo" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 bash "$script" > /dev/null)
+[ -f "$work/w/_tool/Python/$version/$arch.complete" ] || fail "the hook should seed Python into the work folder's _tool"
+
 CHECK_DISK_MIN_FREE_GB=abc bash "$script" | grep -q '::warning::' || fail "bad threshold should warn"
 
 [ "$failures" = 0 ] && echo "all check-runner-disk tests passed"
