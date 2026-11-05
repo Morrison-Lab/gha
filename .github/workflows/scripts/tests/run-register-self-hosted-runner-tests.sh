@@ -147,6 +147,10 @@ printf 'ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh\n' > "$rd/.env"
 RUNNER_DIR="$rd" bash "$hook_installer" > /dev/null
 check "hook: a hook set by hand is kept" "$(grep '^ACTIONS_RUNNER_HOOK_JOB_COMPLETED=' "$rd/.env")" "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh"
 check "hook: the job-started hook is added" "$(grep '^ACTIONS_RUNNER_HOOK_JOB_STARTED=' "$rd/.env")" "ACTIONS_RUNNER_HOOK_JOB_STARTED=$repo_root/scripts/check-runner-disk.sh"
+# A hand-set job-completed hook on a last line with no newline stays intact.
+printf 'ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh' > "$rd/.env"
+RUNNER_DIR="$rd" bash "$hook_installer" > /dev/null
+check "hook: the job-started line starts on its own line" "$(grep -c '^ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh$' "$rd/.env")" "1"
 
 # prune-runner-workdir.sh, against a stub df whose free space grows by 1 GB for
 # each checkout removed: free = STUB_BASE_KB - 1 GB per non-underscore folder.
