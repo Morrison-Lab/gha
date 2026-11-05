@@ -1,0 +1,1 @@
+- `check-exercise-background` now reports a title word only when it is a defined term (a word in some `#def-` title in the scanned files), skips a part that builds on an earlier exercise ("Use the setup of @exr-..."), and matches a plural title word to its singular in the body.

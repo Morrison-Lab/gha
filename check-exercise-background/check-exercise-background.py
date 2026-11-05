@@ -53,6 +53,11 @@ ADVICE = ("say it in the body and link its definition, "
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 EXR_RE = re.compile(r"#exr-")
+DEF_RE = re.compile(r"#def-")
+# A later part of an exercise builds on the setup of an earlier exercise, which
+# gives the background; the part itself need not repeat it.
+CONTINUATION_RE = re.compile(r"\b(?:setup|set-up|situation|model|data) of @exr-|^\s*Use (?:the )?\w+ of @exr-",
+                             re.MULTILINE)
 SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
 ATTR_TITLE_RE = re.compile(r'title="([^"]*)"')
 TITLE_RE = re.compile(r"^#{1,6}\s+(.*?)\s*(?:\{[^}]*\})?\s*$")
@@ -102,21 +107,50 @@ def _stems(words: List[str]) -> Set[str]:
     return {w[:STEM] for w in words if len(w) >= 3}
 
 
-def missing_words(title: str, body: str) -> List[str]:
-    """Content words of ``title`` with no counterpart in ``body``."""
+def defined_stems(lines: List[str]) -> Set[str]:
+    """Stems of the words in the titles of the ``#def-`` divs in ``lines``."""
+    stems: Set[str] = set()
+    for idx, raw in enumerate(lines):
+        dm = DIV_RE.match(raw)
+        if not (dm and dm.group(2) and DEF_RE.search(dm.group(2))):
+            continue
+        attr_title = ATTR_TITLE_RE.search(dm.group(2))
+        if attr_title:
+            stems |= _stems(_words(attr_title.group(1)))
+            continue
+        for follow in lines[idx + 1:idx + 4]:
+            tm = TITLE_RE.match(follow)
+            if tm:
+                stems |= _stems(_words(tm.group(1)))
+                break
+    return stems
+
+
+def missing_words(title: str, body: str,
+                  defined: Optional[Set[str]] = None) -> List[str]:
+    """Content words of ``title`` with no counterpart in ``body``.
+
+    With ``defined`` given, only a word that is a defined term (a word in the
+    title of some ``#def-`` div) is reported: the rule is about the background
+    of technical terms, and an ordinary word needs none.
+    """
     present = _stems(_words(body))
     out: List[str] = []
     for word in _words(title):
         if len(word) < 4 or word[:STEM] in GENERIC_STEMS:
             continue
-        if word[:STEM] in present or word in out:
+        if defined is not None and word[:STEM] not in defined:
+            continue
+        singular = word[:-1] if word.endswith("s") else word
+        if word[:STEM] in present or singular[:STEM] in present or word in out:
             continue
         out.append(word)
     return out
 
 
-def exercises(lines: List[str]) -> List[Finding]:
-    """Each exercise div whose title has a word its body never uses."""
+def exercises(lines: List[str], defined: Optional[Set[str]] = None
+              ) -> List[Finding]:
+    """Each exercise div whose title has a defined term its body never uses."""
     found: List[Finding] = []
     fence: Optional[str] = None
     in_comment = False
@@ -157,8 +191,9 @@ def exercises(lines: List[str]) -> List[Finding]:
                 depth -= 1
                 if cur is not None and depth == cur["depth"]:
                     missing = []
-                    if cur["title"]:
-                        missing = missing_words(cur["title"], "\n".join(cur["body"]))
+                    body = "\n".join(cur["body"])
+                    if cur["title"] and not CONTINUATION_RE.search(body):
+                        missing = missing_words(cur["title"], body, defined)
                     if missing:
                         found.append(Finding(cur["title_line"], cur["title"], missing,
                                              cur["start"], lineno))
@@ -222,6 +257,19 @@ def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool
     return None if diff is None else dict(added_lines(diff))
 
 
+def corpus_defined_stems(globs: List[str]) -> Set[str]:
+    """Defined-term stems from every tracked file the globs match."""
+    out = _git(["ls-files", "--", *globs]) or ""
+    stems: Set[str] = set()
+    for rel in out.splitlines():
+        try:
+            with open(rel, encoding="utf-8", errors="replace") as handle:
+                stems |= defined_stems(handle.read().split("\n"))
+        except OSError:
+            continue
+    return stems
+
+
 def _flag(name: str, default: bool) -> bool:
     value = os.environ.get(name, "").strip().lower()
     return default if not value else value in ("1", "true", "yes", "on")
@@ -247,13 +295,14 @@ def main() -> int:
         return 0
     severity = "error" if fail else "warning"
     findings = 0
+    defined = corpus_defined_stems(globs)
     for rel in sorted(wanted):
         try:
             with open(rel, encoding="utf-8", errors="replace") as handle:
                 lines = handle.read().split("\n")
         except OSError:
             continue
-        for item in exercises(lines):
+        for item in exercises(lines, defined):
             if touched(item, wanted[rel]):
                 findings += 1
                 words = ", ".join(item.missing)

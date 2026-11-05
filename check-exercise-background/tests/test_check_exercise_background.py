@@ -57,6 +57,26 @@ def test_generic_task_titles_are_not_flagged(title):
     assert found(exercise(title, "Do the thing.")) == []
 
 
+def test_only_defined_terms_are_reported():
+    text = exercise("Maximizing a gamma-family kernel", "Find the maximum.")
+    defined = exb.defined_stems(["::: {#def-kernel}", "#### Kernel", ":::"])
+    out = [(f.line, f.missing) for f in exb.exercises(text.split("\n"), defined)]
+    assert out == [(2, ["kernel"])]
+
+
+def test_defined_stems_reads_a_title_attribute():
+    assert "gamma" in exb.defined_stems(['::: {#def-g title="Gamma family"}'])
+
+
+def test_a_plural_title_word_matches_its_singular_in_the_body():
+    assert found(exercise("Slope for the means", "The slope uses the mean of $x$.")) == []
+
+
+def test_a_part_that_reuses_an_earlier_setup_is_not_flagged():
+    body = "Use the setup of @exr-a.\nFind the kernel."
+    assert found(exercise("The kernel (part 2)", body)) == []
+
+
 def test_math_in_the_title_is_ignored():
     assert found(exercise("Slope at $w = 1$ of the curve", "The slope of the curve.")) == []
 
