@@ -1164,7 +1164,7 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-10-29) that a definition div holds only the equation linking the symbol of the defined term to its definitional expression. An equality between expressions, or an equivalence between concepts, is stated as a result (<code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code>) after the definition.</p>
+<p>Diff-scoped check for the lab’s rule (Ezra, 2026-10-29) that a definition div holds only the equation linking the symbol of the defined term to its definitional expression. An equality between expressions, or an equivalence between concepts, is stated as a result (<code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code>) after the definition.</p>
 <p>The check flags a <code>#def-</code> div when</p>
 <ul>
 <li>a display equation chains equalities: it has a defining operator (<code>:=</code>, <code>\eqdef</code>, <code>\coloneqq</code>, <code>\triangleq</code>) followed by another top-level <code>=</code>, or, with no defining operator, two or more top-level <code>=</code>;</li>
@@ -1172,7 +1172,7 @@ cookieconsent.run({
 <li>the prose says the defined concept is equivalent to something else (“equivalently”, “in other words”, “is equivalent to”, “is the same as”, “also written”, “which equals”).</li>
 </ul>
 <p>An <code>=</code> inside brackets or <code>\text{}</code>, and a <code>cases</code> display, do not count. The check cannot tell which side of a single <code>a = b</code> is the defined symbol, so a definition displaying one equation between two expressions is not flagged. A definition that holds <code>&lt;!-- def-equiv-ok: reason --&gt;</code> is exempt.</p>
-<p>A definition is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing definitions are fixed when someone edits them anyway. It warns by default; <code>fail: true</code> blocks.</p>
+<p>A definition is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing definitions are fixed when someone edits them anyway. It fails by default (gha#1479); <code>fail: false</code> only warns.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -1201,7 +1201,7 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td><code>fail</code></td>
-<td><code>false</code></td>
+<td><code>true</code></td>
 <td>Fail on a finding; <code>false</code> warns</td>
 </tr>
 <tr class="even">

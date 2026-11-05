@@ -1536,7 +1536,7 @@
     "href": "reference/check-definition-equations.html",
     "title": "check-definition-equations.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-10-29) that a definition div holds only the equation linking the symbol of the defined term to its definitional expression. An equality between expressions, or an equivalence between concepts, is stated as a result (#thm-, #lem-, #cor- or #prp-) after the definition.\nThe check flags a #def- div when\nAn = inside brackets or \\text{}, and a cases display, do not count. The check cannot tell which side of a single a = b is the defined symbol, so a definition displaying one equation between two expressions is not flagged. A definition that holds &lt;!-- def-equiv-ok: reason --&gt; is exempt.\nA definition is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing definitions are fixed when someone edits them anyway. It warns by default; fail: true blocks.",
+    "text": "Diff-scoped check for the lab’s rule (Ezra, 2026-10-29) that a definition div holds only the equation linking the symbol of the defined term to its definitional expression. An equality between expressions, or an equivalence between concepts, is stated as a result (#thm-, #lem-, #cor- or #prp-) after the definition.\nThe check flags a #def- div when\nAn = inside brackets or \\text{}, and a cases display, do not count. The check cannot tell which side of a single a = b is the defined symbol, so a definition displaying one equation between two expressions is not flagged. A definition that holds &lt;!-- def-equiv-ok: reason --&gt; is exempt.\nA definition is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing definitions are fixed when someone edits them anyway. It fails by default (gha#1479); fail: false only warns.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1548,7 +1548,7 @@
     "href": "reference/check-definition-equations.html#inputs",
     "title": "check-definition-equations.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nGit pathspecs of tracked files to check (recursive)\n\n\npaths-ignore\nnone\nComma or newline separated globs to skip\n\n\nfail\nfalse\nFail on a finding; false warns\n\n\nwhole-tree\nfalse\nCheck every definition, to measure a corpus\n\n\npython-version\n3.x\nPython version\n\n\nruns-on\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label; a self-hosted label only for a private repository",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nGit pathspecs of tracked files to check (recursive)\n\n\npaths-ignore\nnone\nComma or newline separated globs to skip\n\n\nfail\ntrue\nFail on a finding; false warns\n\n\nwhole-tree\nfalse\nCheck every definition, to measure a corpus\n\n\npython-version\n3.x\nPython version\n\n\nruns-on\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label; a self-hosted label only for a private repository",
     "crumbs": [
       "Overview",
       "Reference",
