@@ -1,0 +1,34 @@
+---
+title: "check-code-fold.yml"
+---
+
+Diff-scoped check that fails when a pull request adds `#| code-fold: false`
+to an executed code chunk.
+The lab's rule (Ezra, 2026-11-05) is that every executed chunk is
+`show` when the prose mentions the code, or `true` when it does not.
+`false` removes the fold toggle and gains nothing,
+because `show` also keeps the code and its output together.
+
+The check reads the option lines at the top of each chunk
+whose fence names an engine, such as `{r}`, `{python}` or `{julia}`.
+A plain fence has no options, and a `code-fold` key in front matter is not examined.
+
+An untouched chunk is never reflagged.
+With no base ref the check skips instead of scanning the whole tree;
+`whole-tree` measures a corpus.
+
+## Usage
+
+Copy
+[`examples/check-code-fold.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-code-fold.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every chunk, not only a PR's additions |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |
