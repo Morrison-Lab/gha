@@ -151,12 +151,14 @@ def check_preview(
             "preview/action.yml Quarto setup step does not have complete OR condition for tinytex"
         )
 
-    pkg_tinytex_marker = (
-        "inputs.tinytex == 'true' ||\n"
-        "         contains(github.event.pull_request.labels.*.name, 'preview:pdf') ||\n"
-        "         contains(inputs.formats, 'pdf')"
+    # The install runs for the preview:pdf label, or when pdf is wanted
+    # (tinytex or formats) and skip-formats does not drop it (gha#1529).
+    pkg_tinytex_markers = (
+        "contains(github.event.pull_request.labels.*.name, 'preview:pdf') ||",
+        "!contains(inputs.skip-formats, 'pdf')",
+        "inputs.tinytex == 'true' || contains(inputs.formats, 'pdf')",
     )
-    if pkg_tinytex_marker not in composite_text:
+    if not all(marker in composite_text for marker in pkg_tinytex_markers):
         errors.append(
             "preview/action.yml TinyTeX packages step missing complete OR condition for tinytex"
         )

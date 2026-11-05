@@ -442,11 +442,14 @@ runs:
         fi
 
     - name: Install TinyTeX packages required for PDF rendering
+      # `skip-formats: pdf` removes pdf from the render unless the PR is
+      # labelled `preview:pdf`, so a preview that skips it needs no LaTeX
+      # packages even when `formats` or `tinytex` names pdf (gha#1529).
       if: >-
         github.event.action != 'closed' &&
-        (inputs.tinytex == 'true' ||
-         contains(github.event.pull_request.labels.*.name, 'preview:pdf') ||
-         contains(inputs.formats, 'pdf'))
+        (contains(github.event.pull_request.labels.*.name, 'preview:pdf') ||
+         (!contains(inputs.skip-formats, 'pdf') &&
+          (inputs.tinytex == 'true' || contains(inputs.formats, 'pdf'))))
       shell: bash
       run: |
         set -euo pipefail
@@ -477,6 +480,16 @@ runs:
         MATCHED_KEY: ${{ steps.restore-freeze.outputs.cache-matched-key }}
         SCRIPT: ${{ github.action_path }}/prune-stale-freeze.py
       run: python3 "$SCRIPT"
+
+    # The save below skips a build that changed nothing in `_freeze`: no page
+    # re-executed, so the cache already holds this build's results (gha#1529).
+    - name: Fingerprint Quarto freeze before the render
+      id: freeze-before
+      if: github.event.action != 'closed'
+      shell: bash
+      env:
+        FREEZE_DIR: ${{ inputs.path }}/_freeze
+      run: bash "$GITHUB_ACTION_PATH/freeze-fingerprint.sh" >> "$GITHUB_OUTPUT"
 
     - name: Raise Deno V8 heap cap for large site renders
       if: github.event.action != 'closed'
@@ -738,8 +751,21 @@ runs:
     # freeze file only after that page has executed, so the directory holds
     # whole pages, and `freeze: auto` re-checks each against its source file
     # (gha#1184).
-    - name: Save Quarto freeze
+    - name: Fingerprint Quarto freeze after the render
+      id: freeze-after
       if: always() && github.event.action != 'closed'
+      shell: bash
+      env:
+        FREEZE_DIR: ${{ inputs.path }}/_freeze
+      run: bash "$GITHUB_ACTION_PATH/freeze-fingerprint.sh" >> "$GITHUB_OUTPUT"
+
+    # Saved when the freeze changed, or when no cache was restored (nothing
+    # to compare with, and nothing saved yet to fall back on).
+    - name: Save Quarto freeze
+      if: >-
+        always() && github.event.action != 'closed' &&
+        (steps.restore-freeze.outputs.cache-matched-key == '' ||
+         steps.freeze-before.outputs.fingerprint != steps.freeze-after.outputs.fingerprint)
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze
