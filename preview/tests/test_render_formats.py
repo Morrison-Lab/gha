@@ -142,6 +142,25 @@ def test_no_notice_when_skip_docx_already_off(tmp_path, render_script):
     assert NOTICE not in stdout
 
 
+def test_incremental_plan_renders_each_page_without_cleaning(tmp_path, render_script):
+    pages = tmp_path / "pages.txt"
+    pages.write_text("chapters/a.qmd\nchapters/b.qmd\n", encoding="utf-8")
+    renders, _ = run_render(
+        tmp_path, render_script, FORMATS="default",
+        INCREMENTAL_MODE="incremental", INCREMENTAL_PAGES=str(pages),
+    )
+    assert [line.split()[0:2] for line in renders] == [
+        ["render", "./chapters/a.qmd"], ["render", "./chapters/b.qmd"],
+    ]
+
+
+def test_full_plan_renders_the_project(tmp_path, render_script):
+    renders, _ = run_render(
+        tmp_path, render_script, FORMATS="default", INCREMENTAL_MODE="full",
+    )
+    assert [line.split()[0:2] for line in renders] == [["render", "."]]
+
+
 FINGERPRINT = REPO_ROOT / "preview" / "freeze-fingerprint.sh"
 
 

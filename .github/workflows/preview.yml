@@ -115,6 +115,14 @@ on:
           unaffected.
         type: string
         default: ''
+      incremental:
+        description: >-
+          Render only the pages a PR can affect, from a cached `_site` and
+          `.quarto`, falling back to the full render when a path that can
+          affect every page changes or there is no cache (gha#1526). Unchanged
+          pages keep their old navigation and cross-reference numbers.
+        type: boolean
+        default: false
       extra-preview-labels:
         description: >-
           JSON array string of additional PR label names that trigger a preview
@@ -292,6 +300,7 @@ jobs:
           formats: ${{ inputs.formats }}
           skip-docx: ${{ inputs.skip-docx }}
           skip-formats: ${{ inputs.skip-formats }}
+          incremental: ${{ inputs.incremental }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
