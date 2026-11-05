@@ -10,8 +10,9 @@
 #
 # WWU CS IT asks that jobs avoid heavy home-directory I/O and use HTCondor file
 # transfer. So the checkout is packed into ONE tarball on the runner, copied to
-# $CLUSTER_CI_ROOT/<run>/ on the cluster home (the cf463 home is not visible to
-# the execute nodes), and HTCondor transfers it, with the steps file, into the
+# $CLUSTER_CI_ROOT/<run>/ in the research directory (the cf463 home is not
+# visible to the execute nodes, and the cluster home has a 5 GB quota meant for
+# config files), and HTCondor transfers it, with the steps file, into the
 # execute node's scratch directory. The job unpacks it there and runs every
 # step there, with TMPDIR, the uv caches and the contained home all in scratch.
 # Nothing the steps write goes to the cluster home, and nothing is transferred
@@ -25,7 +26,7 @@
 #
 # Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
-# (default /cluster/home/morri313/ci), RUN_ID (default GITHUB_RUN_ID or the
+# (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
 # REQUEST_DISK (default 20GB: scratch space for the unpacked checkout, the uv
 # caches and render outputs),
@@ -37,7 +38,7 @@
 # bound at /work, and the home, TMPDIR and uv caches under /work because the
 # contained /tmp and home are small tmpfs).
 # The run directory (tarball, steps file and log) is deleted after a normal job
-# end (any step exit code), to keep the cluster home inside its quota; it is
+# end (any step exit code), to keep the research directory inside its quota; it is
 # kept when the job did not end normally, so condor.log stays readable.
 #
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
@@ -50,7 +51,7 @@ checkout="${1:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
 steps="${2:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
 head_host="${CONDOR_HEAD:-cse-head.cluster.cs.wwu.edu}"
 key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
-root="${CLUSTER_CI_ROOT:-/cluster/home/morri313/ci}"
+root="${CLUSTER_CI_ROOT:-/cluster/research-groups/morrison/lds-ci}"
 run="${RUN_ID:-${GITHUB_RUN_ID:-$(date +%Y%m%d-%H%M%S)}}"
 min_steps="${MIN_STEPS:-2}"
 
