@@ -1,6 +1,6 @@
 name: Check extracted lemmas
 description: >-
-  Diff-scoped, warn-only heuristic check that flags a solution, example or
+  Diff-scoped, warn-only heuristic check that flags a solution or
   proof that states a general fact ("for any", "for every" or "for all" before a
   kind of mathematical object, with math) and cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result, when the PR
   edits it. `<!-- lemma-ok: reason -->` exempts a body. Warns by default.
@@ -10,14 +10,14 @@ inputs:
     default: '3.x'
   base-ref:
     description: >-
-      Git ref/SHA to diff against; only solutions, examples and proofs with a
+      Git ref/SHA to diff against; only solutions and proofs with a
       line added since this ref are checked. On a pull request the reusable
       workflow passes `HEAD^1`. When the diff can't be computed, or no base-ref
       is given on a push run, the check is skipped rather than scanning the whole tree.
     default: ''
   whole-tree:
     description: >-
-      Check every solution, example and proof the globs match, in full, instead of only
+      Check every solution and proof the globs match, in full, instead of only
       touched ones. Use it to measure a corpus; `base-ref` is ignored.
     default: 'false'
   globs:

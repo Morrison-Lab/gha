@@ -11,7 +11,7 @@ that uses it links to the lemma.
 
 The check reads the body of
 
-- each ``#sol-`` and ``#exm-`` div, and
+- each ``#sol-`` div, and
 - the proof of each ``#thm-``, ``#lem-``, ``#cor-`` or ``#prp-`` div (a ``.proof``
   div nested in it or directly after it),
 
@@ -221,7 +221,7 @@ def check_page(stream: Stream, touched: Optional[Dict[str, Set[int]]]) -> List[F
     bodies: List[Tuple[str, int, int]] = []  # (ident, first stream index, last)
     for d in find_divs(stream):
         kind = d.ident.split("-", 1)[0]
-        if kind in ("sol", "exm"):
+        if kind in ("sol",):
             bodies.append((d.ident, d.start, d.end))
         elif kind in RESULT_KINDS:
             span = proof_span(stream, d)
