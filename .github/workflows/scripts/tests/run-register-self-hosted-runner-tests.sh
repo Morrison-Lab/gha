@@ -145,7 +145,8 @@ RUNNER_DIR="$rd" bash "$hook_installer" > /dev/null
 check "hook: idempotent" "$(grep -c '^ACTIONS_RUNNER_HOOK_JOB_COMPLETED=' "$rd/.env")" "1"
 printf 'ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh\n' > "$rd/.env"
 RUNNER_DIR="$rd" bash "$hook_installer" > /dev/null
-check "hook: a hook set by hand is kept" "$(cat "$rd/.env")" "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh"
+check "hook: a hook set by hand is kept" "$(grep '^ACTIONS_RUNNER_HOOK_JOB_COMPLETED=' "$rd/.env")" "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/custom.sh"
+check "hook: the job-started hook is added" "$(grep '^ACTIONS_RUNNER_HOOK_JOB_STARTED=' "$rd/.env")" "ACTIONS_RUNNER_HOOK_JOB_STARTED=$repo_root/scripts/check-runner-disk.sh"
 
 # prune-runner-workdir.sh, against a stub df whose free space grows by 1 GB for
 # each checkout removed: free = STUB_BASE_KB - 1 GB per non-underscore folder.
