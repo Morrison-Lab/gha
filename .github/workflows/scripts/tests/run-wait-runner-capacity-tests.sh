@@ -33,5 +33,16 @@ status=$?
 out=$(WAIT_MAX_BLOCKED=abc PROC_STAT="$work/busy" bash "$script")
 case "$out" in *'::warning::'*) ;; *) fail "bad limit should warn: $out" ;; esac
 
+# Worker limit (gha#1546): held above the cap, free at or below it, off by default.
+out=$(WAIT_MAX_WORKERS=3 WAIT_WORKER_COUNT=3 bash "$script") || fail "workers at the cap should not fail"
+case "$out" in *holding*) fail "workers at the cap should not hold: $out" ;; esac
+
+out=$(WAIT_MAX_WORKERS=3 WAIT_WORKER_COUNT=8 WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+status=$?
+[ "$status" = 124 ] || fail "8 workers over a cap of 3 should hold the job (exit $status): $out"
+
+out=$(WAIT_WORKER_COUNT=8 bash "$script") || fail "worker limit off should not fail"
+case "$out" in *holding*) fail "worker limit off should not hold: $out" ;; esac
+
 [ "$failures" = 0 ] && echo "all wait-runner-capacity tests passed"
 exit "$failures"

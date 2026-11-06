@@ -13,6 +13,11 @@
 # in /proc/stat). A host with a slow disk, such as a spinning drive under
 # several Quarto renders, can show a low load average while jobs stall on
 # writes, so load alone does not hold the next job back (gha#1527).
+# A fourth limit is off by default: WAIT_MAX_WORKERS, when above 0, also waits
+# until no more than that many Runner.Worker processes are running on the host
+# (the job's own worker counts). A Quarto render takes minutes to grow to its
+# full memory, so jobs that start close together all pass the memory check and
+# the host runs out of memory later (gha#1546).
 # It polls every 15 seconds and stops waiting after WAIT_MAX_MINUTES (default
 # 10), then lets the job run anyway: a host that stays busy slows jobs down but
 # never fails them.
@@ -23,10 +28,11 @@ max_minutes="${WAIT_MAX_MINUTES:-10}"
 min_mem_gb="${WAIT_MIN_MEM_GB:-3}"
 max_load_per_core="${WAIT_MAX_LOAD_PER_CORE:-1.25}"
 max_blocked="${WAIT_MAX_BLOCKED:-0}"
+max_workers="${WAIT_MAX_WORKERS:-0}"
 proc_stat="${PROC_STAT:-/proc/stat}"
 
-case "$max_minutes$min_mem_gb$max_blocked" in
-  '' | *[!0-9]*) echo "::warning::wait-runner-capacity: WAIT_MAX_MINUTES, WAIT_MIN_MEM_GB and WAIT_MAX_BLOCKED must be whole numbers; not waiting."; exit 0 ;;
+case "$max_minutes$min_mem_gb$max_blocked$max_workers" in
+  '' | *[!0-9]*) echo "::warning::wait-runner-capacity: WAIT_MAX_MINUTES, WAIT_MIN_MEM_GB, WAIT_MAX_BLOCKED and WAIT_MAX_WORKERS must be whole numbers; not waiting."; exit 0 ;;
 esac
 [ "$max_minutes" -gt 0 ] || exit 0
 
@@ -42,11 +48,16 @@ while :; do
   if [ "$max_blocked" -gt 0 ] && [ "${blocked:-0}" -ge "$max_blocked" ]; then
     ok=0
   fi
+  # WAIT_WORKER_COUNT lets the tests stand in for the live process count.
+  workers="${WAIT_WORKER_COUNT:-$(pgrep -fc 'Runner.Worker' 2> /dev/null)}"
+  if [ "$max_workers" -gt 0 ] && [ "${workers:-0}" -gt "$max_workers" ]; then
+    ok=0
+  fi
   if [ "${mem:-0}" -ge "$min_mem_gb" ] && [ "$ok" = 1 ]; then
     break
   fi
   if [ "$SECONDS" -ge "$deadline" ]; then
-    echo "::warning::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O); running the job anyway."
+    echo "::warning::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O, ${workers:-0} runner workers); running the job anyway."
     exit 0
   fi
   if [ "$waited" = 0 ]; then
