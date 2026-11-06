@@ -14,7 +14,9 @@ For each page with front matter, and each format in ``CFO_FORMATS``
 - list the format under ``format:``; and
 - give that entry an ``output-file`` (so it cannot reuse the HTML name).
 
-A page with front matter but no ``format:`` key is flagged too. Pages whose
+A page with front matter but no ``format:`` key is flagged too.
+A page that sets ``redirect-stub: true`` in its front matter is exempt: it is
+an html-only redirect, and the per-format publish skips it for other formats. Pages whose
 names start with ``_`` (subfiles) and ``_extensions/**`` are skipped.
 ``action.yml`` sets the ``CFO_*`` environment variables the script reads.
 """
@@ -44,6 +46,12 @@ def front_matter(lines: List[str]) -> Optional[List[str]]:
         if lines[i].strip() in ("---", "..."):
             return lines[1:i]
     return None
+
+
+def is_redirect_stub(fm: List[str]) -> bool:
+    """True when the front matter sets ``redirect-stub: true``."""
+    return any(re.match(r"^redirect-stub\s*:\s*[\"']?true[\"']?\s*(#.*)?$", raw)
+               for raw in fm)
 
 
 def parse_formats(fm: List[str]) -> Optional[Dict[str, Dict]]:
@@ -86,6 +94,8 @@ def parse_formats(fm: List[str]) -> Optional[Dict[str, Dict]]:
 def check_page(path: str, lines: List[str], required: List[str]) -> List[Finding]:
     fm = front_matter(lines)
     if fm is None:
+        return []
+    if is_redirect_stub(fm):
         return []
     formats = parse_formats(fm)
     if formats is None:

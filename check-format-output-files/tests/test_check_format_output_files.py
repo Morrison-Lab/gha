@@ -134,3 +134,25 @@ def test_defaults_agree_across_script_action_and_workflow():
         assert "'revealjs pdf docx'" in text, path
         assert "'*.qmd'" in text, path
     assert cfo.DEFAULT_FORMATS == "revealjs pdf docx"
+
+
+STUB = """---
+title: "A"
+redirect-stub: true
+format:
+  html: default
+---
+body
+"""
+
+
+def test_redirect_stub_html_only_passes():
+    assert check(STUB) == []
+
+
+def test_redirect_stub_without_format_passes():
+    assert check(STUB.replace("format:\n  html: default\n", "")) == []
+
+
+def test_redirect_stub_false_still_fails():
+    assert len(check(STUB.replace("true", "false"))) == 3
