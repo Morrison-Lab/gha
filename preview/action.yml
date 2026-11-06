@@ -644,6 +644,7 @@ runs:
         SETUP_JULIA: ${{ inputs.setup-julia }}
         INCREMENTAL_MODE: ${{ steps.plan-incremental.outputs.mode }}
         INCREMENTAL_PAGES: ${{ inputs.path }}/_incremental_pages.txt
+        REDIRECT_STUBS_SCRIPT: ${{ github.action_path }}/../quarto-publish/redirect-stubs.py
       run: |
         set -euo pipefail
         # See "Set up JuliaCall and its Julia dependencies" for why.
@@ -676,6 +677,20 @@ runs:
         LOG_FILE="_quarto_preview_render.log"
         rm -f "$LOG_FILE"
 
+        # A page with `redirect-stub: true` builds html only (gha#1544): a
+        # profile that leaves such pages out is used for every other format.
+        STUB_PROFILE=gha-skip-stubs
+        STUB_PROFILE_FILE="$PROJECT_PATH/_quarto-$STUB_PROFILE.yml"
+        rm -f "$STUB_PROFILE_FILE"
+        STUB_COUNT=$(python3 "$REDIRECT_STUBS_SCRIPT" "$PROJECT_PATH" "$STUB_PROFILE" "${RENDER_PROFILE:-}")
+        set_format_profile() {
+          FMT_PROFILE_ARG=("${PROFILE_ARG[@]}")
+          if [ "$1" != "html" ] && [ "$STUB_COUNT" != "0" ]; then
+            echo "Skipping $STUB_COUNT redirect stub(s) in the $1 render."
+            FMT_PROFILE_ARG=(--profile "${RENDER_PROFILE:+$RENDER_PROFILE,}$STUB_PROFILE")
+          fi
+        }
+
         # Render one target: the whole project (`first` true cleans the
         # output directory) or, for an incremental preview, one page, whose
         # render leaves every other output in place (`first` false).
@@ -696,11 +711,12 @@ runs:
           FORMAT_LIST+=("html")
 
           for fmt in "${FORMAT_LIST[@]}"; do
+            set_format_profile "$fmt"
             if [ "$first" = true ]; then
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
               first=false
             else
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
             fi
           done
         elif [ "$FORMATS" = "default" ]; then
@@ -732,11 +748,12 @@ runs:
           fi
 
           for fmt in "${FORMAT_LIST[@]}"; do
+            set_format_profile "$fmt"
             if [ "$first" = true ]; then
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
               first=false
             else
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
             fi
           done
         fi
