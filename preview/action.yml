@@ -597,6 +597,14 @@ runs:
       # OS while lifting the binding constraint (gha#262).
       run: echo "QUARTO_DENO_V8_OPTIONS=--max-old-space-size=12288,--max-heap-size=12288" >> "$GITHUB_ENV"
 
+    - name: Prefer reticulate's managed Python environment
+      shell: bash
+      # A persistent virtualenv on a self-hosted runner (for example
+      # ~/.virtualenvs/r-reticulate) otherwise shadows the uv environment that
+      # reticulate::py_require() builds, so a page that requires a new package
+      # fails with ModuleNotFoundError (gha#1540).
+      run: echo "RETICULATE_USE_MANAGED_VENV=yes" >> "$GITHUB_ENV"
+
     - name: Set time zone
       if: github.event.action != 'closed' && inputs.timezone != ''
       shell: bash
