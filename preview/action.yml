@@ -682,6 +682,7 @@ runs:
         STUB_PROFILE=gha-skip-stubs
         STUB_PROFILE_FILE="$PROJECT_PATH/_quarto-$STUB_PROFILE.yml"
         rm -f "$STUB_PROFILE_FILE"
+        trap 'rm -f "$STUB_PROFILE_FILE"' EXIT
         STUB_COUNT=$(python3 "$REDIRECT_STUBS_SCRIPT" "$PROJECT_PATH" "$STUB_PROFILE" "${RENDER_PROFILE:-}")
         set_format_profile() {
           FMT_PROFILE_ARG=("${PROFILE_ARG[@]}")

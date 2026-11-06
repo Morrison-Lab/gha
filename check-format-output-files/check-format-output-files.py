@@ -15,8 +15,9 @@ For each page with front matter, and each format in ``CFO_FORMATS``
 - give that entry an ``output-file`` (so it cannot reuse the HTML name).
 
 A page with front matter but no ``format:`` key is flagged too.
-A page that sets ``redirect-stub: true`` in its front matter is exempt: it is
-an html-only redirect, and the per-format publish skips it for other formats. Pages whose
+A page that sets ``redirect-stub: true`` in its front matter is exempt.
+It is an html-only redirect, and the per-format publish skips it for other
+formats. Pages whose
 names start with ``_`` (subfiles) and ``_extensions/**`` are skipped.
 ``action.yml`` sets the ``CFO_*`` environment variables the script reads.
 """

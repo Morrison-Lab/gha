@@ -4,18 +4,23 @@
 Write a Quarto profile that leaves redirect stubs out of a non-html render.
 
 A page whose front matter sets ``redirect-stub: true`` is an html-only
-redirect. ``quarto render --to FORMAT`` renders every page in the project, so a
-per-format publish would still build the stub's slides, PDF and Word file.
+redirect. ``quarto render --to FORMAT`` renders every page in the project,
+so a per-format publish would still build the stub's slides, PDF and Word file.
 
-Usage: ``redirect-stubs.py PROJECT_PATH PROFILE_NAME``
+Usage: ``redirect-stubs.py PROJECT_PATH PROFILE_NAME [ACTIVE_PROFILES]``
 
-Writes ``PROJECT_PATH/_quarto-PROFILE_NAME.yml`` with ``project.render``
-entries ``!<stub path>``, one per stub. Quarto appends them to the render list
-of the other active profiles. A project with no ``project.render`` list renders every page, but a list that
-holds only exclusions renders nothing, so then the file also lists the pages
-Quarto renders by default. ``ACTIVE_PROFILES`` is the comma-joined profile
-list the render uses. Prints the number of stubs, and writes no file
-when there are none.
+``ACTIVE_PROFILES`` is the comma-joined profile list that the render uses.
+
+Writes ``PROJECT_PATH/_quarto-PROFILE_NAME.yml`` and prints the number of
+stubs. It writes no file when there are none.
+
+- When the project, under the active profiles, sets a ``project.render``
+  list, the file holds one ``!<stub path>`` entry per stub.
+  Quarto appends them to that list.
+- When the project sets no such list, the file lists every page that
+  ``quarto inspect`` reports as an input, except the stubs.
+  A list that holds only exclusions renders nothing, and listing the inputs
+  keeps Quarto's own choice of which pages to render.
 """
 
 import json
@@ -55,14 +60,26 @@ def find_stubs(project):
     return stubs
 
 
-def has_render_list(project, active):
-    """True when the project config, under ``active`` profiles, lists pages."""
+def inspect_project(project, active):
+    """Return the JSON of ``quarto inspect`` for the project."""
     cmd = ["quarto", "inspect", project]
     if active:
         cmd += ["--profile", active]
     out = subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
-    config = json.loads(out).get("config", {})
-    return bool((config.get("project") or {}).get("render"))
+    return json.loads(out)
+
+
+def render_entries(project, active, stubs):
+    """Return the ``project.render`` entries for the skip profile."""
+    info = inspect_project(project, active)
+    if (info.get("config", {}).get("project") or {}).get("render"):
+        return ["!%s" % stub for stub in stubs]
+    entries = []
+    for path in info.get("files", {}).get("input", []):
+        rel = os.path.relpath(path, project).replace(os.sep, "/")
+        if rel not in stubs:
+            entries.append(rel)
+    return entries
 
 
 def main(argv):
@@ -73,11 +90,8 @@ def main(argv):
         out = os.path.join(project, "_quarto-%s.yml" % profile)
         with open(out, "w", encoding="utf-8") as handle:
             handle.write("project:\n  render:\n")
-            if not has_render_list(project, active):
-                for ext in ("qmd", "md", "ipynb", "Rmd"):
-                    handle.write('    - "**/*.%s"\n' % ext)
-            for stub in stubs:
-                handle.write('    - "!%s"\n' % stub)
+            for entry in render_entries(project, active, stubs):
+                handle.write('    - "%s"\n' % entry)
     print(len(stubs))
     return 0
 

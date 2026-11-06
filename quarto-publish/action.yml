@@ -406,6 +406,7 @@ runs:
           STUB_PROFILE=gha-skip-stubs
           STUB_PROFILE_FILE="$PROJECT_PATH/_quarto-$STUB_PROFILE.yml"
           rm -f "$STUB_PROFILE_FILE"
+          trap 'rm -f "$STUB_PROFILE_FILE"' EXIT
           STUB_COUNT=$(python3 "$REDIRECT_STUBS_SCRIPT" "$PROJECT_PATH" "$STUB_PROFILE" "${RENDER_PROFILE:-}")
           for fmt in "${FORMAT_LIST[@]}"; do
             # A page with `redirect-stub: true` builds html only (gha#1544):
