@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Write a Quarto profile that leaves redirect stubs out of a non-html render.
 
