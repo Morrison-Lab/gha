@@ -1,0 +1,43 @@
+---
+title: "check-results-in-remarks.yml"
+---
+
+Diff-scoped, warn-only heuristic check for the lab's rule
+(Ezra, 2026-11-07; psw#512)
+that a remark holds commentary.
+A statement of what is true
+belongs in a theorem-type div with its proof
+(`#thm-`, `#lem-`, `#cor-`, or `#prp-`).
+
+The check flags a `#rem-` div when both conditions hold:
+
+- It displays an equation (`$$...$$`, `align`, or `\ba ... \ea`).
+- Its prose states a claim:
+  "equals", "is at least", "is at most", "never", "exactly when",
+  "if and only if", "for every", "for all", "holds", or "satisfies".
+
+A remark that holds `<!-- check-results-in-remarks: allow -->` is exempt.
+A claim word inside a display, or inside a code fence, does not count.
+
+A remark is checked when the pull request adds a line inside it.
+With no base to diff against,
+the check skips instead of scanning the whole tree,
+so existing remarks are fixed when someone edits them anyway.
+It only warns by default;
+set `fail: true` after several pull requests show no false positive.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Check every remark, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
+
+## Usage
+
+Copy `examples/check-results-in-remarks.yml` to
+`.github/workflows/check-results-in-remarks.yml`.
