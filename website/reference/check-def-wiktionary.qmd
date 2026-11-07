@@ -4,14 +4,15 @@ title: "check-def-wiktionary.yml"
 
 Diff-scoped, warn-only check that flags a definition div
 whose first bolded defined term is not linked to its Wiktionary entry.
-The lab's rule (Ezra, 2026-11-06) is that the reader sees the ordinary meaning of a word
-before its technical one.
+The lab's rule (Ezra, 2026-11-06) is that the reader sees
+the ordinary meaning of a word before its technical one.
 This implements
 [gha#1558](https://github.com/Morrison-Lab/gha/issues/1558),
 for the rule in [psw#505](https://github.com/Morrison-Lab/psw/issues/505).
 
-The terms are the comma-separated names in the title of a `#def-` div, ignoring math.
-A bolded instance is `**term**`, `**[term](url)**` or `[**term**](url)`.
+The terms are the comma-separated names in the title of a `#def-` div,
+ignoring math.
+A bolded instance is `**term**`, `**[term](url)**`, or `[**term**](url)`.
 The check reports a definition the pull request edits when
 
 - the first bolded instance of a title name is not a link to `en.wiktionary.org/wiki/`,
