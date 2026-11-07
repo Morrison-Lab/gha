@@ -7,7 +7,7 @@ Diff-scoped, warn-only heuristic check for the lab's rule
 to write a definition with an expectation operator where one fits:
 `\E{\log \frac{1}{p(X)}}`, not `\sum_x p(x) \log \frac{1}{p(x)}`.
 
-The check flags a `#def-` div when both of these hold:
+The check flags a `#def-` div when both conditions hold:
 
 - A display equation contains a sum or an integral,
   and the summand is a probability mass or density
