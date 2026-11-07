@@ -18,7 +18,11 @@ do) therefore renders but cannot be inspected (Morrison-Lab/gha#1214).  When
 `quarto inspect` fails, the input list comes from the project's `render:`
 globs and a file's formats from its front matter and then the project config.
 The helpers are in `per_file/`, one function per file.
+
+A page whose front matter sets `redirect-stub: true` renders html only
+(gha#1544), so its other formats are skipped here too.
 """
+import importlib.util
 import os
 import pathlib
 import subprocess
@@ -32,6 +36,11 @@ from per_file.project_config import project_config  # noqa: E402
 from per_file.project_inputs import project_inputs  # noqa: E402
 from per_file.quarto_inspect import quarto_inspect  # noqa: E402
 from per_file.timing_summary import timing_summary  # noqa: E402
+
+_spec = importlib.util.spec_from_file_location(
+    "redirect_stubs", pathlib.Path(__file__).resolve().parent / "redirect-stubs.py")
+redirect_stubs = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(redirect_stubs)
 
 
 def main(argv):
@@ -48,6 +57,8 @@ def main(argv):
     failures = []
     timings = []
     rendered = 0
+    skipped = 0
+    matched = set()
     for path in sorted(inputs):
         rel = os.path.relpath(path, project)
         info = quarto_inspect(project, rel)
@@ -56,8 +67,14 @@ def main(argv):
         else:
             config = config if config is not None else project_config(project)
             have = front_matter_formats(path, config)
+        stub = os.path.isfile(path) and redirect_stubs.is_stub(path)
         for fmt in wanted:
             if fmt not in have:
+                continue
+            matched.add(fmt)
+            if stub and fmt != "html":
+                print(f"Skipping {rel} --to {fmt}: it is a redirect stub.", flush=True)
+                skipped += 1
                 continue
             print(f"::group::quarto render {rel} --to {fmt}", flush=True)
             started = time.monotonic()
@@ -81,6 +98,9 @@ def main(argv):
         if summary_path:
             with open(summary_path, "a", encoding="utf-8") as handle:
                 handle.write(summary)
+    if rendered == 0 and skipped and matched == set(wanted):
+        print(f"Skipped {skipped} redirect-stub render(s); nothing else matched.")
+        return 0
     if rendered == 0:
         print("::error::per-file-formats matched no file; check the format names.")
         return 1

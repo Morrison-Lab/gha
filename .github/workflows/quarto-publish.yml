@@ -101,6 +101,13 @@ on:
         description: Restore and save Quarto _freeze directory via actions/cache keyed on renv.lock and commit SHA.
         type: boolean
         default: false
+      incremental-cache:
+        description: >-
+          Also save _freeze, the output directory and .quarto under the
+          quarto-incremental- key that an incremental preview restores, so a
+          PR's first preview renders only what it changed (gha#1575).
+        type: boolean
+        default: false
       freeze-cache-save-on-failure:
         description: Also save the _freeze directory when the render fails, so a re-run resumes from the pages already executed. Only used when freeze-cache is true.
         type: boolean
@@ -214,6 +221,7 @@ jobs:
           formats: ${{ inputs.formats }}
           per-file-formats: ${{ inputs.per-file-formats }}
           freeze-cache: ${{ inputs.freeze-cache }}
+          incremental-cache: ${{ inputs.incremental-cache }}
           freeze-cache-save-on-failure: ${{ inputs.freeze-cache-save-on-failure }}
           deno-v8-options: ${{ inputs.deno-v8-options }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}

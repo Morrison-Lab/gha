@@ -29,6 +29,21 @@
 set +e
 set -uo pipefail
 
+# Run from a private copy (gha#1589). The runner executes this hook from the
+# shared checkout, which sits on NFS and is fast-forwarded while jobs run; bash
+# reads a script as it runs, so a replaced file fails mid-read with "Stale file
+# handle". Copy this script and the ones it calls to a temp folder and run the
+# copy. The if block is one compound command, so bash reads all of it before
+# the exec; if copying fails, the hook runs in place as before.
+if [ -z "${GHA_HOOK_STAGED:-}" ]; then
+  src=$(dirname "${BASH_SOURCE[0]}")
+  stage=$(mktemp -d) && cp "$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,seed-runner-python-toolcache,wait-runner-capacity}.sh "$stage" &&
+    GHA_HOOK_STAGED=$stage exec bash "$stage/$(basename "${BASH_SOURCE[0]}")" "$@"
+  echo "::warning::$(basename "${BASH_SOURCE[0]}"): could not stage a private copy; running in place."
+else
+  trap 'rm -rf "$GHA_HOOK_STAGED"' EXIT
+fi
+
 warn() { echo "::warning::prune-runner-workdir: $*"; }
 
 max_age_days="${PRUNE_MAX_AGE_DAYS:-7}"
@@ -152,6 +167,6 @@ if [ -n "$free" ] && [ "$free" -lt "$min_free_kb" ] && [ "$pruned_all" = 1 ]; th
   mount=$(df -Pk "$work" 2> /dev/null | awk 'NR == 2 { print $1 " mounted on " $6 }')
   work_kb=$(du -skx "$work" 2> /dev/null | awk '{ print $1 }')
   cur_kb=$(du -skx "$current" 2> /dev/null | awk '{ print $1 }')
-  warn "measured $work on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
+  echo "::notice::prune-runner-workdir: measured $work on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
 fi
 exit 0

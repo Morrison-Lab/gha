@@ -19,12 +19,13 @@
 # full memory, so jobs that start close together all pass the memory check and
 # the host runs out of memory later (gha#1546).
 # It polls every 15 seconds and stops waiting after WAIT_MAX_MINUTES (default
-# 10), then lets the job run anyway: a host that stays busy slows jobs down but
+# 4, under the 5-minute timeout of the shortest checks, gha#1582), or at once
+# when the runner sends a cancel signal, then lets the job run anyway: a host that stays busy slows jobs down but
 # never fails them.
 # WAIT_MAX_MINUTES=0 turns the wait off.
 set -uo pipefail
 
-max_minutes="${WAIT_MAX_MINUTES:-10}"
+max_minutes="${WAIT_MAX_MINUTES:-4}"
 min_mem_gb="${WAIT_MIN_MEM_GB:-3}"
 max_load_per_core="${WAIT_MAX_LOAD_PER_CORE:-1.25}"
 max_blocked="${WAIT_MAX_BLOCKED:-0}"
@@ -37,6 +38,11 @@ esac
 [ "$max_minutes" -gt 0 ] || exit 0
 
 cores=$(nproc)
+
+# A job cancelled by its own timeout sends this hook a signal, and the runner
+# then waits for the hook to exit. Stop holding at once so the cancel finishes
+# (gha#1582).
+trap 'exit 0' TERM INT HUP
 
 # Held jobs are themselves Runner.Worker processes, so counting every worker
 # would make a burst of held jobs keep each other held until the deadline
@@ -96,13 +102,15 @@ while :; do
     break
   fi
   if [ "$SECONDS" -ge "$deadline" ]; then
-    echo "::warning::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O, ${running} running jobs with limit ${max_workers}); running the job anyway."
+    echo "::notice::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O, ${running} running jobs with limit ${max_workers}); running the job anyway."
     exit 0
   fi
   if [ "$waited" = 0 ]; then
     echo "wait-runner-capacity: holding the job until at least $min_mem_gb GB is available and load is under $max_load_per_core per core (now ${mem} GB, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${running} running jobs against a limit of ${max_workers}, where 0 means no limit)."
     waited=1
   fi
-  sleep 15
+  # A foreground sleep would delay the signal trap until the sleep ended.
+  sleep 15 &
+  wait $!
 done
 exit 0
