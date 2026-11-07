@@ -21,7 +21,8 @@ inputs:
       third-party action emits that no repository can silence, and the four
       the review workflow emits by design (a newer push supersedes a review,
       a PR edits workflow files, and `require-clean-verdict` fails on a
-      non-clean verdict).
+      non-clean verdict), and the two notices the runner job-started hook
+      emits about the host (a busy host held the job, a low-disk host).
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
@@ -38,6 +39,8 @@ inputs:
       ^No files were found with the provided path: .*claude-execution-output\.json
       ^execution_file output not set; falling back to
       ^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead
+      ^wait-runner-capacity: still short after \d+ minutes
+      ^prune-runner-workdir: measured .+ GB free, under \d+ GB
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always
