@@ -102,7 +102,7 @@ while :; do
     break
   fi
   if [ "$SECONDS" -ge "$deadline" ]; then
-    echo "::warning::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O, ${running} running jobs with limit ${max_workers}); running the job anyway."
+    echo "::notice::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O, ${running} running jobs with limit ${max_workers}); running the job anyway."
     exit 0
   fi
   if [ "$waited" = 0 ]; then
