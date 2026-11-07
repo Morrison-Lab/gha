@@ -76,5 +76,37 @@ case "$out" in *holding*) fail "a stale ticket should not hold: $out" ;; esac
 leftover=$(find "$WAIT_HOLD_DIR" -type f | wc -l)
 [ "$((leftover))" = 0 ] || fail "tickets should be removed on exit ($leftover left)"
 
+# A cancel signal ends the hold at once with success (gha#1582): the runner
+# waits for the hook to exit after a job's timeout, so a held hook that ignored
+# the signal kept a 5-minute job alive for 5 more minutes.
+WAIT_MAX_WORKERS=1 WAIT_WORKER_COUNT=8 WAIT_MAX_MINUTES=5 bash "$script" > /dev/null &
+held=$!
+sleep 1
+kill -TERM "$held"
+for _ in 1 2 3 4 5; do
+  kill -0 "$held" 2> /dev/null || break
+  sleep 1
+done
+if kill -0 "$held" 2> /dev/null; then
+  kill -KILL "$held"
+  fail "a held job should stop waiting within 5 seconds of SIGTERM"
+else
+  wait "$held" || fail "a held job cancelled by SIGTERM should exit 0"
+fi
+
+# The default hold is shorter than the 5-minute timeout of the shortest checks.
+default=$(grep -o 'WAIT_MAX_MINUTES:-[0-9]*' "$script" | head -n 1 | cut -d- -f2)
+[ -n "$default" ] && [ "$default" -lt 5 ] || fail "the default WAIT_MAX_MINUTES (${default:-unset}) should be under 5"
+
+# A busy or full host is not a defect of the code under test (gha#1584): the
+# hold-expired and low-disk messages are notices, so no consumer's annotation
+# gate has to allow-list them. Setup mistakes stay warnings.
+grep -q '"::notice::wait-runner-capacity: still short' "$script" || fail "the hold-expired message should be a notice"
+prune="$repo_root/scripts/prune-runner-workdir.sh"
+grep -q '"::notice::prune-runner-workdir: measured' "$prune" || fail "the low-disk message should be a notice"
+if grep -q '::warning::\(wait-runner-capacity: still short\|prune-runner-workdir: measured\)' "$script" "$prune"; then
+  fail "capacity and disk messages should not be warnings"
+fi
+
 [ "$failures" = 0 ] && echo "all wait-runner-capacity tests passed"
 exit "$failures"

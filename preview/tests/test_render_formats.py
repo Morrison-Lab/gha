@@ -61,6 +61,8 @@ def run_render(tmp_path, script, **env):
         "HAS_LABEL_DOCX": "false",
         "HAS_LABEL_REVEALJS": "false",
         "SETUP_JULIA": "false",
+        "REDIRECT_STUBS_SCRIPT": str(
+            REPO_ROOT / "quarto-publish" / "redirect-stubs.py"),
         **env,
     }
     result = subprocess.run(
