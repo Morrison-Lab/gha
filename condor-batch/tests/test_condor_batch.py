@@ -29,7 +29,7 @@ RSYNC_STUB = """\
 echo "rsync $*" >> "$STUB_LOG"
 [ -z "${STUB_RSYNC_RC:-}" ] || exit "$STUB_RSYNC_RC"
 dest="${@: -1}"; dest="${dest#*:}"
-src="${@: -2:1}"
+src="${@: -2:1}"; src="${src#*:}"
 if [ -f "$src" ]; then mkdir -p "$(dirname "$dest")"; cp "$src" "$dest"
 else mkdir -p "$dest"; fi
 """
@@ -48,6 +48,7 @@ echo "condor_wait $*" >> "$STUB_LOG"
 if [ -n "${STUB_RV:-}" ]; then
   echo "004 (1.0) Job terminated. (1) Normal termination (return value $STUB_RV)" >> condor.log
 fi
+[ -z "${STUB_MADE:-}" ] || tar -czf output.tar.gz -C "$STUB_MADE" _site
 exit "${STUB_WAIT_RC:-0}"
 """
 
@@ -439,3 +440,50 @@ def test_unreachable_desktop_head_falls_back_with_its_port_probed(tmp_path):
     assert proc.returncode == 0, proc.stderr
     probe = next(c for c in calls if c.endswith(" true") and "desk.example" in c)
     assert "-p 922" in probe, probe
+
+
+def _site_stub(tmp_path: Path) -> str:
+    """Stand in for the job's output: wait stub drops output.tar.gz in the run dir."""
+    site = tmp_path / "made" / "_site"
+    site.mkdir(parents=True)
+    (site / "index.html").write_text("built")
+    return str(tmp_path / "made")
+
+
+def test_no_output_path_returns_nothing(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    sub = (tmp_path / "calls.log.sub").read_text()
+    assert 'transfer_output_files = ""' in sub
+    assert "CONDOR_OUTPUT" not in sub
+
+
+def test_output_path_is_returned_by_file_transfer_and_unpacked(tmp_path):
+    made = _site_stub(tmp_path)
+    proc, calls = _run(
+        tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site", STUB_MADE=made
+    )
+    assert proc.returncode == 0, proc.stderr
+    sub = (tmp_path / "calls.log.sub").read_text()
+    assert "transfer_output_files = output.tar.gz" in sub
+    assert 'environment = "CONDOR_OUTPUT=_site"' in sub
+    assert (tmp_path / "checkout" / "_site" / "index.html").read_text() == "built"
+    # The one extra rsync is the fetch, and the run directory is removed after it.
+    assert _count(calls, "rsync ") == 3
+    assert not (tmp_path / "ci" / "42").exists()
+
+
+def test_output_is_returned_even_when_a_step_fails(tmp_path):
+    made = _site_stub(tmp_path)
+    proc, _ = _run(
+        tmp_path, ["a", "b"], STUB_RV="3", CONDOR_OUTPUT="_site", STUB_MADE=made
+    )
+    assert proc.returncode == 3, proc.stderr
+    assert (tmp_path / "checkout" / "_site" / "index.html").exists()
+    assert not (tmp_path / "ci" / "42").exists()
+
+
+def test_failed_fetch_of_the_output_exits_70(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site")
+    assert proc.returncode == 70
+    assert "could not bring _site back" in proc.stderr

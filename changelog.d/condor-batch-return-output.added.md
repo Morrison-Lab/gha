@@ -1,0 +1,1 @@
+`condor-batch` gains an `output` input (and `CONDOR_OUTPUT` for the script): a path inside the checkout, such as `_site`, that the cluster job packs into one tarball, returns through HTCondor file transfer, and the runner unpacks at the same path before deleting the run directory (gha#1554). Nothing else changes: with no `output`, only the log comes back.
