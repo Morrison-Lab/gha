@@ -692,6 +692,16 @@ runs:
           fi
         }
 
+        # A render of one page ignores the skip profile's render list, so
+        # an incremental preview skips a stub's non-html render itself.
+        skip_stub_target() {
+          if [ "$2" != "html" ] && [ -f "$1" ] && python3 "$REDIRECT_STUBS_SCRIPT" --is-stub "$1"; then
+            echo "Skipping the $2 render of redirect stub $1."
+            return 0
+          fi
+          return 1
+        }
+
         # Render one target: the whole project (`first` true cleans the
         # output directory) or, for an incremental preview, one page, whose
         # render leaves every other output in place (`first` false).
@@ -712,6 +722,7 @@ runs:
           FORMAT_LIST+=("html")
 
           for fmt in "${FORMAT_LIST[@]}"; do
+            if skip_stub_target "$target" "$fmt"; then continue; fi
             set_format_profile "$fmt"
             if [ "$first" = true ]; then
               quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
@@ -749,6 +760,7 @@ runs:
           fi
 
           for fmt in "${FORMAT_LIST[@]}"; do
+            if skip_stub_target "$target" "$fmt"; then continue; fi
             set_format_profile "$fmt"
             if [ "$first" = true ]; then
               quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"

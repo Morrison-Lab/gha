@@ -92,3 +92,18 @@ def test_real_render_builds_no_stub_deck(tmp_path, with_list):
     assert "a-slides.html" in built
     assert "s.html" not in built
     assert "_sub.html" not in built
+
+
+def test_empty_render_list_is_an_empty_list_not_null(tmp_path, monkeypatch):
+    write(tmp_path, "s.qmd", STUB_PAGE)
+    monkeypatch.setattr(rs, "inspect_project", fake_inspect(None, ["s.qmd"]))
+    rs.main(["x", str(tmp_path), "skip"])
+    text = (tmp_path / "_quarto-skip.yml").read_text()
+    assert text == "project:\n  render: []\n"
+
+
+def test_is_stub_mode_exit_status(tmp_path):
+    write(tmp_path, "s.qmd", STUB_PAGE)
+    write(tmp_path, "a.qmd", REAL_PAGE)
+    assert rs.main(["x", "--is-stub", str(tmp_path / "s.qmd")]) == 0
+    assert rs.main(["x", "--is-stub", str(tmp_path / "a.qmd")]) == 1

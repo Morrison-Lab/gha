@@ -83,15 +83,24 @@ def render_entries(project, active, stubs):
 
 
 def main(argv):
+    if argv[1] == "--is-stub":
+        # Exit 0 when the file is a redirect stub. A single-file render
+        # ignores the skip profile's project.render list (gha#1544).
+        return 0 if is_stub(argv[2]) else 1
     project, profile = argv[1], argv[2]
     active = argv[3] if len(argv) > 3 else ""
     stubs = find_stubs(project)
     if stubs:
         out = os.path.join(project, "_quarto-%s.yml" % profile)
         with open(out, "w", encoding="utf-8") as handle:
-            handle.write("project:\n  render:\n")
-            for entry in render_entries(project, active, stubs):
-                handle.write('    - "%s"\n' % entry)
+            entries = render_entries(project, active, stubs)
+            if entries:
+                handle.write("project:\n  render:\n")
+                for entry in entries:
+                    handle.write('    - "%s"\n' % entry)
+            else:
+                # A bare `render:` parses as null, not as an empty list.
+                handle.write("project:\n  render: []\n")
     print(len(stubs))
     return 0
 
