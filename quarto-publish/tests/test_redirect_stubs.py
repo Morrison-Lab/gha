@@ -95,3 +95,52 @@ def test_is_stub_mode_exit_status(tmp_path):
     write(tmp_path, "a.qmd", REAL_PAGE)
     assert rs.main(["x", "--is-stub", str(tmp_path / "s.qmd")]) == 0
     assert rs.main(["x", "--is-stub", str(tmp_path / "a.qmd")]) == 1
+
+
+def failing_inspect(monkeypatch):
+    failed = subprocess.CompletedProcess([], 1, stdout="", stderr="boom")
+    monkeypatch.setattr(rs.subprocess, "run", lambda *a, **k: failed)
+
+
+def test_failed_inspect_appends_exclusions_to_render_list(tmp_path, monkeypatch, capsys):
+    # quarto inspect fails on mds and pds (gha#1214); the render must go on.
+    pytest.importorskip("yaml")
+    write(tmp_path, "_quarto.yml", 'project:\n  render:\n    - "*.qmd"\n')
+    write(tmp_path, "a.qmd", REAL_PAGE)
+    write(tmp_path, "s.qmd", STUB_PAGE)
+    failing_inspect(monkeypatch)
+    assert rs.main(["x", str(tmp_path), "skip"]) == 0
+    assert capsys.readouterr().out == "1\n"
+    text = (tmp_path / "_quarto-skip.yml").read_text()
+    assert text == 'project:\n  render:\n    - "!s.qmd"\n'
+
+
+def test_failed_inspect_without_render_list_skips_nothing(tmp_path, monkeypatch, capsys):
+    # The pages Quarto would render (.md, nested pages) are then not known,
+    # so neither a narrowed list nor an empty one may be written.
+    pytest.importorskip("yaml")
+    write(tmp_path, "_quarto.yml", "project:\n  type: default\n")
+    write(tmp_path, "s.qmd", STUB_PAGE)
+    write(tmp_path, "sub/a.qmd", REAL_PAGE)
+    failing_inspect(monkeypatch)
+    monkeypatch.delenv("QUARTO_PROFILE", raising=False)
+    assert rs.main(["x", str(tmp_path), "skip", "website"]) == 0
+    assert capsys.readouterr().out == "0\n"
+    assert not (tmp_path / "_quarto-skip.yml").exists()
+    assert "QUARTO_PROFILE" not in os.environ
+
+
+def test_failed_inspect_without_pyyaml_skips_nothing(tmp_path):
+    # A runner image may lack PyYAML; the publish must go on.
+    write(tmp_path, "proj/_quarto.yml", 'project:\n  render:\n    - "*.qmd"\n')
+    write(tmp_path, "proj/s.qmd", STUB_PAGE)
+    write(tmp_path, "block/yaml.py", "raise ImportError('no yaml')\n")
+    write(tmp_path, "bin/quarto", "#!/bin/sh\nexit 1\n")
+    (tmp_path / "bin/quarto").chmod(0o755)
+    env = dict(os.environ, PYTHONPATH=str(tmp_path / "block"),
+               PATH="%s%s%s" % (tmp_path / "bin", os.pathsep, os.environ["PATH"]))
+    result = subprocess.run(["python3", SCRIPT, str(tmp_path / "proj"), "skip"],
+                            env=env, capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "0\n"
+    assert not (tmp_path / "proj/_quarto-skip.yml").exists()

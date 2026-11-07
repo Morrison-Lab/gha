@@ -59,17 +59,60 @@ def find_stubs(project):
 
 
 def inspect_project(project, active):
-    """Return the JSON of ``quarto inspect`` for the project."""
+    """Return the JSON of ``quarto inspect`` for the project, or None.
+
+    ``quarto inspect`` fails on a project that writes nested includes through
+    a self-symlink, as mds and pds do (gha#1214); that returns None.
+    """
     cmd = ["quarto", "inspect", project]
     if active:
         cmd += ["--profile", active]
-    out = subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
-    return json.loads(out)
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode == 0:
+        return json.loads(result.stdout)
+    print("::warning::quarto inspect %s failed (exit %d); reading the project "
+          "config instead.\n%s" % (project, result.returncode, result.stderr.strip()),
+          file=sys.stderr, flush=True)
+    return None
+
+
+def fallback_config(project, active):
+    """The project config under the active profiles, read without Quarto.
+
+    Returns None when PyYAML is missing. QUARTO_PROFILE is set only while
+    the config is read.
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from per_file.project_config import project_config
+    saved = os.environ.get("QUARTO_PROFILE")
+    if active:
+        os.environ["QUARTO_PROFILE"] = active
+    try:
+        return project_config(project)
+    except ImportError as err:  # load_yaml imports PyYAML when called
+        print("::warning::cannot read the project config (%s)." % err,
+              file=sys.stderr, flush=True)
+        return None
+    finally:
+        if saved is None:
+            os.environ.pop("QUARTO_PROFILE", None)
+        else:
+            os.environ["QUARTO_PROFILE"] = saved
 
 
 def render_entries(project, active, stubs):
-    """Return the ``project.render`` entries for the skip profile."""
+    """Return the ``project.render`` entries for the skip profile, or None.
+
+    Without ``quarto inspect`` the pages Quarto would render are not known
+    (``.md`` and ``.ipynb`` count too), so only the exclusions appended to
+    the project's own render list are safe; with no such list, None.
+    """
     info = inspect_project(project, active)
+    if info is None:
+        config = fallback_config(project, active) or {}
+        if (config.get("project") or {}).get("render"):
+            return ["!%s" % stub for stub in stubs]
+        return None
     if (info.get("config", {}).get("project") or {}).get("render"):
         return ["!%s" % stub for stub in stubs]
     entries = []
@@ -87,10 +130,16 @@ def main(argv):
     project, profile = argv[1], argv[2]
     active = argv[3] if len(argv) > 3 else ""
     stubs = find_stubs(project)
+    entries = render_entries(project, active, stubs) if stubs else None
+    if stubs and entries is None:
+        print("::warning::%d redirect stub(s) found, but the pages the project "
+              "renders are not known, so every format renders them." % len(stubs),
+              file=sys.stderr, flush=True)
+        print(0)
+        return 0
     if stubs:
         out = os.path.join(project, "_quarto-%s.yml" % profile)
         with open(out, "w", encoding="utf-8") as handle:
-            entries = render_entries(project, active, stubs)
             if entries:
                 handle.write("project:\n  render:\n")
                 for entry in entries:
