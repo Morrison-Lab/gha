@@ -112,6 +112,7 @@ website:
           - reference/check-split-solutions.qmd
           - reference/check-restated-results.qmd
           - reference/check-results-in-remarks.qmd
+          - reference/check-definition-expectation.qmd
           - reference/check-extracted-lemmas.qmd
           - reference/check-definition-equations.qmd
           - reference/check-hybrid-sentences.qmd

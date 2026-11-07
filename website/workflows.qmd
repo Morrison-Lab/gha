@@ -69,6 +69,7 @@ input tables and a copy-paste example.
 | [`check-split-solutions.yml`](reference/check-split-solutions.qmd) | Diff-scoped check that fails when a PR touches a split exercise whose solution is not split with it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-restated-results.yml`](reference/check-restated-results.qmd) | Diff-scoped, warn-only heuristic check that flags a derivation solution (`#sol-` whose exercise asks to derive, prove, show or solve and whose solution displays an equation) when a PR edits it and no `#thm-`, `#lem-`, `#cor-` or `#prp-` div restates the result after the exercise | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-results-in-remarks.yml`](reference/check-results-in-remarks.qmd) | Diff-scoped, warn-only heuristic check that flags a remark div (`#rem-`) that a PR edits and that displays an equation and states a claim ("equals", "is at least", "for all", "holds"); a result belongs in a `#thm-`, `#lem-`, `#cor-` or `#prp-` div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-definition-expectation.yml`](reference/check-definition-expectation.qmd) | Diff-scoped, warn-only heuristic check that flags a definition div (`#def-`) that a PR edits and that writes a probability-weighted sum or integral with no expectation operator; define the quantity as an expectation where one fits | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-extracted-lemmas.yml`](reference/check-extracted-lemmas.qmd) | Diff-scoped, warn-only heuristic check that flags a solution or proof that states a general fact ("for any", "for every" or "for all" before a kind of mathematical object, with math) when a PR edits it and it cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-definition-equations.yml`](reference/check-definition-equations.qmd) | Diff-scoped check that flags a definition div (`#def-`) that a PR edits and that shows more than the equation linking the defined symbol to its definitional expression: a chain of equalities, several display equations, or prose stating an equivalence; equalities and equivalences belong in a result | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-hybrid-sentences.yml`](reference/check-hybrid-sentences.qmd) | Diff-scoped, failing-by-default heuristic check that flags a sentence in a paragraph a PR edits that states one condition in words and another as a relation between math expressions (a hybrid sentence); write one sentence in words and one displayed in math | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -190,6 +191,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-single-ask-parts.yml`, `check-split-solutions.yml`,
 `check-restated-results.yml`,
 `check-results-in-remarks.yml`,
+`check-definition-expectation.yml`,
 `check-extracted-lemmas.yml`, `check-definition-equations.yml`,
 `check-hybrid-sentences.yml`,
 `check-format-output-files.yml`,
