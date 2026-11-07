@@ -129,6 +129,6 @@ if [ -n "$free" ] && [ "$free" -lt "$min_free_kb" ] && [ "$pruned_all" = 1 ]; th
   real=$(realpath "$work" 2> /dev/null)
   shown="$work"
   if [ -n "$real" ] && [ "$real" != "$work" ]; then shown="$work (a link to $real)"; fi
-  warn "measured $shown on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
+  echo "::notice::prune-runner-workdir: measured $shown on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
 fi
 exit 0
