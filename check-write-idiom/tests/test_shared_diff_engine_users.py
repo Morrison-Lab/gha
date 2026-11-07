@@ -16,6 +16,7 @@ _ENGINE = _ROOT / "check-write-idiom" / "check-write-idiom.py"
 
 SHARED_USERS = [
     "check-restated-results",
+    "check-definition-expectation",
     "check-definition-equations",
     "check-redundant-citations",
     "check-macro-expansions",
