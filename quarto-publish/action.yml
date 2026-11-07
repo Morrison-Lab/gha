@@ -378,6 +378,7 @@ runs:
         FORMATS: ${{ inputs.formats }}
         PER_FILE_FORMATS: ${{ inputs.per-file-formats }}
         PER_FILE_SCRIPT: ${{ github.action_path }}/render-per-file.py
+        REDIRECT_STUBS_SCRIPT: ${{ github.action_path }}/redirect-stubs.py
         FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
         SETUP_JULIA: ${{ inputs.setup-julia }}
@@ -412,12 +413,24 @@ runs:
           SITE_LIBS="$PROJECT_PATH/$OUTPUT_DIR/site_libs"
           SITE_LIBS_STAGE=$(mktemp -d)
           first=true
+          STUB_PROFILE=gha-skip-stubs
+          STUB_PROFILE_FILE="$PROJECT_PATH/_quarto-$STUB_PROFILE.yml"
+          rm -f "$STUB_PROFILE_FILE"
+          trap 'rm -f "$STUB_PROFILE_FILE"' EXIT
+          STUB_COUNT=$(python3 "$REDIRECT_STUBS_SCRIPT" "$PROJECT_PATH" "$STUB_PROFILE" "${RENDER_PROFILE:-}")
           for fmt in "${FORMAT_LIST[@]}"; do
+            # A page with `redirect-stub: true` builds html only (gha#1544):
+            # leave it out of every other format's render.
+            FMT_PROFILE_ARG=("${PROFILE_ARG[@]}")
+            if [ "$fmt" != "html" ] && [ "$STUB_COUNT" != "0" ]; then
+              echo "Skipping $STUB_COUNT redirect stub(s) in the $fmt render."
+              FMT_PROFILE_ARG=(--profile "${RENDER_PROFILE:+$RENDER_PROFILE,}$STUB_PROFILE")
+            fi
             if [ "$first" = true ]; then
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" 2>&1 | tee "$LOG_FILE"
+              quarto render "$PROJECT_PATH" "${FMT_PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" 2>&1 | tee "$LOG_FILE"
               first=false
             else
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$PROJECT_PATH" "${FMT_PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
             fi
             if [ -d "$SITE_LIBS" ]; then
               cp -a "$SITE_LIBS/." "$SITE_LIBS_STAGE/"
