@@ -1176,11 +1176,11 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-11-07; psw#512) that a remark holds commentary, and a statement of what is true belongs in a theorem-type div (<code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code>) with its proof.</p>
-<p>The check flags a <code>#rem-</code> div when it both</p>
+<p>Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-11-07; psw#512) that a remark holds commentary. A statement of what is true belongs in a theorem-type div with its proof (<code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code>, or <code>#prp-</code>).</p>
+<p>The check flags a <code>#rem-</code> div when both conditions hold:</p>
 <ul>
-<li>displays an equation (<code>$$...$$</code>, <code>align</code> or <code>\ba ... \ea</code>), and</li>
-<li>states a claim in its prose: “equals”, “is at least”, “is at most”, “never”, “exactly when”, “if and only if”, “for every”, “for all”, “holds” or “satisfies”.</li>
+<li>It displays an equation (<code>$$...$$</code>, <code>align</code>, or <code>\ba ... \ea</code>).</li>
+<li>Its prose states a claim: “equals”, “is at least”, “is at most”, “never”, “exactly when”, “if and only if”, “for every”, “for all”, “holds”, or “satisfies”.</li>
 </ul>
 <p>A remark that holds <code>&lt;!-- check-results-in-remarks: allow --&gt;</code> is exempt. A claim word inside a display, or inside a code fence, does not count.</p>
 <p>A remark is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing remarks are fixed when someone edits them anyway. It only warns by default; set <code>fail: true</code> after several pull requests show no false positive.</p>

@@ -3955,7 +3955,7 @@
     "href": "reference/check-results-in-remarks.html",
     "title": "check-results-in-remarks.yml",
     "section": "",
-    "text": "Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-11-07; psw#512) that a remark holds commentary, and a statement of what is true belongs in a theorem-type div (#thm-, #lem-, #cor- or #prp-) with its proof.\nThe check flags a #rem- div when it both\nA remark that holds &lt;!-- check-results-in-remarks: allow --&gt; is exempt. A claim word inside a display, or inside a code fence, does not count.\nA remark is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing remarks are fixed when someone edits them anyway. It only warns by default; set fail: true after several pull requests show no false positive.",
+    "text": "Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-11-07; psw#512) that a remark holds commentary. A statement of what is true belongs in a theorem-type div with its proof (#thm-, #lem-, #cor-, or #prp-).\nThe check flags a #rem- div when both conditions hold:\nA remark that holds &lt;!-- check-results-in-remarks: allow --&gt; is exempt. A claim word inside a display, or inside a code fence, does not count.\nA remark is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing remarks are fixed when someone edits them anyway. It only warns by default; set fail: true after several pull requests show no false positive.",
     "crumbs": [
       "Overview",
       "Reference",
