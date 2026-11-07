@@ -78,6 +78,33 @@ fi
 # Stale temp folders (Rtmp*, quarto-session*) that killed jobs left behind (gha#1495).
 bash "$(dirname "${BASH_SOURCE[0]}")/sweep-runner-tmp.sh"
 
+# Clear the Python toolcache when the work folder has moved (gha#1569). The
+# scripts in <work>/_tool/Python (pip, for one) carry absolute shebangs, so a
+# toolcache copied from the old folder fails with "required file not found"
+# while setup-python reuses it without reinstalling. Other cached tools hold no
+# such scripts and are kept. The folder's path is recorded in a marker; a
+# marker naming another path means the cache was built elsewhere. With no
+# marker the hook only records the path, so it never deletes a cache it cannot
+# date. The marker is updated only after the clearing succeeds, so a failed
+# removal is retried by the next job.
+marker="$work/_tool/.work-folder"
+if [ -d "$work/_tool" ]; then
+  recorded=$(cat "$marker" 2> /dev/null)
+  record=1
+  if [ -n "$recorded" ] && [ "$recorded" != "$work" ]; then
+    # The hook runs after the job, and a runner runs one job at a time.
+    if rm -rf -- "$work/_tool/Python" "$work/_tool/PyPy"; then
+      echo "prune-runner-workdir: removed the Python toolcache in $work/_tool (built for $recorded)"
+    else
+      warn "could not remove the Python toolcache in $work/_tool"
+      record=0
+    fi
+  fi
+  if [ "$record" = 1 ]; then
+    echo "$work" > "$marker" 2> /dev/null || warn "could not record the work folder in $marker"
+  fi
+fi
+
 # Prints the free kilobytes on the work folder's filesystem, or nothing.
 free_kb() {
   local kb
