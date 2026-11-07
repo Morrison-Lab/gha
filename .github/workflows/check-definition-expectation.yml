@@ -17,7 +17,7 @@ on:
       whole-tree:
         description: >-
           Scan every tracked file the globs match, in full, instead of only the
-          split groups a pull request touches. Use it to measure a corpus.
+          definitions a pull request touches. Use it to measure a corpus.
         type: boolean
         default: false
       globs:
