@@ -126,6 +126,33 @@ def main():
     if code != 0 or calls != ["render a.qmd --to pdf --output-dir _site"]:
         errors.append(f"default profile must apply to the fallback, got {code} {calls}")
 
+    # A redirect stub renders html only (gha#1544), even when it declares pdf.
+    code, calls, out = run(
+        ["pdf", "html"], inspect_fails=True,
+        files={"a.qmd": "---\nformat: [html, pdf]\n---\n",
+               "s.qmd": "---\nredirect-stub: true\nformat: [html, pdf]\n---\n"},
+        config="format:\n  pdf: default\n")
+    expected = ["render a.qmd --to pdf --output-dir _site",
+                "render a.qmd --to html --output-dir _site",
+                "render s.qmd --to html --output-dir _site"]
+    if code != 0 or calls != expected:
+        errors.append(f"a redirect stub must skip its pdf render, got {code} {calls}")
+    if "Skipping s.qmd --to pdf" not in out:
+        errors.append("a skipped stub render must say so in the log")
+
+    # When every match is a skipped stub, the run passes.
+    stub_only = {"s.qmd": "---\nredirect-stub: true\nformat: [html, pdf]\n---\n"}
+    code, calls, out = run(["pdf"], inspect_fails=True, files=stub_only,
+                           config="format:\n  pdf: default\n")
+    if code != 0 or calls or "matched no file" in out:
+        errors.append(f"a stub-only per-file run must pass, got {code} {calls} {out}")
+
+    # A skipped stub must not hide a format name that matched nothing.
+    code, calls, out = run(["pdf", "docxx"], inspect_fails=True, files=stub_only,
+                           config="format:\n  pdf: default\n")
+    if code == 0 or "matched no file" not in out:
+        errors.append(f"a mistyped format beside a skipped stub must fail, got {code} {out}")
+
     # A working `quarto inspect` must not need PyYAML (a runner image may lack it).
     with tempfile.TemporaryDirectory() as blocker:
         pathlib.Path(blocker, "yaml.py").write_text(
