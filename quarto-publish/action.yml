@@ -90,6 +90,16 @@ inputs:
       Restore and save Quarto _freeze directory via actions/cache keyed on
       renv.lock and commit SHA.
     default: 'false'
+  incremental-cache:
+    description: >-
+      After a successful render, also save `_freeze`, the output directory and
+      `.quarto` under a `quarto-incremental-` key, the key an incremental
+      preview (`preview` with `incremental: true`) restores. A pull request
+      cannot read another pull request's caches, so without this the first
+      preview of every PR finds none and renders every page (gha#1575). Use
+      the same `render-profile` as the preview. Saved only on success, since
+      a failed render leaves a mixed output directory.
+    default: 'false'
   freeze-cache-save-on-failure:
     description: >-
       Also save the _freeze directory when the render step fails, so a re-run
@@ -463,6 +473,16 @@ runs:
       with:
         path: ${{ inputs.path }}/_freeze
         key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-${{ github.run_attempt }}
+
+    - name: Save incremental render cache
+      if: success() && inputs.incremental-cache == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.path }}/_freeze
+          ${{ inputs.path }}/${{ inputs.output-dir }}
+          ${{ inputs.path }}/.quarto
+        key: quarto-incremental-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-${{ github.run_attempt }}
 
     - name: Verify rendered output exists
       shell: bash
