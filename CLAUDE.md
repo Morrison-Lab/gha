@@ -196,6 +196,31 @@ Guidance for Claude Code when working in this repository.
 - **Don't:** read this as covering a release or version bump, another
   repository, or a slide over a commit whose checks you have not read.
 
+## Standing checkout fast-forward policy
+
+- **Fast-forwarding the runners' gha checkout is a standing grant**: AI agent
+  sessions may run `git pull --ff-only origin main` in
+  `~/Documents/GitHub/gha` on every self-hosted runner host (over ssh when the
+  host is not the one the session runs on), without asking first
+  (user directive, Ezra, 2026-11-07: "record permanent permission to fast
+  forward gha", gha#1588).
+  The runners read their hook scripts (`check-runner-disk.sh`,
+  `wait-runner-capacity.sh`, `prune-runner-workdir.sh`) from that checkout, so a
+  merged hook fix only takes effect once the checkout is fast-forwarded.
+  Like the grants above, it removes the *asking* and not the judgment.
+
+- **Limits.**
+  Fast-forward only: if a checkout has local commits, a diverged branch or
+  changes to tracked files, stop and report instead of resolving it.
+  Untracked leftovers (an `.nfs...` lock file, for example) are left alone.
+  Report the before and after SHA for each host.
+
+- **Don't:** read this as covering the `v3` tag slide (that has its own policy
+  above), a pull in any other repository, or anything but a fast-forward.
+  The auto-mode classifier may still ask for the user's typed words the first
+  time in a session; this grant records the user's standing intent, so cite
+  it, and do not retry past a denial.
+
 ## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
