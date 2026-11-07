@@ -34,6 +34,10 @@ and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402):
   A finding only asks the author to check; a deliberate use takes the allow
   comment.
 
+- **vague attributions**: "some authors", "many people", "studies show", "it is
+  well known", "experts agree". Name the source with a locator; if the claim has
+  none, find one rather than dropping the claim (psw#503, gha#1555).
+
 - **trailing parenthetical links**: a crossref such as "differentiable at $c$
   (@def-differentiable)" after a word, or a "([why](url))" link after a claim.
   Link the term itself, or make the whole claim the link text (gha#1402).
@@ -105,13 +109,23 @@ BACKREF_RE = re.compile(
     r"|(?:same|identical)\s+set-?up\s+as\b)"
 )
 THING_RE = re.compile(r"(?i)\bthings?\b")
+VAGUE_RE = re.compile(
+    r"(?i)\b(?:(?:some|many|several)\s+(?:\w+\s+)?(?:authors|researchers|"
+    r"experts|statisticians|scientists|scholars|textbooks)\b"
+    r"|(?<!how\s)(?:some|many|several)\s+people\s+(?:call|say|think|argue|"
+    r"believe|claim|prefer|define|write|refer|describe|consider|use|find)\b"
+    r"|studies\s+(?:have\s+)?(?:show|shown|suggest|found)\b"
+    r"|research\s+(?:shows|suggests)\b"
+    r"|it\s+is\s+well[\s-]known\b"
+    r"|experts\s+agree\b)"
+)
 PARENREF_RE = re.compile(
     r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
     r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
 )
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
 # failing check; since gha#1473 every rule fails by default).
-ALWAYS_FAIL = frozenset({"parenref", "thing"})
+ALWAYS_FAIL = frozenset({"parenref", "thing", "vague"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -134,6 +148,12 @@ RULES = (
      'Name the object, quantity, step or idea instead of "thing" or "things" '
      '(psw word-choice.qmd, "Say which thing"; Ezra, 2026-11-04; gha#1454). '
      "A deliberate use takes the check-avoided-words allow comment."),
+    ("vague", VAGUE_RE,
+     "Name the author, book or paper that makes the claim, with a locator, "
+     'instead of "some authors", "studies show" and the like. If the claim has '
+     "no source, go and find one; do not drop or hedge the claim (psw#503; "
+     "Ezra, 2026-11-06; gha#1555). A deliberate use takes the "
+     "check-avoided-words allow comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '

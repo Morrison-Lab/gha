@@ -62,6 +62,12 @@ def found(text: str):
      "parenref", "([why](https://x.org/a#thm-k))"),
     ("The bound ([proof](page.qmd#thm-b)) holds.", "parenref",
      "([proof](page.qmd#thm-b))"),
+    ("Some authors call it improbability.", "vague", "some authors"),
+    ("Some people call it improbability.", "vague", "some people call"),
+    ("Many statistical researchers disagree.", "vague", "many statistical researchers"),
+    ("Studies have shown that it helps.", "vague", "studies have shown"),
+    ("It is well known that the mean is sensitive.", "vague", "it is well known"),
+    ("Experts agree on the choice.", "vague", "experts agree"),
     ("Name two things that this argument omits.", "thing", "things"),
     ("The main thing to check is the residuals.", "thing", "thing"),
 ])
@@ -73,6 +79,16 @@ def test_thing_passes_compounds_code_and_allow_comment():
     assert found("Something, anything and nothing are fine.") == {}
     assert found("Use `things` in code.") == {}
     assert found("A <!-- check-avoided-words: allow --> thing here.") == {}
+
+
+def test_vague_passes_named_sources_code_and_allow_comment():
+    assert found("@james2021islr2 [p. 18] call it the irreducible error.") == {}
+    assert found("Use `some authors` in code.") == {}
+    assert found("How many people tested positive?") == {}
+    assert found("There are many sources of variation.") == {}
+    assert found("Several infected people were enrolled.") == {}
+    assert found("Several open sources agree with the data.") == {}
+    assert found("Some <!-- check-avoided-words: allow --> authors here.") == {}
 
 
 def test_parenref_passes_linked_term_and_see():
