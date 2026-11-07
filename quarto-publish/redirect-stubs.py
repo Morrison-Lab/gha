@@ -10,7 +10,10 @@ so a per-format publish would still build the stub's slides, PDF and Word file.
 Usage: ``redirect-stubs.py PROJECT_PATH PROFILE_NAME [ACTIVE_PROFILES]``
 (``ACTIVE_PROFILES`` is the render's comma-joined profile list).
 Writes ``PROJECT_PATH/_quarto-PROFILE_NAME.yml`` and prints the stub count;
-it writes no file when there are none.
+it writes no file and prints ``0`` when there are none, or when ``quarto
+inspect`` fails (gha#1214) and the project sets no ``project.render`` list.
+When inspect fails and the project does set one, the file holds the
+``!<stub path>`` entries.
 
 - When the project, under the active profiles, sets a ``project.render``
   list, the file holds one ``!<stub path>`` entry per stub.
@@ -70,7 +73,7 @@ def inspect_project(project, active):
     result = subprocess.run(cmd, check=False, capture_output=True, text=True)
     if result.returncode == 0:
         return json.loads(result.stdout)
-    print("::warning::quarto inspect %s failed (exit %d); reading the project "
+    print("quarto inspect %s failed (exit %d); reading the project "
           "config instead.\n%s" % (project, result.returncode, result.stderr.strip()),
           file=sys.stderr, flush=True)
     return None

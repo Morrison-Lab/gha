@@ -128,6 +128,9 @@ def test_failed_inspect_without_render_list_skips_nothing(tmp_path, monkeypatch,
     assert capsys.readouterr().out == "0\n"
     assert not (tmp_path / "_quarto-skip.yml").exists()
     assert "QUARTO_PROFILE" not in os.environ
+    monkeypatch.setenv("QUARTO_PROFILE", "caller")
+    rs.main(["x", str(tmp_path), "skip", "website"])
+    assert os.environ["QUARTO_PROFILE"] == "caller"
 
 
 def test_failed_inspect_without_pyyaml_skips_nothing(tmp_path):
