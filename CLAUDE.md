@@ -216,7 +216,8 @@ Guidance for Claude Code when working in this repository.
   Report the before and after SHA for each host.
 
 - **Don't:** read this as covering the `v3` tag slide (that has its own policy
-  above), a pull in any other repository, or anything but a fast-forward.
+  above), merging a pull request (a merge still needs the user's own `mwc` or
+  merge words), a pull in any other repository, or anything but a fast-forward.
   The auto-mode classifier may still ask for the user's typed words the first
   time in a session; this grant records the user's standing intent, so cite
   it, and do not retry past a denial.
