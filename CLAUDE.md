@@ -210,8 +210,8 @@ Guidance for Claude Code when working in this repository.
   Like the grants above, it removes the *asking* and not the judgment.
 
 - **Limits.**
-  Fast-forward only: if a checkout has local commits, a diverged branch, or
-  changes to tracked files, stop and report instead of resolving it.
+  Fast-forward only: stop and report, instead of resolving it, when a
+  checkout has local commits, a diverged branch, or changes to tracked files.
   Untracked leftovers (an `.nfs...` lock file, for example) are left alone.
   Report the before and after SHA for each host.
 
