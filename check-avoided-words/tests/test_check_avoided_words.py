@@ -62,6 +62,13 @@ def found(text: str):
      "parenref", "([why](https://x.org/a#thm-k))"),
     ("The bound ([proof](page.qmd#thm-b)) holds.", "parenref",
      "([proof](page.qmd#thm-b))"),
+    ("The errors have a normal distribution.", "gaussian", "normal distribution"),
+    ("Draw from a standard normal sample.", "gaussian", "standard normal"),
+    ("A multivariate normal prior.", "gaussian", "multivariate normal"),
+    ("The data are normally distributed.", "gaussian", "normally distributed"),
+    ("Let X be a normal random variable.", "gaussian", "normal random variable"),
+    ("Draw a normal random vector.", "gaussian", "normal random vector"),
+    ("A bivariate normal model.", "gaussian", "bivariate normal"),
     ("Name two things that this argument omits.", "thing", "things"),
     ("The main thing to check is the residuals.", "thing", "thing"),
     ("At the score $\\eta$, the slope is 0.25.", "linpred", "score"),
@@ -72,6 +79,24 @@ def found(text: str):
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
+
+
+def test_gaussian_passes_other_senses_of_normal():
+    assert found("Solve the normal equations.") == {}
+    assert found("Take a normal vector to the plane.") == {}
+    assert found("The kernel is a normal subgroup.") == {}
+    assert found("The standard normal equations are solved.") == {}
+    assert found("Use the Gaussian distribution.") == {}
+    assert found("A <!-- check-avoided-words: allow --> normal distribution.") == {}
+
+
+def test_gaussian_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nThe errors have a normal distribution.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CAW_FAIL="true")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
 
 
 def test_thing_passes_compounds_code_and_allow_comment():

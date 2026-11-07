@@ -49,6 +49,11 @@ gha#1568):
   link whose text is "score" or whose line holds `#def-score` pass (Ezra,
   2026-11-07; gha#1568).
 
+- **Gaussian, not normal**: "normal distribution", "standard normal",
+  "multivariate normal", "bivariate normal", "normally distributed" and
+  "normal random variable" and "normal random vector". Not "normal equations", normal vectors or normal
+  subgroups. Warn-only while the rule is new (psw#510, gha#1570).
+
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
 or at the end of a clause); "above the threshold" passes. ``just`` is not
@@ -114,6 +119,12 @@ BACKREF_RE = re.compile(
     r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?set-?up\s+(?:of|from|in)\b"
     r"|(?:same|identical)\s+set-?up\s+as\b)"
 )
+GAUSSIAN_RE = re.compile(
+    r"(?i)\b(?:normal\s+(?:distribution|random\s+(?:variable|vector))s?\b"
+    r"|(?:standard|multivariate|bivariate)\s+normal\b"
+    r"(?!\s+(?:equations?|vectors?|subgroups?|forms?)\b)"
+    r"|normally\s+distributed\b)"
+)
 THING_RE = re.compile(r"(?i)\bthings?\b")
 PARENREF_RE = re.compile(
     r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
@@ -133,6 +144,9 @@ LINPRED_SCORE_RE = re.compile(
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
 # failing check; since gha#1473 every rule fails by default).
 ALWAYS_FAIL = frozenset({"parenref", "thing"})
+# Rules in their trial period: a finding is a warning and never fails the run
+# (gha#1570: warn-only first; promote after several PRs with no false positive).
+WARN_ONLY = frozenset({"gaussian"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -160,6 +174,11 @@ RULES = (
      'a GLM in general, not "score"; "score" names the gradient of the '
      "log-likelihood (Ezra, 2026-11-07; gha#1568). A deliberate use takes the "
      "check-avoided-words allow comment."),
+    ("gaussian", GAUSSIAN_RE,
+     'Write "Gaussian", not "normal", for the distribution; "normal" also '
+     "means perpendicular and usual (psw#510; gha#1570). A deliberate use, "
+     "such as quoting the old term, takes the check-avoided-words allow "
+     "comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '
@@ -202,7 +221,8 @@ def main() -> int:
         clean="No avoided word or trailing parenthetical link found.",
         summary="use a word a style source advises against.",
         format_finding=format_message,
-        always_fail=ALWAYS_FAIL, default_fail=_DEFAULT_FAIL)
+        always_fail=ALWAYS_FAIL, default_fail=_DEFAULT_FAIL,
+        warn_only=WARN_ONLY)
 
 
 if __name__ == "__main__":

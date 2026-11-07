@@ -63,6 +63,15 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   A consumer on the `v3` tag sees its check turn red
   on any added line containing the word.
 
+- **Normal for the Gaussian distribution.**
+  "Normal distribution", "standard normal", "multivariate normal",
+  "bivariate normal", "normally distributed", "normal random variable",
+  or "normal random vector".
+  Write "Gaussian" instead, since "normal" also means perpendicular and usual.
+  "Normal equations", normal vectors, and normal subgroups pass.
+  Source: psw's rule to write "Gaussian" (psw#510, gha#1570).
+  This rule only warns, even with `fail` on, while it is new.
+
 The other rules fail by default; set `fail` to false to make them warn.
 
 The check does not flag a code fence or code span, an HTML comment, YAML
@@ -91,7 +100,7 @@ Every run prints how many lines and files it examined.
 | ---------------- | ------- | ------- | ----------- |
 | `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail. |
+| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail, and the Gaussian rule only warns. |
 | `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string  | `'3.x'` | Python version to set up. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
