@@ -14,7 +14,7 @@ inputs:
     default: ''
   whole-tree:
     description: >-
-      Check every derivation solution the globs match, in full, instead of only
+      Check every remark the globs match, in full, instead of only
       touched ones. Use it to measure a corpus; `base-ref` is ignored.
     default: 'false'
   globs:

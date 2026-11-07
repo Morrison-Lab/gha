@@ -4,15 +4,17 @@ title: "check-results-in-remarks.yml"
 
 Diff-scoped, warn-only heuristic check for the lab's rule
 (Ezra, 2026-11-07; psw#512)
-that a remark holds commentary, and a statement of what is true
-belongs in a theorem-type div (`#thm-`, `#lem-`, `#cor-` or `#prp-`) with its proof.
+that a remark holds commentary.
+A statement of what is true
+belongs in a theorem-type div with its proof
+(`#thm-`, `#lem-`, `#cor-`, or `#prp-`).
 
-The check flags a `#rem-` div when it both
+The check flags a `#rem-` div when both of these hold:
 
-- displays an equation (`$$...$$`, `align` or `\ba ... \ea`), and
-- states a claim in its prose:
+- It displays an equation (`$$...$$`, `align`, or `\ba ... \ea`).
+- Its prose states a claim:
   "equals", "is at least", "is at most", "never", "exactly when",
-  "if and only if", "for every", "for all", "holds" or "satisfies".
+  "if and only if", "for every", "for all", "holds", or "satisfies".
 
 A remark that holds `<!-- check-results-in-remarks: allow -->` is exempt.
 A claim word inside a display, or inside a code fence, does not count.
