@@ -695,11 +695,8 @@ runs:
         # A render of one page ignores the skip profile's render list, so
         # an incremental preview skips a stub's non-html render itself.
         skip_stub_target() {
-          if [ "$2" != "html" ] && [ -f "$1" ] && python3 "$REDIRECT_STUBS_SCRIPT" --is-stub "$1"; then
-            echo "Skipping the $2 render of redirect stub $1."
-            return 0
-          fi
-          return 1
+          [ "$2" != "html" ] && [ -f "$1" ] && python3 "$REDIRECT_STUBS_SCRIPT" --is-stub "$1" \
+            && echo "Skipping the $2 render of redirect stub $1."
         }
 
         # Render one target: the whole project (`first` true cleans the

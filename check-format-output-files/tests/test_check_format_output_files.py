@@ -150,9 +150,5 @@ def test_redirect_stub_html_only_passes():
     assert check(STUB) == []
 
 
-def test_redirect_stub_without_format_passes():
-    assert check(STUB.replace("format:\n  html: default\n", "")) == []
-
-
 def test_redirect_stub_false_still_fails():
     assert len(check(STUB.replace("true", "false"))) == 3

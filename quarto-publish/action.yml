@@ -426,7 +426,6 @@ runs:
               cp -a "$SITE_LIBS/." "$SITE_LIBS_STAGE/"
             fi
           done
-          rm -f "$STUB_PROFILE_FILE"
           mkdir -p "$SITE_LIBS"
           cp -a "$SITE_LIBS_STAGE/." "$SITE_LIBS/"
         fi

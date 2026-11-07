@@ -8,11 +8,9 @@ redirect. ``quarto render --to FORMAT`` renders every page in the project,
 so a per-format publish would still build the stub's slides, PDF and Word file.
 
 Usage: ``redirect-stubs.py PROJECT_PATH PROFILE_NAME [ACTIVE_PROFILES]``
-
-``ACTIVE_PROFILES`` is the comma-joined profile list that the render uses.
-
-Writes ``PROJECT_PATH/_quarto-PROFILE_NAME.yml`` and prints the number of
-stubs. It writes no file when there are none.
+(``ACTIVE_PROFILES`` is the render's comma-joined profile list).
+Writes ``PROJECT_PATH/_quarto-PROFILE_NAME.yml`` and prints the stub count;
+it writes no file when there are none.
 
 - When the project, under the active profiles, sets a ``project.render``
   list, the file holds one ``!<stub path>`` entry per stub.
@@ -84,8 +82,7 @@ def render_entries(project, active, stubs):
 
 def main(argv):
     if argv[1] == "--is-stub":
-        # Exit 0 when the file is a redirect stub. A single-file render
-        # ignores the skip profile's project.render list (gha#1544).
+        # Exit 0 for a stub: a single-file render ignores the profile's list.
         return 0 if is_stub(argv[2]) else 1
     project, profile = argv[1], argv[2]
     active = argv[3] if len(argv) > 3 else ""

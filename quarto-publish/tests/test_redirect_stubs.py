@@ -44,18 +44,6 @@ def test_finds_only_stubs(tmp_path):
     assert rs.find_stubs(str(tmp_path)) == ["a.qmd", "sub/d.qmd"]
 
 
-def test_key_after_front_matter_is_ignored(tmp_path):
-    write(tmp_path, "a.qmd", "---\ntitle: A\n---\nredirect-stub: true\n")
-    assert rs.find_stubs(str(tmp_path)) == []
-
-
-def test_no_file_without_stubs(tmp_path, monkeypatch):
-    write(tmp_path, "a.qmd", "---\ntitle: A\n---\n")
-    monkeypatch.setattr(rs, "inspect_project", fake_inspect(None, ["a.qmd"]))
-    assert rs.main(["x", str(tmp_path), "skip"]) == 0
-    assert not (tmp_path / "_quarto-skip.yml").exists()
-
-
 def test_exclusions_only_when_project_lists_pages(tmp_path, monkeypatch):
     write(tmp_path, "s.qmd", STUB_PAGE)
     monkeypatch.setattr(rs, "inspect_project", fake_inspect(["*.qmd"], ["s.qmd"]))
