@@ -216,9 +216,10 @@ run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
 check "prune: with no marker the toolcache is kept and the path recorded" "$(ls "$w/_tool/Python") $(cat "$w/_tool/.work-folder")" "3.13.5 $w"
 run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
 check "prune: a marker naming this folder keeps the toolcache" "$(ls "$w/_tool/Python")" "3.13.5"
+mkdir -p "$w/_tool/node/20.0.0"
 echo /var/tmp/gha-work > "$w/_tool/.work-folder"
 out=$(run_prune STUB_BASE_KB=$((100 * gb)))
-check "prune: a marker naming another folder clears the toolcache" "$(ls -A "$w/_tool") $(grep -c 'removed .*_tool (built for /var/tmp/gha-work)' <<< "$out")" ".work-folder 1"
+check "prune: a marker naming another folder clears only the Python toolcache" "$(ls -A "$w/_tool" | tr '\n' ' ')$(grep -c 'removed the Python toolcache .*(built for /var/tmp/gha-work)' <<< "$out")" ".work-folder node 1"
 check "prune: the cleared toolcache records the new folder" "$(cat "$w/_tool/.work-folder")" "$w"
 
 # A directory that is not a checkout (r-lib/setup-r's R library, R/library)
