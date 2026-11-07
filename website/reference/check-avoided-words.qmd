@@ -38,6 +38,15 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   "The setup of @exr-x" or "the same setup as".
   Name the data, variables or model the part reuses.
   Source: psw's "Talk about the ideas, not the notes" (psw#442).
+- **"Score" for a linear predictor.**
+  "score" or "scores" on a line that also has `\eta`, "linear predictor",
+  "log-odds", "logit", "sigmoid", or "logistic function".
+  Write "log-odds" for a logistic regression
+  and "linear predictor" for a GLM in general.
+  The statistical score keeps its name, so "score function", "score equation",
+  "score test", "Brier score", "z-score", "F1 score", "component score",
+  a link whose text is "score", and a line holding `#def-score` pass.
+  Source: Ezra's rule (gha#1568).
 - **Trailing parenthetical links.**
   A crossref after a word, such as `differentiable at $c$ (@def-differentiable)`,
   or a `([why](url))` link after a claim.
