@@ -41,7 +41,7 @@ and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402):
 
 - **Gaussian, not normal**: "normal distribution", "standard normal",
   "multivariate normal", "bivariate normal", "normally distributed" and
-  "normal random variable". Not "normal equations", normal vectors or normal
+  "normal random variable" and "normal random vector". Not "normal equations", normal vectors or normal
   subgroups. Warn-only while the rule is new (psw#510, gha#1570).
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
