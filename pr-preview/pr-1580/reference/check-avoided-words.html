@@ -825,6 +825,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-results-in-remarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-results-in-remarks.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-definition-expectation.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-definition-expectation.yml</span></a>
   </div>
@@ -1218,13 +1224,14 @@ cookieconsent.run({
 <section id="rules" class="level2">
 <h2 class="anchored" data-anchor-id="rules">Rules</h2>
 <ul>
-<li><strong>Position words.</strong> <code>above</code> or <code>below</code> used for a place in the document (“the table above”, “as shown below”); refer to the result by its label. Source: Google developer documentation style guide, word list, entries “above” and “below”. “A value above the threshold” is a comparison and passes.</li>
-<li><strong>Effort words.</strong> <code>just</code>, <code>easy</code>, <code>easily</code>. Source: the same word list. <code>just before</code>, <code>just after</code>, <code>just as</code>, <code>just like</code>, <code>just then</code>, <code>just enough</code>, <code>just in time</code>, <code>just once</code> and <code>just now</code> pass.</li>
-<li><strong>Time-relative words.</strong> <code>currently</code>, <code>recently</code>, <code>nowadays</code>, <code>at present</code>, <code>at the moment</code>, <code>these days</code>. Source: Google, “Timeless documentation”. The guide lists <code>now</code> and <code>new</code> too, but this check does not flag them, because “now we compute” and the term “new observation” are correct uses a regex cannot tell apart. <code>recently</code> is psw’s own extension.</li>
-<li><strong>Generic placeholders.</strong> A domain, codomain, range or sample space named by a bare capital letter (“domain A”) or by “some” (“some domain”). Name the specific set, such as “the range of X”. Source: psw’s “be as specific as feasible” (psw#427). A regex cannot know whether a specific object exists, so a finding only asks the author to check.</li>
-<li><strong>Back-references to a setup.</strong> “The setup of <strong>?@exr-x</strong>” or “the same setup as”. Name the data, variables or model the part reuses. Source: psw’s “Talk about the ideas, not the notes” (psw#442).</li>
-<li><strong>Trailing parenthetical links.</strong> A crossref after a word, such as <code>differentiable at $c$ (@def-differentiable)</code>, or a <code>([why](url))</code> link after a claim. Link the term itself, or make the whole claim the link text. <code>(see @thm-x)</code> passes, since no word can carry that link. Source: Ezra’s review of mds, 2026-11-02 (gha#1402). This rule fails the run whatever <code>fail</code> says.</li>
-<li><strong>The word “thing”.</strong> <code>thing</code> or <code>things</code> as a whole word; <code>something</code>, <code>anything</code>, and <code>nothing</code> pass. Name the object, quantity, step, or idea instead. Source: psw’s “Say which thing” (gha#1454). This rule also fails the run whatever <code>fail</code> says, and <code>&lt;!-- check-avoided-words: allow --&gt;</code> exempts a deliberate use. A consumer on the <code>v3</code> tag sees its check turn red on any added line containing the word.</li>
+<li><p><strong>Position words.</strong> <code>above</code> or <code>below</code> used for a place in the document (“the table above”, “as shown below”); refer to the result by its label. Source: Google developer documentation style guide, word list, entries “above” and “below”. “A value above the threshold” is a comparison and passes.</p></li>
+<li><p><strong>Effort words.</strong> <code>just</code>, <code>easy</code>, <code>easily</code>. Source: the same word list. <code>just before</code>, <code>just after</code>, <code>just as</code>, <code>just like</code>, <code>just then</code>, <code>just enough</code>, <code>just in time</code>, <code>just once</code> and <code>just now</code> pass.</p></li>
+<li><p><strong>Time-relative words.</strong> <code>currently</code>, <code>recently</code>, <code>nowadays</code>, <code>at present</code>, <code>at the moment</code>, <code>these days</code>. Source: Google, “Timeless documentation”. The guide lists <code>now</code> and <code>new</code> too, but this check does not flag them, because “now we compute” and the term “new observation” are correct uses a regex cannot tell apart. <code>recently</code> is psw’s own extension.</p></li>
+<li><p><strong>Generic placeholders.</strong> A domain, codomain, range or sample space named by a bare capital letter (“domain A”) or by “some” (“some domain”). Name the specific set, such as “the range of X”. Source: psw’s “be as specific as feasible” (psw#427). A regex cannot know whether a specific object exists, so a finding only asks the author to check.</p></li>
+<li><p><strong>Back-references to a setup.</strong> “The setup of <strong>?@exr-x</strong>” or “the same setup as”. Name the data, variables or model the part reuses. Source: psw’s “Talk about the ideas, not the notes” (psw#442).</p></li>
+<li><p><strong>Trailing parenthetical links.</strong> A crossref after a word, such as <code>differentiable at $c$ (@def-differentiable)</code>, or a <code>([why](url))</code> link after a claim. Link the term itself, or make the whole claim the link text. <code>(see @thm-x)</code> passes, since no word can carry that link. Source: Ezra’s review of mds, 2026-11-02 (gha#1402). This rule fails the run whatever <code>fail</code> says.</p></li>
+<li><p><strong>The word “thing”.</strong> <code>thing</code> or <code>things</code> as a whole word; <code>something</code>, <code>anything</code>, and <code>nothing</code> pass. Name the object, quantity, step, or idea instead. Source: psw’s “Say which thing” (gha#1454). This rule also fails the run whatever <code>fail</code> says, and <code>&lt;!-- check-avoided-words: allow --&gt;</code> exempts a deliberate use. A consumer on the <code>v3</code> tag sees its check turn red on any added line containing the word.</p></li>
+<li><p><strong>Normal for the Gaussian distribution.</strong> “Normal distribution”, “standard normal”, “multivariate normal”, “bivariate normal”, “normally distributed”, “normal random variable”, or “normal random vector”. Write “Gaussian” instead, since “normal” also means perpendicular and usual. “Normal equations”, normal vectors, and normal subgroups pass. Source: psw’s rule to write “Gaussian” (psw#510, gha#1570). This rule only warns, even with <code>fail</code> on, while it is new.</p></li>
 </ul>
 <p>The other rules fail by default; set <code>fail</code> to false to make them warn.</p>
 <p>The check does not flag a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, <code>&lt;!-- check-avoided-words: allow --&gt;</code>. It reports at most one finding per rule per line.</p>
@@ -1263,7 +1270,7 @@ cookieconsent.run({
 <td><code>fail</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Fail the workflow when an avoided word is found. Set <code>false</code> for warnings only; a trailing parenthetical link and the words “thing” and “things” always fail.</td>
+<td>Fail the workflow when an avoided word is found. Set <code>false</code> for warnings only; a trailing parenthetical link and the words “thing” and “things” always fail, and the Gaussian rule only warns.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>

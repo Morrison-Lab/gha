@@ -3728,186 +3728,135 @@
     ]
   },
   {
-    "objectID": "reference/check-new-line-breaks.html",
-    "href": "reference/check-new-line-breaks.html",
-    "title": "check-new-line-breaks.yml",
+    "objectID": "reference/check-results-in-remarks.html",
+    "href": "reference/check-results-in-remarks.html",
+    "title": "check-results-in-remarks.yml",
     "section": "",
-    "text": "Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines – including lines a PR merely relocates: an added line whose exact text was also deleted somewhere in the same diff is treated as moved rather than new and is not reported (gha#684). The pairing is a diff-wide multiset (N deletions of a text exempt at most N additions of it, in any file), not a per-file match – a deliberate tradeoff, since even a coincidental delete-here/add-there pairing leaves the corpus’s count of violating lines unchanged. Pairs well with lint-markdown.yml when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.\nTwo checks run, both on by default. The first is the SemBr spec’s rule 4, the normative MUST: break after a sentence. The second flags a long line carrying a mid-line semicolon, as a proxy for its rule 5, the SHOULD: break after an independent clause. It is a proxy rather than a test of the rule, since deciding whether a mark ends an independent clause needs a parser – so a semicolon-delimited list can be flagged too. Of the four marks rule 5 names, only the semicolon has a low enough unparsed hit rate to be useful: keying on all four flags 50.5% of already-conforming prose, against 0.7% for this check; see gha#336 for the measurements.\nThe gate’s default of 80 is the spec’s own rule 12, “a maximum line length of 80 characters is RECOMMENDED”. It measures a line’s visible length – rule 13 exempts a line that is long to accommodate a hyperlink or a code element – so a line that is long only because of a link target or a code span does not qualify. Set clause-breaks: false to check sentences only.",
+    "text": "Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-11-07; psw#512) that a remark holds commentary. A statement of what is true belongs in a theorem-type div with its proof (#thm-, #lem-, #cor-, or #prp-).\nThe check flags a #rem- div when both conditions hold:\nA remark that holds &lt;!-- check-results-in-remarks: allow --&gt; is exempt. A claim word inside a display, or inside a code fence, does not count.\nA remark is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing remarks are fixed when someone edits them anyway. It only warns by default; set fail: true after several pull requests show no false positive.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-new-line-breaks.yml"
+      "check-results-in-remarks.yml"
     ]
   },
   {
-    "objectID": "reference/check-new-line-breaks.html#inputs",
-    "href": "reference/check-new-line-breaks.html#inputs",
-    "title": "check-new-line-breaks.yml",
+    "objectID": "reference/check-results-in-remarks.html#inputs",
+    "href": "reference/check-results-in-remarks.html#inputs",
+    "title": "check-results-in-remarks.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when a violation is found; otherwise non-blocking.\n\n\nclause-breaks\nboolean\ntrue\nAlso flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set false to check sentences only.\n\n\nclause-min-length\nstring\n'80'\nMinimum line length before clause-breaks applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when clause-breaks is false.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nGit pathspecs of tracked files to check (recursive)\n\n\npaths-ignore\nnone\nComma or newline separated globs to skip\n\n\nfail\nfalse\nFail on a finding; false warns\n\n\nwhole-tree\nfalse\nCheck every remark, to measure a corpus\n\n\npython-version\n3.x\nPython version\n\n\nruns-on\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label; a self-hosted label only for a private repository",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-new-line-breaks.yml"
+      "check-results-in-remarks.yml"
     ]
   },
   {
-    "objectID": "reference/check-new-line-breaks.html#permissions",
-    "href": "reference/check-new-line-breaks.html#permissions",
-    "title": "check-new-line-breaks.yml",
-    "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-new-line-breaks.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-new-line-breaks.html#example",
-    "href": "reference/check-new-line-breaks.html#example",
-    "title": "check-new-line-breaks.yml",
-    "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-new-line-breaks.yml in your repo.\n# Diff-scoped check: flags newly-added Markdown lines packing more than one\n# sentence/clause onto one source line. Diff-scoped, so it only ever flags\n# what a PR itself adds -- pairs well with lint-markdown when MD013\n# (line-length) is disabled because the corpus already has long-line drift.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check new markdown lines for missing semantic breaks\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2\n    # with:\n    #   globs: '*.md'                          # pathspecs to check (recursive)\n    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths\n    #   fail: false                            # warn-only instead of blocking (defaults to true)\n    #   clause-breaks: false                   # sentences only; skip the\n    #                                          # semicolon clause check (on by default)\n    #   clause-min-length: 100                 # raise the clause check's length gate\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-new-line-breaks.yml for the full caller stub.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-new-line-breaks.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-rubric-checklists.html",
-    "href": "reference/check-rubric-checklists.html",
-    "title": "check-rubric-checklists.yml",
-    "section": "",
-    "text": "Diff-scoped check that warns when a pull request adds or revises a grading rubric that is not written as a checklist. The lab’s default (Ezra, 2026-10-26) is that most STEM grading rubrics are checklists: one item per observable criterion, so a grader marks each item as earned or not.\nA rubric is a line that opens with Grading, Rubric, Marking scheme or Mark scheme, bare, bolded, in a blockquote or as a heading, followed by (, : or the end of the line. Its block is that line plus the blank lines, list items and indented lines after it. The check reports a rubric whose block holds no task-list item (- [ ] ...).\nThe check does not count:\nA rubric the pull request does not touch is never reported. With no base to diff against, the check skips instead of scanning the whole tree. It warns by default, because the rule is a default for most rubrics, not an absolute one; fail: true makes it block.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-rubric-checklists.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-rubric-checklists.html#inputs",
-    "href": "reference/check-rubric-checklists.html#inputs",
-    "title": "check-rubric-checklists.yml",
-    "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd *.md\nGit pathspecs of tracked files to check (recursive)\n\n\npaths-ignore\nnone\nComma or newline separated globs to skip\n\n\nfail\nfalse\nFail on a finding; false warns\n\n\nwhole-tree\nfalse\nScan every rubric, to measure a corpus\n\n\npython-version\n3.x\nPython version",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-rubric-checklists.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-rubric-checklists.html#usage",
-    "href": "reference/check-rubric-checklists.html#usage",
-    "title": "check-rubric-checklists.yml",
+    "objectID": "reference/check-results-in-remarks.html#usage",
+    "href": "reference/check-results-in-remarks.html#usage",
+    "title": "check-results-in-remarks.yml",
     "section": "Usage",
-    "text": "Usage\nCopy examples/check-rubric-checklists.yml to .github/workflows/check-rubric-checklists.yml.",
+    "text": "Usage\nCopy examples/check-results-in-remarks.yml to .github/workflows/check-results-in-remarks.yml.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-rubric-checklists.yml"
+      "check-results-in-remarks.yml"
     ]
   },
   {
-    "objectID": "versioning.html",
-    "href": "versioning.html",
-    "title": "Versioning",
+    "objectID": "reference/check-news.html",
+    "href": "reference/check-news.html",
+    "title": "check-news.yml",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-heading-levels.yml, check-heading-titles.yml, check-self-reference.yml, check-div-ids.yml, check-page-length.yml, check-heading-siblings.yml, check-figure-placement.yml, check-code-messages.yml, check-multipart-exercises.yml, check-rubric-checklists.yml, check-python-qmd-chunks.yml, check-single-ask-parts.yml, check-split-solutions.yml, check-restated-results.yml, check-definition-expectation.yml, check-extracted-lemmas.yml, check-definition-equations.yml, check-hybrid-sentences.yml, check-format-output-files.yml, check-caller-permissions.yml, check-exm-figures.yml, check-contour-3d.yml, check-visualization-figures.yml, check-axis-titles.yml, check-tree-lists.yml, check-search-shortcut.yml, check-self-contained-captions.yml, check-def-commentary.yml, check-unexplained-contrasts.yml, check-unexplained-choices.yml, check-solution-citations.yml, check-exercise-before-result.yml, check-pr-concerns.yml, cancel-superseded.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-bare-yes-no.yml, check-code-fold.yml, check-serial-comma.yml, check-exercise-background.yml, check-exercise-question-paragraph.yml, check-key-equations-displayed.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-macro-expansions.yml, check-write-idiom.yml, check-avoided-words.yml, check-proof-statements.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
+    "text": "Enforce a changelog entry on each pull request (wraps UCD-SERG/changelog-check-action). Supports both direct changelog edits (NEWS.md/CHANGELOG.md) and fragment-based changelog files (news.d/ or changelog.d/ files named &lt;slug&gt;.&lt;category&gt;.md). R package repos can use the assemble-news composite action (uses: Morrison-Lab/gha/.github/actions/assemble-news@v2) at release time to collate news.d/ fragments into NEWS.md under section headings.",
     "crumbs": [
       "Overview",
-      "Versioning"
+      "Reference",
+      "check-news.yml"
     ]
   },
   {
-    "objectID": "versioning.html#widening-permissions-is-a-breaking-change",
-    "href": "versioning.html#widening-permissions-is-a-breaking-change",
-    "title": "Versioning",
-    "section": "Widening permissions is a breaking change",
-    "text": "Widening permissions is a breaking change\nA reusable workflow’s job-level permissions: block is part of its caller contract: a nested job cannot request more than the caller grants, so adding a permission - even a read - fails every caller written against the old contract at parse time (Invalid workflow file), with no API-visible diagnostic (a startup_failure run exposes no jobs, logs, or annotations; the error text appears only on the run page in the UI). gha#685 measured this when gha#638 added issues: read to ai-code-review.yml and the v2 slide delivered it: every consumer run concluded startup_failure until the caller-side grant landed. So treat a permissions: widening like any other breaking change: prefer a major-version bump; where a bump is disproportionate, find the callers and PR the caller-side grant before sliding the tag, and name the required caller edit in the change’s changelog fragment. Find them with the per-workflow code searches that REVDEPS.md documents, not by reading its consumer table: that table is hand-maintained, and so is the owner list beside it. Measured 2026-09-07, the owner list this change replaces returned 10 of the 18 repositories pinning claude-code-review.yml@v2, missing all 8 under owners nobody had added. Its names last changed 2026-06-18, so it had been wrong for as long as nobody looked. Run the unscoped search too and union the results, and treat any count as a floor: a push to a caller’s file can drop it out of the code-search index until it is reindexed, so even a long-standing caller can be missing from either form with nothing saying so.",
+    "objectID": "reference/check-news.html#inputs",
+    "href": "reference/check-news.html#inputs",
+    "title": "check-news.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nchangelog\nstring\n'NEWS.md'\nPath to the changelog file to check.\n\n\nno-changelog-label\nstring\n'no-changelog'\nPR label that skips this workflow’s own changelog check. Set to an empty string to disable this workflow’s escape hatch. The wrapped UCD-SERG/changelog-check-action separately, unconditionally recognizes its own hardcoded no changelog (space) label - not controlled by this input.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
-      "Versioning"
+      "Reference",
+      "check-news.yml"
     ]
   },
   {
-    "objectID": "versioning.html#advancing-a-major-tag",
-    "href": "versioning.html#advancing-a-major-tag",
-    "title": "Versioning",
-    "section": "Advancing a major tag",
-    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nA brand-new capability’s own PR merging to main does not make it usable at @v2 yet - if a consumer repo’s PR needs to reference a just-merged workflow at @v2 right away, check whether @v2 has actually been advanced past that merge first (step 3 above), or the consumer’s reference resolves to a workflow-not-found error rather than a stale-but-working one.\nTo prevent manual tag advancement from being forgotten when main moves ahead of the major tag, a tag drift check (check-tag-drift) runs as part of CI to surface when main has unreleased commits ahead of the active major tag (e.g. v2). It emits a GitHub Actions notice and job summary pointing to slide-major-tag.yml whenever tag advancement is pending.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
+    "objectID": "reference/check-news.html#permissions",
+    "href": "reference/check-news.html#permissions",
+    "title": "check-news.yml",
+    "section": "Permissions",
+    "text": "Permissions\nRead-only: contents: read plus issues: read and pull-requests: read (the live-label read behind the skip-label exemption; GitHub checks a PR’s label read against the pull-requests permission). A caller with no explicit permissions: block needs nothing; a caller that pins the calling job’s permissions must include issues: read and pull-requests: read alongside contents: read.",
     "crumbs": [
       "Overview",
-      "Versioning"
+      "Reference",
+      "check-news.yml"
     ]
   },
   {
-    "objectID": "versioning.html#pinning-third-party-actions",
-    "href": "versioning.html#pinning-third-party-actions",
-    "title": "Versioning",
-    "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml at @v2, and check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-heading-levels.yml, check-heading-titles.yml, check-self-reference.yml, check-div-ids.yml, check-page-length.yml, check-heading-siblings.yml, check-figure-placement.yml, check-code-messages.yml, check-multipart-exercises.yml, check-rubric-checklists.yml, check-python-qmd-chunks.yml, check-single-ask-parts.yml, check-split-solutions.yml, check-restated-results.yml, check-definition-expectation.yml, check-extracted-lemmas.yml, check-definition-equations.yml, check-hybrid-sentences.yml, check-format-output-files.yml, check-caller-permissions.yml, check-exm-figures.yml, check-contour-3d.yml, check-visualization-figures.yml, check-axis-titles.yml, check-tree-lists.yml, check-search-shortcut.yml, check-self-contained-captions.yml, check-def-commentary.yml, check-unexplained-contrasts.yml, check-unexplained-choices.yml, check-solution-citations.yml, check-exercise-before-result.yml, check-pr-concerns.yml, cancel-superseded.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-bare-yes-no.yml, check-code-fold.yml, check-serial-comma.yml, check-exercise-background.yml, check-exercise-question-paragraph.yml, check-key-equations-displayed.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-macro-expansions.yml, check-write-idiom.yml, check-avoided-words.yml, check-proof-statements.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-repo-hygiene.yml, check-quarto-website.yml, check-quarto-book.yml, check-quarto-manuscript.yml, check-quarto-links.yml, check-quarto-prose.yml, check-orphaned-images.yml, check-source-overlap.yml, check-r-package.yml, check-python-package.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml at @v3 - see the versioning note above), so they are not SHA-pinned.",
+    "objectID": "reference/check-news.html#example",
+    "href": "reference/check-news.html#example",
+    "title": "check-news.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/news.yaml in your repo.\nname: Check NEWS.md Changelog\n\non:\n  pull_request:\n    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]\n    branches:\n      - main\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-news.yml@v2\n    # with:\n    #   changelog: NEWS.md\n    #   no-changelog-label: no-changelog\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-news.yml for the full caller stub.",
     "crumbs": [
       "Overview",
-      "Versioning"
+      "Reference",
+      "check-news.yml"
     ]
   },
   {
-    "objectID": "versioning.html#reverse-dependencies",
-    "href": "versioning.html#reverse-dependencies",
-    "title": "Versioning",
-    "section": "Reverse dependencies",
-    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "permissions.html",
-    "href": "permissions.html",
-    "title": "Permissions",
+    "objectID": "reference/check-links.html",
+    "href": "reference/check-links.html",
+    "title": "check-links.yml",
     "section": "",
-    "text": "A called reusable workflow cannot hold more GITHUB_TOKEN permissions than the caller grants, and most repos default to a read-only token. So workflows that need to write must have the caller grant it on the calling job. The stubs in examples/ already include the right permissions: blocks; copy them as-is.",
+    "text": "Run a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when links break on main.",
     "crumbs": [
       "Overview",
-      "Permissions"
+      "Reference",
+      "check-links.yml"
     ]
   },
   {
-    "objectID": "permissions.html#per-workflow-grants",
-    "href": "permissions.html#per-workflow-grants",
-    "title": "Permissions",
-    "section": "Per-workflow grants",
-    "text": "Per-workflow grants\n\n\nannotation-gate, check-ai-tells, check-code-messages, check-bibliography-dois, check-code-similarity, check-dependency-graph, check-duplicate-roxygen, check-equation-renders, check-extra, check-formatting, check-informal-definitions, check-junk-files, check-literal-math-letters, check-wikipedia-further-reading, check-redundant-citations, check-self-credits, check-one-div-per-subfile, check-heading-levels, check-heading-titles, check-self-reference, check-page-length, check-heading-siblings, check-figure-placement, check-div-ids, check-multipart-exercises, check-rubric-checklists, check-python-qmd-chunks, check-single-ask-parts, check-split-solutions, check-restated-results, check-definition-expectation, check-extracted-lemmas, check-definition-equations, check-hybrid-sentences, check-format-output-files, check-def-title-synonyms, check-bare-yes-no, check-code-fold, check-serial-comma, check-exercise-background, check-exercise-question-paragraph, check-key-equations-displayed, check-definite-antecedents, check-pr-concerns, check-pr-size, check-caller-permissions, check-exm-figures, check-contour-3d, check-axis-titles, check-visualization-figures, check-tree-lists, check-search-shortcut, check-self-contained-captions, check-def-commentary, check-unexplained-contrasts, check-unexplained-choices, check-solution-citations, check-exercise-before-result, check-term-links, check-paired-file-change, check-local-macros, check-fform-paren, check-macro-expansions, check-write-idiom, check-avoided-words, check-proof-statements, check-math-definitions, check-merge-drops, check-note-sheet-rows, check-new-line-breaks, check-news, check-non-standard-chars, check-one-function-per-file, check-orphaned-images, check-phi, check-python-package, check-quarto-book, check-quarto-links, check-quarto-manuscript, check-quarto-prose, check-quarto-website, check-r-package, check-repo-hygiene, check-secrets, check-source-overlap, check-typed-output, check-typos, cursor-code-review, lint-changed-files, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, r-cmd-check, spellcheck, student-qmd, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues, so grant issues: write, contents: read.\ncancel-superseded cancels other runs of the pull request, so grant actions: write, pull-requests: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncheck-news reads the PR’s labels live for its skip-label exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs issues: read and pull-requests: read alongside contents: read.\nversion-check reads the PR’s labels live for its no version increment exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs pull-requests: read alongside contents: read. Not issues: read: that scope alone returned 403 on the same call (gha#724), since GitHub authorizes a label read on an issue object that is a pull request against the pull-requests permission.\ncleanup-pr-previews commits deletions to gh-pages and queries workflow runs to verify deployment before pruning merged PR previews, so grant contents: write, pull-requests: read, actions: read.\nbump-submodule, sync-shared-fragments, sync-upstream, update-quarto-extensions open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, checks: read (grant it; optional under @v2, which no longer requests it per gha#832, but required by the model job as of @v3), and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions / checks: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server). Grant checks: read regardless of which tag you pin, but note what it does and does not buy. actions: read covers workflow runs but not GET .../commits/{ref}/check-runs, so without checks: read the reviewer’s check-status reads fail with HTTP 403 and a clean diff can be reported as blocked (ucdavis/bcs#964). The model job briefly lost this scope on @v2: a called workflow cannot request a permission its caller lacks, so the run ends in startup_failure before any job begins, and @v2’s original grant of checks: read on the model job broke startup for 17 of the 18 repositories pinning this workflow at @v2 that had not yet added the caller-side grant above (gha#831). Dropping the scope from the model job un-broke those callers but reopened the 403 for everyone – which is what v3 fixes by reinstating it there, now that the caller-side grant above is established practice. Keep granting checks: read regardless: it is optional under the currently-tagged @v2 (which no longer requests it, per gha#832) but required by the model job once you adopt @v3. A Dependabot bump from @v2 to @v3 is where a missing grant shows up, and it shows up as an absence: the bumped run ends in startup_failure, so the PR carries no review check at all rather than a red one. Add checks: read to the caller job in that same PR before merging it (gha#1006; measured on Morrison-Lab/mds#78).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nai-code-review selects the first available AI reviewer and dispatches its review workflow, so grant contents: read, pull-requests: read, issues: read, actions: write, and pass the secrets of whichever agent review workflows are installed (see examples/ai-code-review.yml). issues: read is required since the delivery classifier’s comment scan landed (gha#638); a caller missing it fails at parse time with no API-visible diagnostic (gha#685).\ngemini pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the GEMINI_API_KEY secret.\ngemini-code-review posts the Gemini review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nantigravity-code-review posts the Antigravity review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nsmall-model-agent posts the small-model agent’s PR comment, so grant contents: read, pull-requests: write.\nclaude-manage-project files issues and updates the project board, so grant contents: read, issues: write, repository-projects: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret (required).\nopposition-research mines competitor feature demand and files opportunity issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\ncheck-dependency-updates audits dependencies and files update issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\naltdoc-multiversion-docs deploys to gh-pages, comments PR previews, and rewrites rendered links, so grant contents: write, pull-requests: write, and issues: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
+    "objectID": "reference/check-links.html#inputs",
+    "href": "reference/check-links.html#inputs",
+    "title": "check-links.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nlychee-config\nstring\n''\nPath in the caller repo to a lychee config; falls back to the bundled default.\n\n\nlychee-args\nstring\n''\nArguments and globs passed to lychee; a sensible default glob set is used when empty. Do not pass --format or --output.\n\n\nfail-if-empty\nboolean\nfalse\nFail the run when no links are found.\n\n\ncreate-issue-on-main\nboolean\ntrue\nFile an issue when links break on the main branch.\n\n\nskip-label\nstring\n'links checked by hand'\nPR label that skips the link check.\n\n\nfail-on-any-5xx\nboolean\nfalse\nFail on every 5xx server error, not only on one on a line the PR adds.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).\n\n\n\nA 404, a network error, or a timeout fails the check wherever the link is. The one exception is a network error saying the certificate is not trusted (“SSL certificate not trusted”): it is a fault of the host’s certificate chain or the runner’s trust store, so the link is unverified, not known dead. It is reported as a warning annotation naming the URL on every line, and does not fail the run (gha#1416). A 5xx server error is usually a host that is briefly down rather than a dead link, so it fails a pull request only when the link is on a line the PR adds. Any other 5xx is reported as a warning annotation and in the job summary, and does not fail the run (gha#1052). On any other event, such as a push, a scheduled run, workflow_dispatch, merge_group, or pull_request_target, the workflow passes no diff base, so every 5xx is a warning unless fail-on-any-5xx is set. The check-links composite that this workflow calls defaults its base-ref input to all, so a direct caller of the composite still fails on every 5xx unless it passes a ref or ''.",
     "crumbs": [
       "Overview",
-      "Permissions"
+      "Reference",
+      "check-links.yml"
     ]
   },
   {
-    "objectID": "permissions.html#optional-secrets",
-    "href": "permissions.html#optional-secrets",
-    "title": "Permissions",
-    "section": "Optional secrets",
-    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, to push to a protected branch, or – for bump-dev-version with its default auto-merge in a repo with required status checks – to let the bump PR’s checks run so it can merge (a GITHUB_TOKEN-authored PR’s pull_request checks never report, so the merge stays blocked; see its reference page). Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, r-cmd-check, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
+    "objectID": "reference/check-links.html#permissions",
+    "href": "reference/check-links.html#permissions",
+    "title": "check-links.yml",
+    "section": "Permissions",
+    "text": "Permissions\nGrant issues: write, pull-requests: read, and contents: read (it opens an issue on main failures).",
     "crumbs": [
       "Overview",
-      "Permissions"
+      "Reference",
+      "check-links.yml"
     ]
   },
   {
-    "objectID": "permissions.html#notes-for-private-consumers",
-    "href": "permissions.html#notes-for-private-consumers",
-    "title": "Permissions",
-    "section": "Notes for private consumers",
-    "text": "Notes for private consumers\nReusable workflows in this public repo are callable from public repos automatically. A private consumer must allow access to this repo under Settings -&gt; Actions -&gt; General -&gt; Access before it can call these workflows.",
+    "objectID": "reference/check-links.html#example",
+    "href": "reference/check-links.html#example",
+    "title": "check-links.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/check-links.yml in your repo.\n# NOTE: the calling job grants issues:write so the workflow can open an issue\n# when links break on main. Required because repos default to a read-only token.\nname: Check Links\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n    types: [opened, synchronize, reopened, labeled, unlabeled]\n  schedule:\n    # Run weekly on Mondays at 9:00 UTC to catch link rot\n    - cron: \"0 9 * * 1\"\n  workflow_dispatch:\n\njobs:\n  check:\n    permissions:\n      contents: read\n      issues: write\n      pull-requests: read\n    uses: Morrison-Lab/gha/.github/workflows/check-links.yml@v2\n    # with:\n    #   lychee-config: lychee.toml       # use a repo-local config instead of the bundled default\n    #   fail-if-empty: true              # fail when no links are found (default: false)\n    #   create-issue-on-main: true\n    #   skip-label: 'links checked by hand'\n    #   fail-on-any-5xx: true            # fail on every 5xx, not only on PR-added lines (@v3)\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-links.yml for the full caller stub.",
     "crumbs": [
       "Overview",
-      "Permissions"
+      "Reference",
+      "check-links.yml"
     ]
   },
   {
@@ -3926,7 +3875,7 @@
     "href": "workflows.html#versioning",
     "title": "Workflows",
     "section": "Versioning",
-    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-heading-levels.yml, check-heading-titles.yml, check-self-reference.yml, check-div-ids.yml, check-page-length.yml, check-heading-siblings.yml, check-figure-placement.yml, check-code-messages.yml, check-multipart-exercises.yml, check-rubric-checklists.yml, check-python-qmd-chunks.yml, check-single-ask-parts.yml, check-split-solutions.yml, check-restated-results.yml, check-definition-expectation.yml, check-extracted-lemmas.yml, check-definition-equations.yml, check-hybrid-sentences.yml, check-format-output-files.yml, check-caller-permissions.yml, check-exm-figures.yml, check-contour-3d.yml, check-visualization-figures.yml, check-axis-titles.yml, check-tree-lists.yml, check-search-shortcut.yml, check-self-contained-captions.yml, check-def-commentary.yml, check-unexplained-contrasts.yml, check-unexplained-choices.yml, check-solution-citations.yml, check-exercise-before-result.yml, check-pr-concerns.yml, cancel-superseded.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-bare-yes-no.yml, check-code-fold.yml, check-serial-comma.yml, check-exercise-background.yml, check-exercise-question-paragraph.yml, check-key-equations-displayed.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-macro-expansions.yml, check-write-idiom.yml, check-avoided-words.yml, check-proof-statements.yml, check-dependency-graph.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, and claude-code-review.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. bump-submodule.yml and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-heading-levels.yml, check-heading-titles.yml, check-self-reference.yml, check-div-ids.yml, check-page-length.yml, check-heading-siblings.yml, check-figure-placement.yml, check-code-messages.yml, check-multipart-exercises.yml, check-rubric-checklists.yml, check-python-qmd-chunks.yml, check-single-ask-parts.yml, check-split-solutions.yml, check-restated-results.yml, check-results-in-remarks.yml, check-definition-expectation.yml, check-extracted-lemmas.yml, check-definition-equations.yml, check-hybrid-sentences.yml, check-format-output-files.yml, check-caller-permissions.yml, check-exm-figures.yml, check-contour-3d.yml, check-visualization-figures.yml, check-axis-titles.yml, check-tree-lists.yml, check-search-shortcut.yml, check-self-contained-captions.yml, check-def-commentary.yml, check-unexplained-contrasts.yml, check-unexplained-choices.yml, check-solution-citations.yml, check-exercise-before-result.yml, check-pr-concerns.yml, cancel-superseded.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-bare-yes-no.yml, check-code-fold.yml, check-serial-comma.yml, check-exercise-background.yml, check-exercise-question-paragraph.yml, check-key-equations-displayed.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-macro-expansions.yml, check-write-idiom.yml, check-avoided-words.yml, check-proof-statements.yml, check-dependency-graph.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, and claude-code-review.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. bump-submodule.yml and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -3999,99 +3948,186 @@
     ]
   },
   {
-    "objectID": "reference/check-links.html",
-    "href": "reference/check-links.html",
-    "title": "check-links.yml",
+    "objectID": "permissions.html",
+    "href": "permissions.html",
+    "title": "Permissions",
     "section": "",
-    "text": "Run a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when links break on main.",
+    "text": "A called reusable workflow cannot hold more GITHUB_TOKEN permissions than the caller grants, and most repos default to a read-only token. So workflows that need to write must have the caller grant it on the calling job. The stubs in examples/ already include the right permissions: blocks; copy them as-is.",
     "crumbs": [
       "Overview",
-      "Reference",
-      "check-links.yml"
+      "Permissions"
     ]
   },
   {
-    "objectID": "reference/check-links.html#inputs",
-    "href": "reference/check-links.html#inputs",
-    "title": "check-links.yml",
-    "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nlychee-config\nstring\n''\nPath in the caller repo to a lychee config; falls back to the bundled default.\n\n\nlychee-args\nstring\n''\nArguments and globs passed to lychee; a sensible default glob set is used when empty. Do not pass --format or --output.\n\n\nfail-if-empty\nboolean\nfalse\nFail the run when no links are found.\n\n\ncreate-issue-on-main\nboolean\ntrue\nFile an issue when links break on the main branch.\n\n\nskip-label\nstring\n'links checked by hand'\nPR label that skips the link check.\n\n\nfail-on-any-5xx\nboolean\nfalse\nFail on every 5xx server error, not only on one on a line the PR adds.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).\n\n\n\nA 404, a network error, or a timeout fails the check wherever the link is. The one exception is a network error saying the certificate is not trusted (“SSL certificate not trusted”): it is a fault of the host’s certificate chain or the runner’s trust store, so the link is unverified, not known dead. It is reported as a warning annotation naming the URL on every line, and does not fail the run (gha#1416). A 5xx server error is usually a host that is briefly down rather than a dead link, so it fails a pull request only when the link is on a line the PR adds. Any other 5xx is reported as a warning annotation and in the job summary, and does not fail the run (gha#1052). On any other event, such as a push, a scheduled run, workflow_dispatch, merge_group, or pull_request_target, the workflow passes no diff base, so every 5xx is a warning unless fail-on-any-5xx is set. The check-links composite that this workflow calls defaults its base-ref input to all, so a direct caller of the composite still fails on every 5xx unless it passes a ref or ''.",
+    "objectID": "permissions.html#per-workflow-grants",
+    "href": "permissions.html#per-workflow-grants",
+    "title": "Permissions",
+    "section": "Per-workflow grants",
+    "text": "Per-workflow grants\n\n\nannotation-gate, check-ai-tells, check-code-messages, check-bibliography-dois, check-code-similarity, check-dependency-graph, check-duplicate-roxygen, check-equation-renders, check-extra, check-formatting, check-informal-definitions, check-junk-files, check-literal-math-letters, check-wikipedia-further-reading, check-redundant-citations, check-self-credits, check-one-div-per-subfile, check-heading-levels, check-heading-titles, check-self-reference, check-page-length, check-heading-siblings, check-figure-placement, check-div-ids, check-multipart-exercises, check-rubric-checklists, check-python-qmd-chunks, check-single-ask-parts, check-split-solutions, check-restated-results, check-results-in-remarks, check-definition-expectation, check-extracted-lemmas, check-definition-equations, check-hybrid-sentences, check-format-output-files, check-def-title-synonyms, check-bare-yes-no, check-code-fold, check-serial-comma, check-exercise-background, check-exercise-question-paragraph, check-key-equations-displayed, check-definite-antecedents, check-pr-concerns, check-pr-size, check-caller-permissions, check-exm-figures, check-contour-3d, check-axis-titles, check-visualization-figures, check-tree-lists, check-search-shortcut, check-self-contained-captions, check-def-commentary, check-unexplained-contrasts, check-unexplained-choices, check-solution-citations, check-exercise-before-result, check-term-links, check-paired-file-change, check-local-macros, check-fform-paren, check-macro-expansions, check-write-idiom, check-avoided-words, check-proof-statements, check-math-definitions, check-merge-drops, check-note-sheet-rows, check-new-line-breaks, check-news, check-non-standard-chars, check-one-function-per-file, check-orphaned-images, check-phi, check-python-package, check-quarto-book, check-quarto-links, check-quarto-manuscript, check-quarto-prose, check-quarto-website, check-r-package, check-repo-hygiene, check-secrets, check-source-overlap, check-typed-output, check-typos, cursor-code-review, lint-changed-files, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, r-cmd-check, spellcheck, student-qmd, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues, so grant issues: write, contents: read.\ncancel-superseded cancels other runs of the pull request, so grant actions: write, pull-requests: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncheck-news reads the PR’s labels live for its skip-label exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs issues: read and pull-requests: read alongside contents: read.\nversion-check reads the PR’s labels live for its no version increment exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs pull-requests: read alongside contents: read. Not issues: read: that scope alone returned 403 on the same call (gha#724), since GitHub authorizes a label read on an issue object that is a pull request against the pull-requests permission.\ncleanup-pr-previews commits deletions to gh-pages and queries workflow runs to verify deployment before pruning merged PR previews, so grant contents: write, pull-requests: read, actions: read.\nbump-submodule, sync-shared-fragments, sync-upstream, update-quarto-extensions open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, checks: read (grant it; optional under @v2, which no longer requests it per gha#832, but required by the model job as of @v3), and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions / checks: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server). Grant checks: read regardless of which tag you pin, but note what it does and does not buy. actions: read covers workflow runs but not GET .../commits/{ref}/check-runs, so without checks: read the reviewer’s check-status reads fail with HTTP 403 and a clean diff can be reported as blocked (ucdavis/bcs#964). The model job briefly lost this scope on @v2: a called workflow cannot request a permission its caller lacks, so the run ends in startup_failure before any job begins, and @v2’s original grant of checks: read on the model job broke startup for 17 of the 18 repositories pinning this workflow at @v2 that had not yet added the caller-side grant above (gha#831). Dropping the scope from the model job un-broke those callers but reopened the 403 for everyone – which is what v3 fixes by reinstating it there, now that the caller-side grant above is established practice. Keep granting checks: read regardless: it is optional under the currently-tagged @v2 (which no longer requests it, per gha#832) but required by the model job once you adopt @v3. A Dependabot bump from @v2 to @v3 is where a missing grant shows up, and it shows up as an absence: the bumped run ends in startup_failure, so the PR carries no review check at all rather than a red one. Add checks: read to the caller job in that same PR before merging it (gha#1006; measured on Morrison-Lab/mds#78).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nai-code-review selects the first available AI reviewer and dispatches its review workflow, so grant contents: read, pull-requests: read, issues: read, actions: write, and pass the secrets of whichever agent review workflows are installed (see examples/ai-code-review.yml). issues: read is required since the delivery classifier’s comment scan landed (gha#638); a caller missing it fails at parse time with no API-visible diagnostic (gha#685).\ngemini pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the GEMINI_API_KEY secret.\ngemini-code-review posts the Gemini review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nantigravity-code-review posts the Antigravity review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nsmall-model-agent posts the small-model agent’s PR comment, so grant contents: read, pull-requests: write.\nclaude-manage-project files issues and updates the project board, so grant contents: read, issues: write, repository-projects: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret (required).\nopposition-research mines competitor feature demand and files opportunity issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\ncheck-dependency-updates audits dependencies and files update issues, so grant contents: read, issues: write, and pass either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY.\naltdoc-multiversion-docs deploys to gh-pages, comments PR previews, and rewrites rendered links, so grant contents: write, pull-requests: write, and issues: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
     "crumbs": [
       "Overview",
-      "Reference",
-      "check-links.yml"
+      "Permissions"
     ]
   },
   {
-    "objectID": "reference/check-links.html#permissions",
-    "href": "reference/check-links.html#permissions",
-    "title": "check-links.yml",
-    "section": "Permissions",
-    "text": "Permissions\nGrant issues: write, pull-requests: read, and contents: read (it opens an issue on main failures).",
+    "objectID": "permissions.html#optional-secrets",
+    "href": "permissions.html#optional-secrets",
+    "title": "Permissions",
+    "section": "Optional secrets",
+    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, to push to a protected branch, or – for bump-dev-version with its default auto-merge in a repo with required status checks – to let the bump PR’s checks run so it can merge (a GITHUB_TOKEN-authored PR’s pull_request checks never report, so the merge stays blocked; see its reference page). Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, r-cmd-check, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
     "crumbs": [
       "Overview",
-      "Reference",
-      "check-links.yml"
+      "Permissions"
     ]
   },
   {
-    "objectID": "reference/check-links.html#example",
-    "href": "reference/check-links.html#example",
-    "title": "check-links.yml",
-    "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-links.yml in your repo.\n# NOTE: the calling job grants issues:write so the workflow can open an issue\n# when links break on main. Required because repos default to a read-only token.\nname: Check Links\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n    types: [opened, synchronize, reopened, labeled, unlabeled]\n  schedule:\n    # Run weekly on Mondays at 9:00 UTC to catch link rot\n    - cron: \"0 9 * * 1\"\n  workflow_dispatch:\n\njobs:\n  check:\n    permissions:\n      contents: read\n      issues: write\n      pull-requests: read\n    uses: Morrison-Lab/gha/.github/workflows/check-links.yml@v2\n    # with:\n    #   lychee-config: lychee.toml       # use a repo-local config instead of the bundled default\n    #   fail-if-empty: true              # fail when no links are found (default: false)\n    #   create-issue-on-main: true\n    #   skip-label: 'links checked by hand'\n    #   fail-on-any-5xx: true            # fail on every 5xx, not only on PR-added lines (@v3)\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-links.yml for the full caller stub.",
+    "objectID": "permissions.html#notes-for-private-consumers",
+    "href": "permissions.html#notes-for-private-consumers",
+    "title": "Permissions",
+    "section": "Notes for private consumers",
+    "text": "Notes for private consumers\nReusable workflows in this public repo are callable from public repos automatically. A private consumer must allow access to this repo under Settings -&gt; Actions -&gt; General -&gt; Access before it can call these workflows.",
     "crumbs": [
       "Overview",
-      "Reference",
-      "check-links.yml"
+      "Permissions"
     ]
   },
   {
-    "objectID": "reference/check-news.html",
-    "href": "reference/check-news.html",
-    "title": "check-news.yml",
+    "objectID": "versioning.html",
+    "href": "versioning.html",
+    "title": "Versioning",
     "section": "",
-    "text": "Enforce a changelog entry on each pull request (wraps UCD-SERG/changelog-check-action). Supports both direct changelog edits (NEWS.md/CHANGELOG.md) and fragment-based changelog files (news.d/ or changelog.d/ files named &lt;slug&gt;.&lt;category&gt;.md). R package repos can use the assemble-news composite action (uses: Morrison-Lab/gha/.github/actions/assemble-news@v2) at release time to collate news.d/ fragments into NEWS.md under section headings.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-heading-levels.yml, check-heading-titles.yml, check-self-reference.yml, check-div-ids.yml, check-page-length.yml, check-heading-siblings.yml, check-figure-placement.yml, check-code-messages.yml, check-multipart-exercises.yml, check-rubric-checklists.yml, check-python-qmd-chunks.yml, check-single-ask-parts.yml, check-split-solutions.yml, check-restated-results.yml, check-results-in-remarks.yml, check-definition-expectation.yml, check-extracted-lemmas.yml, check-definition-equations.yml, check-hybrid-sentences.yml, check-format-output-files.yml, check-caller-permissions.yml, check-exm-figures.yml, check-contour-3d.yml, check-visualization-figures.yml, check-axis-titles.yml, check-tree-lists.yml, check-search-shortcut.yml, check-self-contained-captions.yml, check-def-commentary.yml, check-unexplained-contrasts.yml, check-unexplained-choices.yml, check-solution-citations.yml, check-exercise-before-result.yml, check-pr-concerns.yml, cancel-superseded.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-bare-yes-no.yml, check-code-fold.yml, check-serial-comma.yml, check-exercise-background.yml, check-exercise-question-paragraph.yml, check-key-equations-displayed.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-macro-expansions.yml, check-write-idiom.yml, check-avoided-words.yml, check-proof-statements.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-orphaned-images.yml, check-python-package.yml, check-quarto-book.yml, check-quarto-links.yml, check-source-overlap.yml, check-quarto-manuscript.yml, check-quarto-prose.yml, check-quarto-website.yml, check-r-package.yml, check-repo-hygiene.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml only ever shipped at @v3 (or moved to @v3 for cleanup-pr-previews.yml, summary.yml, and update-snapshots.yml). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
     "crumbs": [
       "Overview",
-      "Reference",
-      "check-news.yml"
+      "Versioning"
     ]
   },
   {
-    "objectID": "reference/check-news.html#inputs",
-    "href": "reference/check-news.html#inputs",
-    "title": "check-news.yml",
+    "objectID": "versioning.html#widening-permissions-is-a-breaking-change",
+    "href": "versioning.html#widening-permissions-is-a-breaking-change",
+    "title": "Versioning",
+    "section": "Widening permissions is a breaking change",
+    "text": "Widening permissions is a breaking change\nA reusable workflow’s job-level permissions: block is part of its caller contract: a nested job cannot request more than the caller grants, so adding a permission - even a read - fails every caller written against the old contract at parse time (Invalid workflow file), with no API-visible diagnostic (a startup_failure run exposes no jobs, logs, or annotations; the error text appears only on the run page in the UI). gha#685 measured this when gha#638 added issues: read to ai-code-review.yml and the v2 slide delivered it: every consumer run concluded startup_failure until the caller-side grant landed. So treat a permissions: widening like any other breaking change: prefer a major-version bump; where a bump is disproportionate, find the callers and PR the caller-side grant before sliding the tag, and name the required caller edit in the change’s changelog fragment. Find them with the per-workflow code searches that REVDEPS.md documents, not by reading its consumer table: that table is hand-maintained, and so is the owner list beside it. Measured 2026-09-07, the owner list this change replaces returned 10 of the 18 repositories pinning claude-code-review.yml@v2, missing all 8 under owners nobody had added. Its names last changed 2026-06-18, so it had been wrong for as long as nobody looked. Run the unscoped search too and union the results, and treat any count as a floor: a push to a caller’s file can drop it out of the code-search index until it is reindexed, so even a long-standing caller can be missing from either form with nothing saying so.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#advancing-a-major-tag",
+    "href": "versioning.html#advancing-a-major-tag",
+    "title": "Versioning",
+    "section": "Advancing a major tag",
+    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nA brand-new capability’s own PR merging to main does not make it usable at @v2 yet - if a consumer repo’s PR needs to reference a just-merged workflow at @v2 right away, check whether @v2 has actually been advanced past that merge first (step 3 above), or the consumer’s reference resolves to a workflow-not-found error rather than a stale-but-working one.\nTo prevent manual tag advancement from being forgotten when main moves ahead of the major tag, a tag drift check (check-tag-drift) runs as part of CI to surface when main has unreleased commits ahead of the active major tag (e.g. v2). It emits a GitHub Actions notice and job summary pointing to slide-major-tag.yml whenever tag advancement is pending.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#pinning-third-party-actions",
+    "href": "versioning.html#pinning-third-party-actions",
+    "title": "Versioning",
+    "section": "Pinning third-party actions",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml at @v2, and check-dependency-updates.yml, check-duplicate-roxygen.yml, check-informal-definitions.yml, check-literal-math-letters.yml, check-wikipedia-further-reading.yml, check-redundant-citations.yml, check-self-credits.yml, check-one-div-per-subfile.yml, check-heading-levels.yml, check-heading-titles.yml, check-self-reference.yml, check-div-ids.yml, check-page-length.yml, check-heading-siblings.yml, check-figure-placement.yml, check-code-messages.yml, check-multipart-exercises.yml, check-rubric-checklists.yml, check-python-qmd-chunks.yml, check-single-ask-parts.yml, check-split-solutions.yml, check-restated-results.yml, check-results-in-remarks.yml, check-definition-expectation.yml, check-extracted-lemmas.yml, check-definition-equations.yml, check-hybrid-sentences.yml, check-format-output-files.yml, check-caller-permissions.yml, check-exm-figures.yml, check-contour-3d.yml, check-visualization-figures.yml, check-axis-titles.yml, check-tree-lists.yml, check-search-shortcut.yml, check-self-contained-captions.yml, check-def-commentary.yml, check-unexplained-contrasts.yml, check-unexplained-choices.yml, check-solution-citations.yml, check-exercise-before-result.yml, check-pr-concerns.yml, cancel-superseded.yml, check-pr-size.yml, check-def-title-synonyms.yml, check-bare-yes-no.yml, check-code-fold.yml, check-serial-comma.yml, check-exercise-background.yml, check-exercise-question-paragraph.yml, check-key-equations-displayed.yml, check-note-sheet-rows.yml, check-definite-antecedents.yml, check-term-links.yml, check-paired-file-change.yml, annotation-gate.yml, annotation-gate-run.yml, check-local-macros.yml, check-fform-paren.yml, check-macro-expansions.yml, check-write-idiom.yml, check-avoided-words.yml, check-proof-statements.yml, check-dependency-graph.yml, check-math-definitions.yml, check-merge-drops.yml, check-repo-hygiene.yml, check-quarto-website.yml, check-quarto-book.yml, check-quarto-manuscript.yml, check-quarto-links.yml, check-quarto-prose.yml, check-orphaned-images.yml, check-source-overlap.yml, check-r-package.yml, check-python-package.yml, check-typed-output.yml, cleanup-pr-previews.yml, opposition-research.yml, student-qmd.yml, summary.yml, update-quarto-extensions.yml, and update-snapshots.yml at @v3 - see the versioning note above), so they are not SHA-pinned.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#reverse-dependencies",
+    "href": "versioning.html#reverse-dependencies",
+    "title": "Versioning",
+    "section": "Reverse dependencies",
+    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "reference/check-rubric-checklists.html",
+    "href": "reference/check-rubric-checklists.html",
+    "title": "check-rubric-checklists.yml",
+    "section": "",
+    "text": "Diff-scoped check that warns when a pull request adds or revises a grading rubric that is not written as a checklist. The lab’s default (Ezra, 2026-10-26) is that most STEM grading rubrics are checklists: one item per observable criterion, so a grader marks each item as earned or not.\nA rubric is a line that opens with Grading, Rubric, Marking scheme or Mark scheme, bare, bolded, in a blockquote or as a heading, followed by (, : or the end of the line. Its block is that line plus the blank lines, list items and indented lines after it. The check reports a rubric whose block holds no task-list item (- [ ] ...).\nThe check does not count:\nA rubric the pull request does not touch is never reported. With no base to diff against, the check skips instead of scanning the whole tree. It warns by default, because the rule is a default for most rubrics, not an absolute one; fail: true makes it block.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-rubric-checklists.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-rubric-checklists.html#inputs",
+    "href": "reference/check-rubric-checklists.html#inputs",
+    "title": "check-rubric-checklists.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nchangelog\nstring\n'NEWS.md'\nPath to the changelog file to check.\n\n\nno-changelog-label\nstring\n'no-changelog'\nPR label that skips this workflow’s own changelog check. Set to an empty string to disable this workflow’s escape hatch. The wrapped UCD-SERG/changelog-check-action separately, unconditionally recognizes its own hardcoded no changelog (space) label - not controlled by this input.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd *.md\nGit pathspecs of tracked files to check (recursive)\n\n\npaths-ignore\nnone\nComma or newline separated globs to skip\n\n\nfail\nfalse\nFail on a finding; false warns\n\n\nwhole-tree\nfalse\nScan every rubric, to measure a corpus\n\n\npython-version\n3.x\nPython version",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-news.yml"
+      "check-rubric-checklists.yml"
     ]
   },
   {
-    "objectID": "reference/check-news.html#permissions",
-    "href": "reference/check-news.html#permissions",
-    "title": "check-news.yml",
+    "objectID": "reference/check-rubric-checklists.html#usage",
+    "href": "reference/check-rubric-checklists.html#usage",
+    "title": "check-rubric-checklists.yml",
+    "section": "Usage",
+    "text": "Usage\nCopy examples/check-rubric-checklists.yml to .github/workflows/check-rubric-checklists.yml.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-rubric-checklists.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-new-line-breaks.html",
+    "href": "reference/check-new-line-breaks.html",
+    "title": "check-new-line-breaks.yml",
+    "section": "",
+    "text": "Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines – including lines a PR merely relocates: an added line whose exact text was also deleted somewhere in the same diff is treated as moved rather than new and is not reported (gha#684). The pairing is a diff-wide multiset (N deletions of a text exempt at most N additions of it, in any file), not a per-file match – a deliberate tradeoff, since even a coincidental delete-here/add-there pairing leaves the corpus’s count of violating lines unchanged. Pairs well with lint-markdown.yml when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.\nTwo checks run, both on by default. The first is the SemBr spec’s rule 4, the normative MUST: break after a sentence. The second flags a long line carrying a mid-line semicolon, as a proxy for its rule 5, the SHOULD: break after an independent clause. It is a proxy rather than a test of the rule, since deciding whether a mark ends an independent clause needs a parser – so a semicolon-delimited list can be flagged too. Of the four marks rule 5 names, only the semicolon has a low enough unparsed hit rate to be useful: keying on all four flags 50.5% of already-conforming prose, against 0.7% for this check; see gha#336 for the measurements.\nThe gate’s default of 80 is the spec’s own rule 12, “a maximum line length of 80 characters is RECOMMENDED”. It measures a line’s visible length – rule 13 exempts a line that is long to accommodate a hyperlink or a code element – so a line that is long only because of a link target or a code span does not qualify. Set clause-breaks: false to check sentences only.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-new-line-breaks.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-new-line-breaks.html#inputs",
+    "href": "reference/check-new-line-breaks.html#inputs",
+    "title": "check-new-line-breaks.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when a violation is found; otherwise non-blocking.\n\n\nclause-breaks\nboolean\ntrue\nAlso flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set false to check sentences only.\n\n\nclause-min-length\nstring\n'80'\nMinimum line length before clause-breaks applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when clause-breaks is false.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-new-line-breaks.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-new-line-breaks.html#permissions",
+    "href": "reference/check-new-line-breaks.html#permissions",
+    "title": "check-new-line-breaks.yml",
     "section": "Permissions",
-    "text": "Permissions\nRead-only: contents: read plus issues: read and pull-requests: read (the live-label read behind the skip-label exemption; GitHub checks a PR’s label read against the pull-requests permission). A caller with no explicit permissions: block needs nothing; a caller that pins the calling job’s permissions must include issues: read and pull-requests: read alongside contents: read.",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-news.yml"
+      "check-new-line-breaks.yml"
     ]
   },
   {
-    "objectID": "reference/check-news.html#example",
-    "href": "reference/check-news.html#example",
-    "title": "check-news.yml",
+    "objectID": "reference/check-new-line-breaks.html#example",
+    "href": "reference/check-new-line-breaks.html#example",
+    "title": "check-new-line-breaks.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/news.yaml in your repo.\nname: Check NEWS.md Changelog\n\non:\n  pull_request:\n    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]\n    branches:\n      - main\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-news.yml@v2\n    # with:\n    #   changelog: NEWS.md\n    #   no-changelog-label: no-changelog\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-news.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/check-new-line-breaks.yml in your repo.\n# Diff-scoped check: flags newly-added Markdown lines packing more than one\n# sentence/clause onto one source line. Diff-scoped, so it only ever flags\n# what a PR itself adds -- pairs well with lint-markdown when MD013\n# (line-length) is disabled because the corpus already has long-line drift.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check new markdown lines for missing semantic breaks\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2\n    # with:\n    #   globs: '*.md'                          # pathspecs to check (recursive)\n    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths\n    #   fail: false                            # warn-only instead of blocking (defaults to true)\n    #   clause-breaks: false                   # sentences only; skip the\n    #                                          # semicolon clause check (on by default)\n    #   clause-min-length: 100                 # raise the clause check's length gate\n    #   runs-on: private-runner                # self-hosted runner label (private repositories only)\nSee examples/check-new-line-breaks.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-news.yml"
+      "check-new-line-breaks.yml"
     ]
   },
   {
@@ -6955,7 +6991,7 @@
     "href": "reference/check-avoided-words.html#rules",
     "title": "check-avoided-words.yml",
     "section": "Rules",
-    "text": "Rules\n\nPosition words. above or below used for a place in the document (“the table above”, “as shown below”); refer to the result by its label. Source: Google developer documentation style guide, word list, entries “above” and “below”. “A value above the threshold” is a comparison and passes.\nEffort words. just, easy, easily. Source: the same word list. just before, just after, just as, just like, just then, just enough, just in time, just once and just now pass.\nTime-relative words. currently, recently, nowadays, at present, at the moment, these days. Source: Google, “Timeless documentation”. The guide lists now and new too, but this check does not flag them, because “now we compute” and the term “new observation” are correct uses a regex cannot tell apart. recently is psw’s own extension.\nGeneric placeholders. A domain, codomain, range or sample space named by a bare capital letter (“domain A”) or by “some” (“some domain”). Name the specific set, such as “the range of X”. Source: psw’s “be as specific as feasible” (psw#427). A regex cannot know whether a specific object exists, so a finding only asks the author to check.\nBack-references to a setup. “The setup of ?@exr-x” or “the same setup as”. Name the data, variables or model the part reuses. Source: psw’s “Talk about the ideas, not the notes” (psw#442).\nTrailing parenthetical links. A crossref after a word, such as differentiable at $c$ (@def-differentiable), or a ([why](url)) link after a claim. Link the term itself, or make the whole claim the link text. (see @thm-x) passes, since no word can carry that link. Source: Ezra’s review of mds, 2026-11-02 (gha#1402). This rule fails the run whatever fail says.\nThe word “thing”. thing or things as a whole word; something, anything, and nothing pass. Name the object, quantity, step, or idea instead. Source: psw’s “Say which thing” (gha#1454). This rule also fails the run whatever fail says, and &lt;!-- check-avoided-words: allow --&gt; exempts a deliberate use. A consumer on the v3 tag sees its check turn red on any added line containing the word.\n\nThe other rules fail by default; set fail to false to make them warn.\nThe check does not flag a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, &lt;!-- check-avoided-words: allow --&gt;. It reports at most one finding per rule per line.",
+    "text": "Rules\n\nPosition words. above or below used for a place in the document (“the table above”, “as shown below”); refer to the result by its label. Source: Google developer documentation style guide, word list, entries “above” and “below”. “A value above the threshold” is a comparison and passes.\nEffort words. just, easy, easily. Source: the same word list. just before, just after, just as, just like, just then, just enough, just in time, just once and just now pass.\nTime-relative words. currently, recently, nowadays, at present, at the moment, these days. Source: Google, “Timeless documentation”. The guide lists now and new too, but this check does not flag them, because “now we compute” and the term “new observation” are correct uses a regex cannot tell apart. recently is psw’s own extension.\nGeneric placeholders. A domain, codomain, range or sample space named by a bare capital letter (“domain A”) or by “some” (“some domain”). Name the specific set, such as “the range of X”. Source: psw’s “be as specific as feasible” (psw#427). A regex cannot know whether a specific object exists, so a finding only asks the author to check.\nBack-references to a setup. “The setup of ?@exr-x” or “the same setup as”. Name the data, variables or model the part reuses. Source: psw’s “Talk about the ideas, not the notes” (psw#442).\nTrailing parenthetical links. A crossref after a word, such as differentiable at $c$ (@def-differentiable), or a ([why](url)) link after a claim. Link the term itself, or make the whole claim the link text. (see @thm-x) passes, since no word can carry that link. Source: Ezra’s review of mds, 2026-11-02 (gha#1402). This rule fails the run whatever fail says.\nThe word “thing”. thing or things as a whole word; something, anything, and nothing pass. Name the object, quantity, step, or idea instead. Source: psw’s “Say which thing” (gha#1454). This rule also fails the run whatever fail says, and &lt;!-- check-avoided-words: allow --&gt; exempts a deliberate use. A consumer on the v3 tag sees its check turn red on any added line containing the word.\nNormal for the Gaussian distribution. “Normal distribution”, “standard normal”, “multivariate normal”, “bivariate normal”, “normally distributed”, “normal random variable”, or “normal random vector”. Write “Gaussian” instead, since “normal” also means perpendicular and usual. “Normal equations”, normal vectors, and normal subgroups pass. Source: psw’s rule to write “Gaussian” (psw#510, gha#1570). This rule only warns, even with fail on, while it is new.\n\nThe other rules fail by default; set fail to false to make them warn.\nThe check does not flag a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, &lt;!-- check-avoided-words: allow --&gt;. It reports at most one finding per rule per line.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -6979,7 +7015,7 @@
     "href": "reference/check-avoided-words.html#inputs",
     "title": "check-avoided-words.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when an avoided word is found. Set false for warnings only; a trailing parenthetical link and the words “thing” and “things” always fail.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when an avoided word is found. Set false for warnings only; a trailing parenthetical link and the words “thing” and “things” always fail, and the Gaussian rule only warns.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
       "Reference",
