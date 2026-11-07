@@ -21,6 +21,8 @@ DEFAULT = [
     r"^No files were found with the provided path: .*claude-execution-output\.json",
     r"^execution_file output not set; falling back to",
     r"^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead",
+    r"^wait-runner-capacity: still short after \d+ minutes",
+    r"^prune-runner-workdir: measured .+ GB free, under \d+ GB",
 ]
 
 
@@ -202,6 +204,34 @@ def test_recovered_review_attempt_annotations_are_allowed():
 def test_recovered_review_patterns_are_anchored():
     msg = "Error: Action failed with error: Failed to install Claude Code after 3 attempts"
     assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+RUNNER_HOOK_NOTICES = (
+    "wait-runner-capacity: still short after 4 minutes (5 GB available, load 5.24 on 16 cores, 0 blocked on I/O, "
+    "3 running jobs with limit 3); running the job anyway.",
+    "prune-runner-workdir: measured /tmp/gha-work/r1 on /dev/sda2 mounted on /var: 3 GB free, under 10 GB, after "
+    "removing every other checkout; the next jobs will re-clone them. Work folder: 1 GB; this job's checkout: 1 GB.",
+)
+
+
+def test_runner_hook_notices_are_allowed_without_a_caller_pattern():
+    for msg in RUNNER_HOOK_NOTICES:
+        assert not g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_runner_hook_patterns_are_anchored_and_leave_other_text_gated():
+    for msg in (
+        "Error: wait-runner-capacity: still short after 4 minutes",
+        "wait-runner-capacity: --max-workers is not a number; ignoring the limit",
+        "see prune-runner-workdir: measured /x: 3 GB free, under 10 GB",
+    ):
+        assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_action_default_allow_lists_the_runner_hook_patterns():
+    text = open(os.path.join(os.path.dirname(__file__), "..", "action.yml")).read()
+    for pattern in DEFAULT[-2:]:
+        assert pattern in text
 
 
 def run(wid, event, number, status="completed", name=None, rid=None):
