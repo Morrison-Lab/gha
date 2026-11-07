@@ -1,0 +1,20 @@
+# Copy to .github/workflows/check-results-in-remarks.yml in your repo.
+# Diff-scoped, warn-only heuristic check: flags a remark div (#rem-) a PR edits that displays an equation and states a claim (equals, is at least, for all, holds). A result belongs in a #thm-, #lem-, #cor- or #prp- div. <!-- check-results-in-remarks: allow --> exempts one.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check results in remarks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-results-in-remarks.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # check every remark, not just those a PR touches
