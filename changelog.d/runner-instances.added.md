@@ -6,7 +6,7 @@
   so two hosts that share an NFS home do not share a runner;
   a runner already in `~/actions-runner-private` keeps working there.
   New runners check out into a local work folder,
-  `RUNNER_WORK_DIRECTORY` (default `/var/tmp/gha-work/<runner name>`),
+  `RUNNER_WORK_DIRECTORY` (default `/tmp/gha-work/<runner name>`),
   because on NFS a shallow clone took 10 s against 0.6 s locally.
   `INSTALL_REBOOT_CRON=1` adds one `@reboot` crontab line that reruns the script
   (replaced, not duplicated, on a rerun),
