@@ -33,5 +33,48 @@ status=$?
 out=$(WAIT_MAX_BLOCKED=abc PROC_STAT="$work/busy" bash "$script")
 case "$out" in *'::warning::'*) ;; *) fail "bad limit should warn: $out" ;; esac
 
+# Worker limit (gha#1546): held above the cap, free at or below it, off by default.
+out=$(WAIT_MAX_WORKERS=3 WAIT_WORKER_COUNT=3 bash "$script") || fail "workers at the cap should not fail"
+case "$out" in *holding*) fail "workers at the cap should not hold: $out" ;; esac
+
+out=$(WAIT_MAX_WORKERS=3 WAIT_WORKER_COUNT=8 WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+status=$?
+[ "$status" = 124 ] || fail "8 workers over a cap of 3 should hold the job (exit $status): $out"
+
+out=$(WAIT_WORKER_COUNT=8 bash "$script") || fail "worker limit off should not fail"
+case "$out" in *holding*) fail "worker limit off should not hold: $out" ;; esac
+
+# A burst of held jobs drains oldest first instead of stalling (gha#1549).
+# Held jobs are workers too, so two held jobs on a limit of 1 count two workers
+# and no running job; the older ticket starts and the newer one waits.
+export WAIT_HOLD_DIR="$work/holders"
+mkdir -p "$WAIT_HOLD_DIR"
+sleep 60 &
+other=$!
+disown "$other"
+trap 'kill "$other" 2> /dev/null; rm -rf "$work"' EXIT
+
+: > "$WAIT_HOLD_DIR/99999999999999999999-$other"
+out=$(WAIT_MAX_WORKERS=1 WAIT_WORKER_COUNT=2 bash "$script") || fail "the oldest held job should not fail"
+case "$out" in *holding*) fail "the oldest held job should start at once: $out" ;; esac
+
+rm -f "$WAIT_HOLD_DIR"/*
+: > "$WAIT_HOLD_DIR/00000000000000000000-$other"
+out=$(WAIT_MAX_WORKERS=1 WAIT_WORKER_COUNT=2 WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+status=$?
+[ "$status" = 124 ] || fail "a job behind an older held job should wait (exit $status): $out"
+case "$out" in *"limit of 1"*) ;; *) fail "the hold message should name the limit: $out" ;; esac
+
+# A ticket whose process has gone is pruned, so it never holds anyone back.
+rm -f "$WAIT_HOLD_DIR"/*
+: > "$WAIT_HOLD_DIR/00000000000000000000-999999999"
+out=$(WAIT_MAX_WORKERS=1 WAIT_WORKER_COUNT=1 bash "$script") || fail "a stale ticket should not fail"
+case "$out" in *holding*) fail "a stale ticket should not hold: $out" ;; esac
+[ ! -e "$WAIT_HOLD_DIR/00000000000000000000-999999999" ] || fail "a stale ticket should be pruned"
+
+# A finished job leaves no ticket behind.
+leftover=$(find "$WAIT_HOLD_DIR" -type f | wc -l)
+[ "$((leftover))" = 0 ] || fail "tickets should be removed on exit ($leftover left)"
+
 [ "$failures" = 0 ] && echo "all wait-runner-capacity tests passed"
 exit "$failures"

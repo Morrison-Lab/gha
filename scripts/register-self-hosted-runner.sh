@@ -33,7 +33,7 @@
 # Each is a separate runner, with its own directory, work folder and process.
 # Raising n later adds the new instances and leaves the existing ones alone.
 #
-# RUNNER_WORK_DIRECTORY (default /var/tmp/gha-work/<runner name>) is the local
+# RUNNER_WORK_DIRECTORY (default /tmp/gha-work/<runner name>) is the local
 # folder the runner checks out into; see the comment where it is set.
 #
 # The runner process is started with nohup and does not survive a reboot:
@@ -67,9 +67,12 @@ RUNNER_GROUP="${RUNNER_GROUP:-private-runners}"
 # The work folder (checkouts, renders) is on local disk, not in RUNNER_DIR:
 # RUNNER_DIR is on the NFS home, where a shallow clone took 10 s against 0.6 s
 # locally and creating 5000 files 8 s against 0.1 s (cf463-02, 2026-10-23).
-# /var/tmp, not /tmp, because /tmp is cleared at boot. It takes effect when a
-# runner is configured; an already-configured runner keeps its work folder.
-RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY:-/var/tmp/gha-work/$RUNNER_NAME}"
+# /tmp, not /var/tmp: /var is a small partition shared with the system on some
+# hosts (cf463-01: 28 GB, and one lds checkout is about 10 GB, gha#1564), while
+# /tmp has hundreds of GB. A checkout is cheap to recreate, so clearing at boot
+# costs one fresh clone. It takes effect when a runner is configured; an
+# already-configured runner keeps its work folder.
+RUNNER_WORK_DIRECTORY="${RUNNER_WORK_DIRECTORY:-/tmp/gha-work/$RUNNER_NAME}"
 
 # With INSTALL_REBOOT_CRON=1, put one @reboot line in the user's crontab that
 # runs this script again with the same ORG, RUNNER_INSTANCES, PATH and any
