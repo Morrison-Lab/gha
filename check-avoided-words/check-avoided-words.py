@@ -41,7 +41,7 @@ gha#1568):
   "(see @thm-x)" passes, since no word can carry that link.
 
 - **"score" for a linear predictor**: "score" or "scores" on a line that
-  also has `\eta`, "linear predictor", "log-odds", "logit", "sigmoid" or
+  also has `\eta`, "linear predictor", "log-odds", "logit", "sigmoid", or
   "logistic function". Write "log-odds" for a logistic regression and "linear
   predictor" for a GLM in general; the statistical score (the gradient of
   the log-likelihood) keeps its name, so "score function", "score equation",
