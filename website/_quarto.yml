@@ -102,6 +102,7 @@ website:
           - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
+          - reference/check-def-wiktionary.qmd
           - reference/check-bare-yes-no.qmd
           - reference/check-code-fold.qmd
           - reference/check-serial-comma.qmd
