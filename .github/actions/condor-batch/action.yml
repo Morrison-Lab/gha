@@ -26,6 +26,12 @@ inputs:
       with the job, so nothing is read from the head's home. Empty runs the
       steps directly there.
     default: ''
+  output:
+    description: >-
+      Path inside the checkout (such as _site) that the job returns. It comes
+      back through HTCondor file transfer and is unpacked at the same path in
+      the checkout. Empty returns nothing.
+    default: ''
 runs:
   using: composite
   steps:
@@ -36,6 +42,7 @@ runs:
         CONDOR_HEAD: ${{ inputs.head }}
         CONDOR_IMAGE: ${{ inputs.image }}
         CONDOR_IMAGE_FILE: ${{ inputs.image-file }}
+        CONDOR_OUTPUT: ${{ inputs.output }}
         WORKDIR: ${{ inputs.working-directory }}
         SCRIPT: ${{ github.action_path }}/../../../condor-batch/condor-batch.sh
       run: |

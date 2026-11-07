@@ -50,6 +50,13 @@
 # end (any step exit code), to keep the research directory inside its quota; it is
 # kept when the job did not end normally, so condor.log stays readable.
 #
+# CONDOR_OUTPUT (default none: a path inside the checkout, such as _site) names
+# one directory or file the job returns. The job packs it into output.tar.gz in
+# scratch and lists that one file in transfer_output_files, so HTCondor returns
+# it to the run directory; the runner then copies it back with rsync, unpacks it
+# at the same path in the checkout, and only then deletes the run directory.
+# A step that fails still returns whatever exists at the path.
+#
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
 # 70 = the cluster could not run the job normally (copy or ssh failed, or the
 # job was held, removed, aborted, or condor_wait failed); 64 = CONDOR_SSH_KEY
@@ -158,16 +165,22 @@ trap 'printf "%s\n" "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s 
 rc=0
 # A desktop head has no cluster home, so a cluster-home image path never applies.
 [ "$desktop" != 1 ] || CONDOR_IMAGE=
-ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-}" <<'REMOTE' || rc=$?
+ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-.}" "${CONDOR_OUTPUT:-.}" <<'REMOTE' || rc=$?
 set -euo pipefail
 # ssh drops an empty argument, so the optional image comes last and a bare dot
 # stands for "no transferred image".
-dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-}
+dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-.} out=${8:-.}
+[ "$image" != . ] || image=
 cd "$dir"
 dir=$PWD
 extra_input= extra_attr=
 if [ "$desktop" = 1 ]; then extra_attr='+CSCI_GrpDesktop = True'; fi
 if [ "$sent_image" != . ]; then image=$sent_image; extra_input=", $dir/$sent_image"; fi
+out_attr='transfer_output_files = ""' env_attr=
+if [ "$out" != . ]; then
+  out_attr='transfer_output_files = output.tar.gz'
+  env_attr="environment = \"CONDOR_OUTPUT=$out\""
+fi
 cat > .condor-run.sh <<'RUN'
 #!/usr/bin/env bash
 # Runs in the execute node's scratch directory (HTCondor's working directory):
@@ -188,6 +201,15 @@ while IFS= read -r cmd <&3; do
   i=$((i+1)); echo "::step $i: $cmd"
   "${wrap[@]}" bash -c "$cmd" < /dev/null || { rc=$?; echo "::step $i failed rc=$rc"; }
 done 3< "$scratch/.condor-steps"
+# Pack the returned path; an empty tarball when the path was never made, so
+# the transfer never holds the job.
+if [ -n "${CONDOR_OUTPUT:-}" ]; then
+  if [ -e "$scratch/work/$CONDOR_OUTPUT" ]; then
+    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "$CONDOR_OUTPUT"
+  else
+    tar -czf "$scratch/output.tar.gz" -T /dev/null
+  fi
+fi
 exit $rc
 RUN
 chmod +x .condor-run.sh
@@ -206,7 +228,8 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 transfer_input_files = $dir/checkout.tar.gz, $dir/.condor-steps$extra_input
 $extra_attr
-transfer_output_files = ""
+$out_attr
+$env_attr
 queue 1
 SUB
 condor_submit .condor.sub | tee .submit.out
@@ -218,13 +241,26 @@ condor_wait condor.log || wait_rc=$?
 rv=
 [ ! -f condor.log ] || rv=$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)
 if [ -n "$rv" ]; then
-  cd / && rm -rf "$dir" || echo "could not remove $dir" >&2
+  # A returned path is fetched by the runner, which then removes the directory.
+  [ "$out" != . ] || { cd / && rm -rf "$dir" || echo "could not remove $dir" >&2; }
   case "$rv" in 70|71|255) exit 1 ;; esac
   exit "$rv"
 fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
 exit 70
 REMOTE
+if [ -n "${CONDOR_OUTPUT:-}" ] && [ "$rc" -ne 70 ] && [ "$rc" -ne 255 ]; then
+  fetch_rc=0
+  rsync -a -e "ssh ${ssh_opts[*]}" "$head_host:$root/$run/output.tar.gz" "$pack_dir/output.tar.gz" || fetch_rc=$?
+  if [ "$fetch_rc" = 0 ]; then
+    tar -xzf "$pack_dir/output.tar.gz" -C "$checkout" || fetch_rc=$?
+  fi
+  printf '%s\n' "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" || true
+  if [ "$fetch_rc" != 0 ]; then
+    echo "could not bring $CONDOR_OUTPUT back from the cluster head" >&2
+    exit 70
+  fi
+fi
 trap - TERM INT HUP
 [ "$rc" -ne 255 ] || { echo "ssh to the cluster head failed" >&2; exit 70; }
 exit "$rc"
