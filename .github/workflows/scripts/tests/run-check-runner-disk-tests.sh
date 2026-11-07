@@ -32,6 +32,20 @@ mkdir -p "$work/w/repo/repo"
 (unset RUNNER_TOOL_CACHE; GITHUB_WORKSPACE="$work/w/repo/repo" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 bash "$script" > /dev/null)
 [ -f "$work/w/_tool/Python/$version/$arch.complete" ] || fail "the hook should seed Python into the work folder's _tool"
 
+# A symlinked folder is reported with the path it points to (gha#1585).
+mkdir -p "$work/real-target"
+ln -s "$work/real-target" "$work/link"
+out=$(CHECK_DISK_DIRS="$work/link" CHECK_DISK_MIN_FREE_GB=999999999 SWEEP_TMP_DIRS="$work" bash "$script")
+real=$(realpath "$work/real-target")
+case "$out" in *"$work/link (a link to $real) has"*) ;; *) fail "a symlinked folder should name its target: $out" ;; esac
+
+# The prune hook's low-disk warning names the target of a symlinked work folder.
+prune="$repo_root/scripts/prune-runner-workdir.sh"
+mkdir -p "$work/real-work/repo/repo"
+ln -s "$work/real-work" "$work/linked-work"
+out=$(GITHUB_WORKSPACE="$work/linked-work/repo/repo" PRUNE_MIN_FREE_GB=999999999 SWEEP_TMP_DIRS="$work" bash "$prune")
+case "$out" in *"measured $work/linked-work (a link to $(realpath "$work/real-work")) on"*) ;; *) fail "prune warning should name the link target: $out" ;; esac
+
 CHECK_DISK_MIN_FREE_GB=abc bash "$script" | grep -q '::warning::' || fail "bad threshold should warn"
 
 [ "$failures" = 0 ] && echo "all check-runner-disk tests passed"

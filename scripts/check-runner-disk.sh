@@ -47,7 +47,11 @@ for d in "${dirs[@]}"; do
   fi
   if [ "$free" -lt "$min_free_gb" ]; then
     mount=$(df -Pk "$d" | awk 'NR == 2 { print $1 " mounted on " $6 }')
-    echo "::error::check-runner-disk: $d has $free GB free on $mount, under the $min_free_gb GB needed. Largest folders:"
+    # df follows a symlinked folder, so name where the link points (gha#1585).
+    real=$(realpath "$d" 2> /dev/null)
+    shown="$d"
+    if [ -n "$real" ] && [ "$real" != "$d" ]; then shown="$d (a link to $real)"; fi
+    echo "::error::check-runner-disk: $shown has $free GB free on $mount, under the $min_free_gb GB needed. Largest folders:"
     du -xk --max-depth=1 "$d" 2> /dev/null | sort -rn | head -n 6 |
       awk '{ printf "  %.1f GB  %s\n", $1 / 1048576, $2 }'
     failed=1
