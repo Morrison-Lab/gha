@@ -1,0 +1,46 @@
+---
+title: "check-definition-expectation.yml"
+---
+
+Diff-scoped, warn-only heuristic check for the lab's rule
+(Ezra, 2026-11-07; psw#513)
+to write a definition with an expectation operator where one fits:
+`\E{\log \frac{1}{p(X)}}`, not `\sum_x p(x) \log \frac{1}{p(x)}`.
+
+The check flags a `#def-` div when a display equation
+
+- contains a sum or an integral whose summand is a probability mass or density
+  (`p(x)`, `p_X(x)`, `f(x)`, `f_X(x)` or `\Pr(...)`) times another factor, and
+- the div holds no expectation operator
+  (`\E`, `\Exp`, `\Expect`, `\mathbb{E}`, `\mathrm{E}` or `\operatorname{E}`).
+
+It skips
+
+- a display with a `\frac{1}{n}` factor, or a sum over a data index from 1 to `n`,
+  which is a sample average;
+- a lone mass or density, such as `\sum_x p(x) = 1`, which weights nothing; and
+- a div titled "Expectation" or "Expected value", which defines the operator itself.
+
+A definition that holds `<!-- check-definition-expectation: allow -->` is exempt.
+
+A definition is checked when the pull request adds a line inside it.
+With no base to diff against,
+the check skips instead of scanning the whole tree.
+It only warns by default,
+because whether an expectation expresses the quantity needs judgement.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Check every definition, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
+
+## Usage
+
+Copy `examples/check-definition-expectation.yml` to
+`.github/workflows/check-definition-expectation.yml`.
