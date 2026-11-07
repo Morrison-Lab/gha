@@ -1,0 +1,5 @@
+- **The runner job-started hook reports a busy or full host as a notice, not a warning** (#1584).
+  `scripts/wait-runner-capacity.sh` ("still short after N minutes") and `scripts/prune-runner-workdir.sh` ("under N GB free") now emit `::notice::`.
+  Both describe the host, not the code under test,
+  so a caller's annotation gate no longer fails a passing job and needs no allow-pattern for them.
+  Setup mistakes, such as a non-numeric limit, remain warnings.

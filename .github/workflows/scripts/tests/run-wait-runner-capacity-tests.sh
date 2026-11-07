@@ -98,5 +98,15 @@ fi
 default=$(grep -o 'WAIT_MAX_MINUTES:-[0-9]*' "$script" | head -n 1 | cut -d- -f2)
 [ -n "$default" ] && [ "$default" -lt 5 ] || fail "the default WAIT_MAX_MINUTES (${default:-unset}) should be under 5"
 
+# A busy or full host is not a defect of the code under test (gha#1584): the
+# hold-expired and low-disk messages are notices, so no consumer's annotation
+# gate has to allow-list them. Setup mistakes stay warnings.
+grep -q '"::notice::wait-runner-capacity: still short' "$script" || fail "the hold-expired message should be a notice"
+prune="$repo_root/scripts/prune-runner-workdir.sh"
+grep -q '"::notice::prune-runner-workdir: measured' "$prune" || fail "the low-disk message should be a notice"
+if grep -q '::warning::\(wait-runner-capacity: still short\|prune-runner-workdir: measured\)' "$script" "$prune"; then
+  fail "capacity and disk messages should not be warnings"
+fi
+
 [ "$failures" = 0 ] && echo "all wait-runner-capacity tests passed"
 exit "$failures"
