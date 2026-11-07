@@ -58,7 +58,7 @@ From: ubuntu:24.04
     # LaTeX packages the lds PDF renders need; Quarto cannot install them at render time because /opt/TinyTeX is read-only.
     /opt/TinyTeX/bin/x86_64-linux/tlmgr option repository https://tlnet.yihui.org
     /opt/TinyTeX/bin/x86_64-linux/tlmgr update --self
-    /opt/TinyTeX/bin/x86_64-linux/tlmgr install caption ctablestack environ fontawesome5 fp luacolor luatexbase pdfcol pgf tcolorbox tikzfill trimspaces
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr install caption ctablestack environ fontawesome5 fp luacolor luatexbase needspace parskip pdfcol pgf tcolorbox tikzfill titling trimspaces
     chmod -R a+rX /opt/TinyTeX
 
 %test
