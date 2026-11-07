@@ -4123,9 +4123,6 @@ jobs:
   # check-extracted-lemmas is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-extracted-lemmas@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
-  # check-extracted-lemmas is brand new, so its reusable workflow's internal
-  # `uses: Morrison-Lab/gha/check-extracted-lemmas@v3` does not resolve until
-  # the tag slides past the merge. Exercise the local composite directly.
   extracted-lemmas:
     runs-on: ubuntu-latest
     timeout-minutes: 20
