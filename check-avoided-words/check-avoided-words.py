@@ -110,8 +110,10 @@ BACKREF_RE = re.compile(
 )
 THING_RE = re.compile(r"(?i)\bthings?\b")
 VAGUE_RE = re.compile(
-    r"(?i)\b(?:(?:some|many|several)\s+(?:\w+\s+)?(?:authors|people|researchers|"
-    r"experts|statisticians|scientists|scholars|textbooks|sources)\b"
+    r"(?i)\b(?:(?:some|many|several)\s+(?:\w+\s+)?(?:authors|researchers|"
+    r"experts|statisticians|scientists|scholars|textbooks)\b"
+    r"|(?<!how\s)(?:some|many|several)\s+people\s+(?:call|say|think|argue|"
+    r"believe|claim|prefer|define|write|refer|describe|consider|use|find)\b"
     r"|studies\s+(?:have\s+)?(?:show|shown|suggest|found)\b"
     r"|research\s+(?:shows|suggests)\b"
     r"|it\s+is\s+well[\s-]known\b"

@@ -63,6 +63,7 @@ def found(text: str):
     ("The bound ([proof](page.qmd#thm-b)) holds.", "parenref",
      "([proof](page.qmd#thm-b))"),
     ("Some authors call it improbability.", "vague", "some authors"),
+    ("Some people call it improbability.", "vague", "some people call"),
     ("Many statistical researchers disagree.", "vague", "many statistical researchers"),
     ("Studies have shown that it helps.", "vague", "studies have shown"),
     ("It is well known that the mean is sensitive.", "vague", "it is well known"),
@@ -83,6 +84,10 @@ def test_thing_passes_compounds_code_and_allow_comment():
 def test_vague_passes_named_sources_code_and_allow_comment():
     assert found("@james2021islr2 [p. 18] call it the irreducible error.") == {}
     assert found("Use `some authors` in code.") == {}
+    assert found("How many people tested positive?") == {}
+    assert found("There are many sources of variation.") == {}
+    assert found("Several infected people were enrolled.") == {}
+    assert found("Several open sources agree with the data.") == {}
     assert found("Some <!-- check-avoided-words: allow --> authors here.") == {}
 
 
