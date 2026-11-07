@@ -48,12 +48,12 @@ dry() {
 
 host=$(hostname -s)
 out=$(dry)
-check "one instance" "$out" "runner name=private-$host dir=$work/home/actions-runner-private-$host work=/var/tmp/gha-work/private-$host"
+check "one instance" "$out" "runner name=private-$host dir=$work/home/actions-runner-private-$host work=/tmp/gha-work/private-$host"
 
 out=$(dry RUNNER_INSTANCES=3)
 check "three instances: count" "$(wc -l <<< "$out" | tr -d ' ')" "3"
-check "three instances: second" "$(sed -n 2p <<< "$out")" "runner name=private-$host-2 dir=$work/home/actions-runner-private-$host-2 work=/var/tmp/gha-work/private-$host-2"
-check "three instances: third" "$(sed -n 3p <<< "$out")" "runner name=private-$host-3 dir=$work/home/actions-runner-private-$host-3 work=/var/tmp/gha-work/private-$host-3"
+check "three instances: second" "$(sed -n 2p <<< "$out")" "runner name=private-$host-2 dir=$work/home/actions-runner-private-$host-2 work=/tmp/gha-work/private-$host-2"
+check "three instances: third" "$(sed -n 3p <<< "$out")" "runner name=private-$host-3 dir=$work/home/actions-runner-private-$host-3 work=/tmp/gha-work/private-$host-3"
 
 out=$(dry RUNNER_INSTANCES=2 RUNNER_WORK_DIRECTORY=/data/work)
 check "explicit work folder: instance 1" "$(sed -n 1p <<< "$out")" "runner name=private-$host dir=$work/home/actions-runner-private-$host work=/data/work"
