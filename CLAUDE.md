@@ -196,6 +196,32 @@ Guidance for Claude Code when working in this repository.
 - **Don't:** read this as covering a release or version bump, another
   repository, or a slide over a commit whose checks you have not read.
 
+## Standing checkout fast-forward policy
+
+- **Fast-forwarding the runners' gha checkout is a standing grant**: AI agent
+  sessions may run `git pull --ff-only origin main` in
+  `~/Documents/GitHub/gha` on every self-hosted runner host (over ssh when the
+  host is not the one the session runs on), without asking first
+  (user directive, Ezra, 2026-11-07: "record permanent permission to fast
+  forward gha", gha#1588).
+  The runners read their hook scripts (`check-runner-disk.sh`,
+  `wait-runner-capacity.sh`, `prune-runner-workdir.sh`) from that checkout, so a
+  merged hook fix only takes effect once the checkout is fast-forwarded.
+  Like the grants above, it removes the *asking* and not the judgment.
+
+- **Limits.**
+  Fast-forward only: stop and report, instead of resolving it, when a
+  checkout has local commits, a diverged branch, or changes to tracked files.
+  Untracked leftovers (an `.nfs...` lock file, for example) are left alone.
+  Report the before and after SHA for each host.
+
+- **Don't:** read this as covering the `v3` tag slide (that has its own policy
+  above), merging a pull request (a merge still needs the user's own `mwc` or
+  merge words), a pull in any other repository, or anything but a fast-forward.
+  The auto-mode classifier may still ask for the user's typed words the first
+  time in a session; this grant records the user's standing intent, so cite
+  it, and do not retry past a denial.
+
 ## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
@@ -227,7 +253,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 

@@ -3984,6 +3984,74 @@ jobs:
           git rm -q -r --cached --ignore-unmatch _ci-restated-results || true
           rm -rf _ci-restated-results
 
+  # check-results-in-remarks is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-results-in-remarks@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  results-in-remarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-results-in-remarks unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-results-in-remarks/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-results-in-remarks
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no remarks, so stage a remark that states a result and assert
+      # that the check warns by default and blocks with fail on.
+      - name: Stage a remark that states a result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-results-in-remarks
+          printf '%s\n' '::: {#rem-a}' 'The value equals one.' '$$' 'x = 1' '$$' ':::' > _ci-results-in-remarks/page.qmd
+          git add -f _ci-results-in-remarks/page.qmd
+      - name: Check the staged remark, expecting a warning only
+        uses: ./check-results-in-remarks
+        with:
+          whole-tree: 'true'
+      - name: Check again with the default, expecting a failure
+        id: results-in-remarks-expected-failure
+        continue-on-error: true
+        uses: ./check-results-in-remarks
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.results-in-remarks-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-results-in-remarks with fail on to fail on a remark that states a result, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-results-in-remarks
+        with:
+          base-ref: ''
+      - name: Remove the staged remark
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-results-in-remarks || true
+          rm -rf _ci-results-in-remarks
+
   # check-extracted-lemmas is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-extracted-lemmas@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.

@@ -48,5 +48,20 @@ case "$out" in *"measured $work/linked-work (a link to $(realpath "$work/real-wo
 
 CHECK_DISK_MIN_FREE_GB=abc bash "$script" | grep -q '::warning::' || fail "bad threshold should warn"
 
+# The hook runs from a private copy, so deleting the checkout's file mid-run
+# cannot reach it (gha#1589), and it removes its copy when done.
+copy=$(mktemp -d)
+cp "$repo_root"/scripts/*.sh "$copy"
+printf '%s\n' '#!/usr/bin/env bash' 'sleep 2' > "$copy/wait-runner-capacity.sh"
+tmp_before=$(find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'tmp.*' | wc -l)
+(CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 bash "$copy/check-runner-disk.sh" > /dev/null) &
+hook_pid=$!
+sleep 1
+rm "$copy/check-runner-disk.sh" "$copy/wait-runner-capacity.sh"
+wait "$hook_pid" || fail "deleting the hook's file mid-run should not fail it"
+tmp_after=$(find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'tmp.*' | wc -l)
+[ "$tmp_after" -le "$tmp_before" ] || fail "the private copy should be removed when the hook ends"
+rm -rf "$copy"
+
 [ "$failures" = 0 ] && echo "all check-runner-disk tests passed"
 exit "$failures"

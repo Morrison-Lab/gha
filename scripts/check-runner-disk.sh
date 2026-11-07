@@ -18,6 +18,21 @@
 # needs on Debian 13 (gha#1205). A seeding failure warns and never fails the job.
 set -uo pipefail
 
+# Run from a private copy (gha#1589). The runner executes this hook from the
+# shared checkout, which sits on NFS and is fast-forwarded while jobs run; bash
+# reads a script as it runs, so a replaced file fails mid-read with "Stale file
+# handle". Copy this script and the ones it calls to a temp folder and run the
+# copy. The if block is one compound command, so bash reads all of it before
+# the exec; if copying fails, the hook runs in place as before.
+if [ -z "${GHA_HOOK_STAGED:-}" ]; then
+  src=$(dirname "${BASH_SOURCE[0]}")
+  stage=$(mktemp -d) && cp "$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,seed-runner-python-toolcache,wait-runner-capacity}.sh "$stage" &&
+    GHA_HOOK_STAGED=$stage exec bash "$stage/$(basename "${BASH_SOURCE[0]}")" "$@"
+  echo "::warning::$(basename "${BASH_SOURCE[0]}"): could not stage a private copy; running in place."
+else
+  trap 'rm -rf "$GHA_HOOK_STAGED"' EXIT
+fi
+
 # Seed the tool cache (RUNNER_TOOL_CACHE, else <work folder>/_tool from the checkout path).
 tool_cache="${RUNNER_TOOL_CACHE:-${GITHUB_WORKSPACE:+$(dirname "$(dirname "$GITHUB_WORKSPACE")")/_tool}}"
 if [ -n "$tool_cache" ]; then
