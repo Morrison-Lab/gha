@@ -1177,7 +1177,7 @@ cookieconsent.run({
 
 
 <p>Fails when a Quarto page lacks an <code>output-file</code> for a format that the repository’s publish renders with <code>quarto render --to FORMAT</code>. <code>--to FORMAT</code> renders every page, including one whose <code>format:</code> omits FORMAT, and names the output after the page. A page with no <code>revealjs</code> entry therefore writes its slide deck to <code>&lt;stem&gt;.html</code>, replacing the notes page. This happened to <code>linear-algebra.html</code>, <code>algebra.html</code> and <code>calculus.html</code> in <a href="https://github.com/Morrison-Lab/mds/pull/508">mds</a>.</p>
-<p>For each page with front matter, and each format in <code>formats</code>, the page must list the format under <code>format:</code> and give it an <code>output-file</code>. Subfiles (names starting with <code>_</code>) and <code>_extensions/**</code> are skipped. It fails by default; <code>fail: false</code> gives warning annotations only.</p>
+<p>For each page with front matter, and each format in <code>formats</code>, the page must list the format under <code>format:</code> and give it an <code>output-file</code>. Subfiles (names starting with <code>_</code>) and <code>_extensions/**</code> are skipped. A page whose front matter sets <code>redirect-stub: true</code> is skipped too: it is an html-only redirect stub, and the per-format publish does not render it in other formats. It fails by default; <code>fail: false</code> gives warning annotations only.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
