@@ -64,6 +64,11 @@ def found(text: str):
      "([proof](page.qmd#thm-b))"),
     ("Name two things that this argument omits.", "thing", "things"),
     ("The main thing to check is the residuals.", "thing", "thing"),
+    ("At the score $\\eta$, the slope is 0.25.", "linpred", "score"),
+    ("The sigmoid turns any score into a probability.", "linpred", "score"),
+    ("A log-odds of 0 is a score of zero.", "linpred", "score"),
+    ("The scores are the linear predictor of each class.", "linpred",
+     "scores"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
@@ -263,3 +268,23 @@ def test_action_passes_every_input_to_the_script_under_the_caw_prefix():
     action = (_DIR / "action.yml").read_text()
     for var in ("BASE_REF", "WHOLE_TREE", "GLOBS", "PATHS_IGNORE", "FAIL"):
         assert f"CAW_{var}:" in action
+
+
+@pytest.mark.parametrize("text", [
+    "The score function of the logistic regression is a gradient.",
+    "The score equations set the sigmoid residuals to zero.",
+    "A score test of the log-odds ratio.",
+    "The Brier score of the logit model is 0.2.",
+    "The z-score of a logit is large.",
+    "The F1 score at the sigmoid threshold.",
+    "The [score](https://x.org/intro-MLEs.html#def-score) of the logit model.",
+    "The score of the logit model is #def-score here.",
+    "The log-odds are the linear predictor.",
+    "The score of a held-out set measures the model.",
+])
+def test_linpred_score_passes_the_statistical_score(text):
+    assert found(text) == {}
+
+
+def test_linpred_score_takes_the_allow_comment():
+    assert found("The sigmoid of a score <!-- check-avoided-words: allow -->") == {}
