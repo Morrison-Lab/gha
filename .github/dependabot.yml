@@ -67,6 +67,7 @@ updates:
       - "/check-multipart-exercises"
       - "/check-split-solutions"
       - "/check-restated-results"
+      - "/check-results-in-remarks"
       - "/check-definition-expectation"
       - "/check-extracted-lemmas"
       - "/check-definition-equations"
