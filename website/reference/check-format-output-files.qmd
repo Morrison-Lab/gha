@@ -14,6 +14,9 @@ This happened to `linear-algebra.html`, `algebra.html` and `calculus.html` in
 For each page with front matter, and each format in `formats`,
 the page must list the format under `format:` and give it an `output-file`.
 Subfiles (names starting with `_`) and `_extensions/**` are skipped.
+A page whose front matter sets `redirect-stub: true` is skipped too:
+it is an html-only redirect stub,
+and the per-format publish does not render it in other formats.
 It fails by default; `fail: false` gives warning annotations only.
 
 ## Inputs

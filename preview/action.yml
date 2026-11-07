@@ -536,16 +536,38 @@ runs:
           quarto-incremental-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.head.sha }}-
           quarto-incremental-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
 
+    # A PR's first incremental run finds no `quarto-incremental-` cache: only
+    # preview runs save one, GitHub scopes a PR's caches to that PR, and the
+    # publish on the default branch saves only `quarto-freezer-` (the
+    # `_freeze` directory). The PR then executed every page from scratch,
+    # 30 minutes for lds (gha#1572). Fall back to the publish's freeze, as a
+    # non-incremental preview does; the render stays a full one, but the
+    # pruner below drops only the changed pages' frozen results.
+    - name: Restore Quarto freeze (no incremental cache)
+      id: restore-freeze-fallback
+      if: >-
+        github.event.action != 'closed' && inputs.incremental == 'true' &&
+        steps.restore-incremental.outputs.cache-matched-key == '' &&
+        !contains(github.event.pull_request.labels.*.name, 'clear freezer')
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ inputs.path }}/_freeze
+        key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+        restore-keys: |
+          quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.base.ref }}-
+          quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
+          quarto-freezer-${{ runner.os }}-
+
     # `freeze: auto` notices a change to a page's own file only, so a page
     # whose included subfile or data file changed would keep its stale
     # results. Drop those pages' frozen results, so the cache can be kept for
     # the rest instead of being discarded wholesale with `clear freezer`.
     - name: Prune frozen results of changed pages
-      if: steps.restore-freeze.outputs.cache-matched-key != '' || steps.restore-incremental.outputs.cache-matched-key != ''
+      if: steps.restore-freeze.outputs.cache-matched-key != '' || steps.restore-incremental.outputs.cache-matched-key != '' || steps.restore-freeze-fallback.outputs.cache-matched-key != ''
       shell: bash
       env:
         PROJECT_DIR: ${{ inputs.path }}
-        MATCHED_KEY: ${{ steps.restore-freeze.outputs.cache-matched-key || steps.restore-incremental.outputs.cache-matched-key }}
+        MATCHED_KEY: ${{ steps.restore-freeze.outputs.cache-matched-key || steps.restore-incremental.outputs.cache-matched-key || steps.restore-freeze-fallback.outputs.cache-matched-key }}
         SCRIPT: ${{ github.action_path }}/prune-stale-freeze.py
       run: python3 "$SCRIPT"
 
@@ -644,6 +666,7 @@ runs:
         SETUP_JULIA: ${{ inputs.setup-julia }}
         INCREMENTAL_MODE: ${{ steps.plan-incremental.outputs.mode }}
         INCREMENTAL_PAGES: ${{ inputs.path }}/_incremental_pages.txt
+        REDIRECT_STUBS_SCRIPT: ${{ github.action_path }}/../quarto-publish/redirect-stubs.py
       run: |
         set -euo pipefail
         # See "Set up JuliaCall and its Julia dependencies" for why.
@@ -676,6 +699,28 @@ runs:
         LOG_FILE="_quarto_preview_render.log"
         rm -f "$LOG_FILE"
 
+        # A page with `redirect-stub: true` builds html only (gha#1544): a
+        # profile that leaves such pages out is used for every other format.
+        STUB_PROFILE=gha-skip-stubs
+        STUB_PROFILE_FILE="$PROJECT_PATH/_quarto-$STUB_PROFILE.yml"
+        rm -f "$STUB_PROFILE_FILE"
+        trap 'rm -f "$STUB_PROFILE_FILE"' EXIT
+        STUB_COUNT=$(python3 "$REDIRECT_STUBS_SCRIPT" "$PROJECT_PATH" "$STUB_PROFILE" "${RENDER_PROFILE:-}")
+        set_format_profile() {
+          FMT_PROFILE_ARG=("${PROFILE_ARG[@]}")
+          if [ "$1" != "html" ] && [ "$STUB_COUNT" != "0" ]; then
+            echo "Skipping $STUB_COUNT redirect stub(s) in the $1 render."
+            FMT_PROFILE_ARG=(--profile "${RENDER_PROFILE:+$RENDER_PROFILE,}$STUB_PROFILE")
+          fi
+        }
+
+        # A render of one page ignores the skip profile's render list, so
+        # an incremental preview skips a stub's non-html render itself.
+        skip_stub_target() {
+          [ "$2" != "html" ] && [ -f "$1" ] && python3 "$REDIRECT_STUBS_SCRIPT" --is-stub "$1" \
+            && echo "Skipping the $2 render of redirect stub $1."
+        }
+
         # Render one target: the whole project (`first` true cleans the
         # output directory) or, for an incremental preview, one page, whose
         # render leaves every other output in place (`first` false).
@@ -696,11 +741,13 @@ runs:
           FORMAT_LIST+=("html")
 
           for fmt in "${FORMAT_LIST[@]}"; do
+            if skip_stub_target "$target" "$fmt"; then continue; fi
+            set_format_profile "$fmt"
             if [ "$first" = true ]; then
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
               first=false
             else
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
             fi
           done
         elif [ "$FORMATS" = "default" ]; then
@@ -732,11 +779,13 @@ runs:
           fi
 
           for fmt in "${FORMAT_LIST[@]}"; do
+            if skip_stub_target "$target" "$fmt"; then continue; fi
+            set_format_profile "$fmt"
             if [ "$first" = true ]; then
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
               first=false
             else
-              quarto render "$target" "${PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+              quarto render "$target" "${FMT_PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
             fi
           done
         fi
