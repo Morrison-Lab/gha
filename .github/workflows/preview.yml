@@ -138,6 +138,22 @@ on:
         description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
         type: string
         default: ''
+      post-build-command:
+        description: >-
+          Shell command run in the build job right after the site is rendered
+          and uploaded, with the working directory set to `path` and the
+          rendered site in `output-dir`. Use it to run checks that read the
+          rendered site (a site checker, an equation-render check) here
+          instead of in a separate `workflow_run` workflow, which waits for a
+          runner a second time. Empty runs nothing.
+        type: string
+        default: ''
+      post-build-continue-on-error:
+        description: >-
+          When true, a failing post-build-command does not fail the job (the step is still marked failed)
+          and the preview deploy proceeds.
+        type: boolean
+        default: false
       timezone:
         description: >-
           IANA time zone (e.g. 'America/Los_Angeles') exported as TZ for the render
@@ -315,3 +331,13 @@ jobs:
           banner-index: ${{ inputs.banner-index }}
           docx-tracked-changes: ${{ inputs.docx-tracked-changes }}
           docx-tracked-changes-glob: ${{ inputs.docx-tracked-changes-glob }}
+
+      - name: Post-build command
+        if: inputs.post-build-command != ''
+        continue-on-error: ${{ inputs.post-build-continue-on-error }}
+        shell: bash
+        working-directory: ${{ inputs.path }}
+        env:
+          POST_BUILD_COMMAND: ${{ inputs.post-build-command }}
+          OUTPUT_DIR: ${{ inputs.output-dir }}
+        run: bash -euo pipefail -c "$POST_BUILD_COMMAND"
