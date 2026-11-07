@@ -1,1 +1,2 @@
-- `check-avoided-words` flags vague attribution such as "some authors" and "studies show"; name the source or find one ([#1555](https://github.com/Morrison-Lab/gha/issues/1555)).
+- `check-avoided-words` flags vague attribution such as "some authors" and "studies show".
+  Name the source, or find one ([#1555](https://github.com/Morrison-Lab/gha/issues/1555)).
