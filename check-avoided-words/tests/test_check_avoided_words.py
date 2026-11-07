@@ -67,6 +67,8 @@ def found(text: str):
     ("A multivariate normal prior.", "gaussian", "multivariate normal"),
     ("The data are normally distributed.", "gaussian", "normally distributed"),
     ("Let X be a normal random variable.", "gaussian", "normal random variable"),
+    ("Draw a normal random vector.", "gaussian", "normal random vector"),
+    ("A bivariate normal model.", "gaussian", "bivariate normal"),
     ("Name two things that this argument omits.", "thing", "things"),
     ("The main thing to check is the residuals.", "thing", "thing"),
 ])

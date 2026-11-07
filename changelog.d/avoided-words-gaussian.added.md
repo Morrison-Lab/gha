@@ -1,6 +1,6 @@
 - `check-avoided-words` warns on a line a pull request adds
   that says "normal distribution", "standard normal", "multivariate normal", "bivariate normal",
-  "normally distributed", or "normal random variable"
+  "normally distributed", "normal random variable", or "normal random vector"
   ([gha#1570](https://github.com/Morrison-Lab/gha/issues/1570); psw#510, write "Gaussian", not "normal").
   It does not flag "normal equations", normal vectors, or normal subgroups.
   The rule is warn-only while it is new: it never fails the run, even with `fail` on.
