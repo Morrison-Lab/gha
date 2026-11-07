@@ -536,16 +536,38 @@ runs:
           quarto-incremental-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.head.sha }}-
           quarto-incremental-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
 
+    # A PR's first incremental run finds no `quarto-incremental-` cache: only
+    # preview runs save one, GitHub scopes a PR's caches to that PR, and the
+    # publish on the default branch saves only `quarto-freezer-` (the
+    # `_freeze` directory). The PR then executed every page from scratch,
+    # 30 minutes for lds (gha#1572). Fall back to the publish's freeze, as a
+    # non-incremental preview does; the render stays a full one, but the
+    # pruner below drops only the changed pages' frozen results.
+    - name: Restore Quarto freeze (no incremental cache)
+      id: restore-freeze-fallback
+      if: >-
+        github.event.action != 'closed' && inputs.incremental == 'true' &&
+        steps.restore-incremental.outputs.cache-matched-key == '' &&
+        !contains(github.event.pull_request.labels.*.name, 'clear freezer')
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ inputs.path }}/_freeze
+        key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+        restore-keys: |
+          quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.base.ref }}-
+          quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
+          quarto-freezer-${{ runner.os }}-
+
     # `freeze: auto` notices a change to a page's own file only, so a page
     # whose included subfile or data file changed would keep its stale
     # results. Drop those pages' frozen results, so the cache can be kept for
     # the rest instead of being discarded wholesale with `clear freezer`.
     - name: Prune frozen results of changed pages
-      if: steps.restore-freeze.outputs.cache-matched-key != '' || steps.restore-incremental.outputs.cache-matched-key != ''
+      if: steps.restore-freeze.outputs.cache-matched-key != '' || steps.restore-incremental.outputs.cache-matched-key != '' || steps.restore-freeze-fallback.outputs.cache-matched-key != ''
       shell: bash
       env:
         PROJECT_DIR: ${{ inputs.path }}
-        MATCHED_KEY: ${{ steps.restore-freeze.outputs.cache-matched-key || steps.restore-incremental.outputs.cache-matched-key }}
+        MATCHED_KEY: ${{ steps.restore-freeze.outputs.cache-matched-key || steps.restore-incremental.outputs.cache-matched-key || steps.restore-freeze-fallback.outputs.cache-matched-key }}
         SCRIPT: ${{ github.action_path }}/prune-stale-freeze.py
       run: python3 "$SCRIPT"
 
