@@ -150,8 +150,8 @@ on:
         default: ''
       post-build-continue-on-error:
         description: >-
-          When true, a failing post-build-command is reported as a warning
-          and does not fail the build or hold back the preview deploy.
+          When true, a failing post-build-command does not fail the job (the step is still marked failed)
+          and the preview deploy proceeds.
         type: boolean
         default: false
       timezone:
