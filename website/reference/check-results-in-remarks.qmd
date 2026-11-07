@@ -9,7 +9,7 @@ A statement of what is true
 belongs in a theorem-type div with its proof
 (`#thm-`, `#lem-`, `#cor-`, or `#prp-`).
 
-The check flags a `#rem-` div when both of these hold:
+The check flags a `#rem-` div when both conditions hold:
 
 - It displays an equation (`$$...$$`, `align`, or `\ba ... \ea`).
 - Its prose states a claim:
