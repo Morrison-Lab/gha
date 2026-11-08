@@ -81,7 +81,10 @@ fi
 case "$key" in
   *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
 esac
-ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
+# accept-new records a head's key the first time it is seen and still refuses a
+# head whose recorded key changed, so a head missing from known_hosts is usable
+# (gha#1634) without weakening the check on the heads already recorded.
+ssh_opts=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes -i "$key")
 # CONDOR_HEAD may list several heads, separated by spaces or commas, each as
 # host or host:port. Each run starts at head (run number mod count), spreading
 # runs over the heads, and takes the first head that answers ssh; none answering
