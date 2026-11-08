@@ -148,9 +148,10 @@ else
   wait "$held" || fail "a held job cancelled by SIGTERM should exit 0"
 fi
 
-# The default hold is shorter than the 5-minute timeout of the shortest checks.
+# The hold counts against the job's timeout, so the default leaves at least 3 of
+# the 5 minutes of the shortest checks for checkout and work (gha#1718).
 default=$(grep -o 'WAIT_MAX_MINUTES:-[0-9]*' "$script" | head -n 1 | cut -d- -f2)
-[ -n "$default" ] && [ "$default" -lt 5 ] || fail "the default WAIT_MAX_MINUTES (${default:-unset}) should be under 5"
+[ -n "$default" ] && [ "$default" -le 2 ] || fail "the default WAIT_MAX_MINUTES (${default:-unset}) should be at most 2"
 
 # A busy or full host is not a defect of the code under test (gha#1584): the
 # hold-expired and low-disk messages are notices, so no consumer's annotation
