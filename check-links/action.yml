@@ -61,6 +61,44 @@ runs:
           echo "args=--verbose --no-progress './**/*.qmd' './**/*.md' './**/*.html'" >> "$GITHUB_OUTPUT"
         fi
 
+    # Install lychee from the release cache when the runner can use it, so a
+    # release-host outage does not block the job (gha#1678). Exit 3 means this
+    # runner or version cannot use the cache path, and lychee-action installs
+    # and runs lychee as before.
+    - name: Install lychee from the release cache
+      id: cached
+      shell: bash
+      run: |
+        set +e
+        bash "$GITHUB_ACTION_PATH/../.github/workflows/scripts/install-lychee.sh"
+        code=$?
+        if [ "$code" -eq 0 ]; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+        elif [ "$code" -eq 3 ]; then
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::Cached lychee install failed (exit $code); using lychee-action."
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Check links with the cached lychee
+      id: cached-lychee
+      if: steps.cached.outputs.installed == 'true'
+      shell: bash
+      env:
+        LYCHEE_ARGS: ${{ steps.cfg.outputs.args }} --config ${{ steps.cfg.outputs.config }}
+        LYCHEE_OUT: ${{ runner.temp }}/check-links/lychee.json
+        GITHUB_TOKEN: ${{ github.token }}
+      # The verdict step decides pass or fail from the JSON report and the exit
+      # code, so this step never fails on lychee's own status, as lychee-action's
+      # `fail: false` does.
+      run: |
+        mkdir -p "$(dirname "$LYCHEE_OUT")"
+        export PATH="$RUNNER_TEMP/lychee/bin:$PATH"
+        set +e
+        eval lychee --format json --output "$LYCHEE_OUT" "$LYCHEE_ARGS"
+        echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
     # lychee-action installs lychee under $RUNNER_TEMP/lychee/bin and puts that
     # directory on the PATH through GITHUB_PATH, but it then runs its
     # entrypoint.sh, whose shebang is `#!/bin/bash -l`. A login shell re-reads
@@ -71,6 +109,7 @@ runs:
     # real binary through $RUNNER_TEMP at call time. It holds no run-specific
     # path, so concurrent jobs sharing a home directory do not conflict.
     - name: Make lychee reachable from a login shell
+      if: steps.cached.outputs.installed != 'true'
       shell: bash
       run: |
         mkdir -p "$HOME/.local/bin"
@@ -82,6 +121,7 @@ runs:
 
     - name: Check links
       id: lychee
+      if: steps.cached.outputs.installed != 'true'
       uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
       with:
         args: ${{ steps.cfg.outputs.args }} --config ${{ steps.cfg.outputs.config }}
@@ -101,7 +141,7 @@ runs:
       shell: bash
       env:
         LYCHEE_JSON: ${{ runner.temp }}/check-links/lychee.json
-        LYCHEE_EXIT: ${{ steps.lychee.outputs.exit_code }}
+        LYCHEE_EXIT: ${{ steps.cached-lychee.outputs.exit_code || steps.lychee.outputs.exit_code }}
         LINKS_BASE_REF: ${{ inputs.base-ref }}
         LINKS_FAIL: ${{ inputs.fail }}
         LINKS_FAIL_IF_EMPTY: ${{ inputs.fail-if-empty }}
