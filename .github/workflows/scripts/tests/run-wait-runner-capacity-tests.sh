@@ -76,6 +76,60 @@ case "$out" in *holding*) fail "a stale ticket should not hold: $out" ;; esac
 leftover=$(find "$WAIT_HOLD_DIR" -type f | wc -l)
 [ "$((leftover))" = 0 ] || fail "tickets should be removed on exit ($leftover left)"
 
+# The live worker count uses the anchored pgrep pattern (gha#1551, gha#1553).
+# Every case above stands in WAIT_WORKER_COUNT, so none reached the pattern.
+# Two stand-in workers (argv[0] ends in Runner.Worker) count; a decoy whose
+# arguments merely name Runner.Worker does not. The baseline is read first, so
+# real workers on the host do not matter.
+rm -f "$WAIT_HOLD_DIR"/*
+fake_dir="$work/fake-bin"
+mkdir -p "$fake_dir"
+cp "$(command -v sleep)" "$fake_dir/Runner.Worker"
+baseline=$(pgrep -fc '^[^ ]*Runner[.]Worker( |$)' || true)
+"$fake_dir/Runner.Worker" 60 &
+fake1=$!
+"$fake_dir/Runner.Worker" 60 &
+fake2=$!
+bash -c 'sleep 60; :' "$fake_dir/Runner.Worker" &
+decoy=$!
+trap 'kill "$other" "$fake1" "$fake2" "$decoy" 2> /dev/null; rm -rf "$work"' EXIT
+out=$(WAIT_MAX_WORKERS=1 WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+# Two stand-ins plus the baseline, less this job's own ticket.
+expected=$((baseline + 1))
+case "$out" in
+  *"${expected} running jobs"*) ;;
+  *) fail "the hold message should count ${expected} running jobs (two stand-in workers, decoy excluded): $out" ;;
+esac
+kill "$fake1" "$fake2" "$decoy" 2> /dev/null
+
+# A second held job starts once the first finishes (gha#1553). The older ticket
+# belongs to a live process, so the newer job waits; when that process exits its
+# ticket is pruned and the newer job runs, within one 15-second poll.
+rm -f "$WAIT_HOLD_DIR"/*
+sleep 60 &
+first=$!
+disown "$first"
+: > "$WAIT_HOLD_DIR/00000000000000000000-$first"
+WAIT_MAX_WORKERS=1 WAIT_WORKER_COUNT=1 WAIT_MAX_MINUTES=2 bash "$script" > "$work/second.out" &
+second=$!
+sleep 2
+kill -0 "$second" 2> /dev/null || fail "the second held job should still be waiting while the first runs"
+kill "$first" 2> /dev/null
+for _ in $(seq 1 20); do
+  kill -0 "$second" 2> /dev/null || break
+  sleep 2
+done
+if kill -0 "$second" 2> /dev/null; then
+  kill -KILL "$second"
+  fail "the second held job should start after the first finishes"
+else
+  wait "$second" || fail "the second held job should exit 0"
+  case "$(cat "$work/second.out")" in
+    *holding*) ;;
+    *) fail "the second held job should have printed the hold message first" ;;
+  esac
+fi
+
 # A cancel signal ends the hold at once with success (gha#1582): the runner
 # waits for the hook to exit after a job's timeout, so a held hook that ignored
 # the signal kept a 5-minute job alive for 5 more minutes.
