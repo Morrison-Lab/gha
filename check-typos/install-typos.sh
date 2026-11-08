@@ -14,6 +14,9 @@
 # tarball for the runner you are on.
 set -euo pipefail
 
+# shellcheck source=../download-cache/cached-download.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../download-cache/cached-download.sh"
+
 : "${TYPOS_VERSION:?TYPOS_VERSION is required}"
 : "${TYPOS_CHECKSUMS_SHA256:?TYPOS_CHECKSUMS_SHA256 is required}"
 : "${TYPOS_BIN_DIR:?TYPOS_BIN_DIR is required}"
@@ -55,8 +58,7 @@ sha256_of() {
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
-curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
-  --output "$work_dir/$tarball" "$base_url/$tarball"
+cached_download "$base_url/$tarball" "$work_dir/$tarball" "$TYPOS_CHECKSUMS_SHA256"
 
 actual_sha256="$(sha256_of "$work_dir/$tarball")"
 if [ "$actual_sha256" != "$TYPOS_CHECKSUMS_SHA256" ]; then
