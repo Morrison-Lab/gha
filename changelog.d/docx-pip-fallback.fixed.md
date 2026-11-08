@@ -1,0 +1,1 @@
+The `preview` action's DOCX tracked-changes step no longer fails on runners whose Python has no pip: it skips the install when `python-docx` is importable, then tries `ensurepip` and `uv` before failing with a clear error (gha#1647).
