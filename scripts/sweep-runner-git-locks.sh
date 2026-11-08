@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# check-one-function-per-file: allow-multiple
 # Remove stale git lock files that a killed or cancelled job left in a runner's
 # checkouts (gha#1661). On cf463-01 a job left <checkout>/.git/modules/rme/index.lock,
 # and the next job on the same runner failed in `git submodule update` with
