@@ -9825,6 +9825,10 @@ jobs:
         shell: bash
         run: bash .github/workflows/scripts/tests/run-sweep-runner-tmp-tests.sh
 
+      - name: Run sweep-runner-git-locks tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-sweep-runner-git-locks-tests.sh
+
       - name: Run check-runner-disk tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-check-runner-disk-tests.sh
