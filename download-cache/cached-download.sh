@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# check-one-function-per-file: allow-multiple
 #
 # Download a release archive, through a group-share cache when one is mounted.
 #
