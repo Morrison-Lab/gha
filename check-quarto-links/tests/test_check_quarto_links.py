@@ -49,13 +49,15 @@ def _repo(tmp_path: Path, files: dict) -> Path:
     return tmp_path
 
 
-def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb"):
+def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb", partials=()):
     _repo(tmp_path, files)
     monkeypatch.chdir(tmp_path)
     tracked = ql.tracked_files(ql.DEFAULT_GLOBS.split(), [])
     return [
         (f.path, f.line, f.target)
-        for f in ql.find_dead_links(Path("."), tracked, ql.parse_extensions(exts))
+        for f in ql.find_dead_links(
+            Path("."), tracked, ql.parse_extensions(exts),
+            partials=ql.compile_ignores(partials))
     ]
 
 
@@ -163,6 +165,31 @@ def test_a_subfile_must_resolve_from_every_page_that_includes_it(tmp_path, monke
         "a/sibling.qmd": "# only under a/\n",
     })
     assert got == [("_shared/_x.qmd", 1, "sibling.qmd")]
+
+
+_UNPREFIXED = {
+    "chapters/page.qmd": "{{< include page/part.qmd >}}\n",
+    "chapters/page/part.qmd": "[other](other.qmd)\n",
+    "chapters/other.qmd": "# other\n",
+}
+
+
+def test_unprefixed_subfile_also_resolves_from_its_own_directory(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, _UNPREFIXED)
+    assert got == [("chapters/page/part.qmd", 1, "other.qmd")]
+
+
+def test_partial_globs_resolve_an_unprefixed_subfile_from_the_including_page(tmp_path, monkeypatch):
+    # Without the glob the same link is the false positive above.
+    got = _findings(tmp_path, monkeypatch, _UNPREFIXED, partials=["chapters/*/**"])
+    assert got == []
+
+
+def test_a_partial_glob_does_not_hide_a_genuinely_dead_link(tmp_path, monkeypatch):
+    texts = dict(_UNPREFIXED)
+    texts["chapters/page/part.qmd"] = "[gone](gone.qmd)\n"
+    got = _findings(tmp_path, monkeypatch, texts, partials=["chapters/*/**"])
+    assert got == [("chapters/page/part.qmd", 1, "gone.qmd")]
 
 
 def test_quoted_include_path_with_a_space(tmp_path, monkeypatch):
@@ -304,5 +331,79 @@ def test_declared_defaults_match_the_script(path, name, script_default):
 
 
 @pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_check_fragments_default_is_off(path):
+    # The script reads QL_CHECK_FRAGMENTS as off unless it is exactly "true".
+    assert _declared_default(path, "check-fragments") == "false"
+    assert ql.DEFAULT_CHECK_FRAGMENTS == "false"
+
+
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
 def test_declared_fail_default_is_blocking(path):
     assert _declared_default(path, "fail") == "true"
+
+
+def _fragment_findings(tmp_path, monkeypatch, files):
+    _repo(tmp_path, files)
+    monkeypatch.chdir(tmp_path)
+    tracked = ql.tracked_files(ql.DEFAULT_GLOBS.split(), [])
+    return [
+        (f.path, f.line, f.fragment)
+        for f in ql.find_dead_links(
+            Path("."), tracked, ql.parse_extensions(".qmd"), check_fragments=True)
+    ]
+
+
+def test_moved_anchor_is_flagged_when_fragments_are_checked(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "# A\n\nSee [d](b.qmd#def-x) and [ok](c.qmd#def-y).\n",
+        "b.qmd": "# B\n",
+        "c.qmd": "# C\n\n{{< include _c/_y.qmd >}}\n",
+        "_c/_y.qmd": "::: {#def-y}\nY\n:::\n",
+    })
+    assert got == [("a.qmd", 3, "def-x")]
+
+
+def test_page_with_asis_chunk_is_not_checked_for_fragments(tmp_path, monkeypatch):
+    # A results: asis chunk writes headings at render time, so its ids are unknowable.
+    # c.qmd is the control: the same link to a page without such a chunk is flagged.
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#gl-x) [2](c.qmd#gl-x)\n",
+        "b.qmd": "# B\n\n```{r}\n#| results: asis\ncat('## x {#gl-x}')\n```\n",
+        "c.qmd": "# C\n",
+    })
+    assert got == [("a.qmd", 1, "gl-x")]
+
+
+def test_fragment_forms_that_define_an_id_are_accepted(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#my-heading) [2](b.qmd#custom) [3](b.qmd#tbl-t) [4](b.qmd#h)\n",
+        "b.qmd": (
+            "# My heading\n\n## Other {#custom}\n\n```{r}\n#| label: tbl-t\n```\n\n"
+            '<div id="h"></div>\n'
+        ),
+    })
+    assert got == []
+
+
+def test_underscore_and_repeated_headings_define_their_ids(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#my_function) [2](b.qmd#examples-1) [3](b.qmd#examples-2)\n",
+        "b.qmd": "## my_function\n\n## Examples\n\n## Examples\n",
+    })
+    assert got == [("a.qmd", 1, "examples-2")]
+
+
+def test_id_in_an_attribute_block_spanning_lines_is_defined(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#fig-x) [2](b.qmd#sec-y)\n",
+        "b.qmd": '![cap](x.png){#fig-x .plate\nfig-alt="long"}\n\n## Y {.unnumbered #sec-y}\n',
+    })
+    assert got == []
+
+
+def test_fragments_are_not_checked_by_default(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, {
+        "a.qmd": "[d](b.qmd#def-x)\n",
+        "b.qmd": "# B\n",
+    })
+    assert got == []

@@ -27,6 +27,16 @@ on:
         type: boolean
         default: true
 
+      check-fragments:
+        description: Also verify the #fragment of each link to a page (a moved anchor is a dead link).
+        type: boolean
+        default: false
+
+      partial-globs:
+        description: Globs of unrendered include-only files whose names are not `_`-prefixed (links resolve from the including page).
+        type: string
+        default: ''
+
 jobs:
   check-quarto-links:
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
@@ -44,3 +54,5 @@ jobs:
           target-extensions: ${{ inputs.target-extensions }}
           paths-ignore: ${{ inputs.paths-ignore }}
           fail: ${{ inputs.fail }}
+          check-fragments: ${{ inputs.check-fragments }}
+          partial-globs: ${{ inputs.partial-globs }}

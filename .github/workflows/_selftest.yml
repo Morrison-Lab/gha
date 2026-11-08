@@ -8233,6 +8233,9 @@ jobs:
       - name: Run r-cmd-check workflow contract tests
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test
+      - name: Run test-coverage cluster contract tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-test-coverage-cluster-tests.py --self-test
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't
@@ -8759,6 +8762,30 @@ jobs:
       - name: Run check-junk-files tests
         shell: bash
         run: bash check-junk-files/tests/test-check-junk-files.sh
+
+  download-cache-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run cached-download tests
+        shell: bash
+        run: bash download-cache/tests/run-cached-download-tests.sh
+
+  install-quarto-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run install-quarto tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-install-quarto-tests.sh
 
   # check-paired-file-change is brand new, so (like check-junk-files above) it
   # does not exist at the released tag its reusable workflow's internal `uses:`
@@ -9824,6 +9851,10 @@ jobs:
       - name: Run sweep-runner-tmp tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-sweep-runner-tmp-tests.sh
+
+      - name: Run sweep-runner-git-locks tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-sweep-runner-git-locks-tests.sh
 
       - name: Run check-runner-disk tests
         shell: bash
