@@ -151,8 +151,9 @@ To gate a commit again without a new commit and without re-running any other
 workflow, add a `workflow_dispatch` trigger with a `head-sha` input to the
 caller, as the example stub does, and pass
 `github.event.workflow_run.head_sha || inputs.head-sha` as `head-sha`.
-Dispatch it with the commit to re-check (`gh workflow run annotation-gate.yml -f head-sha=<sha>`).
-This works for a pull request that touches only files no path-filtered workflow
+Dispatch it with the commit to re-check
+(`gh workflow run annotation-gate.yml -f head-sha=<sha>`).
+This dispatch works for a pull request that touches only files no path-filtered workflow
 watches, whose commit has no run to re-run.
 `run-id` may then be empty, because `all-runs` does not use it.
 
