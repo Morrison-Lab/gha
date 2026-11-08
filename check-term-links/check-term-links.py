@@ -329,7 +329,10 @@ def harvest_terms(
     multiword: Dict[str, Set[str]] = {}
 
     def add(term: str, def_id: str, from_link: bool = False) -> None:
-        for piece in re.split(r"\s*(?:,|;|\bor\b|\balso called\b|\bknown as\b)\s*", term):
+        parts = re.split(r"\s*(,|;|\bor\b|\balso called\b|\bknown as\b)\s*", term)
+        for i in range(0, len(parts), 2):
+            piece = parts[i]
+            listed = i > 0 and parts[i - 1] in {",", ";", "or"}  # a plainly listed alias
             aliases = re.findall(r"\(([^)]*)\)", piece)
             piece = re.sub(r"\([^)]*\)", "", piece).strip()
             for candidate in [piece, *aliases]:
@@ -338,7 +341,7 @@ def harvest_terms(
                 key = term_key(candidate)
                 if " " in key:
                     multiword.setdefault(def_id, set()).update(key.split())
-                elif not from_link and key in multiword.get(def_id, ()):
+                elif not (from_link or listed) and key in multiword.get(def_id, ()):
                     continue
                 terms.setdefault(key, set()).add(def_id)
 

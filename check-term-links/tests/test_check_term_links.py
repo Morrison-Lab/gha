@@ -493,3 +493,11 @@ def test_link_text_still_teaches_a_one_word_alias():
     text = "See the [positive](https://x.github.io/sds/c.html#def-positive-classification).\n"
     masked, _ = ctl.preprocess((POSITIVE_DEF + text).splitlines())
     assert "positive" in ctl.harvest_terms(masked, set())
+
+
+@pytest.mark.parametrize("title", ["sample mean, mean", "mean, sample mean", "sample mean or mean"])
+def test_listed_alias_is_learned_in_either_order(title):
+    """gha#1636: a plainly listed alias is a term whichever side of the multi-word term it sits."""
+    definition = "::: {#def-m}\n\nThe **" + title + "** is x.\n\n:::\n"
+    masked, _ = ctl.preprocess(definition.splitlines())
+    assert {"mean", "sample mean"} <= set(ctl.harvest_terms(masked, set()))
