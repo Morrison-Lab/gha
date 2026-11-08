@@ -353,30 +353,8 @@ runs:
         echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
     - name: Set up Quarto
-      id: quarto-setup-1
       if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
-      continue-on-error: true
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-      env:
-        GH_TOKEN: ${{ github.token }}
-      with:
-        # Install TinyTeX in the same setup only when a PDF render is requested;
-        # composite actions can't vary `with:` conditionally, so gate it on the
-        # label expression, tinytex input, or formats containing 'pdf'.
-        tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
-
-    - name: Wait before the second Quarto setup attempt
-      if: steps.quarto-setup-1.outcome == 'failure'
-      shell: bash
-      run: |
-        echo "::warning::Quarto setup failed; retrying in 90 seconds (gha#1667)."
-        sleep 90
-
-    - name: Set up Quarto (second attempt)
-      if: steps.quarto-setup-1.outcome == 'failure' && (github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true')
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-      env:
-        GH_TOKEN: ${{ github.token }}
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         # Install TinyTeX in the same setup only when a PDF render is requested;
         # composite actions can't vary `with:` conditionally, so gate it on the
@@ -384,7 +362,7 @@ runs:
         tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
 
     - name: Set up R
-      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         r-version: ${{ inputs.r-version }}
