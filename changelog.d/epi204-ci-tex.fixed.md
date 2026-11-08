@@ -1,0 +1,1 @@
+The `epi204-ci.sif` recipe now installs the LaTeX packages that epi204 PDF renders need (`koma-script`, `nameref`, `xpatch`, `luacolor`, `lua-ul` and `luatexbase`) with `tlmgr` at build time, because TinyTeX is read-only in a job and Quarto cannot install them at render time (gha#1660).
