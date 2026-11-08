@@ -466,3 +466,30 @@ def test_parenthetical_alias_and_dashed_term_are_learned():
     }
     page = "::: {#sol-a}\n\nThe KL divergence is large.\n\n:::\n"
     assert rules(run_text(page, {"d.qmd": definition})) == [("unlinked-first-use", "kl divergence")]
+
+
+POSITIVE_DEF = """::: {#def-positive-classification}
+
+a **positive classification**
+(also called **positive**) is a prediction of the target class.
+
+:::
+"""
+
+
+def test_one_word_alias_of_a_multiword_term_is_not_learned():
+    """gha#1635: "positive" for "positive classification" is an ordinary adjective elsewhere."""
+    masked, _ = ctl.preprocess(POSITIVE_DEF.splitlines())
+    assert set(ctl.harvest_terms(masked, set())) == {"positive classification"}
+    page = "::: {#exm-a}\n\nEvery value has positive probability.\n\n:::\n"
+    assert run_text(page, {"d.qmd": POSITIVE_DEF}) == []
+    page = "::: {#exm-a}\n\nThis is a positive classification.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": POSITIVE_DEF})) == [
+        ("unlinked-first-use", "positive classification")
+    ]
+
+
+def test_link_text_still_teaches_a_one_word_alias():
+    text = "See the [positive](https://x.github.io/sds/c.html#def-positive-classification).\n"
+    masked, _ = ctl.preprocess((POSITIVE_DEF + text).splitlines())
+    assert "positive" in ctl.harvest_terms(masked, set())

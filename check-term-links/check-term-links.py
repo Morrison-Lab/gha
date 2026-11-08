@@ -323,13 +323,24 @@ def harvest_terms(
     """Map term key -> def ids it defines, from def-div titles and bold terms, and from links to `#def-` anchors."""
     terms: Dict[str, Set[str]] = {}
 
-    def add(term: str, def_id: str) -> None:
+    # Words of the multi-word terms each def div defines.  A one-word alias made of one of
+    # them, such as "positive" for "positive classification", is an ordinary adjective
+    # elsewhere, so it is not learned (gha#1635).
+    multiword: Dict[str, Set[str]] = {}
+
+    def add(term: str, def_id: str, from_link: bool = False) -> None:
         for piece in re.split(r"\s*(?:,|;|\bor\b|\balso called\b|\bknown as\b)\s*", term):
             aliases = re.findall(r"\(([^)]*)\)", piece)
             piece = re.sub(r"\([^)]*\)", "", piece).strip()
             for candidate in [piece, *aliases]:
-                if usable_term(candidate, allowed_out):
-                    terms.setdefault(term_key(candidate), set()).add(def_id)
+                if not usable_term(candidate, allowed_out):
+                    continue
+                key = term_key(candidate)
+                if " " in key:
+                    multiword.setdefault(def_id, set()).update(key.split())
+                elif not from_link and key in multiword.get(def_id, ()):
+                    continue
+                terms.setdefault(key, set()).add(def_id)
 
     stack: List[Tuple[int, Optional[str]]] = []
     for line in masked:
@@ -356,7 +367,7 @@ def harvest_terms(
             url = lm.group("url") or ""
             frag = re.search(r"#(def-[A-Za-z0-9_-]+)$", url)
             if frag:
-                add(lm.group("text"), frag.group(1))
+                add(lm.group("text"), frag.group(1), from_link=True)
     return terms
 
 
