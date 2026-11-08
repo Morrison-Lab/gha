@@ -142,7 +142,7 @@ inputs:
     description: >-
       Run the render on a WWU CS cluster execute node through `condor-batch`,
       in the `cluster-image` Apptainer image, instead of on the runner. The
-      output directory, `_freeze`, `.quarto` and the render log come back to
+      output directory, `_freeze` and `.quarto` come back to
       the checkout, so every later step is unchanged. The setup steps above
       still run on the runner, so a caller that turns this on sets
       `setup-r`, `use-renv`, `setup-chrome`, `setup-julia` and `apt-packages`
