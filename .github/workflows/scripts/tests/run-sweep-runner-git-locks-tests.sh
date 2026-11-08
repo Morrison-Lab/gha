@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Offline tests for scripts/sweep-runner-git-locks.sh (gha#1661): it removes
-# only stale *.lock files under a checkout's .git and .git/modules, and keeps
+# only stale *.lock files under a checkout's .git, .git/modules and .git/refs
+# (gha#1716), and keeps
 # recent locks, other files, and everything while a git process runs there.
 #
 # Usage: bash .github/workflows/scripts/tests/run-sweep-runner-git-locks-tests.sh
@@ -14,12 +15,15 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
 
-mkdir -p "$work/epi204/epi204/.git/modules/rme" "$work/_tool/x/.git"
+mkdir -p "$work/epi204/epi204/.git/modules/rme" "$work/epi204/epi204/.git/refs/remotes/origin/claude" "$work/_tool/x/.git"
+refs="$work/epi204/epi204/.git/refs/remotes/origin/claude"
 old() { touch -d '3 hours ago' "$@"; }
 echo x > "$work/epi204/epi204/.git/modules/rme/index.lock"; old "$work/epi204/epi204/.git/modules/rme/index.lock"
 echo x > "$work/epi204/epi204/.git/index.lock"; old "$work/epi204/epi204/.git/index.lock"
 echo x > "$work/epi204/epi204/.git/modules/rme/recent.lock"
 echo x > "$work/epi204/epi204/.git/modules/rme/HEAD"; old "$work/epi204/epi204/.git/modules/rme/HEAD"
+echo x > "$refs/branch.lock"; old "$refs/branch.lock"
+echo x > "$refs/recent.lock"
 echo x > "$work/epi204/epi204/not-in-git.lock"; old "$work/epi204/epi204/not-in-git.lock"
 echo x > "$work/_tool/x/.git/stale.lock"; old "$work/_tool/x/.git/stale.lock"
 
@@ -35,6 +39,8 @@ expect() { # expect <path> <present|absent>
 "$script" "$work"
 expect "$work/epi204/epi204/.git/modules/rme/index.lock" absent
 expect "$work/epi204/epi204/.git/index.lock" absent
+expect "$refs/branch.lock" absent
+expect "$refs/recent.lock" present
 expect "$work/epi204/epi204/.git/modules/rme/recent.lock" present
 expect "$work/epi204/epi204/.git/modules/rme/HEAD" present
 expect "$work/epi204/epi204/not-in-git.lock" present
