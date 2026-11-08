@@ -14,10 +14,11 @@
 # several Quarto renders, can show a low load average while jobs stall on
 # writes, so load alone does not hold the next job back (gha#1527).
 # A fourth limit is off by default: WAIT_MAX_WORKERS, when above 0, also waits
-# until no more than that many Runner.Worker processes are running on the host
-# (the job's own worker counts). A Quarto render takes minutes to grow to its
-# full memory, so jobs that start close together all pass the memory check and
-# the host runs out of memory later (gha#1546).
+# until fewer than that many jobs are running on the host. Running jobs are the
+# Runner.Worker processes minus the jobs held by this hook, and held jobs start
+# oldest first (see the tickets below). A Quarto render takes minutes to grow to
+# its full memory, so jobs that start close together all pass the memory check
+# and the host runs out of memory later (gha#1546, gha#1549).
 # It polls every 15 seconds and stops waiting after WAIT_MAX_MINUTES (default
 # 4, under the 5-minute timeout of the shortest checks, gha#1582), or at once
 # when the runner sends a cancel signal, then lets the job run anyway: a host that stays busy slows jobs down but
