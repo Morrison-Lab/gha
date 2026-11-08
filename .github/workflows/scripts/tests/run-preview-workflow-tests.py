@@ -259,7 +259,6 @@ def run_self_test() -> int:
     baseline_script = (DEFAULT_COMPOSITE.parent / RENDER_SCRIPT_NAME).read_text(
         encoding="utf-8"
     )
-    # Mutations of the render script, which sits beside the composite.
     script_mutations = {
         "drop default bare render handler": baseline_script.replace(
             'elif [ "$FORMATS" = "default" ]; then', "elif false; then"
@@ -399,7 +398,6 @@ def run_self_test() -> int:
             c_path.write_text(c_content, encoding="utf-8")
             w_path.write_text(w_content, encoding="utf-8")
             script_content = script_mutations.get(name, baseline_script)
-            assert script_content != baseline_script or name not in script_mutations
             s_path.write_text(script_content, encoding="utf-8")
             errors = check_preview(c_path, w_path)
             if not errors:

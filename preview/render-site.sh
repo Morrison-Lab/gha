@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
 # check-one-function-per-file: allow-multiple
-# Render the Quarto site for the preview (the "Render Quarto site" step of
-# preview/action.yml). The step passes its inputs as environment variables:
-# PROJECT_PATH, RENDER_PROFILE, OUTPUT_DIR, FORMATS, SKIP_DOCX,
-# DOCX_TRACKED_CHANGES, TINYTEX, HAS_LABEL_PDF, HAS_LABEL_DOCX,
-# HAS_LABEL_REVEALJS, SETUP_JULIA, INCREMENTAL_MODE, INCREMENTAL_PAGES and
-# REDIRECT_STUBS_SCRIPT. It lives in a file so a later change can run it on a
-# cluster node (gha#1563).
+# The "Render Quarto site" step of preview/action.yml passes its inputs in the
+# environment. It is a file so a cluster job can run it (gha#1563).
 set -euo pipefail
 # See "Set up JuliaCall and its Julia dependencies" for why.
 if [ "$SETUP_JULIA" = "true" ] && command -v R >/dev/null 2>&1; then
