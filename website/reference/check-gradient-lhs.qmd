@@ -5,16 +5,18 @@ title: "check-gradient-lhs.yml"
 Diff-scoped, warn-by-default check for the lab's gradient rule
 ([psw#488](https://github.com/Morrison-Lab/psw/issues/488),
 [gha#1538](https://github.com/Morrison-Lab/gha/issues/1538)):
-when a page states a gradient, it writes the symbol as the left-hand side of an equation,
+when a page states a gradient,
+it writes the symbol as the left-hand side of an equation,
 not "its gradient is ...".
 
 ## Rule
 
 A line a pull request adds is flagged when its prose has the word "gradient"
 followed by "is" or "equals" and then math, a colon, or the end of the line,
-and no gradient symbol (`\grad`, `\gradf`, `\gradwrt`, or `\nabla`) comes before the first `=`
-of the equation.
-The equation is the inline math on the line or the display equation that follows it.
+and no gradient symbol (`\grad`, `\gradf`, `\gradwrt`, or `\nabla`)
+comes before the first `=` of the equation.
+The equation is the inline math on the line,
+or the display equation that follows it.
 "The gradient is zero at the minimum" passes, since no equation follows.
 
 The check does not read a code fence or code span, an HTML comment, YAML front matter,
@@ -25,8 +27,8 @@ It is a heuristic, so it warns by default.
 
 There is no sweep: a file the pull request does not change is never reported,
 and only lines the pull request adds are reported.
-With no `base-ref`, or when the diff cannot be computed, the check skips with a warning
-and never falls back to a whole-tree scan.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning and never falls back to a whole-tree scan.
 Set `whole-tree: true` to scan every tracked file in full on purpose.
 
 ## Inputs
