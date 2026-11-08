@@ -13,6 +13,9 @@
 # than each tarball keeps a single value covering every architecture.
 set -euo pipefail
 
+# shellcheck source=../download-cache/cached-download.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../download-cache/cached-download.sh"
+
 : "${GITLEAKS_VERSION:?GITLEAKS_VERSION is required}"
 : "${GITLEAKS_CHECKSUMS_SHA256:?GITLEAKS_CHECKSUMS_SHA256 is required}"
 : "${GITLEAKS_BIN_DIR:?GITLEAKS_BIN_DIR is required}"
@@ -52,8 +55,8 @@ sha256_of() {
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
-curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors \
-  --output "$work_dir/$checksums_file" "$base_url/$checksums_file"
+cached_download "$base_url/$checksums_file" "$work_dir/$checksums_file" \
+  "$GITLEAKS_CHECKSUMS_SHA256"
 
 actual_checksums_sha256="$(sha256_of "$work_dir/$checksums_file")"
 if [ "$actual_checksums_sha256" != "$GITLEAKS_CHECKSUMS_SHA256" ]; then
@@ -63,9 +66,6 @@ if [ "$actual_checksums_sha256" != "$GITLEAKS_CHECKSUMS_SHA256" ]; then
   echo "  If you just bumped the 'version' input, update 'checksums-sha256' too." >&2
   exit 1
 fi
-
-curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors \
-  --output "$work_dir/$tarball" "$base_url/$tarball"
 
 # Match the filename as a whole field rather than as a substring, and make a
 # missing entry a loud failure: an empty expected value would otherwise compare
@@ -77,6 +77,8 @@ expected_tarball_sha256="$(
   echo "::error::check-secrets: no checksum entry for $tarball in $checksums_file." >&2
   exit 1
 }
+
+cached_download "$base_url/$tarball" "$work_dir/$tarball" "$expected_tarball_sha256"
 
 actual_tarball_sha256="$(sha256_of "$work_dir/$tarball")"
 if [ "$actual_tarball_sha256" != "$expected_tarball_sha256" ]; then
