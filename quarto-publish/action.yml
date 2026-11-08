@@ -207,7 +207,27 @@ runs:
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
 
     - name: Set up Quarto
+      id: quarto-setup-1
       if: inputs.preinstalled-toolchain != 'true'
+      continue-on-error: true
+      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      env:
+        # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
+        # release via the GitHub API; unauthenticated, that intermittently 403s on
+        # shared runners (#270). Authenticate it, matching the `preview` composite.
+        GH_TOKEN: ${{ github.token }}
+      with:
+        tinytex: ${{ inputs.tinytex }}
+
+    - name: Wait before the second Quarto setup attempt
+      if: steps.quarto-setup-1.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::warning::Quarto setup failed; retrying in 90 seconds (gha#1667)."
+        sleep 90
+
+    - name: Set up Quarto (second attempt)
+      if: steps.quarto-setup-1.outcome == 'failure' && (inputs.preinstalled-toolchain != 'true')
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
         # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
