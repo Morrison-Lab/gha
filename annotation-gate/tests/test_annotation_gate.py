@@ -271,7 +271,7 @@ def test_unfinished_runs_lists_queued_and_in_progress_runs_but_not_the_gates_own
     assert sorted(r["workflow_id"] for r in g.unfinished_runs(runs, "Annotation gate")) == [1, 2]
 
 
-def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts):
+def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extra_env=None):
     posted, fetched = [], []
     for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
         monkeypatch.delenv(key, raising=False)
@@ -283,7 +283,7 @@ def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts):
         "GATE_ALL_RUNS": "true",
         "GATE_HEAD_SHA": "abc",
     }
-    for key, value in env.items():
+    for key, value in {**env, **(extra_env or {})}.items():
         monkeypatch.setenv(key, value)
 
     def fake_paged(url, token, key=None):
@@ -334,6 +334,34 @@ def test_commit_mode_without_a_head_sha_fails_fast(monkeypatch):
     monkeypatch.delenv("GATE_HEAD_SHA", raising=False)
     monkeypatch.delenv("GATE_RUN_ID", raising=False)
     assert g.main() == 2
+
+
+def test_gate_targets_raise_the_triggering_run_to_the_attempt_the_event_reports():
+    stale = dict(run(1, "pull_request", 1, rid=10), run_attempt=2)
+    other = dict(run(2, "push", 1, rid=20), run_attempt=1)
+    assert sorted(g.gate_targets([stale, other], "", "10", "3")) == [(10, 3), (20, 1)]
+
+
+def test_gate_targets_never_lower_an_attempt_and_ignore_a_missing_trigger():
+    newer = dict(run(1, "push", 1, rid=10), run_attempt=4)
+    assert g.gate_targets([newer], "", "10", "3") == [(10, 4)]
+    assert g.gate_targets([newer], "", "", "") == [(10, 4)]
+    assert g.gate_targets([newer], "", "99", "7") == [(10, 4)]
+
+
+def test_commit_mode_reads_the_events_attempt_when_the_listing_lags(monkeypatch):
+    urls = []
+    real = g.gate_jobs
+
+    def spy(base, repo, token, run_id, attempt, *rest):
+        urls.append((run_id, attempt))
+        return real(base, repo, token, run_id, attempt, *rest)
+
+    monkeypatch.setattr(g, "gate_jobs", spy)
+    runs = [dict(run(1, "pull_request", 1, rid=10), run_attempt=2)]
+    events = {"GATE_RUN_ID": "10", "GATE_RUN_ATTEMPT": "3"}
+    code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0}, events)
+    assert code == 0 and urls == [(10, 3)] and posted[0][4] is True
 
 
 def test_defer_while_running_posts_nothing_when_another_run_is_unfinished(monkeypatch):

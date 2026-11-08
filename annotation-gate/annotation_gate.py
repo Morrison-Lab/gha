@@ -129,6 +129,23 @@ def latest_runs(runs, own_workflow):
     return sorted(newest.values(), key=lambda run: run["id"])
 
 
+def gate_targets(runs, own_workflow, trigger_id="", trigger_attempt=""):
+    """(run id, attempt) of the latest completed run of each workflow and event.
+
+    The run that triggered this gate is gated at no earlier attempt than the one
+    the event reports. The runs listing can lag a re-run by seconds and still
+    show the previous attempt, whose job annotations (a timeout, a cancellation)
+    describe an attempt the event's own attempt superseded.
+    """
+    targets = []
+    for r in latest_runs(runs, own_workflow):
+        attempt = r["run_attempt"]
+        if trigger_id and str(r["id"]) == str(trigger_id) and str(trigger_attempt).isdigit():
+            attempt = max(attempt, int(trigger_attempt))
+        targets.append((r["id"], attempt))
+    return targets
+
+
 def unfinished_runs(runs, own_workflow):
     """Runs other than own_workflow still queued or in progress."""
     return [r for r in runs if r.get("name") != own_workflow and r.get("status") in ("queued", "in_progress")]
@@ -180,7 +197,7 @@ def main():
         if os.environ.get("GATE_DEFER_WHILE_RUNNING") == "true" and waiting:
             print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
             return 0
-        targets = [(r["id"], r["run_attempt"]) for r in latest_runs(runs, own)]
+        targets = gate_targets(runs, own, target_run, os.environ.get("GATE_RUN_ATTEMPT", ""))
         counts = annotation_counts(base, repo, token, head_sha)
     else:
         targets, counts = [(run_id, attempt)], {}
