@@ -150,8 +150,9 @@ gha ignores `CI_RUNNER` for a public repository's events
 (it reads `github.event.repository.private`),
 but leave it unset at the repository and the organization level
 in every public repository anyway.
-`preview.yml` and the build job of `quarto-publish.yml` read a `CI_RUNNER_HEAVY` variable
-before `CI_RUNNER`, so a private repository can send its renders to a different runner label
+`preview.yml` and the build job of `quarto-publish.yml`
+read a `CI_RUNNER_HEAVY` variable before `CI_RUNNER`,
+so a private repository can send its renders to a different runner label
 ([#1563](https://github.com/Morrison-Lab/gha/issues/1563)).
 Never point a public repository at a self-hosted runner,
 because a pull request from a fork can run arbitrary code on it
