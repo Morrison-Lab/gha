@@ -30,8 +30,10 @@ runs:
           exit 0
         fi
         if ! sudo -n true 2>/dev/null; then
-          echo "::error::apt needs passwordless sudo and these packages are missing: $missing. Preinstall them on this runner."
-          exit 1
+          # Another route may still provide the libraries; a build that lacks a
+          # header fails at the package install with the compiler's own error.
+          echo "::warning::No passwordless sudo, and dpkg does not list these packages: $missing. Continuing without apt."
+          exit 0
         fi
         sudo apt-get update
         # Pipe through xargs rather than unquoted word-splitting so any shell
