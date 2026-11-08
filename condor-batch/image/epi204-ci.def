@@ -39,12 +39,16 @@ From: lds-ci.sif
     # Credentials for the lockfile's git source (rme). The build script writes
     # GITHUB_PAT from its environment into gh-pat (empty when unset), and the
     # file is removed below, so the token is not in the finished image.
+    # Tracing is off around the read, so set -x does not print the token.
+    set +x
     if [ -s /tmp/gh-pat ]; then export GITHUB_PAT="$(cat /tmp/gh-pat)"; fi
+    set -x
     mkdir -p /opt/epi204-library
     export R_LIBS_SITE=/opt/epi204-library
     export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
     export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
-    # The lockfile was written under R 4.6.0 and this image carries R 4.5, so
+    # The lockfile's R version is 4.6.0 (renv.lock, "R" > "Version") and the
+    # lds-ci.sif base carries R 4.5 (lds-ci.def), so
     # renv warns about the version and restores the locked package versions.
     Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/epi204/renv.lock", library = "/opt/epi204-library", prompt = FALSE)'
     R CMD INSTALL --library=/opt/epi204-library /opt/epi204/epi204.tar.gz
