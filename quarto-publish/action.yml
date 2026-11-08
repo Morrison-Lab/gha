@@ -343,6 +343,18 @@ runs:
         SCRIPT: ${{ github.action_path }}/../preview/prune-stale-freeze.py
       run: python3 "$SCRIPT"
 
+    - name: Use reticulate's managed uv environment
+      shell: bash
+      # A persistent virtualenv on a self-hosted runner (for example
+      # ~/.virtualenvs/r-reticulate) otherwise shadows the environment that
+      # reticulate::py_require() builds, so a page that requires a new
+      # package fails with ModuleNotFoundError (gha#1540). A value the caller
+      # already set is kept.
+      run: |
+        if [ -z "${RETICULATE_USE_MANAGED_VENV:-}" ]; then
+          echo "RETICULATE_USE_MANAGED_VENV=yes" >> "$GITHUB_ENV"
+        fi
+
     - name: Configure Deno V8 heap cap for large site renders
       if: inputs.deno-v8-options != ''
       shell: bash
