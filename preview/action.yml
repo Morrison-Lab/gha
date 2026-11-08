@@ -379,9 +379,23 @@ runs:
         # Intentional word-splitting: APT_PACKAGES is a space-separated list.
         sudo apt-get install -y $APT_PACKAGES
 
+    - name: Detect passwordless sudo
+      id: sudo
+      if: github.event.action != 'closed' && inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
+      shell: bash
+      run: |
+        # setup-chrome installs through sudo on Linux unless told not to (gha#1642).
+        if sudo -n true 2> /dev/null; then
+          echo "none=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "none=true" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Setup Chrome
       if: github.event.action != 'closed' && inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+      with:
+        no-sudo: ${{ steps.sudo.outputs.none }}
 
     - name: Restore R dependencies (renv)
       if: github.event.action != 'closed' && inputs.use-renv == 'true'
