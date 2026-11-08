@@ -267,7 +267,9 @@ def fragment_of(raw: str) -> Optional[str]:
 
 
 _ATTR_ID_RE = re.compile(r"""\b(?:id|name)\s*=\s*["']([^"'\s]+)["']""")
-_BRACE_ID_RE = re.compile(r"\{[^{}\n]*?#([A-Za-z][\w:.\-]*)[^{}\n]*\}")
+# ``{#id ...}`` or ``{.class #id ...}``; the attribute block may continue on
+# later lines (a long ``fig-alt``), so the closing brace is not required.
+_BRACE_ID_RE = re.compile(r"\{(?:[^{}\n]*?[ \t])?#([A-Za-z][\w:.\-]*)")
 _CHUNK_LABEL_RE = re.compile(r"""^[ ]*#\|[ \t]*label:[ \t]*["']?([^"'\s]+)""", re.M)
 _HEADING_RE = re.compile(r"^[ ]{0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$", re.M)
 

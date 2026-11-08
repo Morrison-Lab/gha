@@ -355,6 +355,14 @@ def test_underscore_and_repeated_headings_define_their_ids(tmp_path, monkeypatch
     assert got == [("a.qmd", 1, "examples-2")]
 
 
+def test_id_in_an_attribute_block_spanning_lines_is_defined(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#fig-x) [2](b.qmd#sec-y)\n",
+        "b.qmd": '![cap](x.png){#fig-x .plate\nfig-alt="long"}\n\n## Y {.unnumbered #sec-y}\n',
+    })
+    assert got == []
+
+
 def test_fragments_are_not_checked_by_default(tmp_path, monkeypatch):
     got = _findings(tmp_path, monkeypatch, {
         "a.qmd": "[d](b.qmd#def-x)\n",
