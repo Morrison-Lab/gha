@@ -332,8 +332,23 @@ runs:
         add_newest julia "$HOME/opt/julia-*/bin" "$HOME/.juliaup/bin" "$HOME/julia-*/bin"
         add_newest pdflatex "$HOME/.TinyTeX/bin/*"
 
+    - name: Detect whether the render goes to the cluster
+      id: cluster-path
+      shell: bash
+      env:
+        CLUSTER_RENDER: ${{ inputs.cluster-render }}
+      run: |
+        # condor-batch runs on the runner when it has no cluster key, so the
+        # runner then needs the Quarto install that the image would supply.
+        key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
+        if [ "$CLUSTER_RENDER" = "true" ] && [ -r "$key" ]; then
+          echo "cluster=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "cluster=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Set up Quarto
-      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.cluster-path.outputs.cluster != 'true'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
         GH_TOKEN: ${{ github.token }}
