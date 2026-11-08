@@ -4932,6 +4932,19 @@ PR #528 hardens the reviewer prompt and fails that deferral pattern in
 This paragraph is the matching guardrail for **agent sessions** driving
 ARDI/GII loops in this repo.
 
+**Read every non-notice check-run annotation on the head before sending it
+as final.**
+A job can conclude `success` and still carry `warning` or `failure` annotations,
+because selftest negative-control steps run with `continue-on-error`,
+and `check-pr-fully-clean.py` reads them.
+List the head's check runs (all pages), fetch each run's annotations when its
+`annotations_count` is above zero, drop the `notice` level, and for each
+remaining one either fix it or say why it is not this PR's in the head message.
+Comparing the count of `failure`-level annotations on the PR head with the
+count on `main`'s tip is enough for negative controls (gha#1698: 242 on both).
+A deny-form mechanism for owners does not exist: the checker already denies
+the head, which is why the runner caught it, so this is the owner-side half.
+
 **Cheap self-check before marking ✅ Clean in a GII summary or invoking
 `mwc`:**
 
