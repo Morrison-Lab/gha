@@ -457,7 +457,7 @@ def test_a_linked_singular_covers_a_plural_in_the_same_div():
 def test_parenthetical_alias_and_dashed_term_are_learned():
     """gha#1631: the title's parenthetical is an alias, and an en dash is part of a term."""
     definition = (
-        "::: {#def-kl}\n\n#### Kullback–Leibler divergence (KL divergence)\n\nx\n\n:::\n"
+        "::: {#def-kl}\n\n#### Kullback\u2013Leibler divergence (KL divergence)\n\nx\n\n:::\n"
     )
     masked, _ = ctl.preprocess(definition.splitlines())
     assert set(ctl.harvest_terms(masked, set())) == {
