@@ -1,0 +1,1 @@
+- `condor-batch/image/lds-ci.def`: installs `koma-script`, so a book PDF render (`scrbook.cls`) works on the read-only TinyTeX (gha#1645).
