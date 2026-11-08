@@ -8789,6 +8789,9 @@ jobs:
       - name: Run install-lychee tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-install-lychee-tests.sh
+      - name: Run install-tinytex tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-install-tinytex-tests.sh
 
   # check-paired-file-change is brand new, so (like check-junk-files above) it
   # does not exist at the released tag its reusable workflow's internal `uses:`
