@@ -18,12 +18,14 @@ on: # zizmor: ignore[dangerous-triggers] -- the gate checks out nothing and runs
         required: true
         type: string
 
-# One gate per commit: a newer completion on the same commit cancels the older
-# gate, which has already been superseded because `all-runs` re-checks every
-# workflow's latest run on the commit.
+# One gate per commit: a newer completion on the same commit replaces the gate
+# waiting behind the running one, which `all-runs` makes redundant because it
+# re-checks every workflow's latest run on the commit. Do not set
+# `cancel-in-progress: true`: completions arriving every few seconds then cancel
+# each running gate before it posts a check run (gha#1649).
 concurrency:
   group: annotation-gate-${{ github.event.workflow_run.head_sha || inputs.head-sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   gate:
