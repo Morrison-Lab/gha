@@ -17,11 +17,14 @@ Guidance for Claude Code when working in this repository.
 
 ## Standing tag-slide policy
 
-- **Sliding this repo's major tag is a standing grant**: AI agent sessions may
-  dispatch `slide-major-tag.yml` on their own judgment, without asking first
-  (user directive, 2026-08-27), unless explicitly instructed otherwise for a
-  specific occasion or session.
-  Like the `mwc` grant above, it removes the *asking* and not the judgment.
+- **Sliding this repo's major tag needs Ezra's typed "slide v3" in the runner
+  thread, and only the runner thread slides it.**
+  An owner thread whose fix has merged reports the merge to the coordinator
+  and waits; it does not dispatch `slide-major-tag.yml` or schedule a
+  check-in that would (coordinator rule, 2026-11-08, gha#1614).
+  This replaces the earlier standing grant (user directive, 2026-08-27),
+  which let any agent session slide on its own judgment.
+  The readiness bar and audits below still apply to the runner's slide.
 
 - **The readiness bar is the same one `mwc` uses, on the commit being slid.**
   Every check run on that exact commit is green or skipped, with none pending,
