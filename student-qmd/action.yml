@@ -104,7 +104,7 @@ runs:
       id: quarto-setup-1
       if: inputs.install-quarto == 'true'
       continue-on-error: true
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         version: ${{ inputs.quarto-version }}
 
