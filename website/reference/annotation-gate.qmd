@@ -132,9 +132,11 @@ its completion starts the next gate, which re-checks the whole commit.
 Pair it with a workflow-level `concurrency` group per commit
 (`annotation-gate-<head-sha>`, `cancel-in-progress: false`),
 so a burst of finishing runs queues one gate that does the work, not one per workflow.
-Leave `cancel-in-progress` false: a newer completion then replaces only the gate waiting
-behind the running one, while `true` cancels the running gate too, and completions
-arriving every few seconds on a busy commit never let one finish (gha#1649).
+Leave `cancel-in-progress` false:
+a newer completion then replaces only the gate waiting behind the running one,
+while `true` cancels the running gate too,
+and completions arriving every few seconds on a busy commit
+never let one finish (gha#1649).
 One commit-wide check-run listing gives each job's annotation count,
 so a job without annotations costs no request.
 The commit then carries one `annotation-gate` check, not one per workflow.
