@@ -218,11 +218,33 @@ runs:
         test -x "$dir/bun-linux-x64/bun"
         echo "path=$dir/bun-linux-x64/bun" >> "$GITHUB_OUTPUT"
 
+    # Concurrent claude-code-action runs on the private runners share one NFS
+    # home, so their Claude Code installs collide in ~/.claude/downloads
+    # (gha#1704). A read-only, version-pinned binary installed once on that
+    # home lets the action skip its own install through
+    # path_to_claude_code_executable. The step passes the path on only when
+    # the file exists and matches the recorded digest; anywhere else (GitHub-
+    # hosted runners, a missing or changed file) the output stays empty and
+    # the action installs Claude Code itself exactly as before.
+    - name: Locate pinned Claude Code
+      id: claude-bin
+      continue-on-error: true
+      if: runner.os == 'Linux' && runner.arch == 'X64'
+      shell: bash
+      env:
+        CLAUDE_BIN: /home/morri313/opt/claude-code/2.1.316/claude
+        CLAUDE_SHA256: fd13c70000fec3f2116dfbcbb6121210b4a29328bf0e46210a59dd594a67d824
+      run: |
+        if [ -x "$CLAUDE_BIN" ] && echo "$CLAUDE_SHA256  $CLAUDE_BIN" | sha256sum --check --status; then
+          echo "path=$CLAUDE_BIN" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Run Claude Code Review
       id: run
       uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
       with:
         path_to_bun_executable: ${{ steps.bun.outputs.path }}
+        path_to_claude_code_executable: ${{ steps.claude-bin.outputs.path }}
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
         anthropic_api_key: ${{ inputs.anthropic-api-key }}
         # Skip the App-token exchange. DEFAULT_PERMISSIONS in the pinned

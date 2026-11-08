@@ -217,6 +217,38 @@ def test_ssh_key_with_whitespace_is_refused(tmp_path):
     assert calls == []
 
 
+def test_output_paths_that_break_the_submit_file_or_leave_the_checkout_are_refused(
+    tmp_path,
+):
+    bad = [
+        "my site",
+        "_site,my site",
+        'a"b',
+        "a'b",
+        "a\\b",
+        "/etc",
+        "..",
+        "../up",
+        "a/..",
+        "a/../b",
+        "_site,/abs",
+    ]
+    for i, output in enumerate(bad):
+        run_dir = tmp_path / str(i)
+        run_dir.mkdir()
+        proc, calls = _run(run_dir, ["a", "b"], CONDOR_OUTPUT=output)
+        assert proc.returncode == 64, output
+        assert "CONDOR_OUTPUT" in proc.stderr, output
+        assert calls == [], output
+
+
+def test_output_paths_inside_the_checkout_are_accepted(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site,docs/out,a..b")
+    assert proc.returncode != 64, proc.stderr
+    assert "CONDOR_OUTPUT must" not in proc.stderr
+    assert "must stay inside" not in proc.stderr
+
+
 def _arguments(tmp_path: Path) -> str:
     sub = (tmp_path / "calls.log.sub").read_text().splitlines()
     return next(line for line in sub if line.startswith("arguments = "))

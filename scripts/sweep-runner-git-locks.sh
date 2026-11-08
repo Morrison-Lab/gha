@@ -10,7 +10,8 @@
 #
 # A lock file is removed only when all of these hold:
 #   - it is a regular file named *.lock directly under <work>/<repo>/<repo>/.git
-#     or anywhere under <work>/<repo>/<repo>/.git/modules;
+#     or anywhere under <work>/<repo>/<repo>/.git/modules or .git/refs (a killed
+#     fetch leaves refs/remotes/origin/<branch>.lock, gha#1716);
 #   - the current user owns it;
 #   - it has not changed for SWEEP_LOCK_MIN_AGE_MINUTES (default 10, at least 1),
 #     so a lock a running git just took is kept;
@@ -68,8 +69,10 @@ for repo in "$work"/*/; do
     fi
   done < <({
     find "$gitdir" -maxdepth 1 -type f -name '*.lock' -user "$me" -mmin "+$min_age" -print0
-    [ -d "$gitdir/modules" ] &&
-      find "$gitdir/modules" -type f -name '*.lock' -user "$me" -mmin "+$min_age" -print0
+    for sub in modules refs; do
+      [ -d "$gitdir/$sub" ] &&
+        find "$gitdir/$sub" -type f -name '*.lock' -user "$me" -mmin "+$min_age" -print0
+    done
   })
 done
 echo "sweep-runner-git-locks: removed $removed lock file(s)"
