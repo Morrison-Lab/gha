@@ -49,13 +49,15 @@ def _repo(tmp_path: Path, files: dict) -> Path:
     return tmp_path
 
 
-def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb"):
+def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb", partials=()):
     _repo(tmp_path, files)
     monkeypatch.chdir(tmp_path)
     tracked = ql.tracked_files(ql.DEFAULT_GLOBS.split(), [])
     return [
         (f.path, f.line, f.target)
-        for f in ql.find_dead_links(Path("."), tracked, ql.parse_extensions(exts))
+        for f in ql.find_dead_links(
+            Path("."), tracked, ql.parse_extensions(exts),
+            partials=ql.compile_ignores(partials))
     ]
 
 
@@ -163,6 +165,31 @@ def test_a_subfile_must_resolve_from_every_page_that_includes_it(tmp_path, monke
         "a/sibling.qmd": "# only under a/\n",
     })
     assert got == [("_shared/_x.qmd", 1, "sibling.qmd")]
+
+
+_UNPREFIXED = {
+    "chapters/page.qmd": "{{< include page/part.qmd >}}\n",
+    "chapters/page/part.qmd": "[other](other.qmd)\n",
+    "chapters/other.qmd": "# other\n",
+}
+
+
+def test_unprefixed_subfile_also_resolves_from_its_own_directory(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, _UNPREFIXED)
+    assert got == [("chapters/page/part.qmd", 1, "other.qmd")]
+
+
+def test_partial_globs_resolve_an_unprefixed_subfile_from_the_including_page(tmp_path, monkeypatch):
+    # Without the glob the same link is the false positive above.
+    got = _findings(tmp_path, monkeypatch, _UNPREFIXED, partials=["chapters/*/**"])
+    assert got == []
+
+
+def test_a_partial_glob_does_not_hide_a_genuinely_dead_link(tmp_path, monkeypatch):
+    texts = dict(_UNPREFIXED)
+    texts["chapters/page/part.qmd"] = "[gone](gone.qmd)\n"
+    got = _findings(tmp_path, monkeypatch, texts, partials=["chapters/*/**"])
+    assert got == [("chapters/page/part.qmd", 1, "gone.qmd")]
 
 
 def test_quoted_include_path_with_a_space(tmp_path, monkeypatch):
