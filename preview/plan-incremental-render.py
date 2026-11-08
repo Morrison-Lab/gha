@@ -31,7 +31,12 @@ Environment variables
 PROJECT_DIR   : the Quarto project directory (default: `.`).
 MATCHED_KEY   : the key `actions/cache/restore` restored; empty means none.
 INSPECT_JSON  : path to the output of `quarto inspect`, whose
-                `files.input` lists the project's rendered pages.
+                `files.input` lists the project's rendered pages. When it is
+                missing or empty (`quarto inspect` can fail on an include
+                nested in a subfile, gha#1608), the pages come from the
+                `project.render` list of `_quarto.yml` and the profile file.
+RENDER_PROFILE : the Quarto profile whose `_quarto-<profile>.yml` adds to the
+                `project.render` list (default: none).
 FULL_PATTERNS : newline-separated globs (fnmatch, against the repo-relative
                 path) that force a full render.
 IGNORE_PATTERNS : newline-separated globs for paths that affect no page.
@@ -76,8 +81,38 @@ def matches(path, globs):
     return False
 
 
+def render_list_pages(project_dir, profile):
+    """List the pages named by `project.render`, or None when it names none.
+
+    The fallback for a failed `quarto inspect`. Entries of the base config and
+    the profile config are joined, a `!` entry removes the files it matches,
+    and every other entry is a glob relative to the project directory.
+    """
+    try:
+        import yaml
+    except ImportError:
+        return None
+    names = ["_quarto.yml"] + ([f"_quarto-{profile}.yml"] if profile else [])
+    entries = []
+    for name in names:
+        try:
+            config = yaml.safe_load((project_dir / name).read_text(encoding="utf-8"))
+            listed = config["project"]["render"]
+        except (OSError, yaml.YAMLError, KeyError, TypeError):
+            continue
+        if isinstance(listed, list):
+            entries += [entry for entry in listed if isinstance(entry, str)]
+
+    def expand(glob):
+        return {p.resolve() for p in project_dir.glob(glob) if p.is_file()}
+
+    included = set().union(*[expand(e) for e in entries if not e.startswith("!")])
+    excluded = set().union(*[expand(e[1:]) for e in entries if e.startswith("!")])
+    return sorted(included - excluded) or None
+
+
 def decide(project_dir, matched_key, inspect_json, full_globs, ignore_globs,
-           max_pages, pruner):
+           max_pages, pruner, profile=None):
     """Return (mode, reason, pages), pages being project-relative paths."""
     if not matched_key:
         return "full", "no incremental cache was restored", []
@@ -99,7 +134,9 @@ def decide(project_dir, matched_key, inspect_json, full_globs, ignore_globs,
         inspected = json.loads(Path(inspect_json).read_text(encoding="utf-8"))
         inputs = [Path(p).resolve() for p in inspected["files"]["input"]]
     except (OSError, ValueError, KeyError, TypeError):
-        return "full", "`quarto inspect` did not list the project's pages", []
+        inputs = render_list_pages(project_dir, profile)
+        if inputs is None:
+            return "full", "`quarto inspect` did not list the project's pages", []
 
     deps = {page: pruner.dependencies(page, project_dir) for page in inputs}
     reachable = set().union(*deps.values()) if deps else set()
@@ -152,6 +189,7 @@ def main():
         patterns(os.getenv("IGNORE_PATTERNS")),
         int(os.getenv("MAX_PAGES") or 15),
         pruner,
+        os.getenv("RENDER_PROFILE", "").strip(),
     )
     pages_file = Path(os.getenv("PAGES_FILE") or project_dir / "_incremental_pages.txt")
     pages_file.write_text("".join(f"{page}\n" for page in pages), encoding="utf-8")
