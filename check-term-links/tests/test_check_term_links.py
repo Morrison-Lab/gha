@@ -417,3 +417,52 @@ def test_ordinary_words_defined_in_a_prerequisite_are_not_flagged():
     )
     page = "::: {#exm-a}\n\nThe sum and the number of values are not equal.\n\n:::\n"
     assert run_text(page, {"d.qmd": defs}) == []
+
+
+ENTROPY_DEF = """\
+::: {#def-entropy}
+
+#### Entropy
+
+The **entropy** of a variable is its expected surprisal.
+
+:::
+"""
+
+
+@pytest.mark.parametrize(
+    "title,plural",
+    [
+        ("Entropy", "entropies"),
+        ("Matrix", "matrices"),
+        ("Hypothesis", "hypotheses"),
+        ("Maximum", "maxima"),
+        ("Criterion", "criteria"),
+        ("Half", "halves"),
+        ("Loss function", "loss functions"),
+    ],
+)
+def test_irregular_plural_of_a_defined_term_is_flagged(title, plural):
+    """gha#1630: only a trailing s or es used to count as a plural."""
+    definition = f"::: {{#def-t}}\n\n#### {title}\n\nA **{title.lower()}** is x.\n\n:::\n"
+    page = f"::: {{#sol-a}}\n\nAll finite {plural} are fine.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": definition})) == [("unlinked-first-use", title.lower())]
+
+
+def test_a_linked_singular_covers_a_plural_in_the_same_div():
+    page = "::: {#sol-a}\n\nThe [entropy](d.qmd#def-entropy) of two entropies.\n\n:::\n"
+    assert run_text(page, {"d.qmd": ENTROPY_DEF}) == []
+
+
+def test_parenthetical_alias_and_dashed_term_are_learned():
+    """gha#1631: the title's parenthetical is an alias, and an en dash is part of a term."""
+    definition = (
+        "::: {#def-kl}\n\n#### Kullback–Leibler divergence (KL divergence)\n\nx\n\n:::\n"
+    )
+    masked, _ = ctl.preprocess(definition.splitlines())
+    assert set(ctl.harvest_terms(masked, set())) == {
+        "kullback leibler divergence",
+        "kl divergence",
+    }
+    page = "::: {#sol-a}\n\nThe KL divergence is large.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": definition})) == [("unlinked-first-use", "kl divergence")]
