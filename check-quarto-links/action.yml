@@ -49,6 +49,15 @@ inputs:
       like `_`-prefixed files: a link in one resolves from the page that
       includes it, not from the file's own directory.
     default: ''
+  external-targets:
+    description: >-
+      Comma/newline-separated globs (`*`, `?`, `**`) of link targets that a
+      Lua filter repoints at render time, such as links to pages of a
+      submodule's site that this project does not have. A link to a matching
+      target that does not exist here is not reported. The match is on the
+      target with leading `./` and `../` removed (`algebra.qmd` matches
+      `../algebra.qmd`).
+    default: ''
 runs:
   using: composite
   steps:
@@ -61,4 +70,5 @@ runs:
         QL_FAIL: ${{ inputs.fail }}
         QL_CHECK_FRAGMENTS: ${{ inputs.check-fragments }}
         QL_PARTIAL_GLOBS: ${{ inputs.partial-globs }}
+        QL_EXTERNAL_TARGETS: ${{ inputs.external-targets }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-quarto-links.py"
