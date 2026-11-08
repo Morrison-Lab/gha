@@ -75,6 +75,7 @@ on:
           The runner already provides R, Quarto, TinyTeX and Julia and has no
           sudo (a self-hosted runner). Skip the steps that install them and
           install `r-packages` with pak. See the composite's input.
+          `cluster-render: true` implies it, since `cluster-render` needs a lab runner (gha#1642).
         type: boolean
         default: false
       julia-version:
@@ -331,7 +332,7 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
-          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain || inputs.cluster-render }}
           julia-version: ${{ inputs.julia-version }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
