@@ -188,10 +188,41 @@ outputs:
 runs:
   using: composite
   steps:
+    # claude-code-action installs Bun with oven-sh/setup-bun, which gives up
+    # after three tries about 15 to 20 s apart. A release-host 504 burst
+    # outlasted both attempts of a review on 2026-11-08, leaving the PR with
+    # no verdict (gha#1667). Download Bun here with a longer retry, check it
+    # against the pinned digest, and hand the action its path through
+    # path_to_bun_executable, which makes the action skip its own install.
+    # Any failure here leaves the output empty, so the action installs Bun
+    # itself exactly as before. The version and digest must match the
+    # bun-version in the pinned action.yml above (1.4.4).
+    - name: Install Bun with retries
+      id: bun
+      continue-on-error: true
+      if: runner.os == 'Linux' && runner.arch == 'X64'
+      shell: bash
+      env:
+        BUN_VERSION: 1.4.4
+        BUN_SHA256: bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c
+      run: |
+        set -euo pipefail
+        dir="$RUNNER_TEMP/bun-download"
+        mkdir -p "$dir"
+        url="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
+        curl --fail --silent --show-error --location \
+          --retry 8 --retry-delay 10 --retry-all-errors \
+          --output "$dir/bun.zip" "$url"
+        echo "$BUN_SHA256  $dir/bun.zip" | sha256sum --check --status
+        unzip -q -o "$dir/bun.zip" -d "$dir"
+        test -x "$dir/bun-linux-x64/bun"
+        echo "path=$dir/bun-linux-x64/bun" >> "$GITHUB_OUTPUT"
+
     - name: Run Claude Code Review
       id: run
       uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
       with:
+        path_to_bun_executable: ${{ steps.bun.outputs.path }}
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
         anthropic_api_key: ${{ inputs.anthropic-api-key }}
         # Skip the App-token exchange. DEFAULT_PERMISSIONS in the pinned
