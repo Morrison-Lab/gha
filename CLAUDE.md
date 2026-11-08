@@ -272,6 +272,13 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 - the `@v3` lists in `CLAUDE.md`, `README.md` (two), `website/versioning.qmd` (two) and `website/workflows.qmd`, and the table rows in `README.md` and `website/workflows.qmd`;
 - `.github/dependabot.yml`, `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
 
+A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
+The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub.
+Until the slide, a caller PR pinned at `@v3` fails `check-caller-permissions` with a 404, because the new workflow does not exist at that tag yet.
+In lds, a new caller workflow must also be listed under `workflows:` in `annotation-gate.yml`, or `check-orphans` fails.
+sds uses `workflows: ["*"]`.
+The pds, mds, and mcs repos have no gate.
+
 A synthetic email address in a test needs a `# phi-allow` comment.
 When a check fails within seconds, read its `##[error]` lines with a log tail of 120 lines or more before calling it an infrastructure failure.
 
