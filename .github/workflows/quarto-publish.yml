@@ -131,6 +131,27 @@ on:
           Empty leaves the runner's time zone unchanged.
         type: string
         default: ''
+      cluster-render:
+        description: >-
+          Run the render on a WWU CS cluster node through `condor-batch`
+          instead of on the runner (gha#1563). Needs a runner with the cluster
+          ssh key (`runs-on`); the setup steps still run on the runner, and
+          `lds-ci.sif` has no renv and no Chromium. Falls back to the runner
+          when the cluster cannot run the job.
+        type: boolean
+        default: false
+      cluster-head:
+        description: Cluster head (or list of heads) for `cluster-render`.
+        type: string
+        default: cse-head.cluster.cs.wwu.edu
+      cluster-image:
+        description: Apptainer image on the cluster home that `cluster-render` runs in. Required with `cluster-render`.
+        type: string
+        default: ''
+      cluster-image-file:
+        description: The same image on the runner, for heads without the cluster home.
+        type: string
+        default: ''
       timeout-minutes:
         description: >-
           Timeout, in minutes, for the render (build job). Default 45 is the hang
@@ -227,6 +248,10 @@ jobs:
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
+          cluster-render: ${{ inputs.cluster-render }}
+          cluster-head: ${{ inputs.cluster-head }}
+          cluster-image: ${{ inputs.cluster-image }}
+          cluster-image-file: ${{ inputs.cluster-image-file }}
 
       - name: Stage rendered site
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

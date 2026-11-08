@@ -138,6 +138,29 @@ inputs:
       are not in UTC. Empty (default) leaves the runner's time zone unchanged.
       A value containing a newline or `=` is rejected.
     default: ''
+  cluster-render:
+    description: >-
+      Run the render on a WWU CS cluster execute node through `condor-batch`,
+      in the `cluster-image` Apptainer image, instead of on the runner. The
+      output directory, `_freeze`, `.quarto` and the render log come back to
+      the checkout, so every later step is unchanged. The setup steps above
+      still run on the runner, so a caller that turns this on sets
+      `setup-r`, `use-renv`, `setup-chrome`, `setup-julia` and `apt-packages`
+      to what the image lacks (the `lds-ci.sif` image has no renv and no
+      Chromium). Needs the cluster ssh key on the runner; without it, or when
+      the cluster cannot run the job, the render runs on the runner. `.git` is
+      copied unless the caller sets the `RSYNC_EXCLUDE` environment variable
+      (`set-mtimes-from-git.py` needs it).
+    default: 'false'
+  cluster-head:
+    description: Cluster head (or list of heads) for `cluster-render`; see `condor-batch` `head`.
+    default: cse-head.cluster.cs.wwu.edu
+  cluster-image:
+    description: Apptainer image on the cluster home that `cluster-render` runs in (`condor-batch` `image`). Required with `cluster-render`.
+    default: ''
+  cluster-image-file:
+    description: The same image on the runner, for heads without the cluster home (`condor-batch` `image-file`).
+    default: ''
 runs:
   using: composite
   steps:
@@ -370,6 +393,7 @@ runs:
         echo "TZ=$TIMEZONE" >> "$GITHUB_ENV"
 
     - name: Render Quarto project
+      if: inputs.cluster-render != 'true'
       shell: bash
       env:
         PROJECT_PATH: ${{ inputs.path }}
@@ -383,6 +407,33 @@ runs:
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
         SETUP_JULIA: ${{ inputs.setup-julia }}
       run: bash "$GITHUB_ACTION_PATH/render-site.sh"
+
+    # The job has no runner environment, so the render's inputs travel as
+    # assignments on the command line, quoted with printf %q.
+    - name: Plan the cluster render
+      id: cluster-plan
+      if: inputs.cluster-render == 'true'
+      shell: bash
+      env:
+        PROJECT_PATH: ${{ inputs.path }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        RENDER_PROFILE: ${{ inputs.render-profile }}
+        FORMATS: ${{ inputs.formats }}
+        PER_FILE_FORMATS: ${{ inputs.per-file-formats }}
+        FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
+        FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
+        SETUP_JULIA: ${{ inputs.setup-julia }}
+      run: bash "$GITHUB_ACTION_PATH/plan-cluster-render.sh"
+
+    - name: Render Quarto project on the cluster
+      if: inputs.cluster-render == 'true'
+      uses: Morrison-Lab/gha/.github/actions/condor-batch@v3
+      with:
+        head: ${{ inputs.cluster-head }}
+        image: ${{ inputs.cluster-image }}
+        image-file: ${{ inputs.cluster-image-file }}
+        steps: ${{ steps.cluster-plan.outputs.steps }}
+        output: ${{ inputs.path }}/${{ inputs.output-dir }},${{ inputs.path }}/_freeze,${{ inputs.path }}/.quarto
 
     - name: Save Quarto freeze
       if: >-
