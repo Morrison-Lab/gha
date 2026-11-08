@@ -77,6 +77,8 @@ The page's `{{</* include */>}}` files are expanded first.
 An id counts when it appears as `{#id}`, `id="id"`, `name="id"`, a
 `#| label: id` chunk option, or a heading whose Pandoc auto-identifier is
 `id` (repeated headings are numbered `id-1`, `id-2`).
+A page with a `#| results: asis` chunk, or an include that has one, is skipped:
+the ids that chunk writes exist only at render time.
 Off by default until a caller has no dead anchors.
 
 ## Inputs

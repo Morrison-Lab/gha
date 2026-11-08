@@ -336,6 +336,17 @@ def test_moved_anchor_is_flagged_when_fragments_are_checked(tmp_path, monkeypatc
     assert got == [("a.qmd", 3, "def-x")]
 
 
+def test_page_with_asis_chunk_is_not_checked_for_fragments(tmp_path, monkeypatch):
+    # A results: asis chunk writes headings at render time, so its ids are unknowable.
+    # c.qmd is the control: the same link to a page without such a chunk is flagged.
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#gl-x) [2](c.qmd#gl-x)\n",
+        "b.qmd": "# B\n\n```{r}\n#| results: asis\ncat('## x {#gl-x}')\n```\n",
+        "c.qmd": "# C\n",
+    })
+    assert got == [("a.qmd", 1, "gl-x")]
+
+
 def test_fragment_forms_that_define_an_id_are_accepted(tmp_path, monkeypatch):
     got = _fragment_findings(tmp_path, monkeypatch, {
         "a.qmd": "[1](b.qmd#my-heading) [2](b.qmd#custom) [3](b.qmd#tbl-t) [4](b.qmd#h)\n",
