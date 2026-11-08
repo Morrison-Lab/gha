@@ -122,7 +122,7 @@ on:
         default: >-
           libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev
           libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev
-          libtiff5-dev libjpeg-dev zlib1g-dev libomp-dev build-essential
+          libtiff-dev libjpeg-dev zlib1g-dev libomp-dev build-essential
           libcairo2-dev gettext
       brew-packages:
         description: >-
