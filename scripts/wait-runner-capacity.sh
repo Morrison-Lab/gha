@@ -25,7 +25,8 @@
 # The hold counts against the job's timeout-minutes, so the default leaves 3 of
 # the 5 minutes of the shortest checks for checkout and work (gha#1582,
 # gha#1718: a 4-minute hold left 45 seconds and the check was cancelled).
-# WAIT_MAX_MINUTES=0 turns the wait off.
+# WAIT_MAX_MINUTES=0 turns the wait off, and a job on a runner whose name
+# matches WAIT_SKIP_RUNNER_NAMES (default private-gate-*) is never held.
 set -uo pipefail
 
 max_minutes="${WAIT_MAX_MINUTES:-2}"
@@ -34,6 +35,17 @@ max_load_per_core="${WAIT_MAX_LOAD_PER_CORE:-1.25}"
 max_blocked="${WAIT_MAX_BLOCKED:-0}"
 max_workers="${WAIT_MAX_WORKERS:-0}"
 proc_stat="${PROC_STAT:-/proc/stat}"
+
+# A gate runner serves the near-instant gate jobs (require-review and the
+# like), so holding them behind the builds on its host defeats its purpose
+# (gha#1729). WAIT_SKIP_RUNNER_NAMES is a space-separated list of globs
+# matched against RUNNER_NAME; the default skips the private-gate runners.
+for pattern in ${WAIT_SKIP_RUNNER_NAMES-private-gate-*}; do
+  # shellcheck disable=SC2254
+  case "${RUNNER_NAME:-}" in
+    $pattern) exit 0 ;;
+  esac
+done
 
 case "$max_minutes$min_mem_gb$max_blocked$max_workers" in
   '' | *[!0-9]*) echo "::warning::wait-runner-capacity: WAIT_MAX_MINUTES, WAIT_MIN_MEM_GB, WAIT_MAX_BLOCKED and WAIT_MAX_WORKERS must be whole numbers; not waiting."; exit 0 ;;
