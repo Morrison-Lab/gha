@@ -63,5 +63,19 @@ tmp_after=$(find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'tmp.*' | wc -l)
 [ "$tmp_after" -le "$tmp_before" ] || fail "the private copy should be removed when the hook ends"
 rm -rf "$copy"
 
+# A .git that is not a valid repository is removed from the workspace, and a
+# valid one is kept (gha#1720).
+ws="$work/gitws/repo/repo"
+mkdir -p "$ws/.git"
+echo x > "$ws/keep.txt"
+out=$(GITHUB_WORKSPACE="$ws" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script") || fail "a broken .git should not fail the hook"
+[ -e "$ws/.git" ] && fail "a .git that is not a repository should be removed"
+[ -e "$ws/keep.txt" ] || fail "only the .git folder should be removed"
+case "$out" in *"removed $ws/.git"*) ;; *) fail "removal should be reported: $out" ;; esac
+
+git init -q "$ws"
+GITHUB_WORKSPACE="$ws" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script" > /dev/null || fail "a valid repository should pass"
+[ -d "$ws/.git" ] || fail "a valid repository's .git should be kept"
+
 [ "$failures" = 0 ] && echo "all check-runner-disk tests passed"
 exit "$failures"
