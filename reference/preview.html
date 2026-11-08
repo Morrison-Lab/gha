@@ -1357,7 +1357,7 @@ cookieconsent.run({
 <td><code>cluster-render</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Run the render on a WWU CS cluster node through <code>condor-batch</code> instead of on the runner. The output directory, <code>_freeze</code>, <code>.quarto</code> and the render log come back, so later steps are unchanged. Needs a runner with the cluster ssh key; <code>lds-ci.sif</code> has no renv and no Chromium, so leave it off with <code>use-renv</code> or <code>setup-chrome</code>. Falls back to the runner when the cluster cannot run the job.</td>
+<td>Run the render on a WWU CS cluster node through <code>condor-batch</code> instead of on the runner. The output directory, <code>_freeze</code>, <code>.quarto</code> and the render log come back, so later steps are unchanged. Needs a runner with the cluster ssh key; <code>lds-ci.sif</code> has no renv and no Chromium, so leave it off with <code>use-renv</code> or <code>setup-chrome</code>. Needs <code>cluster-image</code>: with it empty the steps run bare on the execute node, which has no Quarto. Falls back to the runner when the cluster cannot run the job.</td>
 </tr>
 <tr class="odd">
 <td><code>cluster-head</code></td>
