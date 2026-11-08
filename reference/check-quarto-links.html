@@ -1301,6 +1301,12 @@ cookieconsent.run({
 <td>Comma- or newline-separated globs (<code>*</code>, <code>?</code>, <code>**</code>) of include-only files whose names do not start with <code>_</code>, because the project’s <code>render:</code> list leaves them unrendered (a <code>chapters/*/</code> directory); their links resolve from the including page (<a href="https://github.com/Morrison-Lab/gha/issues/1689">#1689</a>).</td>
 </tr>
 <tr class="odd">
+<td><code>external-targets</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Comma- or newline-separated globs (<code>*</code>, <code>?</code>, <code>**</code>) of link targets that a Lua filter repoints at render time, such as links to pages of a submodule’s site that the project does not have. A link to a matching target that does not exist is not reported; the match ignores leading <code>./</code> and <code>../</code>, and a matching page that does exist still gets its anchor checked (<a href="https://github.com/Morrison-Lab/gha/issues/1692">#1692</a>).</td>
+</tr>
+<tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
@@ -1329,7 +1335,8 @@ cookieconsent.run({
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false</span></span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-fragments: true                 # also verify each link's #anchor</span></span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   partial-globs: 'chapters/*/**'        # unrendered include-only files with no _ prefix</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   external-targets: 'algebra.qmd'       # pages a Lua filter repoints at render time</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner               # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <code>check-quarto-links.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub.</p>
 
 
