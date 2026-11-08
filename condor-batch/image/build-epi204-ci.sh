@@ -6,7 +6,8 @@
 #   image-dir  directory holding lds-ci.sif and receiving epi204-ci.sif
 #              (default: /cluster/home/morri313/ci/image)
 #
-# Run it on cf463-02 with Apptainer and push access to Morrison-Lab/epi204.
+# Run it on cf463-02 with Apptainer and read access to Morrison-Lab/epi204.
+# Export GITHUB_PAT first when the lockfile's rme git source needs credentials.
 # It rebuilds the image from the ref's renv.lock, so rerun it whenever renv.lock
 # changes; the image is stale otherwise.
 set -euo pipefail
@@ -23,6 +24,9 @@ sha="$(git -C "$work/epi204" rev-parse HEAD)"
 
 cp "$work/epi204/renv.lock" "$work/renv.lock"
 tar -czf "$work/epi204.tar.gz" -C "$work" --exclude=.git epi204
+# Optional token for the lockfile's git source (rme): copied in for the restore
+# only, and removed by the recipe's %post.
+(umask 077; printf '%s' "${GITHUB_PAT:-}" > "$work/gh-pat")
 cp "$here/epi204-ci.def" "$work/epi204-ci.def"
 # The recipe bootstraps from a local lds-ci.sif, so build next to it.
 cp "$image_dir/lds-ci.sif" "$work/lds-ci.sif"

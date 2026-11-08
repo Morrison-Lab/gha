@@ -20,6 +20,7 @@ From: lds-ci.sif
 %files
     renv.lock /opt/epi204/renv.lock
     epi204.tar.gz /opt/epi204/epi204.tar.gz
+    gh-pat /tmp/gh-pat
 
 %environment
     export R_LIBS_SITE=/opt/epi204-library
@@ -33,8 +34,12 @@ From: lds-ci.sif
     apt-get update
     apt-get install -y --no-install-recommends \
         libnlopt-dev libudunits2-dev libgdal-dev libgeos-dev libproj-dev \
-        libmagick++-dev libpoppler-cpp-dev libhdf5-dev
+        libmagick++-dev libpoppler-cpp-dev libhdf5-dev libnode-dev
 
+    # Credentials for the lockfile's git source (rme). The build script writes
+    # GITHUB_PAT from its environment into gh-pat (empty when unset), and the
+    # file is removed below, so the token is not in the finished image.
+    if [ -s /tmp/gh-pat ]; then export GITHUB_PAT="$(cat /tmp/gh-pat)"; fi
     mkdir -p /opt/epi204-library
     export R_LIBS_SITE=/opt/epi204-library
     export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
@@ -44,6 +49,7 @@ From: lds-ci.sif
     Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/epi204/renv.lock", library = "/opt/epi204-library", prompt = FALSE)'
     R CMD INSTALL --library=/opt/epi204-library /opt/epi204/epi204.tar.gz
     rm /opt/epi204/epi204.tar.gz
+    rm -f /tmp/gh-pat
     chmod -R a+rX /opt/epi204-library /opt/epi204
 
 %test
