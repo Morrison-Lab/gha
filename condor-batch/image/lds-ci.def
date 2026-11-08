@@ -46,7 +46,7 @@ From: ubuntu:24.04
 
     # R packages, binary where Posit Package Manager has them.
     export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
-    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages(c("remotes", "knitr", "rmarkdown", "reticulate", "tidymodels", "ggplot2", "dplyr", "purrr", "readr", "parameters", "performance", "sjPlot", "plotly", "see", "downlit", "xml2", "tinytex", "JuliaCall", "exams", "exams2forms", "gtsummary", "patchwork", "GGally", "kernlab", "discrim", "naivebayes", "SyncRNG", "ranger", "xgboost", "DT"))'
+    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages(c("remotes", "knitr", "rmarkdown", "reticulate", "tidymodels", "ggplot2", "dplyr", "purrr", "readr", "parameters", "performance", "sjPlot", "plotly", "see", "downlit", "xml2", "tinytex", "JuliaCall", "exams", "exams2forms", "gtsummary", "patchwork", "GGally", "kernlab", "discrim", "naivebayes", "SyncRNG", "ranger", "xgboost", "DT", "ppcor", "emmeans", "car", "geepack", "leaps", "lme4", "pwr"))'
     Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO"))); remotes::install_github("Morrison-Lab/qnp", upgrade = "never")'
 
     # Julia packages JuliaCall needs, baked into a world-readable depot so a render needs no network or build.
@@ -64,7 +64,7 @@ From: ubuntu:24.04
 %test
     set -e
     quarto --version
-    Rscript -e 'library(knitr); library(reticulate); library(GGally)'
+    Rscript -e 'library(knitr); library(reticulate); library(GGally); library(car); library(emmeans); library(lme4); library(MASS); library(nnet)'
     julia --version
     uv --version
     rsvg-convert --version
