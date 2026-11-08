@@ -151,18 +151,36 @@ def unfinished_runs(runs, own_workflow):
     return [r for r in runs if r.get("name") != own_workflow and r.get("status") in ("queued", "in_progress")]
 
 
+JOB_URL_RE = re.compile(r"/actions/runs/(\d+)/job/(\d+)")
+
+
 def annotation_counts(base, repo, token, sha):
-    """Map check run id -> annotation count for every check run on the commit."""
+    """Check runs on the commit: (id -> annotation count, (run id, name) -> newest id).
+
+    The second map names the newest check run of each job of each workflow run.
+    A job of an earlier attempt has a lower id than its re-run, so it is
+    superseded and its annotations describe an attempt that no longer counts
+    (gha#1722).
+    """
     url = f"{base}/repos/{repo}/commits/{sha}/check-runs?filter=latest"
-    return {c["id"]: (c.get("output") or {}).get("annotations_count", 1) for c in paged(url, token, "check_runs")}
+    counts, newest = {}, {}
+    for c in paged(url, token, "check_runs"):
+        counts[c["id"]] = (c.get("output") or {}).get("annotations_count", 1)
+        m = JOB_URL_RE.search(c.get("details_url") or "")
+        if m and c.get("name"):
+            key = (int(m.group(1)), c["name"])
+            newest[key] = max(newest.get(key, 0), c["id"])
+    return counts, newest
 
 
-def gate_jobs(base, repo, token, run_id, attempt, own_job, gate, counts):
+def gate_jobs(base, repo, token, run_id, attempt, own_job, gate, counts, newest=None):
     """Annotations of every job in one run attempt: (annotations, jobs checked)."""
     annotations, checked = [], 0
     jobs_url = f"{base}/repos/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs"
     for job in paged(jobs_url, token, "jobs"):
         if is_gate_job(job["name"], own_job, gate):
+            continue
+        if newest and newest.get((int(run_id), job["name"]), job["id"]) > job["id"]:
             continue
         checked += 1
         if counts.get(job["id"], 1) == 0:
@@ -198,12 +216,12 @@ def main():
             print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
             return 0
         targets = gate_targets(runs, own, target_run, os.environ.get("GATE_RUN_ATTEMPT", ""))
-        counts = annotation_counts(base, repo, token, head_sha)
+        counts, newest = annotation_counts(base, repo, token, head_sha)
     else:
-        targets, counts = [(run_id, attempt)], {}
+        targets, counts, newest = [(run_id, attempt)], {}, {}
     annotations, checked = [], 0
     for target_id, target_attempt in targets:
-        found, n = gate_jobs(base, repo, token, target_id, target_attempt, own_job, gate, counts)
+        found, n = gate_jobs(base, repo, token, target_id, target_attempt, own_job, gate, counts, newest)
         annotations += found
         checked += n
 
