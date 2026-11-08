@@ -208,12 +208,7 @@ runs:
 
     - name: Set up Quarto
       if: inputs.preinstalled-toolchain != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-      env:
-        # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
-        # release via the GitHub API; unauthenticated, that intermittently 403s on
-        # shared runners (#270). Authenticate it, matching the `preview` composite.
-        GH_TOKEN: ${{ github.token }}
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         tinytex: ${{ inputs.tinytex }}
 

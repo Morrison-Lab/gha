@@ -334,9 +334,7 @@ runs:
 
     - name: Set up Quarto
       if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-      env:
-        GH_TOKEN: ${{ github.token }}
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         # Install TinyTeX in the same setup only when a PDF render is requested;
         # composite actions can't vary `with:` conditionally, so gate it on the
