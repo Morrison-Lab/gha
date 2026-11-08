@@ -49,7 +49,7 @@ def _repo(tmp_path: Path, files: dict) -> Path:
     return tmp_path
 
 
-def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb", partials=()):
+def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb", partials=(), externals=(), fragments=False):
     _repo(tmp_path, files)
     monkeypatch.chdir(tmp_path)
     tracked = ql.tracked_files(ql.DEFAULT_GLOBS.split(), [])
@@ -57,7 +57,9 @@ def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb", part
         (f.path, f.line, f.target)
         for f in ql.find_dead_links(
             Path("."), tracked, ql.parse_extensions(exts),
-            partials=ql.compile_ignores(partials))
+            check_fragments=fragments,
+            partials=ql.compile_ignores(partials),
+            externals=ql.compile_ignores(externals))
     ]
 
 
@@ -190,6 +192,39 @@ def test_a_partial_glob_does_not_hide_a_genuinely_dead_link(tmp_path, monkeypatc
     texts["chapters/page/part.qmd"] = "[gone](gone.qmd)\n"
     got = _findings(tmp_path, monkeypatch, texts, partials=["chapters/*/**"])
     assert got == [("chapters/page/part.qmd", 1, "gone.qmd")]
+
+
+_EXTERNAL = {
+    "chapters/page.qmd": "[a](algebra.qmd#def-x) and [b](../linear-algebra.qmd#def-y)\n",
+}
+
+
+def test_a_missing_page_is_reported_without_external_targets(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, _EXTERNAL)
+    assert [t for _, _, t in got] == ["algebra.qmd#def-x", "../linear-algebra.qmd#def-y"]
+
+
+def test_external_targets_skip_a_missing_page_a_filter_repoints(tmp_path, monkeypatch):
+    # `../` and `./` are stripped before matching, so one glob covers both spellings.
+    got = _findings(tmp_path, monkeypatch, _EXTERNAL,
+                    externals=["algebra.qmd", "linear-algebra.qmd"])
+    assert got == []
+
+
+def test_external_targets_do_not_hide_other_dead_links(tmp_path, monkeypatch):
+    texts = {"chapters/page.qmd": "[a](algebra.qmd) [g](gone.qmd)\n"}
+    got = _findings(tmp_path, monkeypatch, texts, externals=["algebra.qmd"])
+    assert got == [("chapters/page.qmd", 1, "gone.qmd")]
+
+
+def test_an_existing_page_is_still_checked_when_it_matches_external_targets(tmp_path, monkeypatch):
+    # The skip applies only to a page that is absent; a local page keeps its anchor check.
+    texts = {
+        "chapters/page.qmd": "[a](algebra.qmd#nope)\n",
+        "chapters/algebra.qmd": "# Algebra {#sec-algebra}\n",
+    }
+    got = _findings(tmp_path, monkeypatch, texts, externals=["algebra.qmd"], fragments=True)
+    assert got == [("chapters/page.qmd", 1, "algebra.qmd#nope")]
 
 
 def test_quoted_include_path_with_a_space(tmp_path, monkeypatch):

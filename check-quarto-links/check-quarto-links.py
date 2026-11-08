@@ -48,6 +48,12 @@ Configuration (environment variables, set by the composite action):
   QL_PARTIAL_GLOBS      Comma/newline-separated globs of files that the project's
                         ``render:`` list leaves unrendered although their names
                         are not ``_``-prefixed; they are treated as include-only.
+  QL_EXTERNAL_TARGETS   Comma/newline-separated globs of link targets that a
+                        filter repoints at render time (a link to a page this
+                        project does not have). A link whose target matches
+                        and does not exist locally is not reported; the match
+                        is on the target with leading ``./`` and ``../``
+                        removed, so ``algebra.qmd`` matches ``../algebra.qmd``.
   QL_FAIL               Only an explicit 'false' makes findings non-blocking.
 """
 
@@ -379,6 +385,14 @@ def is_partial(path: str, partials: Sequence["re.Pattern[str]"] = ()) -> bool:
     return any(part.startswith(("_", ".")) for part in PurePosixPath(path).parts)
 
 
+def is_external(target: str, externals: Sequence["re.Pattern[str]"] = ()) -> bool:
+    """True when ``target`` matches ``external-targets``: a page that a render
+    filter repoints elsewhere, so its absence here is not a dead link.
+    """
+    bare = re.sub(r"^(?:\.{1,2}/)+", "", target)
+    return any(r.match(bare) for r in externals)
+
+
 def render_contexts(
     texts: Dict[str, str],
     root: Path,
@@ -419,6 +433,7 @@ def find_dead_links(
     skipped: Optional[List[str]] = None,
     check_fragments: bool = False,
     partials: Sequence["re.Pattern[str]"] = (),
+    externals: Sequence["re.Pattern[str]"] = (),
 ) -> List[Finding]:
     """Scan ``files`` (repo-relative) under ``root`` for dead page links.
 
@@ -458,6 +473,8 @@ def find_dead_links(
                 else:
                     cand = d / target
                 if not (root / cand).exists():
+                    if is_external(target, externals):
+                        break
                     findings.append(Finding(rel, line, raw.strip(), d.as_posix()))
                     break
                 frag = fragment_of(raw) if check_fragments else None
@@ -495,6 +512,9 @@ def main() -> int:
     partials = compile_ignores(
         t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PARTIAL_GLOBS", "")) if t.strip()
     )
+    externals = compile_ignores(
+        t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_EXTERNAL_TARGETS", "")) if t.strip()
+    )
     fail = os.environ.get("QL_FAIL", "true").strip().lower() != "false"
 
     files = tracked_files(globs, ignores)
@@ -505,7 +525,7 @@ def main() -> int:
     all_tracked = {f for f in all_out.split("\0") if f}
     skipped: List[str] = []
     check_fragments = os.environ.get("QL_CHECK_FRAGMENTS", DEFAULT_CHECK_FRAGMENTS).strip().lower() == "true"
-    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments, partials)
+    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments, partials, externals)
 
     print(
         f"Examined {len(files) - len(skipped)} file(s) matching {' '.join(globs)} "
