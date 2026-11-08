@@ -131,6 +131,8 @@ def check_preview(
 
     # 4. Check forwarding in preview.yml step
     build_job = workflow_doc.get("jobs", {}).get("build", {})
+    if "vars.CI_RUNNER_HEAVY" not in str(build_job.get("runs-on", "")):
+        errors.append(".github/workflows/preview.yml build job does not read CI_RUNNER_HEAVY")
     steps = build_job.get("steps", [])
     build_step = None
     for step in steps:
