@@ -89,6 +89,20 @@ fi
 case "$key" in
   *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
 esac
+# CONDOR_OUTPUT goes into HTCondor's environment attribute, whose syntax is
+# whitespace-delimited and quote-sensitive, and names paths inside the checkout
+# (gha#1601). Refuse what would break the submit file or leave the checkout.
+if [ -n "${CONDOR_OUTPUT:-}" ]; then
+  IFS=, read -ra out_paths <<< "$CONDOR_OUTPUT"
+  for p in "${out_paths[@]}"; do
+    case "$p" in
+      *[[:space:]\"\'\\]*)
+        echo "CONDOR_OUTPUT must not contain whitespace, quotes or backslashes: $p" >&2; exit 64 ;;
+      /* | .. | ../* | */.. | */../*)
+        echo "CONDOR_OUTPUT paths must stay inside the checkout: $p" >&2; exit 64 ;;
+    esac
+  done
+fi
 # accept-new records a head's key the first time it is seen and still refuses a
 # head whose recorded key changed, so a head missing from known_hosts is usable
 # (gha#1634) without weakening the check on the heads already recorded.
@@ -219,7 +233,8 @@ if [ -n "${CONDOR_OUTPUT:-}" ]; then
   IFS=, read -ra outs <<< "$CONDOR_OUTPUT"; keep=()
   for p in "${outs[@]}"; do [ ! -e "$scratch/work/$p" ] || keep+=("$p"); done
   if [ "${#keep[@]}" -gt 0 ]; then
-    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "${keep[@]}"
+    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "${keep[@]}" \
+      || echo "::could not pack the output: tar failed (is the scratch disk full?)"
   else
     tar -czf "$scratch/output.tar.gz" -T /dev/null
   fi
