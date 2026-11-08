@@ -354,6 +354,27 @@ def check_workflow(path: pathlib.Path) -> list[str]:
             "unset, so omitting the env makes force-suggests: true a no-op"
         )
 
+    errors.extend(check_cluster_job(path, doc))
+    return errors
+
+
+def check_cluster_job(path: pathlib.Path, doc: dict) -> list[str]:
+    """The opt-in cluster job must stay off by default and run condor-batch (gha#1640)."""
+    errors: list[str] = []
+    inputs = workflow_call_inputs(doc)
+    if (inputs.get("cluster-check") or {}).get("default") is not False:
+        errors.append(f"{path}: input cluster-check must default to false")
+    job = (doc.get("jobs") or {}).get("R-CMD-check-cluster")
+    if not isinstance(job, dict):
+        return errors + [f"{path}: no R-CMD-check-cluster job"]
+    cond = str(job.get("if") or "")
+    if "inputs.cluster-check" not in cond or "!inputs.hard" not in cond:
+        errors.append(
+            f"{path}: cluster job if: must require cluster-check and not hard "
+            f"(got {cond!r})"
+        )
+    if find_step(job, "actions/condor-batch@") is None:
+        errors.append(f"{path}: cluster job has no condor-batch step")
     return errors
 
 
@@ -815,6 +836,25 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
             False,
             "\n".join(errors),
             "' gettext '",
+        )
+        wf.write_text(mutated)
+
+        # 17. A cluster job that is no longer gated on cluster-check must fail.
+        gate = "if: ${{ inputs.cluster-check && !inputs.hard }}"
+        if gate not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no cluster job gate to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(gate, "if: ${{ !inputs.hard }}", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "cluster job without the cluster-check gate fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "cluster-check",
         )
         wf.write_text(mutated)
 
