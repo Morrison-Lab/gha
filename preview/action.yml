@@ -846,7 +846,24 @@ runs:
     - name: Install Python dependencies for DOCX tracked changes
       if: github.event.action != 'closed' && inputs.docx-tracked-changes == 'true'
       shell: bash
-      run: python3 -m pip install --quiet python-docx==1.2.0
+      run: |
+        # Skip when python-docx is already importable; otherwise install it,
+        # bootstrapping pip first on runners whose Python ships without it.
+        if python3 -c "import docx" 2>/dev/null; then
+          echo "python-docx already available"
+          exit 0
+        fi
+        if ! python3 -m pip --version >/dev/null 2>&1; then
+          python3 -m ensurepip --user >/dev/null 2>&1 || true
+        fi
+        if python3 -m pip --version >/dev/null 2>&1; then
+          python3 -m pip install --quiet python-docx==1.2.0
+        elif command -v uv >/dev/null 2>&1; then
+          uv pip install --quiet --system python-docx==1.2.0
+        else
+          echo "::error::python3 has no pip, ensurepip, or uv to install python-docx"
+          exit 1
+        fi
 
     - name: Create DOCX tracked changes
       id: docx-tracked-changes
