@@ -58,18 +58,22 @@ From: lds-ci.sif
 
     # LaTeX packages epi204's PDF renders need (gha#1660). Quarto installs a missing
     # package with tlmgr at render time, but /opt/TinyTeX is read-only in a job, so
-    # bake them here, where it is writable. koma-script (scrartcl.cls), nameref and
-    # xpatch are the ones Quarto installed while rendering Midterm1, hw1, hw3,
-    # midterm_2 and final_exam in both the assign and solution profiles; luacolor,
-    # lua-ul and luatexbase are the tagged-PDF packages lds-ci.sif already carries,
-    # listed so this image does not depend on the base having them.
+    # bake them here, where it is writable. The list comes from rendering every
+    # epi204 document (all 20, html, pdf and docx) in both the solution and assign
+    # profiles, the command the cluster render jobs run, and keeping every package
+    # Quarto installed: koma-script (scrartcl.cls), nameref, xpatch, colortbl,
+    # makecell, multirow, pdflscape, tabu, threeparttable, threeparttablex, ulem,
+    # varwidth and wrapfig. accents, statmath and titlesec come from scanning epi204
+    # for \usepackage lines. etoolbox, needspace, parskip, tcolorbox, luacolor, lua-ul
+    # and luatexbase are in lds-ci.sif already, listed so this image does not depend
+    # on the base having them.
     /opt/TinyTeX/bin/x86_64-linux/tlmgr option repository https://tlnet.yihui.org
-    /opt/TinyTeX/bin/x86_64-linux/tlmgr install koma-script nameref xpatch luacolor lua-ul luatexbase
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr install koma-script nameref xpatch colortbl makecell multirow pdflscape tabu threeparttable threeparttablex ulem varwidth wrapfig accents statmath titlesec etoolbox needspace parskip tcolorbox luacolor lua-ul luatexbase
     chmod -R a+rX /opt/TinyTeX
 
 %test
     set -e
     export R_LIBS_SITE=/opt/epi204-library
     Rscript -e 'library(epi204); library(gtsummary); library(survival)'
-    for f in scrartcl.cls nameref.sty xpatch.sty luacolor.sty lua-ul.sty luatexbase.sty; do test -n "$(kpsewhich "$f")"; done
+    for f in scrartcl.cls nameref.sty xpatch.sty colortbl.sty makecell.sty multirow.sty pdflscape.sty tabu.sty threeparttable.sty threeparttablex.sty ulem.sty varwidth.sty wrapfig.sty accents.sty statmath.sty titlesec.sty etoolbox.sty needspace.sty parskip.sty tcolorbox.sty luacolor.sty lua-ul.sty luatexbase.sty; do test -n "$(kpsewhich "$f")"; done
     Rscript -e 'stopifnot(nrow(installed.packages(lib.loc = "/opt/epi204-library")) > 300)'
