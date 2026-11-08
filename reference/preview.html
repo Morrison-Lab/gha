@@ -1354,6 +1354,30 @@ cookieconsent.run({
 <td>Render only the pages a PR can affect, from a cached <code>_site</code>, <code>.quarto</code>, and <code>_freeze</code>, and fall back to the full render when there is no cache, a path that can affect every page changed, a page was deleted, or too many pages are stale. Unchanged pages keep their old navigation and cross-reference numbers. The composite also takes <code>incremental-full-render-paths</code>, <code>incremental-ignore-paths</code>, and <code>incremental-max-pages</code>; the reusable workflow does not forward them.</td>
 </tr>
 <tr class="even">
+<td><code>cluster-render</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Run the render on a WWU CS cluster node through <code>condor-batch</code> instead of on the runner. The output directory, <code>_freeze</code>, <code>.quarto</code> and the render log come back, so later steps are unchanged. Needs a runner with the cluster ssh key; <code>lds-ci.sif</code> has no renv and no Chromium, so leave it off with <code>use-renv</code> or <code>setup-chrome</code>. Falls back to the runner when the cluster cannot run the job.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-head</code></td>
+<td>string</td>
+<td><code>cse-head.cluster.cs.wwu.edu</code></td>
+<td>Cluster head, or a space- or comma-separated list, for <code>cluster-render</code>.</td>
+</tr>
+<tr class="even">
+<td><code>cluster-image</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Apptainer image on the cluster home that <code>cluster-render</code> runs in.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-image-file</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>The same image on the runner, for heads without the cluster home.</td>
+</tr>
+<tr class="even">
 <td><code>extra-preview-labels</code></td>
 <td>string</td>
 <td><code>'[]'</code></td>
