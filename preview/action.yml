@@ -226,6 +226,27 @@ inputs:
       site instead, since one `quarto render` per page costs more than one
       render of everything.
     default: '15'
+  cluster-render:
+    description: >-
+      Run the render on a WWU CS cluster execute node through `condor-batch`,
+      in the `cluster-image` Apptainer image, instead of on the runner. The
+      output directory, `_freeze`, `.quarto` and the render log come back to
+      the checkout, so every later step is unchanged. The runner needs the
+      cluster ssh key; without it, or when the cluster cannot run the job,
+      the render runs on the runner. The `lds-ci.sif` image has no renv and
+      no Chromium, so a caller that sets `use-renv` or `setup-chrome` should
+      leave this off. `.git` is copied unless the caller sets the
+      `RSYNC_EXCLUDE` environment variable (`set-mtimes-from-git.py` needs it).
+    default: 'false'
+  cluster-head:
+    description: Cluster head (or list of heads) for `cluster-render`; see `condor-batch` `head`.
+    default: cse-head.cluster.cs.wwu.edu
+  cluster-image:
+    description: Apptainer image on the cluster home that `cluster-render` runs in (`condor-batch` `image`).
+    default: ''
+  cluster-image-file:
+    description: The same image on the runner, for heads without the cluster home (`condor-batch` `image-file`).
+    default: ''
 outputs:
   changed-chapters:
     description: >-
@@ -650,7 +671,7 @@ runs:
       run: python3 "$GITHUB_ACTION_PATH/skip-formats.py"
 
     - name: Render Quarto site
-      if: github.event.action != 'closed'
+      if: github.event.action != 'closed' && inputs.cluster-render != 'true'
       shell: bash
       env:
         PROJECT_PATH: ${{ inputs.path }}
@@ -669,6 +690,38 @@ runs:
         REDIRECT_STUBS_SCRIPT: ${{ github.action_path }}/../quarto-publish/redirect-stubs.py
         RENDER_SCRIPT: ${{ github.action_path }}/render-site.sh
       run: bash "$RENDER_SCRIPT"
+
+    # The job has no runner environment, so the render's inputs travel as
+    # assignments on the command line, quoted with printf %q.
+    - name: Plan the cluster render
+      id: cluster-plan
+      if: github.event.action != 'closed' && inputs.cluster-render == 'true'
+      shell: bash
+      env:
+        PROJECT_PATH: ${{ inputs.path }}
+        RENDER_PROFILE: ${{ inputs.render-profile }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        FORMATS: ${{ inputs.formats }}
+        SKIP_DOCX: ${{ inputs.skip-docx }}
+        DOCX_TRACKED_CHANGES: ${{ inputs.docx-tracked-changes }}
+        TINYTEX: ${{ inputs.tinytex }}
+        HAS_LABEL_PDF: ${{ contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
+        HAS_LABEL_DOCX: ${{ contains(github.event.pull_request.labels.*.name, 'preview:docx') }}
+        HAS_LABEL_REVEALJS: ${{ contains(github.event.pull_request.labels.*.name, 'preview:revealjs') }}
+        SETUP_JULIA: ${{ inputs.setup-julia }}
+        INCREMENTAL_MODE: ${{ steps.plan-incremental.outputs.mode }}
+        INCREMENTAL_PAGES: ${{ inputs.path }}/_incremental_pages.txt
+      run: bash "$GITHUB_ACTION_PATH/plan-cluster-render.sh"
+
+    - name: Render Quarto site on the cluster
+      if: github.event.action != 'closed' && inputs.cluster-render == 'true'
+      uses: Morrison-Lab/gha/.github/actions/condor-batch@v3
+      with:
+        head: ${{ inputs.cluster-head }}
+        image: ${{ inputs.cluster-image }}
+        image-file: ${{ inputs.cluster-image-file }}
+        steps: ${{ steps.cluster-plan.outputs.steps }}
+        output: ${{ inputs.path }}/${{ inputs.output-dir }},${{ inputs.path }}/_freeze,${{ inputs.path }}/.quarto,_quarto_preview_render.log
 
     - name: Verify render warnings and forbidden log patterns
       if: github.event.action != 'closed'
