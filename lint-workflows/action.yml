@@ -67,7 +67,8 @@ runs:
         TARBALL="actionlint_${VER}_linux_amd64.tar.gz"
         URL="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERSION}/${TARBALL}"
         TMPDIR=$(mktemp -d)
-        curl -fsSL --retry 8 --retry-delay 10 --retry-all-errors -o "$TMPDIR/$TARBALL" "$URL"
+        source "$GITHUB_ACTION_PATH/../download-cache/cached-download.sh"
+        cached_download "$URL" "$TMPDIR/$TARBALL" "$ACTIONLINT_CHECKSUM"
         echo "${ACTIONLINT_CHECKSUM}  $TMPDIR/$TARBALL" | sha256sum -c -
         tar -xzf "$TMPDIR/$TARBALL" -C "$TMPDIR" actionlint
         # A directory the job owns, so a runner without sudo can install too.
