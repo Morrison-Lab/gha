@@ -1,0 +1,1 @@
+- `condor-batch/image/lds-ci.def`: installs the R packages the araomm render loads (`ppcor`, `emmeans`, `car`, `geepack`, `leaps`, `lme4`, `pwr`), and `%test` loads them, so one rebuild serves both the lds and araomm cluster renders (gha#1638).
