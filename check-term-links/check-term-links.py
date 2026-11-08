@@ -143,6 +143,19 @@ class Passage:
     div_id: Optional[str]
     in_div: bool
     lines: List[Tuple[int, str]]  # (1-based line number, masked text)
+    attrs: str = ""  # the attributes of every div the passage sits in
+
+
+# A div that carries its own argument: an exercise, a solution, a result or a proof reads on its own,
+# so a term it uses is linked in it even when its file also holds the term's definition (gha#1316, gha#1539).
+WORKED_DIV_RE = re.compile(
+    r"#(?:exm|exr|sol|thm|lem|cor|prp|cnj|prf|rem(?!-source))-|\.(?:sol|solution|proof|exercise)\b"
+)
+
+
+def is_worked_div(attrs: str) -> bool:
+    """True for an exercise, solution, result, proof or remark div, not a source callout."""
+    return WORKED_DIV_RE.search(attrs) is not None
 
 
 def term_key(term: str) -> str:
@@ -238,13 +251,16 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
     """Cut a file into passages: one per div (between div fences), one per paragraph outside divs."""
     passages: List[Passage] = []
     stack: List[Tuple[int, Optional[str]]] = []  # (fence length, def id or None)
+    attrs_stack: List[str] = []
     cur: List[Tuple[int, str]] = []
 
     def flush() -> None:
         nonlocal cur
         if cur:
             div_id = next((d for _, d in reversed(stack) if d), None) if stack else None
-            passages.append(Passage(div_id=div_id, in_div=bool(stack), lines=cur))
+            passages.append(Passage(
+                div_id=div_id, in_div=bool(stack), lines=cur, attrs=" ".join(attrs_stack),
+            ))
         cur = []
 
     for idx, line in enumerate(masked, start=1):
@@ -256,11 +272,13 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
             attrs = m_open.group("attrs") or ""
             d = DEF_ID_RE.search(attrs)
             stack.append((len(m_open.group("fence")), d.group("id") if d else None))
+            attrs_stack.append(attrs)
             continue
         if m_close:
             flush()
             if stack and len(m_close.group("fence")) >= stack[-1][0]:
                 stack.pop()
+                attrs_stack.pop()
             continue
         if HEADING_RE.match(s):
             flush()
@@ -373,7 +391,7 @@ def scan_passage(
             if passage.div_id and passage.div_id in terms[key]:
                 continue
             # A div beside the def div in the same file (a source callout) is part of that definition; prose outside divs is still checked.
-            if passage.in_div and own_defs and terms[key] & own_defs:
+            if passage.in_div and own_defs and terms[key] & own_defs and not is_worked_div(passage.attrs):
                 continue
             start = m.start()
             if any(a <= start and m.end() <= b for a, b in link_spans):

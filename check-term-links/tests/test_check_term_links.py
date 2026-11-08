@@ -417,3 +417,23 @@ def test_ordinary_words_defined_in_a_prerequisite_are_not_flagged():
     )
     page = "::: {#exm-a}\n\nThe sum and the number of values are not equal.\n\n:::\n"
     assert run_text(page, {"d.qmd": defs}) == []
+
+
+@pytest.mark.parametrize("div_id", ["sol-b", "exr-b", "exm-b", "thm-b", "prf-b"])
+def test_worked_div_in_the_defining_file_is_checked(div_id):
+    """gha#1316, gha#1539: a solution in the same file as the definition was never checked."""
+    page = (
+        RISK_DEF
+        + f"\n::: {{#{div_id}}}\n\nThe risk is large here.\n\n:::\n"
+    )
+    assert rules(run_text(page)) == [("unlinked-first-use", "risk")]
+
+
+def test_proof_class_div_in_the_defining_file_is_checked():
+    page = RISK_DEF + "\n::: {.proof}\n\nThe risk is large here.\n\n:::\n"
+    assert rules(run_text(page)) == [("unlinked-first-use", "risk")]
+
+
+def test_source_callout_beside_the_definition_stays_exempt():
+    page = RISK_DEF + "\n::: {#rem-source-risk}\n\nThe risk is defined as in the text.\n\n:::\n"
+    assert run_text(page) == []
