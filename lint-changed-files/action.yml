@@ -147,7 +147,20 @@ runs:
         cache-version: ${{ inputs.renv-cache-version }}
 
     - name: Set up Quarto (renv)
+      id: quarto-setup-1
       if: inputs.use-renv == 'true' && inputs.install-quarto == 'true'
+      continue-on-error: true
+      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+
+    - name: Wait before the second Quarto setup attempt
+      if: steps.quarto-setup-1.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::warning::Quarto setup failed; retrying in 90 seconds (gha#1667)."
+        sleep 90
+
+    - name: Set up Quarto (renv) (second attempt)
+      if: steps.quarto-setup-1.outcome == 'failure' && (inputs.use-renv == 'true' && inputs.install-quarto == 'true')
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
 
     - name: Ensure lintr and gh installed (renv or no DESCRIPTION)
