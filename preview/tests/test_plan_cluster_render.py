@@ -107,6 +107,8 @@ def test_the_action_wires_the_cluster_steps():
     remote = steps["Render Quarto site on the cluster"]
     assert "inputs.cluster-render == 'true'" in remote["if"]
     assert remote["uses"].endswith("/condor-batch@v3")
+    # Renaming the plan step must fail here, not silently pass an empty list.
+    assert remote["with"]["steps"] == "${{ steps.cluster-plan.outputs.steps }}"
     # The freeze cache and Quarto's project state come back with the site.
     for needle in ("_freeze", ".quarto", "_quarto_preview_render.log"):
         assert needle in remote["with"]["output"]

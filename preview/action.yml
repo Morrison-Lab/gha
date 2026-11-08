@@ -235,7 +235,8 @@ inputs:
       cluster ssh key; without it, or when the cluster cannot run the job,
       the render runs on the runner. The `lds-ci.sif` image has no renv and
       no Chromium, so a caller that sets `use-renv` or `setup-chrome` should
-      leave this off. `.git` is copied unless the caller sets the
+      leave this off. `cluster-image` is required: with it empty the steps
+      run bare on the execute node, which has no Quarto. `.git` is copied unless the caller sets the
       `RSYNC_EXCLUDE` environment variable (`set-mtimes-from-git.py` needs it).
     default: 'false'
   cluster-head:

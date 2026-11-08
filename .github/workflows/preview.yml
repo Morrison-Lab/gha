@@ -128,7 +128,9 @@ on:
           Run the render on a WWU CS cluster node through `condor-batch`
           instead of on the runner (gha#1618). Needs a runner with the cluster
           ssh key (`runs-on`); `lds-ci.sif` has no renv and no Chromium, so
-          leave it off with `use-renv` or `setup-chrome`. Falls back to the
+          leave it off with `use-renv` or `setup-chrome`. Needs `cluster-image`:
+          with it empty the steps run bare on the execute node, which has no
+          Quarto. Falls back to the
           runner when the cluster cannot run the job.
         type: boolean
         default: false
