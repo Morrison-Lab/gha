@@ -71,9 +71,13 @@ jobs:
     timeout-minutes: 10
     # The group name differs from any a caller sets at workflow level: a job
     # that shares its caller's group is cancelled as a deadlock.
+    # A started gate is never cancelled: a newer completion replaces only the
+    # one gate waiting behind it. With cancel-in-progress, completions arriving
+    # every few seconds on one commit cancelled each gate job seconds after it
+    # started, before its first step, so the commit never got a check run (gha#1649).
     concurrency:
       group: annotation-gate-run-${{ inputs.head-sha }}-${{ inputs.all-runs && 'all' || inputs.workflow-id || inputs.run-id }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     permissions:
       actions: read
       checks: write
