@@ -48,8 +48,26 @@ runs:
         version: ${{ inputs.version }}
         tinytex: ${{ inputs.tinytex }}
 
-    - name: Install TinyTeX
+    - name: Install TinyTeX from the release cache
+      id: cached-tinytex
       if: steps.cached.outputs.installed == 'true' && inputs.tinytex == 'true'
+      shell: bash
+      # Exit 3 means this runner or version cannot use the cache path; the next step takes over.
+      run: |
+        set +e
+        bash "${{ github.action_path }}/../../workflows/scripts/install-tinytex.sh"
+        code=$?
+        if [ "$code" -eq 0 ]; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+        else
+          if [ "$code" -ne 3 ]; then
+            echo "::warning::Cached TinyTeX install failed (exit $code); using quarto install tinytex."
+          fi
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Install TinyTeX
+      if: steps.cached.outputs.installed == 'true' && inputs.tinytex == 'true' && steps.cached-tinytex.outputs.installed != 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}

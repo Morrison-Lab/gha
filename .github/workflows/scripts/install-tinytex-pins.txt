@@ -1,0 +1,5 @@
+# TinyTeX release pins: VERSION PLATFORM SHA256 of the TinyTeX-1 .tar.xz bundle.
+# The first pin is the default version.
+# The digest was computed on a runner host from the downloaded asset and equals the digest GitHub reports for it, 2026-11-08 (gha#1705).
+# The cache file name is sha256(URL)[:16] + "-" + the asset name, as cached-download.sh derives it.
+v2026.11 linux-x86_64 5b75befa848deae702ae6fa12ff0eef3f110d7e4e2a979ae99f101eba3c9c70d
