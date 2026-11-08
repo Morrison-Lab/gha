@@ -123,6 +123,27 @@ on:
           pages keep their old navigation and cross-reference numbers.
         type: boolean
         default: false
+      cluster-render:
+        description: >-
+          Run the render on a WWU CS cluster node through `condor-batch`
+          instead of on the runner (gha#1618). Needs a runner with the cluster
+          ssh key (`runs-on`); `lds-ci.sif` has no renv and no Chromium, so
+          leave it off with `use-renv` or `setup-chrome`. Falls back to the
+          runner when the cluster cannot run the job.
+        type: boolean
+        default: false
+      cluster-head:
+        description: Cluster head (or list of heads) for `cluster-render`.
+        type: string
+        default: cse-head.cluster.cs.wwu.edu
+      cluster-image:
+        description: Apptainer image on the cluster home that `cluster-render` runs in.
+        type: string
+        default: ''
+      cluster-image-file:
+        description: The same image on the runner, for heads without the cluster home.
+        type: string
+        default: ''
       extra-preview-labels:
         description: >-
           JSON array string of additional PR label names that trigger a preview
@@ -317,6 +338,10 @@ jobs:
           skip-docx: ${{ inputs.skip-docx }}
           skip-formats: ${{ inputs.skip-formats }}
           incremental: ${{ inputs.incremental }}
+          cluster-render: ${{ inputs.cluster-render }}
+          cluster-head: ${{ inputs.cluster-head }}
+          cluster-image: ${{ inputs.cluster-image }}
+          cluster-image-file: ${{ inputs.cluster-image-file }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
