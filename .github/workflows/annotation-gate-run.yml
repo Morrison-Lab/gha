@@ -15,9 +15,11 @@ on:
         type: string
         default: ''
       run-id:
-        description: The finished run to gate, github.event.workflow_run.id.
+        description: >-
+          The finished run to gate, github.event.workflow_run.id. Unused, and
+          may be empty, with `all-runs`.
         type: string
-        required: true
+        default: ''
       run-attempt:
         description: Its attempt, github.event.workflow_run.run_attempt.
         type: string
