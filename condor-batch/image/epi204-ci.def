@@ -1,0 +1,53 @@
+Bootstrap: localimage
+From: lds-ci.sif
+
+# epi204 render image for condor-batch (gha#1638): lds-ci.sif plus epi204's
+# renv library, restored from its renv.lock into a system library inside the
+# image, and the epi204 package itself installed from the repository at the
+# build commit. A render copies only its working directory in and the output
+# paths out, so the library has to live in the image; restoring it into the
+# cluster home would break WWU CS IT rule 4 (the home quota is 5 GB).
+#
+# Build with condor-batch/image/build-epi204-ci.sh, which checks out epi204 at a
+# ref and passes this recipe the lockfile and a source tarball of the package.
+# Build on cf463-02 with Apptainer, next to lds-ci.sif.
+#
+# renv's autoloader is turned off at run time: epi204's .Rprofile sources
+# renv/activate.R, which would otherwise look for a project library that the
+# job's working directory does not hold and try to bootstrap renv from the
+# network.
+
+%files
+    renv.lock /opt/epi204/renv.lock
+    epi204.tar.gz /opt/epi204/epi204.tar.gz
+
+%environment
+    export R_LIBS_SITE=/opt/epi204-library
+    export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    # System libraries the lockfile's source builds commonly compile against.
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        libnlopt-dev libudunits2-dev libgdal-dev libgeos-dev libproj-dev \
+        libmagick++-dev libpoppler-cpp-dev libhdf5-dev
+
+    mkdir -p /opt/epi204-library
+    export R_LIBS_SITE=/opt/epi204-library
+    export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+    export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+    # The lockfile was written under R 4.6.0 and this image carries R 4.5, so
+    # renv warns about the version and restores the locked package versions.
+    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/epi204/renv.lock", library = "/opt/epi204-library", prompt = FALSE)'
+    R CMD INSTALL --library=/opt/epi204-library /opt/epi204/epi204.tar.gz
+    rm /opt/epi204/epi204.tar.gz
+    chmod -R a+rX /opt/epi204-library /opt/epi204
+
+%test
+    set -e
+    export R_LIBS_SITE=/opt/epi204-library
+    Rscript -e 'library(epi204); library(gtsummary); library(survival)'
+    Rscript -e 'stopifnot(nrow(installed.packages(lib.loc = "/opt/epi204-library")) > 300)'
