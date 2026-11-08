@@ -27,6 +27,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[4]
 DEFAULT_COMPOSITE = REPO_ROOT / "preview" / "action.yml"
 DEFAULT_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview.yml"
 DEFAULT_EXAMPLE = REPO_ROOT / "examples" / "preview.yml"
+RENDER_SCRIPT_NAME = "render-site.sh"
 
 EXPECTED_COMPOSITE_INPUTS = (
     "path",
@@ -71,6 +72,12 @@ def check_preview(
     errors: list[str] = []
 
     composite_text = composite_path.read_text(encoding="utf-8")
+    render_script_path = composite_path.parent / RENDER_SCRIPT_NAME
+    render_script_text = (
+        render_script_path.read_text(encoding="utf-8")
+        if render_script_path.exists()
+        else ""
+    )
     workflow_text = workflow_path.read_text(encoding="utf-8")
 
     composite_doc = yaml.safe_load(composite_text)
@@ -168,9 +175,9 @@ def check_preview(
         errors.append("preview/action.yml Render step missing FORMATS env var")
     if "TINYTEX: ${{ inputs.tinytex }}" not in composite_text:
         errors.append("preview/action.yml Render step missing TINYTEX env var")
-    if 'elif [ "$FORMATS" = "default" ]; then' not in composite_text:
+    if 'elif [ "$FORMATS" = "default" ]; then' not in render_script_text:
         errors.append(
-            "preview/action.yml Render step missing bare render handler for formats: 'default'"
+            f"preview/{RENDER_SCRIPT_NAME} missing bare render handler for formats: 'default'"
         )
 
     # 7. Check symmetric label handling in preview.yml
@@ -249,6 +256,15 @@ def check_preview(
 def run_self_test() -> int:
     print("Running self-test mutations...")
     baseline_composite = DEFAULT_COMPOSITE.read_text(encoding="utf-8")
+    baseline_script = (DEFAULT_COMPOSITE.parent / RENDER_SCRIPT_NAME).read_text(
+        encoding="utf-8"
+    )
+    # Mutations of the render script, which sits beside the composite.
+    script_mutations = {
+        "drop default bare render handler": baseline_script.replace(
+            'elif [ "$FORMATS" = "default" ]; then', "elif false; then"
+        ),
+    }
     baseline_workflow = DEFAULT_WORKFLOW.read_text(encoding="utf-8")
 
     mutations = [
@@ -287,9 +303,7 @@ def run_self_test() -> int:
         (
             "drop default bare render handler",
             DEFAULT_COMPOSITE,
-            baseline_composite.replace(
-                'elif [ "$FORMATS" = "default" ]; then', "elif false; then"
-            ),
+            baseline_composite,
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),
@@ -379,10 +393,14 @@ def run_self_test() -> int:
         tmppath = pathlib.Path(tmpdir)
         c_path = tmppath / "action.yml"
         w_path = tmppath / "preview.yml"
+        s_path = tmppath / RENDER_SCRIPT_NAME
 
         for name, c_src, c_content, w_src, w_content in mutations:
             c_path.write_text(c_content, encoding="utf-8")
             w_path.write_text(w_content, encoding="utf-8")
+            script_content = script_mutations.get(name, baseline_script)
+            assert script_content != baseline_script or name not in script_mutations
+            s_path.write_text(script_content, encoding="utf-8")
             errors = check_preview(c_path, w_path)
             if not errors:
                 print(

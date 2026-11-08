@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# check-one-function-per-file: allow-multiple
 # Render the Quarto site for the preview (the "Render Quarto site" step of
 # preview/action.yml). The step passes its inputs as environment variables:
 # PROJECT_PATH, RENDER_PROFILE, OUTPUT_DIR, FORMATS, SKIP_DOCX,
