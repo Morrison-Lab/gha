@@ -148,7 +148,7 @@ runs:
 
     - name: Set up Quarto (renv)
       if: inputs.use-renv == 'true' && inputs.install-quarto == 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
 
     - name: Ensure lintr and gh installed (renv or no DESCRIPTION)
       if: inputs.use-renv == 'true' || steps.desc.outputs.present != 'true'

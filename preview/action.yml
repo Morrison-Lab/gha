@@ -332,11 +332,29 @@ runs:
         add_newest julia "$HOME/opt/julia-*/bin" "$HOME/.juliaup/bin" "$HOME/julia-*/bin"
         add_newest pdflatex "$HOME/.TinyTeX/bin/*"
 
-    - name: Set up Quarto
-      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+    - name: Detect whether the Quarto install can be skipped
+      id: quarto-skip
+      shell: bash
       env:
-        GH_TOKEN: ${{ github.token }}
+        CLUSTER_RENDER: ${{ inputs.cluster-render }}
+      run: |
+        # The install runs sudo. A runner without passwordless sudo cannot
+        # install, so skipping loses nothing when Quarto is already there or
+        # the cluster image supplies it (gha#1642). With sudo the install
+        # always runs, because condor-batch can still fall back to a local
+        # render (exit 70 or 71) that needs it.
+        key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
+        skip=false
+        if ! sudo -n true 2>/dev/null; then
+          if command -v quarto > /dev/null || { [ "$CLUSTER_RENDER" = "true" ] && [ -r "$key" ]; }; then
+            skip=true
+          fi
+        fi
+        echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Quarto
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         # Install TinyTeX in the same setup only when a PDF render is requested;
         # composite actions can't vary `with:` conditionally, so gate it on the
@@ -344,7 +362,7 @@ runs:
         tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
 
     - name: Set up R
-      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         r-version: ${{ inputs.r-version }}

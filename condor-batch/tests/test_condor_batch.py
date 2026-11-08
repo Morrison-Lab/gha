@@ -106,6 +106,16 @@ def test_five_steps_make_exactly_one_submission(tmp_path):
     assert _count(calls, "ssh ") == 1
 
 
+def test_ssh_accepts_a_new_host_key_but_never_turns_checking_off(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b", "c", "d", "e"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    ssh_calls = [c for c in calls if c.startswith("ssh ")]
+    assert ssh_calls
+    for call in ssh_calls:
+        assert "StrictHostKeyChecking=accept-new" in call
+        assert "StrictHostKeyChecking=no" not in call
+
+
 def test_single_step_is_refused_without_contacting_the_cluster(tmp_path):
     proc, calls = _run(tmp_path, ["only"])
     assert proc.returncode == 71
