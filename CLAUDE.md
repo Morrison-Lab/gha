@@ -189,9 +189,12 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** slide when the commit is green, the callees' `permissions:` blocks
-  gained no key and widened no value since the tagged commit, and consumers
-  need it --- then report both SHAs.
+- **Do:** (runner thread only, on Ezra's typed "slide v3") slide when the
+  commit is green, the callees' `permissions:` blocks gained no key and
+  widened no value since the tagged commit, and consumers need it
+  --- then report both SHAs.
+  The bullets above that say "you" describe the runner thread's duties
+  in this section; other threads do not dispatch the slide.
 
 - **Don't:** read a green readiness bar as the whole gate; it was green when
   gha#830 shipped the outage.
