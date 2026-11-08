@@ -5676,6 +5676,16 @@ A trigger written from the rule's wording alone missed its own example,
 because the title said "Mark every zero-gradient point on a surface" and never "visualization".
 If the check misses the example, the trigger is too narrow: broaden it, then sweep the whole tree and fix what it newly finds.
 
+## A sustained release-host outage needs a cache, not a retry
+
+A retry step only helps when the outage is shorter than the retry window.
+On 2026-11-08 the `github.com` release downloads returned 504 for hours (gha#1667),
+and the Quarto action's own 20 retries, a 90-second second attempt (gha#1669) and the curl retries (gha#1668) all gave up inside the outage.
+A retry PR also cannot merge during such an outage,
+because the review job downloads from the same host and fails, so the PR never gets a Clean review.
+Fix a download that fails for hours by serving it from `GHA_RELEASE_CACHE_DIR` through `cached_download` with a pinned sha256 (gha#1678), not by lengthening the retries.
+No hook or check can detect this: whether an outage outlasts a retry window is known only after the outage.
+
 ## Never just theorize -- investigate empirically
 
 A hypothesis that is cheap to test must be tested before it is asserted, and
