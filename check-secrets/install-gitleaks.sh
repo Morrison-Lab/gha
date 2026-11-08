@@ -52,7 +52,7 @@ sha256_of() {
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
-curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors \
   --output "$work_dir/$checksums_file" "$base_url/$checksums_file"
 
 actual_checksums_sha256="$(sha256_of "$work_dir/$checksums_file")"
@@ -64,7 +64,7 @@ if [ "$actual_checksums_sha256" != "$GITLEAKS_CHECKSUMS_SHA256" ]; then
   exit 1
 fi
 
-curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors \
   --output "$work_dir/$tarball" "$base_url/$tarball"
 
 # Match the filename as a whole field rather than as a substring, and make a
