@@ -306,3 +306,43 @@ def test_declared_defaults_match_the_script(path, name, script_default):
 @pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
 def test_declared_fail_default_is_blocking(path):
     assert _declared_default(path, "fail") == "true"
+
+
+def _fragment_findings(tmp_path, monkeypatch, files):
+    _repo(tmp_path, files)
+    monkeypatch.chdir(tmp_path)
+    tracked = ql.tracked_files(ql.DEFAULT_GLOBS.split(), [])
+    return [
+        (f.path, f.line, f.fragment)
+        for f in ql.find_dead_links(
+            Path("."), tracked, ql.parse_extensions(".qmd"), check_fragments=True)
+    ]
+
+
+def test_moved_anchor_is_flagged_when_fragments_are_checked(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "# A\n\nSee [d](b.qmd#def-x) and [ok](c.qmd#def-y).\n",
+        "b.qmd": "# B\n",
+        "c.qmd": "# C\n\n{{< include _c/_y.qmd >}}\n",
+        "_c/_y.qmd": "::: {#def-y}\nY\n:::\n",
+    })
+    assert got == [("a.qmd", 3, "def-x")]
+
+
+def test_fragment_forms_that_define_an_id_are_accepted(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#my-heading) [2](b.qmd#custom) [3](b.qmd#tbl-t) [4](b.qmd#h)\n",
+        "b.qmd": (
+            "# My heading\n\n## Other {#custom}\n\n```{r}\n#| label: tbl-t\n```\n\n"
+            '<div id="h"></div>\n'
+        ),
+    })
+    assert got == []
+
+
+def test_fragments_are_not_checked_by_default(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, {
+        "a.qmd": "[d](b.qmd#def-x)\n",
+        "b.qmd": "# B\n",
+    })
+    assert got == []

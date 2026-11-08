@@ -58,6 +58,8 @@ from urllib.parse import unquote
 
 DEFAULT_GLOBS = "*.qmd *.md *.Rmd"
 DEFAULT_TARGET_EXTENSIONS = ".qmd, .md, .Rmd, .ipynb"
+# Targets whose source can be read for ids (not an .ipynb).
+PAGE_SOURCE_EXTENSIONS = {".qmd", ".md", ".rmd"}
 PROJECT_FILES = ("_quarto.yml", "_quarto.yaml")
 
 # ``](target)`` or ``](target "title")`` or ``](<target with spaces>)``; the
@@ -86,6 +88,8 @@ class Finding(NamedTuple):
     # The directory the target was resolved from and not found in: the
     # file's own, or that of the page including it.
     base: str = "."
+    # Set when the page exists but does not define this #fragment.
+    fragment: str = ""
 
 
 def _run_git(args: List[str], cwd: Optional[Path] = None) -> Optional[str]:
@@ -250,6 +254,60 @@ def normalize_target(raw: str, extensions: Set[str]) -> Optional[str]:
     return target
 
 
+def fragment_of(raw: str) -> Optional[str]:
+    """The ``#fragment`` of a link target, or None when it has none."""
+    target = raw.strip()
+    if target.startswith("<") and target.endswith(">"):
+        target = target[1:-1].strip()
+    target = target.split("?", 1)[0]
+    if "#" not in target:
+        return None
+    return unquote(target.split("#", 1)[1]) or None
+
+
+_ATTR_ID_RE = re.compile(r"""\b(?:id|name)\s*=\s*["']([^"'\s]+)["']""")
+_BRACE_ID_RE = re.compile(r"\{[^{}\n]*?#([A-Za-z][\w:.\-]*)[^{}\n]*\}")
+_CHUNK_LABEL_RE = re.compile(r"""^[ ]*#\|[ \t]*label:[ \t]*["']?([^"'\s]+)""", re.M)
+_HEADING_RE =re.compile(r"^[ ]{0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$", re.M)
+
+
+def heading_auto_id(title: str) -> str:
+    """Pandoc's auto identifier for a heading (ASCII approximation)."""
+    title = re.sub(r"\{[^{}]*\}\s*$", "", title)
+    title = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", title)
+    title = re.sub(r"[*_`$]", "", title).lower()
+    title = re.sub(r"[^\w\s.\-]", "", title)
+    title = re.sub(r"\s+", "-", title.strip())
+    return re.sub(r"^[^a-z]+", "", title)
+
+
+def page_ids(path: str, texts: Dict[str, str], root: Path, tracked: Set[str]) -> Set[str]:
+    """Every id a page defines, with its ``{{< include >}}`` files expanded."""
+    ids: Set[str] = set()
+    doc_dir = PurePosixPath(path).parent
+    stack, seen = [path], {path}
+    while stack:
+        cur = stack.pop()
+        text = texts.get(cur)
+        if text is None:
+            try:
+                text = (root / cur).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+        prose = blank_non_prose(text)
+        ids.update(m.group(1) for m in _ATTR_ID_RE.finditer(prose))
+        ids.update(_BRACE_ID_RE.findall(prose))
+        # Headings and chunk labels are read from the raw text: a code span
+        # in a heading is part of its auto-id, and a label sits in a code block.
+        ids.update(heading_auto_id(m.group(1)) for m in _HEADING_RE.finditer(text))
+        ids.update(m.group(1) for m in _CHUNK_LABEL_RE.finditer(text))
+        for inc in include_targets(cur, text, doc_dir, root, tracked):
+            if inc not in seen:
+                seen.add(inc)
+                stack.append(inc)
+    return ids
+
+
 def project_root(rel_dir: PurePosixPath, root: Path, tracked: Set[str]) -> PurePosixPath:
     """Nearest ancestor of ``rel_dir`` (inclusive) holding ``_quarto.yml``."""
     for cand in [rel_dir, *rel_dir.parents]:
@@ -329,6 +387,7 @@ def find_dead_links(
     extensions: Set[str],
     all_tracked: Optional[Set[str]] = None,
     skipped: Optional[List[str]] = None,
+    check_fragments: bool = False,
 ) -> List[Finding]:
     """Scan ``files`` (repo-relative) under ``root`` for dead page links.
 
@@ -349,6 +408,7 @@ def find_dead_links(
     tracked = set(all_tracked or ()) | set(texts)
     contexts = render_contexts(texts, root)
     findings = []
+    ids_cache: Dict[str, Set[str]] = {}
     for rel, text in texts.items():
         dirs = sorted(contexts.get(rel, ()))
         if not dirs:
@@ -369,6 +429,14 @@ def find_dead_links(
                 if not (root / cand).exists():
                     findings.append(Finding(rel, line, raw.strip(), d.as_posix()))
                     break
+                frag = fragment_of(raw) if check_fragments else None
+                key = os.path.normpath(cand.as_posix())
+                if frag and PurePosixPath(key).suffix.lower() in PAGE_SOURCE_EXTENSIONS:
+                    if key not in ids_cache:
+                        ids_cache[key] = page_ids(key, texts, root, tracked)
+                    if frag not in ids_cache[key]:
+                        findings.append(Finding(rel, line, raw.strip(), d.as_posix(), frag))
+                        break
     return findings
 
 
@@ -402,7 +470,8 @@ def main() -> int:
     all_out = _run_git(["ls-files", "-z"]) or ""
     all_tracked = {f for f in all_out.split("\0") if f}
     skipped: List[str] = []
-    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped)
+    check_fragments = os.environ.get("QL_CHECK_FRAGMENTS", "false").strip().lower() == "true"
+    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments)
 
     print(
         f"Examined {len(files) - len(skipped)} file(s) matching {' '.join(globs)} "
@@ -416,9 +485,13 @@ def main() -> int:
     level = "error" if fail else "warning"
     for f in findings:
         print(
-            f"::{level} file={f.path},line={f.line},title=Link to a missing page::"
-            f"{_escape_annotation(f.target)} does not exist "
-            f"(resolved from {f.base}/)"
+            f"::{level} file={f.path},line={f.line},title="
+            f"{'Link to a missing anchor' if f.fragment else 'Link to a missing page'}::"
+            f"{_escape_annotation(f.target)} "
+            + (f"points at #{_escape_annotation(f.fragment)}, which that page does not define "
+               "(did the anchor move to another page?) "
+               if f.fragment else "does not exist ")
+            + f"(resolved from {f.base}/)"
         )
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
