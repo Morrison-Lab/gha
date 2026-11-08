@@ -271,6 +271,8 @@ _ATTR_ID_RE = re.compile(r"""\b(?:id|name)\s*=\s*["']([^"'\s]+)["']""")
 # later lines (a long ``fig-alt``), so the closing brace is not required.
 _BRACE_ID_RE = re.compile(r"\{(?:[^{}\n]*?[ \t])?#([A-Za-z][\w:.\-]*)")
 _CHUNK_LABEL_RE = re.compile(r"""^[ ]*#\|[ \t]*label:[ \t]*["']?([^"'\s]+)""", re.M)
+# A chunk that writes raw output can emit headings and ids the source never shows.
+_ASIS_CHUNK_RE = re.compile(r"""^[ ]*#\|[ \t]*results:[ \t]*["']?asis\b""", re.M)
 _HEADING_RE = re.compile(r"^[ ]{0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$", re.M)
 
 
@@ -284,8 +286,14 @@ def heading_auto_id(title: str) -> str:
     return re.sub(r"^[^a-z]+", "", title)
 
 
-def page_ids(path: str, texts: Dict[str, str], root: Path, tracked: Set[str]) -> Set[str]:
-    """Every id a page defines, with its ``{{< include >}}`` files expanded."""
+def page_ids(
+    path: str, texts: Dict[str, str], root: Path, tracked: Set[str]
+) -> Optional[Set[str]]:
+    """Every id a page defines, with its ``{{< include >}}`` files expanded.
+
+    ``None`` when a chunk on the page writes ``results: asis``: the ids it
+    emits exist only at render time, so the page cannot be checked from source.
+    """
     ids: Set[str] = set()
     heading_counts: Dict[str, int] = {}
     doc_dir = PurePosixPath(path).parent
@@ -298,6 +306,8 @@ def page_ids(path: str, texts: Dict[str, str], root: Path, tracked: Set[str]) ->
                 text = (root / cur).read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
+        if _ASIS_CHUNK_RE.search(text):
+            return None
         prose = blank_non_prose(text)
         ids.update(m.group(1) for m in _ATTR_ID_RE.finditer(prose))
         ids.update(_BRACE_ID_RE.findall(prose))
@@ -417,7 +427,7 @@ def find_dead_links(
     tracked = set(all_tracked or ()) | set(texts)
     contexts = render_contexts(texts, root)
     findings = []
-    ids_cache: Dict[str, Set[str]] = {}
+    ids_cache: Dict[str, Optional[Set[str]]] = {}
     for rel, text in texts.items():
         dirs = sorted(contexts.get(rel, ()))
         if not dirs:
@@ -443,7 +453,7 @@ def find_dead_links(
                 if frag and PurePosixPath(key).suffix.lower() in PAGE_SOURCE_EXTENSIONS:
                     if key not in ids_cache:
                         ids_cache[key] = page_ids(key, texts, root, tracked)
-                    if frag not in ids_cache[key]:
+                    if ids_cache[key] is not None and frag not in ids_cache[key]:
                         findings.append(Finding(rel, line, raw.strip(), d.as_posix(), frag))
                         break
     return findings
