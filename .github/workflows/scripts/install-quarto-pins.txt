@@ -1,0 +1,4 @@
+# Quarto release pins: VERSION PLATFORM SHA256 of the .deb.
+# The digest was read from a verified copy of the release asset, 2026-11-08 (gha#1678).
+# The cache file name is sha256(URL)[:16] + "-" + the asset name, as cached-download.sh derives it.
+1.11.9 linux-amd64 64078d1623d9ab89da766591f3410a0756f3737a37efb0897c7e84b863bf092a

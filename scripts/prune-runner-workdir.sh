@@ -37,7 +37,7 @@ set -uo pipefail
 # the exec; if copying fails, the hook runs in place as before.
 if [ -z "${GHA_HOOK_STAGED:-}" ]; then
   src=$(dirname "${BASH_SOURCE[0]}")
-  stage=$(mktemp -d) && cp "$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,seed-runner-python-toolcache,wait-runner-capacity}.sh "$stage" &&
+  stage=$(mktemp -d) && cp "$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,sweep-runner-git-locks,seed-runner-python-toolcache,wait-runner-capacity}.sh "$stage" &&
     GHA_HOOK_STAGED=$stage exec bash "$stage/$(basename "${BASH_SOURCE[0]}")" "$@"
   echo "::warning::$(basename "${BASH_SOURCE[0]}"): could not stage a private copy; running in place."
 else
@@ -77,6 +77,9 @@ fi
 
 # Stale temp folders (Rtmp*, quarto-session*) that killed jobs left behind (gha#1495).
 bash "$(dirname "${BASH_SOURCE[0]}")/sweep-runner-tmp.sh"
+
+# Stale index.lock files that killed jobs left in a checkout or its submodules (gha#1661).
+bash "$(dirname "${BASH_SOURCE[0]}")/sweep-runner-git-locks.sh" "$work"
 
 # Clear the Python toolcache when the work folder has moved (gha#1569). The
 # scripts in <work>/_tool/Python (pip, for one) carry absolute shebangs, so a
