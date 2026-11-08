@@ -20,13 +20,15 @@
 # its full memory, so jobs that start close together all pass the memory check
 # and the host runs out of memory later (gha#1546, gha#1549).
 # It polls every 15 seconds and stops waiting after WAIT_MAX_MINUTES (default
-# 4, under the 5-minute timeout of the shortest checks, gha#1582), or at once
-# when the runner sends a cancel signal, then lets the job run anyway: a host that stays busy slows jobs down but
-# never fails them.
+# 2), or at once when the runner sends a cancel signal, then lets the job run
+# anyway: a host that stays busy slows jobs down but never fails them.
+# The hold counts against the job's timeout-minutes, so the default leaves 3 of
+# the 5 minutes of the shortest checks for checkout and work (gha#1582,
+# gha#1718: a 4-minute hold left 45 seconds and the check was cancelled).
 # WAIT_MAX_MINUTES=0 turns the wait off.
 set -uo pipefail
 
-max_minutes="${WAIT_MAX_MINUTES:-4}"
+max_minutes="${WAIT_MAX_MINUTES:-2}"
 min_mem_gb="${WAIT_MIN_MEM_GB:-3}"
 max_load_per_core="${WAIT_MAX_LOAD_PER_CORE:-1.25}"
 max_blocked="${WAIT_MAX_BLOCKED:-0}"
