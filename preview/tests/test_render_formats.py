@@ -34,7 +34,8 @@ def render_script():
     action = yaml.safe_load((REPO_ROOT / "preview" / "action.yml").read_text(encoding="utf-8"))
     steps = [s for s in action["runs"]["steps"] if s.get("name") == RENDER_STEP]
     assert len(steps) == 1, f"expected exactly one {RENDER_STEP!r} step"
-    return steps[0]["run"]
+    assert steps[0]["env"]["RENDER_SCRIPT"] == "${{ github.action_path }}/render-site.sh"
+    return (REPO_ROOT / "preview" / "render-site.sh").read_text(encoding="utf-8")
 
 
 def run_render(tmp_path, script, **env):
