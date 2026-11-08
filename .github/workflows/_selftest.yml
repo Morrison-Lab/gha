@@ -5248,6 +5248,70 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-proof-statements || true
           rm -rf _ci-proof-statements
+  # check-gradient-lhs is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-gradient-lhs@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The diff
+  # model is check-write-idiom's; here the unit tests cover the rules, and one
+  # staged page proves action.yml wires the inputs through to the script.
+  gradient-lhs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-gradient-lhs unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-gradient-lhs/tests/ check-write-idiom/tests/ -v
+      - name: Stage a page with a stated gradient with no symbol on the left
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-gradient-lhs
+          printf '%s\n' \
+            'The gradient is $v = 1$.' > _ci-gradient-lhs/page.qmd
+          git add -f _ci-gradient-lhs/page.qmd
+      - name: Check the staged page with fail off
+        uses: ./check-gradient-lhs
+        with:
+          fail: 'false'
+          whole-tree: 'true'
+          globs: '_ci-gradient-lhs/*.qmd'
+      - name: Check the staged page, expecting a failure
+        id: gradient-lhs-expected-failure
+        continue-on-error: true
+        uses: ./check-gradient-lhs
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-gradient-lhs/*.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.gradient-lhs-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-gradient-lhs to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-gradient-lhs failed on the staged page, as expected."
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-gradient-lhs || true
+          rm -rf _ci-gradient-lhs
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.
