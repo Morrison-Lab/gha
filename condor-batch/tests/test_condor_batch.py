@@ -536,5 +536,5 @@ def test_jobs_of_one_run_get_different_run_directories(tmp_path):
         assert proc.returncode == 0, proc.stderr
         copied = [c for c in calls if c.startswith("rsync") and c.endswith(".condor-steps")]
         assert len(copied) == 1
-        dirs.add(copied[0].rsplit(":", 1)[1])
+        dirs.add(copied[0].rsplit(":", 1)[1].split("/ci/", 1)[1])
     assert len(dirs) == 2, dirs
