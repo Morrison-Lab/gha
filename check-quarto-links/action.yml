@@ -33,6 +33,14 @@ inputs:
       only). Read fail-closed: only an explicit `false` (trimmed,
       case-insensitive) opts out.
     default: 'true'
+  check-fragments:
+    description: >-
+      Also verify the #fragment of each link to a .qmd/.md/.Rmd page: the
+      page, with its {{< include >}} files expanded, must define that id
+      (`{#id}`, `id="id"`, or a heading whose Pandoc auto-id matches). Catches
+      an anchor that moved to another page. Opt-in ('true') until the callers
+      have been measured.
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -43,4 +51,5 @@ runs:
         QL_TARGET_EXTENSIONS: ${{ inputs.target-extensions }}
         QL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         QL_FAIL: ${{ inputs.fail }}
+        QL_CHECK_FRAGMENTS: ${{ inputs.check-fragments }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-quarto-links.py"
