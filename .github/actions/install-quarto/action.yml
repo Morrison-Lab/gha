@@ -71,4 +71,12 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-      run: quarto install tinytex --no-prompt
+      # A second attempt after a wait covers a transient release-host failure, and it
+      # logs at debug level, so a repeat failure shows its cause (gha#1674).
+      run: |
+        if quarto install tinytex --no-prompt; then
+          exit 0
+        fi
+        echo "::warning::quarto install tinytex failed; retrying once in 60 s with debug logging."
+        sleep 60
+        quarto install tinytex --no-prompt --log-level debug
