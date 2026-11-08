@@ -286,7 +286,11 @@ jobs:
     # uploading a "remove" artifact (gha#1528). A fork PR still builds, since
     # `workflow_run.pull_requests` is empty for fork runs and the deploy half
     # could not tell which PR closed.
+    # A private repository never builds a fork PR: its `runs-on` is a lab runner
+    # or the cluster, and the build would run the fork's code there (gha#1653).
     if: >-
+      (github.event.pull_request.head.repo.full_name == github.repository ||
+      !github.event.repository.private) &&
       (github.event.action != 'closed' ||
       github.event.pull_request.head.repo.full_name != github.repository) &&
       ((github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
