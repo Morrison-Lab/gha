@@ -19,6 +19,10 @@ An example is exempt when its div holds an HTML comment of the form
 ``<!-- no-figure: reason -->`` with a non-empty reason. A comment with no
 reason does not exempt it. Whole paths are exempt through ``paths-ignore``.
 
+The same run flags a crossref div (any theorem-like prefix) whose level 4+
+heading has a block, such as an HTML comment, ahead of it: Quarto takes a
+heading as the div's title only when it is the first block (gha#1567).
+
 What is not counted: a div inside a code fence, an HTML comment or a
 blockquote, and the divs an ``include`` shortcode may pull in at render time.
 
@@ -128,6 +132,62 @@ def scan_examples(lines: List[str]) -> List[Example]:
     return found
 
 
+XREF_DIV_RE = re.compile(r"#(?:def|thm|lem|prp|cor|cnj|exm|exr|rem)-")
+HEADING_RE = re.compile(r"^#{4,6}\s+\S")
+
+
+def scan_crossref_divs(lines: List[str]) -> List[Example]:
+    """Every crossref div (any theorem-like prefix) outside fences and comments."""
+    fence: Optional[Tuple[str, int]] = None
+    in_comment = False
+    stack: List[Tuple[int, str]] = []
+    found: List[Example] = []
+    for idx, raw in enumerate(lines):
+        if fence is None:
+            raw, in_comment = ods.strip_comments(raw, in_comment)
+        m = ods.FENCE_RE.match(raw)
+        if fence is not None:
+            if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+                    and not m.group(2).strip()):
+                fence = None
+            continue
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence = (m.group(1)[0], len(m.group(1)))
+            continue
+        dm = ods.DIV_RE.match(raw)
+        if not dm:
+            continue
+        if dm.group(2):
+            stack.append((idx + 1, dm.group(2)))
+        elif stack:
+            start, attrs = stack.pop()
+            if XREF_DIV_RE.search(attrs):
+                found.append(Example(start, idx + 1, attrs))
+    return found
+
+
+def title_blocker(lines: List[str], ex: Example) -> Optional[int]:
+    """Line of the first block before a div's level 4+ heading, if any.
+
+    Quarto reads a heading as the div's title only when it is the div's first
+    block, so a comment or paragraph ahead of it makes the heading an ordinary
+    section heading (gha#1567). Only the div's own text counts: the scan stops
+    at a nested div or a code fence.
+    """
+    first: Optional[int] = None
+    for n in range(ex.start + 1, ex.end):
+        text = lines[n - 1]
+        if not text.strip():
+            continue
+        if ods.DIV_RE.match(text) or ods.FENCE_RE.match(text):
+            return None
+        if HEADING_RE.match(text):
+            return first
+        if first is None:
+            first = n
+    return None
+
+
 def has_figure(body: List[str]) -> bool:
     return any(r.search(line) for line in body for r in FIGURE_RES)
 
@@ -149,10 +209,30 @@ def scan_file(lines: List[str], keep: Optional[Set[int]]) -> Tuple[List[Example]
     return missing, len(examples)
 
 
+def scan_titles(lines: List[str], keep: Optional[Set[int]]) -> List[Tuple[int, str]]:
+    """Crossref divs whose title heading has a block ahead of it."""
+    bad: List[Tuple[int, str]] = []
+    for ex in scan_crossref_divs(lines):
+        at = title_blocker(lines, ex)
+        if at is None:
+            continue
+        if keep is None or any(ex.start <= n <= ex.end for n in keep):
+            bad.append((at, ex.attrs))
+    return bad
+
+
 def format_message(attrs: str) -> str:
     ident = re.search(r"#exm-[\w:.-]+", attrs)
     name = ident.group(0) if ident else "example"
     return f"Example {name} has no figure. Fix: {ADVICE}"
+
+
+def title_message(attrs: str) -> str:
+    ident = re.search(r"#[a-z]+-[\w:.-]+", attrs)
+    name = ident.group(0) if ident else "div"
+    return (f"A block precedes the title heading of {name}, so Quarto renders "
+            "the title as a section heading. Fix: move the comment or text "
+            "after the title")
 
 
 class Report(NamedTuple):
@@ -161,6 +241,7 @@ class Report(NamedTuple):
     lines: int
     examples: int
     skipped: bool
+    titles: List[Tuple[str, int, str]]  # (path, line of the blocking block, attrs)
 
 
 def run_check(base_ref: str, globs: List[str], ignores: list,
@@ -169,20 +250,20 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
     if whole_tree:
         out = ods._run_git(["ls-files", "--", *globs])
         if out is None:
-            return Report([], 0, 0, 0, True)
+            return Report([], 0, 0, 0, True, [])
         for rel in out.splitlines():
             if rel and not ods._ignored(rel, ignores):
                 wanted[rel] = None
     else:
         if not base_ref:
-            return Report([], 0, 0, 0, True)
+            return Report([], 0, 0, 0, True, [])
         base = ods._run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
-            return Report([], 0, 0, 0, True)
+            return Report([], 0, 0, 0, True, [])
         diff = ods._run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
                              base.strip(), "--", *globs])
         if diff is None:
-            return Report([], 0, 0, 0, True)
+            return Report([], 0, 0, 0, True, [])
         added, deleted = ods.parse_diff(diff)
         for rel, numbered in added.items():
             if ods._ignored(rel, ignores):
@@ -191,6 +272,7 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
                            if text.strip() and text not in deleted}
 
     findings: List[Tuple[str, int, str]] = []
+    title_findings: List[Tuple[str, int, str]] = []
     files = lines = examples = 0
     for rel in sorted(wanted):
         content = ods._read_lines(rel)
@@ -202,7 +284,8 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
         missing, seen = scan_file(content, keep)
         examples += seen
         findings.extend((rel, ex.start, ex.attrs) for ex in missing)
-    return Report(findings, files, lines, examples, False)
+        title_findings.extend((rel, at, attrs) for at, attrs in scan_titles(content, keep))
+    return Report(findings, files, lines, examples, False, title_findings)
 
 
 def main() -> int:
@@ -232,10 +315,16 @@ def main() -> int:
     severity = "error" if fail else "warning"
     for rel, line, attrs in report.findings:
         print(f"::{severity} file={rel},line={line}::{format_message(attrs)}")
-    if not report.findings:
-        print("Every examined example has a figure or a stated exemption.")
+    for rel, line, attrs in report.titles:
+        print(f"::{severity} file={rel},line={line}::{title_message(attrs)}")
+    if not report.findings and not report.titles:
+        print("Every examined example has a figure or a stated exemption, "
+              "and no div title has a block ahead of it.")
         return 0
-    print(f"\n{len(report.findings)} example div(s) have no figure.")
+    if report.findings:
+        print(f"\n{len(report.findings)} example div(s) have no figure.")
+    if report.titles:
+        print(f"\n{len(report.titles)} div(s) have a block ahead of the title.")
     return 1 if fail else 0
 
 
