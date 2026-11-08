@@ -532,3 +532,19 @@ def test_failed_fetch_of_the_output_exits_70(tmp_path):
     proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site")
     assert proc.returncode == 70
     assert "could not bring _site back" in proc.stderr
+
+
+def test_jobs_of_one_run_get_different_run_directories(tmp_path):
+    dirs = set()
+    for job in ("render-solution", "render-assign"):
+        case_dir = tmp_path / job
+        case_dir.mkdir()
+        proc, calls = _run(
+            case_dir, ["a", "b"], STUB_RV="0", RUN_ID="",
+            GITHUB_RUN_ID="9001", GITHUB_JOB=job, GITHUB_RUN_ATTEMPT="1",
+        )
+        assert proc.returncode == 0, proc.stderr
+        copied = [c for c in calls if c.startswith("rsync") and c.endswith(".condor-steps")]
+        assert len(copied) == 1
+        dirs.add(copied[0].rsplit(":", 1)[1].split("/ci/", 1)[1])
+    assert len(dirs) == 2, dirs
