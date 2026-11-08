@@ -473,6 +473,41 @@ def test_output_path_is_returned_by_file_transfer_and_unpacked(tmp_path):
     assert not (tmp_path / "ci" / "42").exists()
 
 
+def _pack(tmp_path: Path, output: str, step: str) -> list[str]:
+    """Run the generated .condor-run.sh directly and list what output.tar.gz holds."""
+    _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT=output)
+    work = tmp_path / "scratch"
+    work.mkdir()
+    (work / ".condor-steps").write_text(step + "\n")
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    subprocess.run(["tar", "-czf", str(work / "checkout.tar.gz"), "-C", str(seed), "."], check=True)
+    env = {**os.environ, "CONDOR_OUTPUT": output}
+    proc = subprocess.run(
+        ["bash", str(tmp_path / "calls.log.run")], cwd=work, env=env,
+        capture_output=True, text=True, check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    listing = subprocess.run(
+        ["tar", "-tzf", str(work / "output.tar.gz")], capture_output=True, text=True, check=True,
+    )
+    return sorted(line for line in listing.stdout.splitlines() if not line.endswith("/"))
+
+
+def test_several_output_paths_are_packed_together(tmp_path):
+    step = "mkdir _site _freeze && echo a > _site/i.html && echo b > _freeze/p.json"
+    assert _pack(tmp_path, "_site,_freeze", step) == ["_freeze/p.json", "_site/i.html"]
+
+
+def test_a_missing_output_path_is_skipped_and_the_rest_returned(tmp_path):
+    step = "mkdir _site && echo a > _site/i.html"
+    assert _pack(tmp_path, "_site,_freeze", step) == ["_site/i.html"]
+
+
+def test_no_output_path_made_packs_an_empty_tarball(tmp_path):
+    assert _pack(tmp_path, "_site,_freeze", "true") == []
+
+
 def test_output_is_returned_even_when_a_step_fails(tmp_path):
     made = _site_stub(tmp_path)
     proc, _ = _run(

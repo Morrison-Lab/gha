@@ -51,11 +51,12 @@
 # kept when the job did not end normally, so condor.log stays readable.
 #
 # CONDOR_OUTPUT (default none: a path inside the checkout, such as _site) names
-# one directory or file the job returns. The job packs it into output.tar.gz in
-# scratch and lists that one file in transfer_output_files, so HTCondor returns
-# it to the run directory; the runner then copies it back with rsync, unpacks it
-# at the same path in the checkout, and only then deletes the run directory.
-# A step that fails still returns whatever exists at the path.
+# one directory or file the job returns, or several separated by commas (such as
+# _site,_freeze; no spaces in a path). The job packs those that exist into one
+# output.tar.gz in scratch and lists that one file in transfer_output_files, so
+# HTCondor returns it to the run directory; the runner then copies it back with
+# rsync, unpacks it at the same paths in the checkout, and only then deletes the
+# run directory. A step that fails still returns whatever exists at the paths.
 #
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
 # 70 = the cluster could not run the job normally (copy or ssh failed, or the
@@ -204,8 +205,10 @@ done 3< "$scratch/.condor-steps"
 # Pack the returned path; an empty tarball when the path was never made, so
 # the transfer never holds the job.
 if [ -n "${CONDOR_OUTPUT:-}" ]; then
-  if [ -e "$scratch/work/$CONDOR_OUTPUT" ]; then
-    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "$CONDOR_OUTPUT"
+  IFS=, read -ra outs <<< "$CONDOR_OUTPUT"; keep=()
+  for p in "${outs[@]}"; do [ ! -e "$scratch/work/$p" ] || keep+=("$p"); done
+  if [ "${#keep[@]}" -gt 0 ]; then
+    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "${keep[@]}"
   else
     tar -czf "$scratch/output.tar.gz" -T /dev/null
   fi

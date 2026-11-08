@@ -28,9 +28,11 @@ inputs:
     default: ''
   output:
     description: >-
-      Path inside the checkout (such as _site) that the job returns. It comes
-      back through HTCondor file transfer and is unpacked at the same path in
-      the checkout. Empty returns nothing.
+      Path inside the checkout (such as _site) that the job returns, or
+      several separated by commas (such as _site,_freeze; no spaces in a path).
+      They come back through HTCondor file transfer and are unpacked at the
+      same paths in the checkout. A path the job never made is skipped. Empty
+      returns nothing.
     default: ''
 runs:
   using: composite
