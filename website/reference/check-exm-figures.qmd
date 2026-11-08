@@ -18,7 +18,7 @@ A figure is any of these inside the example div:
 - an include of a figure subfile (`{{< include ..._fig.qmd >}}`).
 
 The same run also flags a crossref div
-(`#def-`, `#thm-`, `#exm-` and the other theorem-like prefixes)
+(`#def-`, `#thm-`, `#exm-`, and the other theorem-like prefixes)
 whose level 4 or deeper heading has a block ahead of it,
 such as an HTML comment.
 Quarto reads a heading as the div's title only when it is the first block,
