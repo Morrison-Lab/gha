@@ -304,6 +304,13 @@ def test_declared_defaults_match_the_script(path, name, script_default):
 
 
 @pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_check_fragments_default_is_off(path):
+    # The script reads QL_CHECK_FRAGMENTS as off unless it is exactly "true".
+    assert _declared_default(path, "check-fragments") == "false"
+    assert ql.DEFAULT_CHECK_FRAGMENTS == "false"
+
+
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
 def test_declared_fail_default_is_blocking(path):
     assert _declared_default(path, "fail") == "true"
 
@@ -338,6 +345,14 @@ def test_fragment_forms_that_define_an_id_are_accepted(tmp_path, monkeypatch):
         ),
     })
     assert got == []
+
+
+def test_underscore_and_repeated_headings_define_their_ids(tmp_path, monkeypatch):
+    got = _fragment_findings(tmp_path, monkeypatch, {
+        "a.qmd": "[1](b.qmd#my_function) [2](b.qmd#examples-1) [3](b.qmd#examples-2)\n",
+        "b.qmd": "## my_function\n\n## Examples\n\n## Examples\n",
+    })
+    assert got == [("a.qmd", 1, "examples-2")]
 
 
 def test_fragments_are_not_checked_by_default(tmp_path, monkeypatch):

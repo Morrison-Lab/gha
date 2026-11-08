@@ -60,6 +60,7 @@ DEFAULT_GLOBS = "*.qmd *.md *.Rmd"
 DEFAULT_TARGET_EXTENSIONS = ".qmd, .md, .Rmd, .ipynb"
 # Targets whose source can be read for ids (not an .ipynb).
 PAGE_SOURCE_EXTENSIONS = {".qmd", ".md", ".rmd"}
+DEFAULT_CHECK_FRAGMENTS = "false"
 PROJECT_FILES = ("_quarto.yml", "_quarto.yaml")
 
 # ``](target)`` or ``](target "title")`` or ``](<target with spaces>)``; the
@@ -268,14 +269,14 @@ def fragment_of(raw: str) -> Optional[str]:
 _ATTR_ID_RE = re.compile(r"""\b(?:id|name)\s*=\s*["']([^"'\s]+)["']""")
 _BRACE_ID_RE = re.compile(r"\{[^{}\n]*?#([A-Za-z][\w:.\-]*)[^{}\n]*\}")
 _CHUNK_LABEL_RE = re.compile(r"""^[ ]*#\|[ \t]*label:[ \t]*["']?([^"'\s]+)""", re.M)
-_HEADING_RE =re.compile(r"^[ ]{0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$", re.M)
+_HEADING_RE = re.compile(r"^[ ]{0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$", re.M)
 
 
 def heading_auto_id(title: str) -> str:
-    """Pandoc's auto identifier for a heading (ASCII approximation)."""
+    """Pandoc's auto identifier for a heading (an approximation: the word class is Unicode-aware)."""
     title = re.sub(r"\{[^{}]*\}\s*$", "", title)
     title = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", title)
-    title = re.sub(r"[*_`$]", "", title).lower()
+    title = re.sub(r"[*`$]", "", title).lower()
     title = re.sub(r"[^\w\s.\-]", "", title)
     title = re.sub(r"\s+", "-", title.strip())
     return re.sub(r"^[^a-z]+", "", title)
@@ -284,6 +285,7 @@ def heading_auto_id(title: str) -> str:
 def page_ids(path: str, texts: Dict[str, str], root: Path, tracked: Set[str]) -> Set[str]:
     """Every id a page defines, with its ``{{< include >}}`` files expanded."""
     ids: Set[str] = set()
+    heading_counts: Dict[str, int] = {}
     doc_dir = PurePosixPath(path).parent
     stack, seen = [path], {path}
     while stack:
@@ -299,7 +301,12 @@ def page_ids(path: str, texts: Dict[str, str], root: Path, tracked: Set[str]) ->
         ids.update(_BRACE_ID_RE.findall(prose))
         # Headings and chunk labels are read from the raw text: a code span
         # in a heading is part of its auto-id, and a label sits in a code block.
-        ids.update(heading_auto_id(m.group(1)) for m in _HEADING_RE.finditer(text))
+        for m in _HEADING_RE.finditer(text):
+            base = heading_auto_id(m.group(1)) or "section"
+            n = heading_counts.get(base, 0)
+            heading_counts[base] = n + 1
+            # Pandoc numbers repeated auto-ids: examples, examples-1, ...
+            ids.add(base if n == 0 else f"{base}-{n}")
         ids.update(m.group(1) for m in _CHUNK_LABEL_RE.finditer(text))
         for inc in include_targets(cur, text, doc_dir, root, tracked):
             if inc not in seen:
@@ -470,7 +477,7 @@ def main() -> int:
     all_out = _run_git(["ls-files", "-z"]) or ""
     all_tracked = {f for f in all_out.split("\0") if f}
     skipped: List[str] = []
-    check_fragments = os.environ.get("QL_CHECK_FRAGMENTS", "false").strip().lower() == "true"
+    check_fragments = os.environ.get("QL_CHECK_FRAGMENTS", DEFAULT_CHECK_FRAGMENTS).strip().lower() == "true"
     findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments)
 
     print(
@@ -484,14 +491,16 @@ def main() -> int:
         )
     level = "error" if fail else "warning"
     for f in findings:
+        if f.fragment:
+            title = "Link to a missing anchor"
+            detail = (f"points at #{_escape_annotation(f.fragment)}, which that page "
+                      "does not define (did the anchor move to another page?)")
+        else:
+            title = "Link to a missing page"
+            detail = "does not exist"
         print(
-            f"::{level} file={f.path},line={f.line},title="
-            f"{'Link to a missing anchor' if f.fragment else 'Link to a missing page'}::"
-            f"{_escape_annotation(f.target)} "
-            + (f"points at #{_escape_annotation(f.fragment)}, which that page does not define "
-               "(did the anchor move to another page?) "
-               if f.fragment else "does not exist ")
-            + f"(resolved from {f.base}/)"
+            f"::{level} file={f.path},line={f.line},title={title}::"
+            f"{_escape_annotation(f.target)} {detail} (resolved from {f.base}/)"
         )
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
