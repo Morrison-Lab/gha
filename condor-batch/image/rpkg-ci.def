@@ -1,0 +1,40 @@
+Bootstrap: localimage
+From: lds-ci.sif
+
+# R-package CI image for condor-batch (gha#1640): R CMD check, covr and pkgdown
+# on a cluster execute node. Built from lds-ci.sif so it shares R 4.5, Quarto and
+# TinyTeX. It adds the tools the r-lib workflows install and the system libraries
+# the commonest package dependencies compile against.
+#
+# A package's own dependencies are NOT baked in: a job installs them into a
+# writable library inside its working directory (R_LIBS_USER below), from
+# Posit Package Manager binaries, so no library is restored into the cluster home
+# (WWU CS IT rule 4; the home quota is 5 GB). A package with a pinned renv library
+# needs its own image instead (gha#1638).
+#
+# Build on cf463-02 with Apptainer, next to lds-ci.sif:
+#   apptainer build rpkg-ci.sif condor-batch/image/rpkg-ci.def
+
+%environment
+    # The per-job library is the first entry; the baked library is the fallback.
+    export R_LIBS_USER=${PWD}/.rlib
+    export R_REPOS_PPM="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+    export _R_CHECK_FORCE_SUGGESTS_=false
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        qpdf ghostscript libmagick++-dev libgdal-dev libgeos-dev libproj-dev \
+        libudunits2-dev libnlopt-dev libhdf5-dev libpoppler-cpp-dev texinfo
+
+    export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages(c("rcmdcheck", "devtools", "testthat", "roxygen2", "covr", "pkgdown", "pak", "lintr", "spelling", "xml2", "withr"))'
+
+%test
+    set -e
+    Rscript -e 'library(rcmdcheck); library(covr); library(pkgdown); library(pak)'
+    qpdf --version
+    gs --version
