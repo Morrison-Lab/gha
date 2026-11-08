@@ -221,8 +221,28 @@ runs:
           echo "cluster=false" >> "$GITHUB_OUTPUT"
         fi
 
+    # A release download that 504s fails the whole setup (gha#1667), and the
+    # action's own retries run inside one burst, so try the setup twice.
     - name: Set up Quarto
+      id: quarto-first
+      continue-on-error: true
       if: inputs.preinstalled-toolchain != 'true' && steps.cluster-path.outputs.cluster != 'true'
+      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      env:
+        # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
+        # release via the GitHub API; unauthenticated, that intermittently 403s on
+        # shared runners (#270). Authenticate it, matching the `preview` composite.
+        GH_TOKEN: ${{ github.token }}
+      with:
+        tinytex: ${{ inputs.tinytex }}
+
+    - name: Pause before the second Quarto setup attempt
+      if: steps.quarto-first.outcome == 'failure'
+      shell: bash
+      run: sleep 30
+
+    - name: Set up Quarto (second attempt)
+      if: steps.quarto-first.outcome == 'failure'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
         # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
