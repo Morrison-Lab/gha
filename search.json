@@ -1608,7 +1608,7 @@
     "href": "reference/check-quarto-links.html#checking-anchors",
     "title": "check-quarto-links.yml",
     "section": "Checking anchors",
-    "text": "Checking anchors\nWith check-fragments: true, a link such as [Mean](other.qmd#def-mean) must also name an id the target page defines, so an anchor that moved to another page is reported instead of passing as a link to a page that still exists. The page’s {{&lt; include &gt;}} files are expanded first. An id counts when it appears as {#id}, id=\"id\", name=\"id\", a #| label: id chunk option, or a heading whose Pandoc auto-identifier is id (repeated headings are numbered id-1, id-2). Off by default until a caller has no dead anchors.",
+    "text": "Checking anchors\nWith check-fragments: true, a link such as [Mean](other.qmd#def-mean) must also name an id the target page defines, so an anchor that moved to another page is reported instead of passing as a link to a page that still exists. The page’s {{&lt; include &gt;}} files are expanded first. An id counts when it appears as {#id}, id=\"id\", name=\"id\", a #| label: id chunk option, or a heading whose Pandoc auto-identifier is id (repeated headings are numbered id-1, id-2). A page with a #| results: asis chunk, or an include that has one, is skipped: the ids that chunk writes exist only at render time. Off by default until a caller has no dead anchors.",
     "crumbs": [
       "Overview",
       "Reference",
