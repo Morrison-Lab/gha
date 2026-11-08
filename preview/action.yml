@@ -347,28 +347,8 @@ runs:
           echo "cluster=false" >> "$GITHUB_OUTPUT"
         fi
 
-    # A release download that 504s fails the whole setup (gha#1667), and the
-    # action's own retries run inside one burst, so try the setup twice.
     - name: Set up Quarto
-      id: quarto-first
-      continue-on-error: true
       if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.cluster-path.outputs.cluster != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-      env:
-        GH_TOKEN: ${{ github.token }}
-      with:
-        # Install TinyTeX in the same setup only when a PDF render is requested;
-        # composite actions can't vary `with:` conditionally, so gate it on the
-        # label expression, tinytex input, or formats containing 'pdf'.
-        tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
-
-    - name: Pause before the second Quarto setup attempt
-      if: steps.quarto-first.outcome == 'failure'
-      shell: bash
-      run: sleep 30
-
-    - name: Set up Quarto (second attempt)
-      if: steps.quarto-first.outcome == 'failure'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
         GH_TOKEN: ${{ github.token }}
