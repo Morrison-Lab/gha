@@ -45,6 +45,9 @@ Configuration (environment variables, set by the composite action):
                         (default: '.qmd, .md, .Rmd, .ipynb').
   QL_PATHS_IGNORE       Comma/newline-separated globs (``*``, ``?``, ``**``)
                         of source files to skip.
+  QL_PARTIAL_GLOBS      Comma/newline-separated globs of files that the project's
+                        ``render:`` list leaves unrendered although their names
+                        are not ``_``-prefixed; they are treated as include-only.
   QL_FAIL               Only an explicit 'false' makes findings non-blocking.
 """
 
@@ -53,7 +56,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set
 from urllib.parse import unquote
 
 DEFAULT_GLOBS = "*.qmd *.md *.Rmd"
@@ -362,17 +365,25 @@ def include_targets(path: str, text: str, doc_dir: PurePosixPath,
     return out
 
 
-def is_partial(path: str) -> bool:
+def is_partial(path: str, partials: Sequence["re.Pattern[str]"] = ()) -> bool:
     """True for a file Quarto never renders on its own.
 
     Quarto skips files and directories whose names start with ``_`` or ``.``
     when it renders a project; such a file only reaches a page through an
-    include.
+    include. A project's ``render:`` list can also leave a directory of
+    unprefixed files unrendered, which ``partials`` (compiled
+    ``partial-globs``) declares.
     """
+    if any(r.search(path) for r in partials):
+        return True
     return any(part.startswith(("_", ".")) for part in PurePosixPath(path).parts)
 
 
-def render_contexts(texts: Dict[str, str], root: Path) -> Dict[str, Set[PurePosixPath]]:
+def render_contexts(
+    texts: Dict[str, str],
+    root: Path,
+    partials: Sequence["re.Pattern[str]"] = (),
+) -> Dict[str, Set[PurePosixPath]]:
     """Map each file to the directories its links are resolved from.
 
     A page Quarto renders resolves its own links, and those of everything it
@@ -384,7 +395,7 @@ def render_contexts(texts: Dict[str, str], root: Path) -> Dict[str, Set[PurePosi
     tracked = set(texts)
     contexts: Dict[str, Set[PurePosixPath]] = {}
     for doc in texts:
-        if is_partial(doc):
+        if is_partial(doc, partials):
             continue
         doc_dir = PurePosixPath(doc).parent
         stack, seen = [doc], {doc}
@@ -407,6 +418,7 @@ def find_dead_links(
     all_tracked: Optional[Set[str]] = None,
     skipped: Optional[List[str]] = None,
     check_fragments: bool = False,
+    partials: Sequence["re.Pattern[str]"] = (),
 ) -> List[Finding]:
     """Scan ``files`` (repo-relative) under ``root`` for dead page links.
 
@@ -425,7 +437,7 @@ def find_dead_links(
         except OSError:
             continue
     tracked = set(all_tracked or ()) | set(texts)
-    contexts = render_contexts(texts, root)
+    contexts = render_contexts(texts, root, partials)
     findings = []
     ids_cache: Dict[str, Optional[Set[str]]] = {}
     for rel, text in texts.items():
@@ -480,6 +492,9 @@ def main() -> int:
     ignores = compile_ignores(
         t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PATHS_IGNORE", "")) if t.strip()
     )
+    partials = compile_ignores(
+        t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PARTIAL_GLOBS", "")) if t.strip()
+    )
     fail = os.environ.get("QL_FAIL", "true").strip().lower() != "false"
 
     files = tracked_files(globs, ignores)
@@ -490,7 +505,7 @@ def main() -> int:
     all_tracked = {f for f in all_out.split("\0") if f}
     skipped: List[str] = []
     check_fragments = os.environ.get("QL_CHECK_FRAGMENTS", DEFAULT_CHECK_FRAGMENTS).strip().lower() == "true"
-    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments)
+    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments, partials)
 
     print(
         f"Examined {len(files) - len(skipped)} file(s) matching {' '.join(globs)} "

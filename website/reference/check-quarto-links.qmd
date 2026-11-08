@@ -90,6 +90,7 @@ Off by default until a caller has no dead anchors.
 | `paths-ignore` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of source files to skip. |
 | `fail` | boolean | `true` | Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit `false` opts out. |
 | `check-fragments` | boolean | `false` | Also verify the `#fragment` of each link to a `.qmd`, `.md`, or `.Rmd` page ([#1675](https://github.com/Morrison-Lab/gha/issues/1675)). |
+| `partial-globs` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of include-only files whose names do not start with `_`, because the project's `render:` list leaves them unrendered (a `chapters/*/` directory); their links resolve from the including page ([#1689](https://github.com/Morrison-Lab/gha/issues/1689)). |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 ## Permissions
@@ -112,6 +113,7 @@ jobs:
     #   target-extensions: '.qmd, .md'
     #   fail: false
     #   check-fragments: true                 # also verify each link's #anchor
+    #   partial-globs: 'chapters/*/**'        # unrendered include-only files with no _ prefix
     #   runs-on: private-runner                # self-hosted runner label (private repositories only)
 ```
 
