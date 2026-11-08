@@ -1227,6 +1227,7 @@ cookieconsent.run({
 <li>a cross-reference to a figure (<code>@fig-...</code>);</li>
 <li>an include of a figure subfile (<code>{{&lt; include ..._fig.qmd &gt;}}</code>).</li>
 </ul>
+<p>The same run also flags a crossref div (<code>#def-</code>, <code>#thm-</code>, <code>#exm-</code>, and the other theorem-like prefixes) whose level 4 or deeper heading has a block ahead of it, such as an HTML comment. Quarto reads a heading as the div’s title only when it is the first block, so the title otherwise renders as a section heading (<a href="https://github.com/Morrison-Lab/gha/issues/1567">gha#1567</a>). Move the comment after the title.</p>
 <p>A justified exception carries a reason: an HTML comment <code>&lt;!-- no-figure: reason --&gt;</code> inside the div exempts it. A comment with no reason does not. Use <code>paths-ignore</code> to exempt whole paths. The check does not count a div inside a code fence, an HTML comment or a blockquote, or the divs an <code>include</code> shortcode may pull in at render time.</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>

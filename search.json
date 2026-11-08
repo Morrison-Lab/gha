@@ -7519,7 +7519,7 @@
     "href": "reference/check-exm-figures.html",
     "title": "check-exm-figures.yml",
     "section": "",
-    "text": "Diff-scoped, blocking check that flags an example div (#exm-) with no figure. The lab’s rule (Ezra, 2026-10-23) is that nearly every example gets a figure of its data, model or results. This implements gha#1193.\nA figure is any of these inside the example div:\nA justified exception carries a reason: an HTML comment &lt;!-- no-figure: reason --&gt; inside the div exempts it. A comment with no reason does not. Use paths-ignore to exempt whole paths. The check does not count a div inside a code fence, an HTML comment or a blockquote, or the divs an include shortcode may pull in at render time.",
+    "text": "Diff-scoped, blocking check that flags an example div (#exm-) with no figure. The lab’s rule (Ezra, 2026-10-23) is that nearly every example gets a figure of its data, model or results. This implements gha#1193.\nA figure is any of these inside the example div:\nThe same run also flags a crossref div (#def-, #thm-, #exm-, and the other theorem-like prefixes) whose level 4 or deeper heading has a block ahead of it, such as an HTML comment. Quarto reads a heading as the div’s title only when it is the first block, so the title otherwise renders as a section heading (gha#1567). Move the comment after the title.\nA justified exception carries a reason: an HTML comment &lt;!-- no-figure: reason --&gt; inside the div exempts it. A comment with no reason does not. Use paths-ignore to exempt whole paths. The check does not count a div inside a code fence, an HTML comment or a blockquote, or the divs an include shortcode may pull in at render time.",
     "crumbs": [
       "Overview",
       "Reference",
