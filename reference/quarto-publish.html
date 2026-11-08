@@ -1377,6 +1377,30 @@ cookieconsent.run({
 <td>IANA time zone (e.g.&nbsp;<code>America/Los_Angeles</code>) exported as <code>TZ</code> for the render and later steps, so <code>date: last-modified</code> stamps are not in UTC. Empty leaves the runner’s time zone unchanged. A value containing a newline or <code>=</code> is rejected.</td>
 </tr>
 <tr class="even">
+<td><code>cluster-render</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Run the render on a WWU CS cluster node through <code>condor-batch</code> instead of on the runner. The output directory, <code>_freeze</code> and <code>.quarto</code> come back, so later steps are unchanged. Needs a runner with the cluster ssh key; the setup steps still run on the runner, and <code>lds-ci.sif</code> has no renv and no Chromium. Falls back to the runner when the cluster cannot run the job.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-head</code></td>
+<td>string</td>
+<td><code>cse-head.cluster.cs.wwu.edu</code></td>
+<td>Cluster head, or a space- or comma-separated list, for <code>cluster-render</code>.</td>
+</tr>
+<tr class="even">
+<td><code>cluster-image</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Apptainer image on the cluster home that <code>cluster-render</code> runs in. Required with <code>cluster-render</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-image-file</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>The same image on the runner, for heads without the cluster home.</td>
+</tr>
+<tr class="even">
 <td><code>timeout-minutes</code></td>
 <td>number</td>
 <td><code>45</code></td>
