@@ -35,6 +35,8 @@ mkdir -p "$repo1_work"
   git push -u origin HEAD -q
 )
 repo1_sha="$(git -C "$repo1_work" rev-parse HEAD)"
+git -C "$repo1_work" tag ref-tag
+git -C "$repo1_work" push -q origin ref-tag
 
 # Test workspace
 ws="$tmp_dir/workspace"
@@ -83,6 +85,14 @@ if [ -f "$ws/.reference-repos/test/remote1/README.md" ]; then
   echo "OK   checkout-reference-repos.sh successfully checked out remote1"
 else
   echo "::error::checkout-reference-repos.sh failed to check out remote1"
+  failures=$((failures + 1))
+fi
+
+tag_sha="$(git -C "$ws/.reference-repos/test/remote1" rev-parse -q --verify 'refs/tags/ref-tag^{commit}' || true)"
+if [ "$tag_sha" = "$repo1_sha" ]; then
+  echo "OK   checkout-reference-repos.sh fetched the upstream tags (gha#1664)"
+else
+  echo "::error::checkout-reference-repos.sh did not fetch upstream tags"
   failures=$((failures + 1))
 fi
 

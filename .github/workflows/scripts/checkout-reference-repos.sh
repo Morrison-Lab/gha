@@ -111,6 +111,12 @@ for item in $CLEAN_REPOS; do
     if env "${FETCH_ENV[@]}" git -C "$DEST" fetch --depth 1 origin "$FETCH_TARGET" >/dev/null 2>&1 && \
        git -C "$DEST" checkout -q FETCH_HEAD >/dev/null 2>&1; then
       echo "Successfully checked out $REPO_SPEC."
+      # The shallow fetch above brings no tags, so a reviewer cannot resolve a
+      # floating tag such as v3 and reports a pin it cannot verify (gha#1664).
+      # Best-effort: a failure here does not lose the checkout.
+      if ! env "${FETCH_ENV[@]}" git -C "$DEST" fetch -q --depth 1 origin 'refs/tags/*:refs/tags/*' >/dev/null 2>&1; then
+        echo "::warning::Could not fetch tags for reference repository $REPO_SPEC; tag refs will not resolve."
+      fi
     else
       echo "::warning::Failed to check out reference repository $REPO_SPEC; proceeding with remaining repos."
       rm -rf "$DEST"
