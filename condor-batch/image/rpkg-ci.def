@@ -2,7 +2,7 @@ Bootstrap: localimage
 From: lds-ci.sif
 
 # R-package CI image for condor-batch (gha#1640): R CMD check, covr and pkgdown
-# on a cluster execute node. Built from lds-ci.sif so it shares R 4.5, Quarto and
+# on a cluster execute node. Built from lds-ci.sif so it shares R, Quarto and
 # TinyTeX. It adds the tools the r-lib workflows install and the system libraries
 # the commonest package dependencies compile against.
 #
@@ -20,6 +20,8 @@ From: lds-ci.sif
     export R_LIBS_USER=${PWD}/.rlib
     export R_REPOS_PPM="https://packagemanager.posit.co/cran/__linux__/noble/latest"
     export _R_CHECK_FORCE_SUGGESTS_=false
+    # Quarto bundles pandoc off PATH; R CMD build needs it to build R Markdown vignettes.
+    export RSTUDIO_PANDOC=/opt/quarto/bin/tools/x86_64
 
 %post
     set -eux
