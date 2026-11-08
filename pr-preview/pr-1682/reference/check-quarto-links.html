@@ -1197,6 +1197,7 @@ cookieconsent.run({
   <ul>
   <li><a href="#why-a-separate-check" id="toc-why-a-separate-check" class="nav-link active" data-scroll-target="#why-a-separate-check">Why a separate check</a></li>
   <li><a href="#what-it-checks" id="toc-what-it-checks" class="nav-link" data-scroll-target="#what-it-checks">What it checks</a></li>
+  <li><a href="#checking-anchors" id="toc-checking-anchors" class="nav-link" data-scroll-target="#checking-anchors">Checking anchors</a></li>
   <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
@@ -1242,10 +1243,14 @@ cookieconsent.run({
 <li>URLs with a scheme (<code>https:</code>, <code>mailto:</code>), <code>//</code> URLs, and <code>#anchor</code>-only links;</li>
 <li>targets built from a shortcode or an inline expression, such as <code>{{&lt; meta &gt;}}</code>;</li>
 <li>a reference definition whose target is on the line after its <code>[label]:</code>;</li>
-<li>whether the <code>#anchor</code> part of a link exists on the target page.</li>
+<li>whether the <code>#anchor</code> part of a link exists on the target page, unless <code>check-fragments</code> is <code>true</code> (see below).</li>
 </ul>
 <p><strong>Included files resolve from the page that includes them.</strong> Quarto splices a <code>{{&lt; include _sub/_part.qmd &gt;}}</code> file into the including page before it resolves links, so a link in <code>_part.qmd</code> is written relative to the page, not to <code>_sub/</code>. That holds however deeply includes nest: everything resolves from the directory of the top-level page being rendered. A link must resolve from every page that renders it, so a subfile shared by pages in two directories is checked from both, and a finding names the directory the target was missing from. A <code>_</code>-prefixed file that nothing includes, such as an outtake kept for reuse, is skipped and named in the log, since Quarto never renders it and there is no page to resolve its links from.</p>
 <p><strong>Whole tree, not the pull request’s diff.</strong> A link that went dead when another pull request renamed its target is still a live defect, and the pull request that renamed the page is the one that did not touch the link.</p>
+</section>
+<section id="checking-anchors" class="level2">
+<h2 class="anchored" data-anchor-id="checking-anchors">Checking anchors</h2>
+<p>With <code>check-fragments: true</code>, a link such as <code>[Mean](other.qmd#def-mean)</code> must also name an id the target page defines, so an anchor that moved to another page is reported instead of passing as a link to a page that still exists. The page’s <code>{{&lt; include &gt;}}</code> files are expanded first. An id counts when it appears as <code>{#id}</code>, <code>id="id"</code>, <code>name="id"</code>, a <code>#| label: id</code> chunk option, or a heading whose Pandoc auto-identifier is <code>id</code> (repeated headings are numbered <code>id-1</code>, <code>id-2</code>). A page with a <code>#| results: asis</code> chunk, or an include that has one, is skipped: the ids that chunk writes exist only at render time. Off by default until a caller has no dead anchors.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -1284,6 +1289,12 @@ cookieconsent.run({
 <td>Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit <code>false</code> opts out.</td>
 </tr>
 <tr class="odd">
+<td><code>check-fragments</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Also verify the <code>#fragment</code> of each link to a <code>.qmd</code>, <code>.md</code>, or <code>.Rmd</code> page (<a href="https://github.com/Morrison-Lab/gha/issues/1675">#1675</a>).</td>
+</tr>
+<tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
@@ -1310,7 +1321,8 @@ cookieconsent.run({
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/'</span></span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   target-extensions: '.qmd, .md'</span></span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-fragments: true                 # also verify each link's #anchor</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <code>check-quarto-links.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub.</p>
 
 
