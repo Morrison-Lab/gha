@@ -1,0 +1,1 @@
+- `wait-runner-capacity.sh` takes `WAIT_GB_PER_JOB`, which caps running jobs at the host's total memory divided by that many GB (at least 1) and combines with `WAIT_MAX_WORKERS` by taking the lower, so a host's job cap follows its memory (gha#1509).

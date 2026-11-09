@@ -41,7 +41,7 @@ on:
         type: string
         default: >-
           jags libcurl4-openssl-dev libpng-dev libfontconfig1-dev libjpeg-dev
-          libglpk-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libtiff5-dev
+          libglpk-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libtiff-dev
           libwebp-dev libnode109 cmake libgit2-dev libnode-dev libx11-dev pandoc
       use-renv:
         description: Restore R dependencies with renv. Set false for non-renv repos.
@@ -75,6 +75,7 @@ on:
           The runner already provides R, Quarto, TinyTeX and Julia and has no
           sudo (a self-hosted runner). Skip the steps that install them and
           install `r-packages` with pak. See the composite's input.
+          `cluster-render: true` implies it, since `cluster-render` needs a lab runner (gha#1642).
         type: boolean
         default: false
       julia-version:
@@ -123,6 +124,29 @@ on:
           pages keep their old navigation and cross-reference numbers.
         type: boolean
         default: false
+      cluster-render:
+        description: >-
+          Run the render on a WWU CS cluster node through `condor-batch`
+          instead of on the runner (gha#1618). Needs a runner with the cluster
+          ssh key (`runs-on`); `lds-ci.sif` has no renv and no Chromium, so
+          leave it off with `use-renv` or `setup-chrome`. Needs `cluster-image`:
+          with it empty the steps run bare on the execute node, which has no
+          Quarto. Falls back to the
+          runner when the cluster cannot run the job.
+        type: boolean
+        default: false
+      cluster-head:
+        description: Cluster head (or list of heads) for `cluster-render`.
+        type: string
+        default: cse-head.cluster.cs.wwu.edu
+      cluster-image:
+        description: Apptainer image on the cluster home that `cluster-render` runs in.
+        type: string
+        default: ''
+      cluster-image-file:
+        description: The same image on the runner, for heads without the cluster home.
+        type: string
+        default: ''
       extra-preview-labels:
         description: >-
           JSON array string of additional PR label names that trigger a preview
@@ -138,6 +162,22 @@ on:
         description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
         type: string
         default: ''
+      post-build-command:
+        description: >-
+          Shell command run in the build job right after the site is rendered
+          and uploaded, with the working directory set to `path` and the
+          rendered site in `output-dir`. Use it to run checks that read the
+          rendered site (a site checker, an equation-render check) here
+          instead of in a separate `workflow_run` workflow, which waits for a
+          runner a second time. Empty runs nothing.
+        type: string
+        default: ''
+      post-build-continue-on-error:
+        description: >-
+          When true, a failing post-build-command does not fail the job (the step is still marked failed)
+          and the preview deploy proceeds.
+        type: boolean
+        default: false
       timezone:
         description: >-
           IANA time zone (e.g. 'America/Los_Angeles') exported as TZ for the render
@@ -246,13 +286,17 @@ jobs:
     # uploading a "remove" artifact (gha#1528). A fork PR still builds, since
     # `workflow_run.pull_requests` is empty for fork runs and the deploy half
     # could not tell which PR closed.
+    # A private repository never builds a fork PR: its `runs-on` is a lab runner
+    # or the cluster, and the build would run the fork's code there (gha#1653).
     if: >-
+      (github.event.pull_request.head.repo.full_name == github.repository ||
+      !github.event.repository.private) &&
       (github.event.action != 'closed' ||
       github.event.pull_request.head.repo.full_name != github.repository) &&
       ((github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
       (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name)))
-    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER_HEAVY) || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # Cancel an in-progress preview build when a newer commit on the same ref
     # supersedes it. Without cancel-in-progress the default is false, so a fresh
@@ -292,7 +336,7 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
-          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain || inputs.cluster-render }}
           julia-version: ${{ inputs.julia-version }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
@@ -301,6 +345,10 @@ jobs:
           skip-docx: ${{ inputs.skip-docx }}
           skip-formats: ${{ inputs.skip-formats }}
           incremental: ${{ inputs.incremental }}
+          cluster-render: ${{ inputs.cluster-render }}
+          cluster-head: ${{ inputs.cluster-head }}
+          cluster-image: ${{ inputs.cluster-image }}
+          cluster-image-file: ${{ inputs.cluster-image-file }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
@@ -315,3 +363,13 @@ jobs:
           banner-index: ${{ inputs.banner-index }}
           docx-tracked-changes: ${{ inputs.docx-tracked-changes }}
           docx-tracked-changes-glob: ${{ inputs.docx-tracked-changes-glob }}
+
+      - name: Post-build command
+        if: inputs.post-build-command != ''
+        continue-on-error: ${{ inputs.post-build-continue-on-error }}
+        shell: bash
+        working-directory: ${{ inputs.path }}
+        env:
+          POST_BUILD_COMMAND: ${{ inputs.post-build-command }}
+          OUTPUT_DIR: ${{ inputs.output-dir }}
+        run: bash -euo pipefail -c "$POST_BUILD_COMMAND"

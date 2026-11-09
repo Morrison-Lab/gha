@@ -1,0 +1,1 @@
+- `checkout-reference-repos` now fetches the upstream's tags after its shallow checkout, so a reviewer can resolve a floating tag such as `v3` in a reference checkout instead of reporting a pin it cannot verify (gha#1664).

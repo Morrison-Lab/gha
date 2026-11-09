@@ -18,12 +18,44 @@
 # needs on Debian 13 (gha#1205). A seeding failure warns and never fails the job.
 set -uo pipefail
 
+# Run from a private copy (gha#1589). The runner executes this hook from the
+# shared checkout, which sits on NFS and is fast-forwarded while jobs run; bash
+# reads a script as it runs, so a replaced file fails mid-read with "Stale file
+# handle". Copy this script and the ones it calls to a temp folder and run the
+# copy. The if block is one compound command, so bash reads all of it before
+# the exec; if copying fails, the hook runs in place as before.
+if [ -z "${GHA_HOOK_STAGED:-}" ]; then
+  src=$(dirname "${BASH_SOURCE[0]}")
+  # A fast-forward during the copy makes cp skip a file, so try once more (gha#1720).
+  stage=$(mktemp -d) && hook_files=("$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,sweep-runner-git-locks,seed-runner-python-toolcache,wait-runner-capacity}.sh) &&
+    { cp "${hook_files[@]}" "$stage" || cp "${hook_files[@]}" "$stage"; } &&
+    GHA_HOOK_STAGED=$stage exec bash "$stage/$(basename "${BASH_SOURCE[0]}")" "$@"
+  echo "::warning::$(basename "${BASH_SOURCE[0]}"): could not stage a private copy; running in place."
+else
+  trap 'rm -rf "$GHA_HOOK_STAGED"' EXIT
+fi
+
 # Seed the tool cache (RUNNER_TOOL_CACHE, else <work folder>/_tool from the checkout path).
 tool_cache="${RUNNER_TOOL_CACHE:-${GITHUB_WORKSPACE:+$(dirname "$(dirname "$GITHUB_WORKSPACE")")/_tool}}"
 if [ -n "$tool_cache" ]; then
   RUNNER_TOOL_CACHE="$tool_cache" RUNNER_DIR="$tool_cache" \
     bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh" > /dev/null ||
     echo "::warning::check-runner-disk: Python toolcache seeding failed; Python-based checks may fail."
+fi
+
+# Remove a .git that is not a valid repository from this job's workspace
+# (gha#1720). A job cancelled mid-checkout leaves one, and actions/checkout then
+# prints "--local can only be used inside a git repository" as an error
+# annotation before it deletes the contents, which fails annotation gates on a
+# passing job. Only the .git folder is removed, so checkout starts clean.
+workspace_git="${GITHUB_WORKSPACE:+$GITHUB_WORKSPACE/.git}"
+if [ -n "$workspace_git" ] && [ -d "$workspace_git" ] &&
+  ! git -c safe.directory='*' -C "$GITHUB_WORKSPACE" rev-parse --git-dir > /dev/null 2>&1; then
+  if rm -rf -- "$workspace_git"; then
+    echo "check-runner-disk: removed $workspace_git, which was not a valid repository."
+  else
+    echo "::warning::check-runner-disk: could not remove the broken $workspace_git."
+  fi
 fi
 
 min_free_gb="${CHECK_DISK_MIN_FREE_GB:-5}"
@@ -47,7 +79,11 @@ for d in "${dirs[@]}"; do
   fi
   if [ "$free" -lt "$min_free_gb" ]; then
     mount=$(df -Pk "$d" | awk 'NR == 2 { print $1 " mounted on " $6 }')
-    echo "::error::check-runner-disk: $d has $free GB free on $mount, under the $min_free_gb GB needed. Largest folders:"
+    # df follows a symlinked folder, so name where the link points (gha#1585).
+    real=$(realpath "$d" 2> /dev/null)
+    shown="$d"
+    if [ -n "$real" ] && [ "$real" != "$d" ]; then shown="$d (a link to $real)"; fi
+    echo "::error::check-runner-disk: $shown has $free GB free on $mount, under the $min_free_gb GB needed. Largest folders:"
     du -xk --max-depth=1 "$d" 2> /dev/null | sort -rn | head -n 6 |
       awk '{ printf "  %.1f GB  %s\n", $1 / 1048576, $2 }'
     failed=1

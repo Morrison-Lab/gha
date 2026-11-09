@@ -55,6 +55,7 @@ on:
           The runner already provides R, Quarto, TinyTeX and Julia and has no
           sudo (a self-hosted runner). Skip the steps that install them and
           install `r-packages` with pak. See the composite's input.
+          `cluster-render: true` implies it, since `cluster-render` needs a lab runner (gha#1642).
         type: boolean
         default: false
       setup-julia:
@@ -101,6 +102,13 @@ on:
         description: Restore and save Quarto _freeze directory via actions/cache keyed on renv.lock and commit SHA.
         type: boolean
         default: false
+      incremental-cache:
+        description: >-
+          Also save _freeze, the output directory and .quarto under the
+          quarto-incremental- key that an incremental preview restores, so a
+          PR's first preview renders only what it changed (gha#1575).
+        type: boolean
+        default: false
       freeze-cache-save-on-failure:
         description: Also save the _freeze directory when the render fails, so a re-run resumes from the pages already executed. Only used when freeze-cache is true.
         type: boolean
@@ -122,6 +130,27 @@ on:
           IANA time zone (e.g. 'America/Los_Angeles') exported as TZ for the render
           and later steps, so date: last-modified stamps are not in UTC.
           Empty leaves the runner's time zone unchanged.
+        type: string
+        default: ''
+      cluster-render:
+        description: >-
+          Run the render on a WWU CS cluster node through `condor-batch`
+          instead of on the runner (gha#1563). Needs a runner with the cluster
+          ssh key (`runs-on`); the setup steps still run on the runner, and
+          `lds-ci.sif` has no renv and no Chromium. Falls back to the runner
+          when the cluster cannot run the job.
+        type: boolean
+        default: false
+      cluster-head:
+        description: Cluster head (or list of heads) for `cluster-render`.
+        type: string
+        default: cse-head.cluster.cs.wwu.edu
+      cluster-image:
+        description: Apptainer image on the cluster home that `cluster-render` runs in. Required with `cluster-render`.
+        type: string
+        default: ''
+      cluster-image-file:
+        description: The same image on the runner, for heads without the cluster home.
         type: string
         default: ''
       timeout-minutes:
@@ -166,7 +195,7 @@ jobs:
   # deploy job below declares it, even when deploy is false). Only the deploy
   # job actually uses the write token.
   build:
-    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER_HEAVY) || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -206,7 +235,7 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
-          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain || inputs.cluster-render }}
           julia-version: ${{ inputs.julia-version }}
           apt-packages: ${{ inputs.apt-packages }}
           output-dir: ${{ inputs.output-dir }}
@@ -214,11 +243,16 @@ jobs:
           formats: ${{ inputs.formats }}
           per-file-formats: ${{ inputs.per-file-formats }}
           freeze-cache: ${{ inputs.freeze-cache }}
+          incremental-cache: ${{ inputs.incremental-cache }}
           freeze-cache-save-on-failure: ${{ inputs.freeze-cache-save-on-failure }}
           deno-v8-options: ${{ inputs.deno-v8-options }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
+          cluster-render: ${{ inputs.cluster-render }}
+          cluster-head: ${{ inputs.cluster-head }}
+          cluster-image: ${{ inputs.cluster-image }}
+          cluster-image-file: ${{ inputs.cluster-image-file }}
 
       - name: Stage rendered site
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -234,13 +268,18 @@ jobs:
     if: inputs.deploy
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
-    # Serialize deploys to gh-pages so main-site publishes, PR previews, and
-    # preview cleanups queue rather than race or clobber each other's commits.
-    # Note: GitHub Actions only retains *one* pending run per concurrency group
-    # (superseding older pending runs in the queue), rather than buffering
-    # unbounded pending runs. cancel-in-progress: false queues rather than kills.
+    # This group holds main-site publishes only. GitHub keeps one pending job
+    # per concurrency group and cancels an older pending one when a newer
+    # arrives, even with cancel-in-progress: false. In the shared `gh-pages`
+    # group that let a stream of preview deploys cancel a finished main render
+    # before it got a runner (gha#1759). A newer main publish superseding an
+    # older pending one is right, since it carries the newer render. Pushes
+    # to gh-pages from previews are no longer serialized with this job, so the
+    # deploy below uses `force: false`: JamesIves then fetches, rebases onto
+    # the remote tip and retries on a rejected push, rather than force-pushing
+    # over a preview committed in between.
     concurrency:
-      group: gh-pages
+      group: gh-pages-main
       cancel-in-progress: false
     permissions:
       contents: write
@@ -287,3 +326,4 @@ jobs:
           # this "deploy both to gh-pages" case.
           clean: true
           clean-exclude: pr-preview/
+          force: false

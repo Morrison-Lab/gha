@@ -59,6 +59,11 @@ job-level, so splitting the steps into a composite would add a nested
 | `build-args` | string | `'c("--no-manual","--compact-vignettes=gs+qpdf")'` | R expression forwarded to `check-r-package` `build_args`. |
 | `upload-snapshots` | boolean | `true` | Upload all testthat snapshots as an artifact (r-lib's wording). Default uploads on success too. |
 | `upload-results` | boolean | `true` | Upload the check results directory as a workflow artifact. |
+| `cluster-check` | boolean | `false` | Also run the check on a WWU CS cluster node through `condor-batch` in `cluster-image` (gha#1640). Linux only; installs dependencies with `remotes::install_deps` into a library inside the job. Needs a lab runner with the cluster ssh key. Ignored when `hard` is true. |
+| `cluster-runs-on` | string | `''` | Runner label for the cluster job. Empty uses `vars.CI_RUNNER`. |
+| `cluster-head` | string | `cse-head.cluster.cs.wwu.edu` | Cluster head (or list of heads) for the cluster job. |
+| `cluster-image` | string | `''` | Apptainer image on the cluster home that the cluster job runs in. |
+| `cluster-image-file` | string | `''` | The same image on the runner, for heads without the cluster home. |
 
 ## Secrets
 
@@ -110,7 +115,7 @@ Do not migrate `rpt` until a follow-up actually passes these through.
 | `r-lib/actions/setup-pandoc` | `setup-pandoc: true` (the default). |
 | `julia-actions/setup-julia@v3` | `setup-julia: true`. |
 | `quarto-dev/quarto-actions/setup@v2` when `os != ubuntu-latest` | `install-quarto: true`. Skipped on ubuntu only when `linux-container` contains `verse`. |
-| `setup-r` with `r-version`, `http-user-agent`, `use-public-rspm: true` | Always. |
+| `setup-r` with `r-version`, `http-user-agent` | Always. |
 | `extra-packages: any::rcmdcheck` and `local::.` | `any::rcmdcheck` is always installed; pass `local::.` in `extra-packages` if you still want it. |
 | `error-on: '"note"'` | Default on the full matrix. The hard job omits `error-on` so r-lib's `'"warning"'` default applies (missing-Suggests NOTEs must not fail that job). |
 | `build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'` | Default `build-args`. |

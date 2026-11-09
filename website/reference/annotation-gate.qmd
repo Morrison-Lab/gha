@@ -130,8 +130,13 @@ them and posts a single `annotation-gate` check run.
 A run still in progress is left out;
 its completion starts the next gate, which re-checks the whole commit.
 Pair it with a workflow-level `concurrency` group per commit
-(`annotation-gate-<head-sha>`, `cancel-in-progress: true`),
+(`annotation-gate-<head-sha>`, `cancel-in-progress: false`),
 so a burst of finishing runs queues one gate that does the work, not one per workflow.
+Leave `cancel-in-progress` false:
+a newer completion then replaces only the gate waiting behind the running one,
+while `true` cancels the running gate too,
+and completions arriving every few seconds on a busy commit
+never let one finish (gha#1649).
 One commit-wide check-run listing gives each job's annotation count,
 so a job without annotations costs no request.
 The commit then carries one `annotation-gate` check, not one per workflow.
@@ -146,6 +151,36 @@ as the example stub does with `workflows: ["*"]`:
 with a narrower `workflows:` list, a deferring gate can wait on a run that never
 starts a gate, and the commit goes ungated.
 A quick failure is reported only when the slowest workflow on the commit finishes.
+
+`backfill: true` repairs a commit that never got its check.
+A deferring gate posts nothing, and the last finishing run's `workflow_run` event
+is the only thing that starts the gate that posts.
+When that event is lost, the commit carries no `annotation-gate` check run,
+the required check is missing,
+and GitHub blocks the pull request with nothing to re-run (gha#1754).
+Or it keeps an earlier failure that a re-run of the failing jobs has since fixed
+(gha#1752).
+With `backfill`, the job gates each commit
+that a pull request run touched in the last 24 hours
+and that has no `annotation-gate` check run,
+or whose newest one finished before a run on the commit did,
+and leaves a commit with a run still queued or in progress to that run's own gate.
+Call the workflow from a `schedule` trigger with `backfill: true`,
+beside the `workflow_run` caller.
+It reads runs and check runs only,
+so it needs no permission beyond the ones the workflow already holds.
+`head-sha` is required by the workflow but unused in this mode, so pass any value.
+
+To gate a commit again without a new commit and without re-running any other
+workflow, add a `workflow_dispatch` trigger with a `head-sha` input to the
+caller, as the example stub does, and pass
+`github.event.workflow_run.head_sha || inputs.head-sha` as `head-sha`.
+Dispatch it with the commit to re-check
+(`gh workflow run annotation-gate.yml -f head-sha=<sha>`).
+This dispatch works for a pull request that touches only files
+no path-filtered workflow watches,
+whose commit has no run to re-run.
+`run-id` may then be empty, because `all-runs` does not use it.
 
 Without `all-runs`, each gated run posts its own check run named `annotation-gate`.
 When several workflows finish on one commit, the commit carries several checks

@@ -1,0 +1,62 @@
+name: Check gradient left-hand sides
+description: >-
+  Diff-scoped check for a psw rule (psw#488): a stated gradient has its symbol
+  as the left-hand side (a gradient symbol before the first equals sign), not
+  "its gradient is ...". Flags an added line where "gradient is" or
+  "gradient equals" leads to math with no gradient symbol on the left.
+  Skips code fences and spans, HTML comments and front matter.
+  Warns by default, since it is a heuristic.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every use the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a stated gradient has no symbol on the left
+      (else non-blocking). Defaults to 'false' because the check is a
+      heuristic; set 'true' once sampled hits are all real.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check gradient left-hand sides
+      shell: bash
+      env:
+        CGL_BASE_REF: ${{ inputs.base-ref }}
+        CGL_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CGL_GLOBS: ${{ inputs.globs }}
+        CGL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CGL_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-gradient-lhs.py"

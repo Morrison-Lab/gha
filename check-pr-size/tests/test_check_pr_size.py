@@ -172,6 +172,41 @@ def test_binary_file_counts_as_a_file_with_no_lines(tmp_path):
     assert "1 file(s), 0 changed line(s)" in out
 
 
+def _rename_repo(tmp_path, edit):
+    git(tmp_path, "init", "-q")
+    for i in range(12):
+        (tmp_path / f"old{i}.qmd").write_text("".join(f"line {j} of {i}\n" for j in range(10)))
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-q", "-m", "base")
+    for i in range(12):
+        git(tmp_path, "mv", f"old{i}.qmd", f"new{i}.qmd")
+        if edit:
+            with open(tmp_path / f"new{i}.qmd", "a") as f:
+                f.write("one more\n")
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-q", "-m", "rename")
+    return tmp_path
+
+
+def test_pure_renames_do_not_count_toward_the_file_cap(tmp_path):
+    code, out = run(_rename_repo(tmp_path, edit=False))
+    assert code == 0, out
+    assert "0 file(s)" in out
+
+
+def test_renames_with_edits_still_count(tmp_path):
+    code, out = run(_rename_repo(tmp_path, edit=True))
+    assert code == 1, out
+
+
+def test_body_saying_mechanical_content_identical_exempts(tmp_path):
+    repo = make_repo(tmp_path, {f"chapters/c{i}.qmd": 2 for i in range(25)})
+    assert run(repo)[0] == 1
+    code, out = run(repo, PRS_PR_BODY="Split the page.\n\nMechanical, content-identical.")
+    assert code == 0, out
+    assert run(repo, PRS_PR_BODY="mechanical but reworded")[0] == 1
+
+
 def test_parse_numstat_handles_renames():
     rows = cps.parse_numstat("3\t1\tdir/{old.qmd => new.qmd}\n-\t-\timg.bin\n")
     assert rows == [("dir/new.qmd", 4), ("img.bin", 0)]

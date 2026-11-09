@@ -14,29 +14,66 @@
 # several Quarto renders, can show a low load average while jobs stall on
 # writes, so load alone does not hold the next job back (gha#1527).
 # A fourth limit is off by default: WAIT_MAX_WORKERS, when above 0, also waits
-# until no more than that many Runner.Worker processes are running on the host
-# (the job's own worker counts). A Quarto render takes minutes to grow to its
-# full memory, so jobs that start close together all pass the memory check and
-# the host runs out of memory later (gha#1546).
+# until fewer than that many jobs are running on the host. Running jobs are the
+# Runner.Worker processes minus the jobs held by this hook, and held jobs start
+# oldest first (see the tickets below). A Quarto render takes minutes to grow to
+# its full memory, so jobs that start close together all pass the memory check
+# and the host runs out of memory later (gha#1546, gha#1549).
+# A fifth limit is off by default: WAIT_GB_PER_JOB, when above 0, caps the
+# running jobs at the host's total memory divided by that many GB, rounded down
+# and at least 1, so the job cap follows the host's memory instead of a number
+# set by hand. When WAIT_MAX_WORKERS is also set, the lower of the two applies
+# (gha#1509: cf463-02 has 15 GB, and five Quarto renders at about 3 GB each
+# filled it and its swap).
 # It polls every 15 seconds and stops waiting after WAIT_MAX_MINUTES (default
-# 10), then lets the job run anyway: a host that stays busy slows jobs down but
-# never fails them.
-# WAIT_MAX_MINUTES=0 turns the wait off.
+# 2), or at once when the runner sends a cancel signal, then lets the job run
+# anyway: a host that stays busy slows jobs down but never fails them.
+# The hold counts against the job's timeout-minutes, so the default leaves 3 of
+# the 5 minutes of the shortest checks for checkout and work (gha#1582,
+# gha#1718: a 4-minute hold left 45 seconds and the check was cancelled).
+# WAIT_MAX_MINUTES=0 turns the wait off, and a job on a runner whose name
+# matches WAIT_SKIP_RUNNER_NAMES (default private-gate-*) is never held.
 set -uo pipefail
 
-max_minutes="${WAIT_MAX_MINUTES:-10}"
+max_minutes="${WAIT_MAX_MINUTES:-2}"
 min_mem_gb="${WAIT_MIN_MEM_GB:-3}"
 max_load_per_core="${WAIT_MAX_LOAD_PER_CORE:-1.25}"
 max_blocked="${WAIT_MAX_BLOCKED:-0}"
 max_workers="${WAIT_MAX_WORKERS:-0}"
+gb_per_job="${WAIT_GB_PER_JOB:-0}"
 proc_stat="${PROC_STAT:-/proc/stat}"
+meminfo="${MEMINFO:-/proc/meminfo}"
 
-case "$max_minutes$min_mem_gb$max_blocked$max_workers" in
-  '' | *[!0-9]*) echo "::warning::wait-runner-capacity: WAIT_MAX_MINUTES, WAIT_MIN_MEM_GB, WAIT_MAX_BLOCKED and WAIT_MAX_WORKERS must be whole numbers; not waiting."; exit 0 ;;
+# A gate runner serves the near-instant gate jobs (require-review and the
+# like), so holding them behind the builds on its host defeats its purpose
+# (gha#1729). WAIT_SKIP_RUNNER_NAMES is a space-separated list of globs
+# matched against RUNNER_NAME; the default skips the private-gate runners.
+for pattern in ${WAIT_SKIP_RUNNER_NAMES-private-gate-*}; do
+  # shellcheck disable=SC2254
+  case "${RUNNER_NAME:-}" in
+    $pattern) exit 0 ;;
+  esac
+done
+
+case "$max_minutes$min_mem_gb$max_blocked$max_workers$gb_per_job" in
+  '' | *[!0-9]*) echo "::warning::wait-runner-capacity: WAIT_MAX_MINUTES, WAIT_MIN_MEM_GB, WAIT_MAX_BLOCKED, WAIT_MAX_WORKERS and WAIT_GB_PER_JOB must be whole numbers; not waiting."; exit 0 ;;
 esac
 [ "$max_minutes" -gt 0 ] || exit 0
 
+# Memory-based job cap: total GB divided by the GB one job may need.
+if [ "$gb_per_job" -gt 0 ]; then
+  mem_cap=$(awk -v g="$gb_per_job" '/^MemTotal:/ { n = int($2 / 1048576 / g); print (n < 1) ? 1 : n }' "$meminfo")
+  if [ -n "$mem_cap" ] && { [ "$max_workers" -eq 0 ] || [ "$mem_cap" -lt "$max_workers" ]; }; then
+    max_workers=$mem_cap
+  fi
+fi
+
 cores=$(nproc)
+
+# A job cancelled by its own timeout sends this hook a signal, and the runner
+# then waits for the hook to exit. Stop holding at once so the cancel finishes
+# (gha#1582).
+trap 'exit 0' TERM INT HUP
 
 # Held jobs are themselves Runner.Worker processes, so counting every worker
 # would make a burst of held jobs keep each other held until the deadline
@@ -96,13 +133,15 @@ while :; do
     break
   fi
   if [ "$SECONDS" -ge "$deadline" ]; then
-    echo "::warning::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O, ${running} running jobs with limit ${max_workers}); running the job anyway."
+    echo "::notice::wait-runner-capacity: still short after $max_minutes minutes (${mem} GB available, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${blocked:-0} blocked on I/O, ${running} running jobs with limit ${max_workers}); running the job anyway."
     exit 0
   fi
   if [ "$waited" = 0 ]; then
     echo "wait-runner-capacity: holding the job until at least $min_mem_gb GB is available and load is under $max_load_per_core per core (now ${mem} GB, load $(cut -d' ' -f1 /proc/loadavg) on $cores cores, ${running} running jobs against a limit of ${max_workers}, where 0 means no limit)."
     waited=1
   fi
-  sleep 15
+  # A foreground sleep would delay the signal trap until the sleep ended.
+  sleep 15 &
+  wait $!
 done
 exit 0

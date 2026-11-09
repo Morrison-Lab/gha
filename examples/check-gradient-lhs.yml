@@ -1,0 +1,21 @@
+# Copy to .github/workflows/check-gradient-lhs.yml in your repo.
+# Diff-scoped check: flags "the gradient is ..." on a line a PR adds when no
+# gradient symbol is on the left of the equation (psw#488). Warns by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check gradient left-hand sides
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-gradient-lhs.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # block instead of warn (defaults to false)
+    #   whole-tree: true                        # scan every line, not just a PR's additions

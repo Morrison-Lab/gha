@@ -28,7 +28,7 @@
 # comma-separated list of host or host:port entries spreads runs over the heads
 # and falls back to the next one when a head does not answer ssh),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
-# (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID or the
+# (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID, attempt and job, or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
 # REQUEST_DISK (default 20GB: scratch space for the unpacked checkout, the uv
 # caches and render outputs),
@@ -50,6 +50,14 @@
 # end (any step exit code), to keep the research directory inside its quota; it is
 # kept when the job did not end normally, so condor.log stays readable.
 #
+# CONDOR_OUTPUT (default none: a path inside the checkout, such as _site) names
+# one directory or file the job returns, or several separated by commas (such as
+# _site,_freeze; no spaces in a path). The job packs those that exist into one
+# output.tar.gz in scratch and lists that one file in transfer_output_files, so
+# HTCondor returns it to the run directory; the runner then copies it back with
+# rsync, unpacks it at the same paths in the checkout, and only then deletes the
+# run directory. A step that fails still returns whatever exists at the paths.
+#
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
 # 70 = the cluster could not run the job normally (copy or ssh failed, or the
 # job was held, removed, aborted, or condor_wait failed); 64 = CONDOR_SSH_KEY
@@ -61,7 +69,15 @@ steps="${2:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
 heads_in="${CONDOR_HEAD:-cse-head.cluster.cs.wwu.edu}"
 key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
 root="${CLUSTER_CI_ROOT:-/cluster/research-groups/morrison/lds-ci}"
-run="${RUN_ID:-${GITHUB_RUN_ID:-$(date +%Y%m%d-%H%M%S)}}"
+# Two jobs of one workflow run must not share a run directory, so the default
+# names the job and the attempt as well as the run (gha#1680).
+if [ -n "${GITHUB_RUN_ID:-}" ]; then
+  default_run="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT:-1}-${GITHUB_JOB:-job}"
+  default_run="${default_run//[^A-Za-z0-9_-]/_}"
+else
+  default_run=$(date +%Y%m%d-%H%M%S)
+fi
+run="${RUN_ID:-$default_run}"
 min_steps="${MIN_STEPS:-2}"
 
 n=$(grep -c -E '[^[:space:]]' "$steps" || true)
@@ -73,7 +89,24 @@ fi
 case "$key" in
   *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
 esac
-ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
+# CONDOR_OUTPUT goes into HTCondor's environment attribute, whose syntax is
+# whitespace-delimited and quote-sensitive, and names paths inside the checkout
+# (gha#1601). Refuse what would break the submit file or leave the checkout.
+if [ -n "${CONDOR_OUTPUT:-}" ]; then
+  IFS=, read -ra out_paths <<< "$CONDOR_OUTPUT"
+  for p in "${out_paths[@]}"; do
+    case "$p" in
+      *[[:space:]\"\'\\]*)
+        echo "CONDOR_OUTPUT must not contain whitespace, quotes or backslashes: $p" >&2; exit 64 ;;
+      /* | .. | ../* | */.. | */../*)
+        echo "CONDOR_OUTPUT paths must stay inside the checkout: $p" >&2; exit 64 ;;
+    esac
+  done
+fi
+# accept-new records a head's key the first time it is seen and still refuses a
+# head whose recorded key changed, so a head missing from known_hosts is usable
+# (gha#1634) without weakening the check on the heads already recorded.
+ssh_opts=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes -i "$key")
 # CONDOR_HEAD may list several heads, separated by spaces or commas, each as
 # host or host:port. Each run starts at head (run number mod count), spreading
 # runs over the heads, and takes the first head that answers ssh; none answering
@@ -158,16 +191,22 @@ trap 'printf "%s\n" "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s 
 rc=0
 # A desktop head has no cluster home, so a cluster-home image path never applies.
 [ "$desktop" != 1 ] || CONDOR_IMAGE=
-ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-}" <<'REMOTE' || rc=$?
+ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-.}" "${CONDOR_OUTPUT:-.}" <<'REMOTE' || rc=$?
 set -euo pipefail
 # ssh drops an empty argument, so the optional image comes last and a bare dot
 # stands for "no transferred image".
-dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-}
+dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-.} out=${8:-.}
+[ "$image" != . ] || image=
 cd "$dir"
 dir=$PWD
 extra_input= extra_attr=
 if [ "$desktop" = 1 ]; then extra_attr='+CSCI_GrpDesktop = True'; fi
 if [ "$sent_image" != . ]; then image=$sent_image; extra_input=", $dir/$sent_image"; fi
+out_attr='transfer_output_files = ""' env_attr=
+if [ "$out" != . ]; then
+  out_attr='transfer_output_files = output.tar.gz'
+  env_attr="environment = \"CONDOR_OUTPUT=$out\""
+fi
 cat > .condor-run.sh <<'RUN'
 #!/usr/bin/env bash
 # Runs in the execute node's scratch directory (HTCondor's working directory):
@@ -188,6 +227,18 @@ while IFS= read -r cmd <&3; do
   i=$((i+1)); echo "::step $i: $cmd"
   "${wrap[@]}" bash -c "$cmd" < /dev/null || { rc=$?; echo "::step $i failed rc=$rc"; }
 done 3< "$scratch/.condor-steps"
+# Pack the returned path; an empty tarball when the path was never made, so
+# the transfer never holds the job.
+if [ -n "${CONDOR_OUTPUT:-}" ]; then
+  IFS=, read -ra outs <<< "$CONDOR_OUTPUT"; keep=()
+  for p in "${outs[@]}"; do [ ! -e "$scratch/work/$p" ] || keep+=("$p"); done
+  if [ "${#keep[@]}" -gt 0 ]; then
+    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "${keep[@]}" \
+      || echo "::could not pack the output: tar failed (is the scratch disk full?)"
+  else
+    tar -czf "$scratch/output.tar.gz" -T /dev/null
+  fi
+fi
 exit $rc
 RUN
 chmod +x .condor-run.sh
@@ -206,7 +257,8 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 transfer_input_files = $dir/checkout.tar.gz, $dir/.condor-steps$extra_input
 $extra_attr
-transfer_output_files = ""
+$out_attr
+$env_attr
 queue 1
 SUB
 condor_submit .condor.sub | tee .submit.out
@@ -218,13 +270,26 @@ condor_wait condor.log || wait_rc=$?
 rv=
 [ ! -f condor.log ] || rv=$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)
 if [ -n "$rv" ]; then
-  cd / && rm -rf "$dir" || echo "could not remove $dir" >&2
+  # A returned path is fetched by the runner, which then removes the directory.
+  [ "$out" != . ] || { cd / && rm -rf "$dir" || echo "could not remove $dir" >&2; }
   case "$rv" in 70|71|255) exit 1 ;; esac
   exit "$rv"
 fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
 exit 70
 REMOTE
+if [ -n "${CONDOR_OUTPUT:-}" ] && [ "$rc" -ne 70 ] && [ "$rc" -ne 255 ]; then
+  fetch_rc=0
+  rsync -a -e "ssh ${ssh_opts[*]}" "$head_host:$root/$run/output.tar.gz" "$pack_dir/output.tar.gz" || fetch_rc=$?
+  if [ "$fetch_rc" = 0 ]; then
+    tar -xzf "$pack_dir/output.tar.gz" -C "$checkout" || fetch_rc=$?
+  fi
+  printf '%s\n' "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" || true
+  if [ "$fetch_rc" != 0 ]; then
+    echo "could not bring $CONDOR_OUTPUT back from the cluster head" >&2
+    exit 70
+  fi
+fi
 trap - TERM INT HUP
 [ "$rc" -ne 255 ] || { echo "ssh to the cluster head failed" >&2; exit 70; }
 exit "$rc"

@@ -90,6 +90,16 @@ inputs:
       Restore and save Quarto _freeze directory via actions/cache keyed on
       renv.lock and commit SHA.
     default: 'false'
+  incremental-cache:
+    description: >-
+      After a successful render, also save `_freeze`, the output directory and
+      `.quarto` under a `quarto-incremental-` key, the key an incremental
+      preview (`preview` with `incremental: true`) restores. A pull request
+      cannot read another pull request's caches, so without this the first
+      preview of every PR finds none and renders every page (gha#1575). Use
+      the same `render-profile` as the preview. Saved only on success, since
+      a failed render leaves a mixed output directory.
+    default: 'false'
   freeze-cache-save-on-failure:
     description: >-
       Also save the _freeze directory when the render step fails, so a re-run
@@ -127,6 +137,29 @@ inputs:
       render and later steps, so `date: last-modified` and similar stamps
       are not in UTC. Empty (default) leaves the runner's time zone unchanged.
       A value containing a newline or `=` is rejected.
+    default: ''
+  cluster-render:
+    description: >-
+      Run the render on a WWU CS cluster execute node through `condor-batch`,
+      in the `cluster-image` Apptainer image, instead of on the runner. The
+      output directory, `_freeze` and `.quarto` come back to
+      the checkout, so every later step is unchanged. The setup steps above
+      still run on the runner, so a caller that turns this on sets
+      `setup-r`, `use-renv`, `setup-chrome`, `setup-julia` and `apt-packages`
+      to what the image lacks (the `lds-ci.sif` image has no renv and no
+      Chromium). Needs the cluster ssh key on the runner; without it, or when
+      the cluster cannot run the job, the render runs on the runner. `.git` is
+      copied unless the caller sets the `RSYNC_EXCLUDE` environment variable
+      (`set-mtimes-from-git.py` needs it).
+    default: 'false'
+  cluster-head:
+    description: Cluster head (or list of heads) for `cluster-render`; see `condor-batch` `head`.
+    default: cse-head.cluster.cs.wwu.edu
+  cluster-image:
+    description: Apptainer image on the cluster home that `cluster-render` runs in (`condor-batch` `image`). Required with `cluster-render`.
+    default: ''
+  cluster-image-file:
+    description: The same image on the runner, for heads without the cluster home (`condor-batch` `image-file`).
     default: ''
 runs:
   using: composite
@@ -166,29 +199,68 @@ runs:
         APT_PACKAGES: ${{ inputs.apt-packages }}
       run: |
         set -euo pipefail
+        # word-splitting on $APT_PACKAGES is intentional
+        # shellcheck disable=SC2086
+        missing=$(for p in $APT_PACKAGES; do dpkg -s "$p" > /dev/null 2>&1 || echo "$p"; done)
+        if [ -z "$missing" ]; then
+          echo "::notice::All apt packages are already installed; skipping apt."
+          exit 0
+        fi
+        if ! sudo -n true 2> /dev/null; then
+          echo "::warning::No passwordless sudo, and dpkg does not list these packages: $missing. Continuing without apt."
+          exit 0
+        fi
         sudo apt-get update
+        # shellcheck disable=SC2086
         sudo apt-get install -y $APT_PACKAGES
+
+    - name: Detect passwordless sudo
+      id: sudo
+      if: inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
+      shell: bash
+      run: |
+        # setup-chrome installs through sudo on Linux unless told not to (gha#1642).
+        if sudo -n true 2> /dev/null; then
+          echo "none=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "none=true" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Setup Chrome
       if: inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+      with:
+        no-sudo: ${{ steps.sudo.outputs.none }}
+
+    - name: Detect whether the Quarto install can be skipped
+      id: quarto-skip
+      shell: bash
+      env:
+        CLUSTER_RENDER: ${{ inputs.cluster-render }}
+      run: |
+        # The install runs sudo. A runner without passwordless sudo cannot
+        # install, so skipping loses nothing when Quarto is already there or
+        # the cluster image supplies it (gha#1642). With sudo the install
+        # always runs, because condor-batch can still fall back to a local
+        # render (exit 70 or 71) that needs it.
+        key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
+        skip=false
+        if ! sudo -n true 2>/dev/null; then
+          if command -v quarto > /dev/null || { [ "$CLUSTER_RENDER" = "true" ] && [ -r "$key" ]; }; then
+            skip=true
+          fi
+        fi
+        echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
     - name: Set up Quarto
-      if: inputs.preinstalled-toolchain != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-      env:
-        # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
-        # release via the GitHub API; unauthenticated, that intermittently 403s on
-        # shared runners (#270). Authenticate it, matching the `preview` composite.
-        GH_TOKEN: ${{ github.token }}
+      if: inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         tinytex: ${{ inputs.tinytex }}
 
     - name: Set up R
       if: inputs.setup-r == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
-      with:
-        use-public-rspm: true
 
     - name: Restore R dependencies (renv)
       if: inputs.setup-r == 'true' && inputs.use-renv == 'true'
@@ -333,6 +405,18 @@ runs:
         SCRIPT: ${{ github.action_path }}/../preview/prune-stale-freeze.py
       run: python3 "$SCRIPT"
 
+    - name: Use reticulate's managed uv environment
+      shell: bash
+      # A persistent virtualenv on a self-hosted runner (for example
+      # ~/.virtualenvs/r-reticulate) otherwise shadows the environment that
+      # reticulate::py_require() builds, so a page that requires a new
+      # package fails with ModuleNotFoundError (gha#1540). A value the caller
+      # already set is kept.
+      run: |
+        if [ -z "${RETICULATE_USE_MANAGED_VENV:-}" ]; then
+          echo "RETICULATE_USE_MANAGED_VENV=yes" >> "$GITHUB_ENV"
+        fi
+
     - name: Configure Deno V8 heap cap for large site renders
       if: inputs.deno-v8-options != ''
       shell: bash
@@ -360,6 +444,7 @@ runs:
         echo "TZ=$TIMEZONE" >> "$GITHUB_ENV"
 
     - name: Render Quarto project
+      if: inputs.cluster-render != 'true'
       shell: bash
       env:
         PROJECT_PATH: ${{ inputs.path }}
@@ -368,79 +453,38 @@ runs:
         FORMATS: ${{ inputs.formats }}
         PER_FILE_FORMATS: ${{ inputs.per-file-formats }}
         PER_FILE_SCRIPT: ${{ github.action_path }}/render-per-file.py
+        REDIRECT_STUBS_SCRIPT: ${{ github.action_path }}/redirect-stubs.py
         FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
         SETUP_JULIA: ${{ inputs.setup-julia }}
-      run: |
-        set -euo pipefail
-        # See "Set up JuliaCall and its Julia dependencies" for why.
-        if [ "$SETUP_JULIA" = "true" ] && command -v R >/dev/null 2>&1; then
-          R_LD_LIBRARY_PATH="$(R RHOME)/lib"
-          export R_LD_LIBRARY_PATH
-        fi
-        PROFILE_ARG=()
-        if [ -n "${RENDER_PROFILE:-}" ]; then
-          PROFILE_ARG=(--profile "$RENDER_PROFILE")
-        fi
+      run: bash "$GITHUB_ACTION_PATH/render-site.sh"
 
-        # Parse formats (whitespace-separated)
-        FORMAT_LIST=()
-        for word in ${FORMATS:-}; do
-          FORMAT_LIST+=("$word")
-        done
+    # The job has no runner environment, so the render's inputs travel as
+    # assignments on the command line, quoted with printf %q.
+    - name: Plan the cluster render
+      id: cluster-plan
+      if: inputs.cluster-render == 'true'
+      shell: bash
+      env:
+        PROJECT_PATH: ${{ inputs.path }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        RENDER_PROFILE: ${{ inputs.render-profile }}
+        FORMATS: ${{ inputs.formats }}
+        PER_FILE_FORMATS: ${{ inputs.per-file-formats }}
+        FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
+        FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
+        SETUP_JULIA: ${{ inputs.setup-julia }}
+      run: bash "$GITHUB_ACTION_PATH/plan-cluster-render.sh"
 
-        LOG_FILE=$(mktemp)
-
-        if [ ${#FORMAT_LIST[@]} -eq 0 ]; then
-          # Single render invocation
-          quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
-        else
-          # Per-format split render. Each later render deletes the `site_libs`
-          # files its own format does not use, which left the HTML pages with
-          # no CSS or JavaScript (mds). Collect every format's files as it is
-          # written, and put the union back once all renders are done.
-          SITE_LIBS="$PROJECT_PATH/$OUTPUT_DIR/site_libs"
-          SITE_LIBS_STAGE=$(mktemp -d)
-          first=true
-          for fmt in "${FORMAT_LIST[@]}"; do
-            if [ "$first" = true ]; then
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" 2>&1 | tee "$LOG_FILE"
-              first=false
-            else
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
-            fi
-            if [ -d "$SITE_LIBS" ]; then
-              cp -a "$SITE_LIBS/." "$SITE_LIBS_STAGE/"
-            fi
-          done
-          mkdir -p "$SITE_LIBS"
-          cp -a "$SITE_LIBS_STAGE/." "$SITE_LIBS/"
-        fi
-
-        if [ -n "${PER_FILE_FORMATS:-}" ]; then
-          # Word-split on purpose: the formats are whitespace-separated.
-          # shellcheck disable=SC2086
-          QUARTO_PROFILE="${RENDER_PROFILE:-}" python3 "$PER_FILE_SCRIPT" "$PROJECT_PATH" "$OUTPUT_DIR" $PER_FILE_FORMATS 2>&1 | tee -a "$LOG_FILE"
-        fi
-
-        if [ "$FAIL_ON_WARN" = "true" ]; then
-          if grep -iE '(^|[[:space:]])WARN([[:space:]:]|$)|Warning:' "$LOG_FILE"; then
-            echo "::error::Quarto emitted one or more render warnings and fail-on-render-warning is enabled."
-            exit 1
-          fi
-        fi
-
-        if [ -n "${FORBID_PATTERNS:-}" ]; then
-          while IFS= read -r pattern || [ -n "$pattern" ]; do
-            trimmed_pattern=$(echo "$pattern" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-            if [ -n "$trimmed_pattern" ]; then
-              if grep -F "$trimmed_pattern" "$LOG_FILE"; then
-                echo "::error::Quarto render log contains forbidden pattern '$trimmed_pattern'."
-                exit 1
-              fi
-            fi
-          done <<< "$FORBID_PATTERNS"
-        fi
+    - name: Render Quarto project on the cluster
+      if: inputs.cluster-render == 'true'
+      uses: Morrison-Lab/gha/.github/actions/condor-batch@v3
+      with:
+        head: ${{ inputs.cluster-head }}
+        image: ${{ inputs.cluster-image }}
+        image-file: ${{ inputs.cluster-image-file }}
+        steps: ${{ steps.cluster-plan.outputs.steps }}
+        output: ${{ inputs.path }}/${{ inputs.output-dir }},${{ inputs.path }}/_freeze,${{ inputs.path }}/.quarto
 
     - name: Save Quarto freeze
       if: >-
@@ -450,6 +494,16 @@ runs:
       with:
         path: ${{ inputs.path }}/_freeze
         key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-${{ github.run_attempt }}
+
+    - name: Save incremental render cache
+      if: success() && inputs.incremental-cache == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.path }}/_freeze
+          ${{ inputs.path }}/${{ inputs.output-dir }}
+          ${{ inputs.path }}/.quarto
+        key: quarto-incremental-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-${{ github.run_attempt }}
 
     - name: Verify rendered output exists
       shell: bash

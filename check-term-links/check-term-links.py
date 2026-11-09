@@ -143,23 +143,79 @@ class Passage:
     div_id: Optional[str]
     in_div: bool
     lines: List[Tuple[int, str]]  # (1-based line number, masked text)
+    attrs: str = ""  # the attributes of every div the passage sits in
+
+
+# A div that carries its own argument: an exercise, a solution, a result or a proof reads on its own,
+# so a term it uses is linked in it even when its file also holds the term's definition (gha#1316, gha#1539).
+WORKED_DIV_RE = re.compile(
+    r"#(?:exm|exr|sol|thm|lem|cor|prp|cnj|prf|rem(?!-source))-|\.(?:sol|solution|proof|exercise)\b"
+)
+
+
+def is_worked_div(attrs: str) -> bool:
+    """True for an exercise, solution, result, proof or remark div, not a source callout."""
+    return WORKED_DIV_RE.search(attrs) is not None
 
 
 def term_key(term: str) -> str:
     """Normalize a term for lookup: lowercase, articles dropped, runs of space and hyphen folded."""
     t = LEADING_ARTICLE_RE.sub("", term.strip().strip("*_\"'“”‘’").strip())
-    t = re.sub(r"[\s\-]+", " ", t).lower()
+    t = re.sub(r"[\s\-\u2010-\u2015]+", " ", t).lower()
     return t
 
 
+def plural_forms(word: str) -> Set[str]:
+    """The singular `word` and the plural and possessive forms a reader meets (gha#1630).
+
+    Covers regular `s`/`es`, `y` -> `ies` (entropy, entropies), `ix`/`ex` -> `ices`
+    (matrix, matrices), `is` -> `es` (hypothesis, hypotheses), `um`/`on` -> `a`
+    (maximum, maxima; criterion, criteria) and `f`/`fe` -> `ves` (half, halves).
+    """
+    forms = {word, word + "s", word + "es"}
+    if word.endswith("y") and len(word) > 2 and word[-2] not in "aeiou":
+        forms.add(word[:-1] + "ies")
+    if word.endswith(("ix", "ex")):
+        forms.add(word[:-2] + "ices")
+    if word.endswith("is"):
+        forms.add(word[:-2] + "es")
+    if word.endswith(("um", "on")):
+        forms.add(word[:-2] + "a")
+    if word.endswith("fe"):
+        forms.add(word[:-2] + "ves")
+    elif word.endswith("f"):
+        forms.add(word[:-1] + "ves")
+    return forms
+
+
+def singular_candidates(word: str) -> List[str]:
+    """Every singular `word` could be the plural of, for a dictionary lookup."""
+    out = [word]
+    if word.endswith("ies"):
+        out.append(word[:-3] + "y")
+    if word.endswith("ices"):
+        out += [word[:-4] + "ix", word[:-4] + "ex"]
+    if word.endswith("ves"):
+        out += [word[:-3] + "f", word[:-3] + "fe"]
+    if word.endswith("es"):
+        out += [word[:-2], word[:-2] + "is"]
+    if word.endswith("a"):
+        out += [word[:-1] + "um", word[:-1] + "on"]
+    if word.endswith("s"):
+        out.append(word[:-1])
+    return out
+
+
 def lookup(text: str, terms: Dict[str, Set[str]]) -> Optional[str]:
-    """The key of the known term `text` names, allowing a plural, or None."""
+    """The key of the known term `text` names, allowing an inflected last word, or None."""
     key = term_key(text)
-    if key in terms:
-        return key
-    for suffix in ("es", "s"):
-        if key.endswith(suffix) and key[: -len(suffix)] in terms:
-            return key[: -len(suffix)]
+    head, _, last = key.rpartition(" ")
+    # The singular wins over a plural that a link text also made a term, so a
+    # linked "probability" covers "probabilities" in the same div.
+    for cand in [*singular_candidates(last)[1:], last]:
+        full = f"{head} {cand}" if head else cand
+        if full in terms:
+            return full
     return None
 
 
@@ -172,7 +228,7 @@ def usable_term(term: str, allowed_out: Set[str]) -> bool:
     if key in GENERIC_NOUNS or key in allowed_out:
         return False
     # Words only: a term with math, a colon or other markup is not a prose term.
-    return re.fullmatch(r"[a-z][a-z0-9' \-]*", key) is not None
+    return re.fullmatch(r"[^\W\d_][\w' ]*", key) is not None
 
 
 def mask_inline(text: str) -> str:
@@ -238,13 +294,16 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
     """Cut a file into passages: one per div (between div fences), one per paragraph outside divs."""
     passages: List[Passage] = []
     stack: List[Tuple[int, Optional[str]]] = []  # (fence length, def id or None)
+    attrs_stack: List[str] = []
     cur: List[Tuple[int, str]] = []
 
     def flush() -> None:
         nonlocal cur
         if cur:
             div_id = next((d for _, d in reversed(stack) if d), None) if stack else None
-            passages.append(Passage(div_id=div_id, in_div=bool(stack), lines=cur))
+            passages.append(Passage(
+                div_id=div_id, in_div=bool(stack), lines=cur, attrs=" ".join(attrs_stack),
+            ))
         cur = []
 
     for idx, line in enumerate(masked, start=1):
@@ -256,11 +315,13 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
             attrs = m_open.group("attrs") or ""
             d = DEF_ID_RE.search(attrs)
             stack.append((len(m_open.group("fence")), d.group("id") if d else None))
+            attrs_stack.append(attrs)
             continue
         if m_close:
             flush()
             if stack and len(m_close.group("fence")) >= stack[-1][0]:
                 stack.pop()
+                attrs_stack.pop()
             continue
         if HEADING_RE.match(s):
             flush()
@@ -280,11 +341,27 @@ def harvest_terms(
     """Map term key -> def ids it defines, from def-div titles and bold terms, and from links to `#def-` anchors."""
     terms: Dict[str, Set[str]] = {}
 
-    def add(term: str, def_id: str) -> None:
-        for piece in re.split(r"\s*(?:,|;|\bor\b|\balso called\b|\bknown as\b)\s*", term):
+    # Words of the multi-word terms each def div defines.  A one-word alias made of one of
+    # them, such as "positive" for "positive classification", is an ordinary adjective
+    # elsewhere, so it is not learned (gha#1635).
+    multiword: Dict[str, Set[str]] = {}
+
+    def add(term: str, def_id: str, from_link: bool = False) -> None:
+        parts = re.split(r"\s*(,|;|\bor\b|\balso called\b|\bknown as\b)\s*", term)
+        for i in range(0, len(parts), 2):
+            piece = parts[i]
+            listed = i > 0 and parts[i - 1] in {",", ";", "or"}  # a plainly listed alias
+            aliases = re.findall(r"\(([^)]*)\)", piece)
             piece = re.sub(r"\([^)]*\)", "", piece).strip()
-            if usable_term(piece, allowed_out):
-                terms.setdefault(term_key(piece), set()).add(def_id)
+            for candidate in [piece, *aliases]:
+                if not usable_term(candidate, allowed_out):
+                    continue
+                key = term_key(candidate)
+                if " " in key:
+                    multiword.setdefault(def_id, set()).update(key.split())
+                elif not (from_link or listed) and key in multiword.get(def_id, ()):
+                    continue
+                terms.setdefault(key, set()).add(def_id)
 
     stack: List[Tuple[int, Optional[str]]] = []
     for line in masked:
@@ -311,18 +388,21 @@ def harvest_terms(
             url = lm.group("url") or ""
             frag = re.search(r"#(def-[A-Za-z0-9_-]+)$", url)
             if frag:
-                add(lm.group("text"), frag.group(1))
+                add(lm.group("text"), frag.group(1), from_link=True)
     return terms
 
 
 def term_regex(keys: Sequence[str]) -> "re.Pattern[str]":
-    """One alternation, longest term first, matching a term with an optional plural and flexible spacing."""
+    """One alternation, longest term first, matching a term's inflected last word and flexible spacing."""
     parts = []
     for key in sorted(keys, key=len, reverse=True):
-        words = [re.escape(w) for w in key.split()]
-        parts.append(r"[\s\-]+".join(words))
+        words = key.split()
+        escaped = [re.escape(w) for w in words[:-1]]
+        forms = sorted(plural_forms(words[-1]), key=len, reverse=True)
+        escaped.append("(?:" + "|".join(re.escape(f) for f in forms) + ")")
+        parts.append(r"[\s\-\u2010-\u2015]+".join(escaped))
     return re.compile(
-        r"(?<![\w\-])(?:" + "|".join(parts) + r")(?:e?s)?(?![\w\-])", re.I
+        r"(?<![\w\-])(?:" + "|".join(parts) + r")(?![\w\-])", re.I
     )
 
 
@@ -373,7 +453,7 @@ def scan_passage(
             if passage.div_id and passage.div_id in terms[key]:
                 continue
             # A div beside the def div in the same file (a source callout) is part of that definition; prose outside divs is still checked.
-            if passage.in_div and own_defs and terms[key] & own_defs:
+            if passage.in_div and own_defs and terms[key] & own_defs and not is_worked_div(passage.attrs):
                 continue
             start = m.start()
             if any(a <= start and m.end() <= b for a, b in link_spans):

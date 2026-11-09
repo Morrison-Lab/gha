@@ -3,8 +3,9 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Six rules; the first three each have a source that was read (psw#418),
-and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402):
+Eight rules; the first three each have a source that was read (psw#418),
+and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402,
+gha#1568):
 
 - **position words**: ``above`` or ``below`` used for a place in the
   document, such as "the table above" or "as shown below". Refer to the
@@ -38,6 +39,20 @@ and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402):
   (@def-differentiable)" after a word, or a "([why](url))" link after a claim.
   Link the term itself, or make the whole claim the link text (gha#1402).
   "(see @thm-x)" passes, since no word can carry that link.
+
+- **"score" for a linear predictor**: "score" or "scores" on a line that
+  also has `\eta`, "linear predictor", "log-odds", "logit", "sigmoid", or
+  "logistic function". Write "log-odds" for a logistic regression and "linear
+  predictor" for a GLM in general; the statistical score (the gradient of
+  the log-likelihood) keeps its name, so "score function", "score equation",
+  "score test", "Brier score", "z-score", "F1 score", "component score" and a
+  link whose text is "score" or whose line holds `#def-score` pass (Ezra,
+  2026-11-07; gha#1568).
+
+- **Gaussian, not normal**: "normal distribution", "standard normal",
+  "multivariate normal", "bivariate normal", "normally distributed" and
+  "normal random variable" and "normal random vector". Not "normal equations", normal vectors or normal
+  subgroups. Warn-only while the rule is new (psw#510, gha#1570).
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
@@ -104,14 +119,34 @@ BACKREF_RE = re.compile(
     r"(?i)\b(?:(?:the|this)\s+(?:same\s+)?set-?up\s+(?:of|from|in)\b"
     r"|(?:same|identical)\s+set-?up\s+as\b)"
 )
+GAUSSIAN_RE = re.compile(
+    r"(?i)\b(?:normal\s+(?:distribution|random\s+(?:variable|vector))s?\b"
+    r"|(?:standard|multivariate|bivariate)\s+normal\b"
+    r"(?!\s+(?:equations?|vectors?|subgroups?|forms?)\b)"
+    r"|normally\s+distributed\b)"
+)
 THING_RE = re.compile(r"(?i)\bthings?\b")
 PARENREF_RE = re.compile(
     r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
     r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
 )
+_LP_CONTEXT = (
+    r"(?:\\eta\b|\u03b7|linear\s+predictors?|log-?odds|\blogits?\b|sigmoid|"
+    r"logistic\s+function)"
+)
+_LP_SCORE = (
+    r"(?<![\[\w-])(?<!brier )(?<!component )(?<!f1 )(?P<phrase>scores?)\b"
+    r"(?!\s*\]|\s+(?:function|equation|test|vector|matrix))"
+)
+LINPRED_SCORE_RE = re.compile(
+    r"(?i)^(?!.*#def-score)(?=.*" + _LP_CONTEXT + r").*?" + _LP_SCORE
+)
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
 # failing check; since gha#1473 every rule fails by default).
 ALWAYS_FAIL = frozenset({"parenref", "thing"})
+# Rules in their trial period: a finding is a warning and never fails the run
+# (gha#1570: warn-only first; promote after several PRs with no false positive).
+WARN_ONLY = frozenset({"gaussian"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -134,6 +169,16 @@ RULES = (
      'Name the object, quantity, step or idea instead of "thing" or "things" '
      '(psw word-choice.qmd, "Say which thing"; Ezra, 2026-11-04; gha#1454). '
      "A deliberate use takes the check-avoided-words allow comment."),
+    ("linpred", LINPRED_SCORE_RE,
+     'Write "log-odds" for a logistic regression and "linear predictor" for '
+     'a GLM in general, not "score"; "score" names the gradient of the '
+     "log-likelihood (Ezra, 2026-11-07; gha#1568). A deliberate use takes the "
+     "check-avoided-words allow comment."),
+    ("gaussian", GAUSSIAN_RE,
+     'Write "Gaussian", not "normal", for the distribution; "normal" also '
+     "means perpendicular and usual (psw#510; gha#1570). A deliberate use, "
+     "such as quoting the old term, takes the check-avoided-words allow "
+     "comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '
@@ -154,7 +199,8 @@ def _find(masked: str) -> List[Tuple[str, str]]:
     for rule, pattern, _message in RULES:
         hit = pattern.search(masked)
         if hit:
-            out.append((rule, hit.group(0).strip()))
+            phrase = hit.group("phrase") if "phrase" in pattern.groupindex else hit.group(0)
+            out.append((rule, phrase.strip()))
     return out
 
 
@@ -175,7 +221,8 @@ def main() -> int:
         clean="No avoided word or trailing parenthetical link found.",
         summary="use a word a style source advises against.",
         format_finding=format_message,
-        always_fail=ALWAYS_FAIL, default_fail=_DEFAULT_FAIL)
+        always_fail=ALWAYS_FAIL, default_fail=_DEFAULT_FAIL,
+        warn_only=WARN_ONLY)
 
 
 if __name__ == "__main__":
