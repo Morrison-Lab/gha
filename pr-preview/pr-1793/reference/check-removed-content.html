@@ -1206,8 +1206,8 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped check that fails a pull request that removes prose which reappears nowhere in the pull request. The lab’s rule (Ezra, 2026-11-09, review of <a href="https://github.com/Morrison-Lab/lds/pull/2032">lds#2032</a>) is that content is moved, never deleted.</p>
-<p>Removed lines are normalized (markup, link targets, math, punctuation and case dropped) and cut into sentences, so a reflow or a change of line breaks is not a removal. A removed sentence passes when at least <code>min-overlap</code> of its word trigrams occur among the trigrams of the lines the pull request adds, in any checked file. A moved sentence passes, and so does a lightly reworded one. Headings, code, YAML, includes, tables, display math, and sentences with fewer than <code>min-words</code> alphabetic words are not examined.</p>
+<p>Diff-scoped check that fails a pull request that removes prose which reappears nowhere in the pull request. The lab’s rule (Ezra, 2026-11-09, review of pull request 2032 in the private <code>lds</code> repository) is that content is moved, never deleted.</p>
+<p>Removed lines are normalized (markup, link targets, math, punctuation, and case dropped) and cut into sentences, so a reflow or a change of line breaks is not a removal. A removed sentence passes when at least <code>min-overlap</code> of its word trigrams occur among the trigrams of the lines the pull request adds, in any checked file. A moved sentence passes, and so does a lightly reworded one. Headings, code, YAML, includes, tables, display math, and sentences with fewer than <code>min-words</code> alphabetic words are not examined.</p>
 <p>Two opt-outs cover a deliberate removal:</p>
 <ul>
 <li><code>removed-content-ok: reason</code> in the pull request body, or in an added HTML comment, exempts the whole pull request.</li>
