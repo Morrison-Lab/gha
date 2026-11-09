@@ -153,6 +153,19 @@ fi
 default=$(grep -o 'WAIT_MAX_MINUTES:-[0-9]*' "$script" | head -n 1 | cut -d- -f2)
 [ -n "$default" ] && [ "$default" -le 2 ] || fail "the default WAIT_MAX_MINUTES (${default:-unset}) should be at most 2"
 
+# A gate runner is never held (gha#1729); another runner on the same busy host
+# still is, and an empty skip list turns the exemption off.
+out=$(RUNNER_NAME=private-gate-2 WAIT_MAX_BLOCKED=2 PROC_STAT="$work/busy" bash "$script") || fail "a gate runner should not fail"
+case "$out" in *holding*) fail "a gate runner should not be held: $out" ;; esac
+
+out=$(RUNNER_NAME=private-cf463-02-3 WAIT_MAX_BLOCKED=2 PROC_STAT="$work/busy" WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+status=$?
+[ "$status" = 124 ] || fail "a build runner on a busy host should still be held (exit $status): $out"
+
+out=$(RUNNER_NAME=private-gate-2 WAIT_SKIP_RUNNER_NAMES= WAIT_MAX_BLOCKED=2 PROC_STAT="$work/busy" WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+status=$?
+[ "$status" = 124 ] || fail "an empty skip list should hold a gate runner too (exit $status): $out"
+
 # A busy or full host is not a defect of the code under test (gha#1584): the
 # hold-expired and low-disk messages are notices, so no consumer's annotation
 # gate has to allow-list them. Setup mistakes stay warnings.
