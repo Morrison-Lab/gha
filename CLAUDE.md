@@ -5709,7 +5709,7 @@ and reopened because rme, ids and other repos with no caller were never enumerat
 Before closing, list the full population from the primitive
 (the org's repositories, a search for the caller file),
 and name any repo the session cannot read as unchecked.
-No hook or check can detect this, because the open-ended set is known only from the issue's wording.
+No hook or check in this repo detects this today, because the open-ended set is known only from the issue's wording.
 
 ## Never just theorize -- investigate empirically
 
