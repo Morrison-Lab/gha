@@ -5,11 +5,11 @@ title: "check-removed-content.yml"
 Diff-scoped check that fails a pull request that removes prose which
 reappears nowhere in the pull request.
 The lab's rule (Ezra, 2026-11-09, review of
-[lds#2032](https://github.com/Morrison-Lab/lds/pull/2032))
+pull request 2032 in the private `lds` repository)
 is that content is moved, never deleted.
 
 Removed lines are normalized
-(markup, link targets, math, punctuation and case dropped)
+(markup, link targets, math, punctuation, and case dropped)
 and cut into sentences,
 so a reflow or a change of line breaks is not a removal.
 A removed sentence passes when at least `min-overlap` of its word trigrams
