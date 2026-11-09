@@ -84,6 +84,7 @@ input tables and a copy-paste example.
 | [`check-serial-comma.yml`](reference/check-serial-comma.qmd) | Diff-scoped check that fails when a PR adds a list of three or more items with no comma before the final "and" or "or" | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-exercise-background.yml`](reference/check-exercise-background.qmd) | Diff-scoped, warn-only heuristic check that flags an exercise whose title names an object that its body never mentions, when a PR adds a line of the exercise; a body gives the background its title implies | `globs`, `fail`, `whole-tree` |
 | [`check-exercise-question-paragraph.yml`](reference/check-exercise-question-paragraph.qmd) | Diff-scoped check that fails when a PR adds a paragraph of an exercise that mixes scenario information with the instruction or question; the task goes in its own paragraph | `globs`, `fail`, `whole-tree` |
+| [`check-exercise-ends-with-task.yml`](reference/check-exercise-ends-with-task.qmd) | Diff-scoped check that fails when a PR adds or edits an exercise whose last block is not a task (a question or an instruction), such as a trailing figure, table, code block or include | `globs`, `fail`, `whole-tree` |
 | [`check-key-equations-displayed.yml`](reference/check-key-equations-displayed.qmd) | Diff-scoped heuristic check that fails when a PR adds an inline equation in a proof that restates a displayed equation of the theorem or ends a concluding sentence; a key equation goes in display math | `globs`, `fail`, `whole-tree` |
 | [`check-pr-size.yml`](reference/check-pr-size.qmd) | Diff-scoped, blocking check that fails a PR changing more than 10 files or 300 lines; a sweep goes out as minimal batches | `max-files`, `max-lines`, `paths-ignore`, `exempt-label`, `fail` |
 | [`check-note-sheet-rows.yml`](reference/check-note-sheet-rows.qmd) | Diff-scoped check, warn-only for the one-concept rules and always blocking for prose and non-table lists, that flags a note-sheet table row holding more than one concept (notation in a label, a label joining two concepts, two formulas in one cell), when a PR adds it | `globs`, `paths-ignore`, `fail`, `whole-tree`, `runs-on` |
@@ -216,6 +217,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-serial-comma.yml`,
 `check-exercise-background.yml`,
 `check-exercise-question-paragraph.yml`,
+`check-exercise-ends-with-task.yml`,
 `check-key-equations-displayed.yml`,
 `check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
 `check-term-links.yml`, `check-paired-file-change.yml`,
