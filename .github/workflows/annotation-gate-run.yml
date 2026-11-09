@@ -57,7 +57,8 @@ on:
       backfill:
         description: >-
           Gate each commit that a pull request run touched in the last 24
-          hours and that has no `annotation-gate` check run, for a scheduled
+          hours and that has no `annotation-gate` check run or an out-of-date
+          one (gha#1752), for a scheduled
           caller that repairs heads whose final `workflow_run` event never
           arrived (gha#1754). Needs no permission beyond the ones this
           workflow already holds. `run-id` and `all-runs` are unused; pass

@@ -222,20 +222,31 @@ def recent_pr_heads(base, repo, token, now=None):
     return list(dict.fromkeys(run["head_sha"] for run in paged(url, token, "workflow_runs")))
 
 
-def has_gate_check(base, repo, token, sha):
-    """True when the commit already carries an `annotation-gate` check run."""
-    data = api(f"{base}/repos/{repo}/commits/{sha}/check-runs?check_name=annotation-gate&per_page=1", token)
-    return data.get("total_count", 0) > 0
+def gate_posted_at(base, repo, token, sha):
+    """When the newest `annotation-gate` check run on the commit finished, or "" for none."""
+    data = api(f"{base}/repos/{repo}/commits/{sha}/check-runs?check_name=annotation-gate&per_page=100", token)
+    return max((c.get("completed_at") or "" for c in data.get("check_runs", [])), default="")
 
 
-def heads_missing_gate(base, repo, token):
-    """Recent pull request commits with no `annotation-gate` check run.
+def gate_is_stale(base, repo, token, sha, own_workflow):
+    """True when the commit has no check run, or a run finished after the newest one.
 
     A deferred gate posts nothing and relies on the last finishing run to start
-    the gate that posts. When that event never arrives (gha#1754), the required
-    check stays missing and GitHub blocks the merge with nothing to re-run.
+    the gate that posts. When that event never arrives, the commit keeps the
+    check it had before: none (gha#1754), so GitHub blocks the merge with
+    nothing to re-run, or an earlier failure that a re-run has since fixed
+    (gha#1752).
     """
-    return [sha for sha in recent_pr_heads(base, repo, token) if not has_gate_check(base, repo, token, sha)]
+    posted = gate_posted_at(base, repo, token, sha)
+    if not posted:
+        return True
+    runs = paged(f"{base}/repos/{repo}/actions/runs?head_sha={sha}", token, "workflow_runs")
+    return any(r.get("status") == "completed" and r.get("name") != own_workflow and (r.get("updated_at") or "") > posted for r in runs)
+
+
+def stale_heads(base, repo, token, own_workflow):
+    """Recent pull request commits whose `annotation-gate` check is missing or out of date."""
+    return [sha for sha in recent_pr_heads(base, repo, token) if gate_is_stale(base, repo, token, sha, own_workflow)]
 
 
 def report(settings, head_sha, targets, annotations, checked, post):
@@ -280,10 +291,10 @@ def gate_commit(settings, head_sha, trigger_id="", trigger_attempt=""):
 
 
 def backfill(settings):
-    """Gate each recent pull request commit that has no `annotation-gate` check run."""
-    missing = heads_missing_gate(settings["base"], settings["repo"], settings["token"])
-    print(f"annotation-gate: backfill, {len(missing)} recent pull request commit(s) with no check run.")
-    codes = [gate_commit(settings, sha) for sha in missing]
+    """Gate each recent pull request commit whose `annotation-gate` check is missing or stale."""
+    stale = stale_heads(settings["base"], settings["repo"], settings["token"], settings["workflow"])
+    print(f"annotation-gate: backfill, {len(stale)} recent pull request commit(s) with no check run or an out-of-date one.")
+    codes = [gate_commit(settings, sha) for sha in stale]
     return 1 if any(codes) else 0
 
 

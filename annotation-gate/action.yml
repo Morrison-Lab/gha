@@ -89,8 +89,10 @@ inputs:
   backfill:
     description: >-
       Gate each commit that a pull request run touched in the last 24 hours
-      and that has no `annotation-gate` check run, instead of one commit, and
-      post a check run on each. Run it on a schedule beside the `workflow_run`
+      and that has no `annotation-gate` check run, or whose newest one
+      finished before a run on the commit did (a failure that a re-run has
+      since fixed, gha#1752), instead of one commit, and post a check run on
+      each. Run it on a schedule beside the `workflow_run`
       gate: a gate that defers posts nothing and relies on the last finishing
       run to start the gate that posts, so a lost or very late event leaves the
       required check missing and the pull request blocked with nothing to
