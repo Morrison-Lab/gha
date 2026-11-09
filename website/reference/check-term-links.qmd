@@ -55,6 +55,10 @@ a label such as "note" or "example".
   A link covers only part of a longer defined phrase,
   such as "logistic [regression](...)" when "logistic regression" is defined.
   Link the whole phrase to its own definition.
+  It also fires when a link's text is part of its target definition's title
+  and the next word is another word of that title,
+  such as "[probability](...#def-pdf) density" for "probability density function"
+  (a different next word, as in "[fitted](...) probability", is not flagged).
 - **`no-definition`.**
   A bold term in a passage that is not a definition div, and that matches no
   known term: it is introduced as technical and defined nowhere.
