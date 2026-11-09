@@ -102,7 +102,8 @@ validate_doi_url <- function(doi, retry_on_network_error = TRUE) {
 
       status_code <- status_code(response)
 
-      if (status_code == 200) {
+      if (status_code >= 200 && status_code <= 299) {
+        # Any 2xx means the DOI resolved (some publishers answer 202).
         return(list(
           is_valid = TRUE,
           error = NULL,
