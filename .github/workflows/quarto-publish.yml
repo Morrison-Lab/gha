@@ -268,13 +268,18 @@ jobs:
     if: inputs.deploy
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 45
-    # Serialize deploys to gh-pages so main-site publishes, PR previews, and
-    # preview cleanups queue rather than race or clobber each other's commits.
-    # Note: GitHub Actions only retains *one* pending run per concurrency group
-    # (superseding older pending runs in the queue), rather than buffering
-    # unbounded pending runs. cancel-in-progress: false queues rather than kills.
+    # This group holds main-site publishes only. GitHub keeps one pending job
+    # per concurrency group and cancels an older pending one when a newer
+    # arrives, even with cancel-in-progress: false. In the shared `gh-pages`
+    # group that let a stream of preview deploys cancel a finished main render
+    # before it got a runner (gha#1759). A newer main publish superseding an
+    # older pending one is right, since it carries the newer render. Pushes
+    # to gh-pages from previews are no longer serialized with this job, so the
+    # deploy below uses `force: false`: JamesIves then fetches, rebases onto
+    # the remote tip and retries on a rejected push, rather than force-pushing
+    # over a preview committed in between.
     concurrency:
-      group: gh-pages
+      group: gh-pages-main
       cancel-in-progress: false
     permissions:
       contents: write
@@ -321,3 +326,4 @@ jobs:
           # this "deploy both to gh-pages" case.
           clean: true
           clean-exclude: pr-preview/
+          force: false

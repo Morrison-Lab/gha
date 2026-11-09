@@ -446,7 +446,7 @@ job itself.
 `audit_example_concurrency.py` checks these groups across their candidate
 evaluated runtime values, flagging callers that declare colliding PR-scoped
 group names ([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
-The same rule covers the gh-pages family (`quarto-publish.yml`,
+The same rule covers the gh-pages family (`quarto-publish.yml`, whose deploy job declares `group: gh-pages-main`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares
 `group: gh-pages`:
