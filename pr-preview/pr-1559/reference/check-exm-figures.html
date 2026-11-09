@@ -831,6 +831,18 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-results-in-remarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-results-in-remarks.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-definition-expectation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-definition-expectation.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-extracted-lemmas.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-extracted-lemmas.yml</span></a>
   </div>
@@ -935,6 +947,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="../reference/check-proof-statements.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-proof-statements.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-gradient-lhs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-gradient-lhs.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1221,6 +1239,7 @@ cookieconsent.run({
 <li>a cross-reference to a figure (<code>@fig-...</code>);</li>
 <li>an include of a figure subfile (<code>{{&lt; include ..._fig.qmd &gt;}}</code>).</li>
 </ul>
+<p>The same run also flags a crossref div (<code>#def-</code>, <code>#thm-</code>, <code>#exm-</code>, and the other theorem-like prefixes) whose level 4 or deeper heading has a block ahead of it, such as an HTML comment. Quarto reads a heading as the div’s title only when it is the first block, so the title otherwise renders as a section heading (<a href="https://github.com/Morrison-Lab/gha/issues/1567">gha#1567</a>). Move the comment after the title.</p>
 <p>A justified exception carries a reason: an HTML comment <code>&lt;!-- no-figure: reason --&gt;</code> inside the div exempts it. A comment with no reason does not. Use <code>paths-ignore</code> to exempt whole paths. The check does not count a div inside a code fence, an HTML comment or a blockquote, or the divs an <code>include</code> shortcode may pull in at render time.</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>

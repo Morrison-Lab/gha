@@ -831,6 +831,18 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-results-in-remarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-results-in-remarks.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-definition-expectation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-definition-expectation.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-extracted-lemmas.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-extracted-lemmas.yml</span></a>
   </div>
@@ -935,6 +947,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="../reference/check-proof-statements.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-proof-statements.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-gradient-lhs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-gradient-lhs.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1236,7 +1254,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>runs-on</code></td>
 <td>string</td>
-<td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
+<td>empty (<code>CI_RUNNER_HEAVY</code> variable, else <code>CI_RUNNER</code>, else <code>ubuntu-latest</code>)</td>
 <td>Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo, such as <code>apt-packages</code>.</td>
 </tr>
 <tr class="even">
@@ -1348,6 +1366,30 @@ cookieconsent.run({
 <td>Render only the pages a PR can affect, from a cached <code>_site</code>, <code>.quarto</code>, and <code>_freeze</code>, and fall back to the full render when there is no cache, a path that can affect every page changed, a page was deleted, or too many pages are stale. Unchanged pages keep their old navigation and cross-reference numbers. The composite also takes <code>incremental-full-render-paths</code>, <code>incremental-ignore-paths</code>, and <code>incremental-max-pages</code>; the reusable workflow does not forward them.</td>
 </tr>
 <tr class="even">
+<td><code>cluster-render</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Run the render on a WWU CS cluster node through <code>condor-batch</code> instead of on the runner. The output directory, <code>_freeze</code>, <code>.quarto</code> and the render log come back, so later steps are unchanged. Needs a runner with the cluster ssh key; <code>lds-ci.sif</code> has no renv and no Chromium, so leave it off with <code>use-renv</code> or <code>setup-chrome</code>. Needs <code>cluster-image</code>: with it empty the steps run bare on the execute node, which has no Quarto. Falls back to the runner when the cluster cannot run the job.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-head</code></td>
+<td>string</td>
+<td><code>cse-head.cluster.cs.wwu.edu</code></td>
+<td>Cluster head, or a space- or comma-separated list, for <code>cluster-render</code>.</td>
+</tr>
+<tr class="even">
+<td><code>cluster-image</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Apptainer image on the cluster home that <code>cluster-render</code> runs in.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-image-file</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>The same image on the runner, for heads without the cluster home.</td>
+</tr>
+<tr class="even">
 <td><code>extra-preview-labels</code></td>
 <td>string</td>
 <td><code>'[]'</code></td>
@@ -1364,6 +1406,18 @@ cookieconsent.run({
 <td>string</td>
 <td><code>''</code></td>
 <td>Newline-separated fixed string patterns that fail the build if found in the render log (e.g.&nbsp;missing listing files).</td>
+</tr>
+<tr class="odd">
+<td><code>post-build-command</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Shell command run in the build job after the site is rendered and uploaded (working directory <code>path</code>, site in <code>$OUTPUT_DIR</code>), so checks that read the site need no second runner wait.</td>
+</tr>
+<tr class="even">
+<td><code>post-build-continue-on-error</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>A failing <code>post-build-command</code> does not fail the job or hold back the deploy (the step is still marked failed).</td>
 </tr>
 <tr class="odd">
 <td><code>timezone</code></td>
@@ -1554,22 +1608,23 @@ cookieconsent.run({
 <span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   incremental: true                  # render only the pages a PR can affect, from a cached site</span></span>
 <span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-preview-labels: '["preview:tracked-changes"]' # JSON array string of additional labels that trigger preview rebuilds</span></span>
 <span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timezone: America/Los_Angeles     # export TZ for the render (e.g. for date: last-modified)</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 90                # raise the 45-minute render cap for a site that renders slowly</span></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-banner: true      # and list them on the preview home page</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   highlight-changes: true            # and highlight modified/added text in rendered chapters</span></span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-glob: 'chapters/*.html'</span></span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-branch: gh-pages</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix</span></span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-elements-for-pairwise: '500'   # cap candidate elements to avoid quadratic diffing</span></span>
-<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render</span></span>
-<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes-glob: 'chapters/*.docx'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   post-build-command: python3 tools/check_site.py --site "$OUTPUT_DIR"  # run site checks in this job</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timezone: America/Los_Angeles     # export TZ for the render (e.g. for date: last-modified)</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 90                # raise the 45-minute render cap for a site that renders slowly</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-banner: true      # and list them on the preview home page</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   highlight-changes: true            # and highlight modified/added text in rendered chapters</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-glob: 'chapters/*.html'</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-branch: gh-pages</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-elements-for-pairwise: '500'   # cap candidate elements to avoid quadratic diffing</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render</span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes-glob: 'chapters/*.docx'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml"><code>examples/preview.yml</code></a> for the full caller stub.</p>
 </section>
 <section id="partial-adoption-for-bespoke-builds" class="level2">

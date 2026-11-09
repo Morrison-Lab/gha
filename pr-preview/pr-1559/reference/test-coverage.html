@@ -831,6 +831,18 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-results-in-remarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-results-in-remarks.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-definition-expectation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-definition-expectation.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-extracted-lemmas.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-extracted-lemmas.yml</span></a>
   </div>
@@ -935,6 +947,12 @@ cookieconsent.run({
   <div class="sidebar-item-container"> 
   <a href="../reference/check-proof-statements.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-proof-statements.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-gradient-lhs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-gradient-lhs.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1274,6 +1292,36 @@ cookieconsent.run({
 <td>string</td>
 <td><code>''</code></td>
 <td>Minimum percent coverage required to pass the tests job (<code>covr::percent_coverage()</code>). Empty defaults to no threshold. Does not apply to the examples/vignettes job.</td>
+</tr>
+<tr class="even">
+<td><code>cluster-check</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Measure coverage on a WWU cluster node through <code>condor-batch</code> instead of on the runner (gha#1640). Writes the report to the <code>cluster-coverage</code> artifact, applies <code>min-coverage</code>, and does not upload to Codecov. Skips the runner job.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-runs-on</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Runner label for the cluster job. Empty uses <code>vars.CI_RUNNER</code>.</td>
+</tr>
+<tr class="even">
+<td><code>cluster-head</code></td>
+<td>string</td>
+<td><code>cse-head.cluster.cs.wwu.edu</code></td>
+<td>Cluster head (or list of heads) for the cluster job.</td>
+</tr>
+<tr class="odd">
+<td><code>cluster-image</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Apptainer image on the cluster home that the cluster job runs in.</td>
+</tr>
+<tr class="even">
+<td><code>cluster-image-file</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>The same image on the runner, for heads without the cluster home.</td>
 </tr>
 </tbody>
 </table>
