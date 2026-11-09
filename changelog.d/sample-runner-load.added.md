@@ -1,0 +1,1 @@
+- `scripts/sample-runner-load.sh` appends one line of load, available memory, swap used and the biggest processes to a log, for a cron job on a runner host, so an overload can be read back without `journalctl` or `dmesg` (gha#1736).
