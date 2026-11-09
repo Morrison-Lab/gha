@@ -9,14 +9,14 @@ is that the last thing a reader meets in an exercise is its task.
 
 The check looks at each exercise div (`#exr-...`).
 Its last block must be a paragraph with a task sentence:
-one that ends with a question mark
+one that ends with a question mark,
 or starts with an imperative task verb
 such as Show, Find, Compute, Estimate, Explain or Derive
 (the same test as [`check-exercise-question-paragraph`](check-exercise-question-paragraph.qmd)).
 An exercise is reported when its last paragraph has no task,
-or when a figure, table, code block or include shortcode comes after the last task.
+or when a figure, table, code block, or include shortcode comes after the last task.
 
-Solutions, callouts such as hints, HTML comments, display math, lists, headings
+Solutions, callouts such as hints, HTML comments, display math, lists, headings,
 and block quotes are not examined (they are skipped when finding the last block).
 `<!-- ends-with-task-ok: reason -->` inside an exercise exempts it.
 
