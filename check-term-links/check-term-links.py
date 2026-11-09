@@ -538,7 +538,7 @@ def scan_file(
         if added is None or n in added:
             findings.append(Finding(
                 file=path, line=n, rule="stale-allow", term="",
-                message="This check-term-links allow pragma suppresses no finding on its line; delete it.",
+                message="This check-term-links opt-out pragma suppresses no finding on its line; delete it.",
             ))
     return sorted(findings, key=lambda f: (f.line, f.rule, f.term))
 
