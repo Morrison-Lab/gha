@@ -1210,7 +1210,7 @@ cookieconsent.run({
 <p>Removed lines are normalized (markup, link targets, math, punctuation and case dropped) and cut into sentences, so a reflow or a change of line breaks is not a removal. A removed sentence passes when at least <code>min-overlap</code> of its word trigrams occur among the trigrams of the lines the pull request adds, in any checked file. A moved sentence passes, and so does a lightly reworded one. Headings, code, YAML, includes, tables, display math, and sentences with fewer than <code>min-words</code> alphabetic words are not examined.</p>
 <p>Two opt-outs cover a deliberate removal:</p>
 <ul>
-<li><code>removed-content-ok: reason</code> in the pull request body, or in an added line such as an HTML comment, exempts the whole pull request.</li>
+<li><code>removed-content-ok: reason</code> in the pull request body, or in an added HTML comment, exempts the whole pull request.</li>
 <li>A deleted file whose path or file name the pull request body names is exempt.</li>
 </ul>
 <p>With no base ref the check skips. The pull request body is read from the event, so the example stub also runs on <code>edited</code>.</p>
@@ -1237,7 +1237,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>base-ref</code></td>
 <td>(empty)</td>
-<td>Git ref or SHA to diff against; empty skips the check</td>
+<td>Git ref or SHA to diff against; empty skips the check (composite only; the workflow sets it)</td>
 </tr>
 <tr class="even">
 <td><code>globs</code></td>
@@ -1247,7 +1247,7 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>pr-body</code></td>
 <td>(empty)</td>
-<td>Pull request body, searched for the opt-out and for deleted files’ names</td>
+<td>Pull request body, searched for the opt-out and for deleted files’ names (composite only; the workflow sets it)</td>
 </tr>
 <tr class="even">
 <td><code>min-overlap</code></td>
