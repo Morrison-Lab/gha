@@ -180,6 +180,21 @@ def test_non_prose_is_skipped(body):
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
+def test_allow_pragma_that_suppresses_nothing_is_stale():
+    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow -->\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("stale-allow", "")]
+
+
+def test_allow_pragma_that_suppresses_a_finding_is_not_stale():
+    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow -->\n\n:::\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_stale_allow_is_scoped_to_added_lines():
+    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow -->\n\n:::\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}, added={1}) == []
+
+
 def test_ignore_file_directive():
     page = "<!-- check-term-links: ignore-file -->\n\nThe risk is large.\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
