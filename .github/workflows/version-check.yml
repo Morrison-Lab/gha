@@ -141,8 +141,6 @@ jobs:
       - name: Set up R
         if: steps.exempt.outputs.skip != 'true' && !inputs.preinstalled-toolchain
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
-        with:
-          use-public-rspm: true
 
       # Delegates to the check-dev-version composite (rather than invoking
       # Rscript on a hardcoded script path in this checkout) because the
