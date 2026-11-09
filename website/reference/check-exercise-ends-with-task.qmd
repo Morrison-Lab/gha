@@ -11,7 +11,7 @@ The check looks at each exercise div (`#exr-...`).
 Its last block must be a paragraph with a task sentence:
 one that ends with a question mark,
 or starts with an imperative task verb
-such as Show, Find, Compute, Estimate, Explain or Derive
+such as Show, Find, Compute, Estimate, Explain, or Derive
 (the same test as [`check-exercise-question-paragraph`](check-exercise-question-paragraph.qmd)).
 An exercise is reported when its last paragraph has no task,
 or when a figure, table, code block, or include shortcode comes after the last task.
