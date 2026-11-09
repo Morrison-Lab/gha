@@ -23,6 +23,11 @@ DEFAULT = [
     r"^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead",
     r"^wait-runner-capacity: still short after \d+ minutes",
     r"^prune-runner-workdir: measured .+ GB free, under \d+ GB",
+    r"^fetch-pack: (invalid index-pack output|unexpected disconnect while reading sideband packet)",
+    r"^early EOF$",
+    r"^\d+ bytes of body are still expected$",
+    r"^RPC failed; curl \d+\b",
+    r"^the remote end hung up unexpectedly$",
 ]
 
 
@@ -228,10 +233,37 @@ def test_runner_hook_patterns_are_anchored_and_leave_other_text_gated():
         assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
-def test_action_default_allow_lists_the_runner_hook_patterns():
+def test_action_default_allow_lists_the_runner_hook_and_git_transport_patterns():
     text = open(os.path.join(os.path.dirname(__file__), "..", "action.yml")).read()
-    for pattern in DEFAULT[-2:]:
+    for pattern in DEFAULT[-7:]:
         assert pattern in text
+
+
+# The failure annotations of a checkout fetch that actions/checkout retried
+# (lds#2131, gha#1731); the job passed, so they are not about the commit.
+GIT_TRANSPORT_ERRORS = (
+    "fetch-pack: invalid index-pack output",
+    "early EOF",
+    "10 bytes of body are still expected",
+    "RPC failed; curl 55 Send failure: Broken pipe",
+    "fetch-pack: unexpected disconnect while reading sideband packet",
+    "the remote end hung up unexpectedly",
+)
+
+
+def test_git_transport_errors_of_a_retried_fetch_are_allowed():
+    for msg in GIT_TRANSPORT_ERRORS:
+        assert not g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_git_transport_patterns_are_anchored_and_leave_other_text_gated():
+    for msg in (
+        "Error: early EOF while parsing the lockfile",
+        "fatal: repository 'https://github.com/x/y/' not found",
+        "RPC failed; HTTP 403 curl 22 The requested URL returned error: 403",
+        "see: the remote end hung up unexpectedly",
+    ):
+        assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def run(wid, event, number, status="completed", name=None, rid=None):
