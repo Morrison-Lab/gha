@@ -55,7 +55,7 @@ sha256_of() {
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
-curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors \
   --output "$work_dir/$tarball" "$base_url/$tarball"
 
 actual_sha256="$(sha256_of "$work_dir/$tarball")"
