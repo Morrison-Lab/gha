@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+# check-one-function-per-file: allow-multiple
 # Check bibliography files for DOI requirements:
 # 1. Every book and article must have a DOI field
 # 2. Every DOI must resolve to a valid URL
