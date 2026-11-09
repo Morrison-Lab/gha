@@ -1,0 +1,1 @@
+`claude-code-review`: `post-review` now rewrites a hex `commit_sha` in the review-data JSON to the reviewed commit it stamps on the trailing `Reviewed commit:` line, so a reviewer that writes GitHub's merge ref no longer leaves the two naming different commits (gha#1068).
