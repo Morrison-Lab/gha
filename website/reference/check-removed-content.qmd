@@ -1,0 +1,42 @@
+---
+title: "check-removed-content.yml"
+---
+
+Diff-scoped check that fails a pull request that removes prose which
+reappears nowhere in the pull request.
+The lab's rule (Ezra, 2026-11-09, review of
+[lds#2032](https://github.com/Morrison-Lab/lds/pull/2032)) is that content is moved, never deleted.
+
+Removed lines are normalized (markup, links' targets, math, punctuation and case dropped)
+and cut into sentences, so a reflow or a change of line breaks is not a removal.
+A removed sentence passes when at least `min-overlap` of its word trigrams
+occur among the trigrams of the lines the pull request adds, in any checked file.
+A moved sentence passes, and so does a lightly reworded one.
+Headings, code, YAML, includes, tables, display math, and sentences with fewer than `min-words`
+alphabetic words are not examined.
+
+Two opt-outs cover a deliberate removal:
+
+- `removed-content-ok: reason` in the pull request body, or in an added line such as an HTML comment, exempts the whole pull request.
+- A deleted file whose path or file name the pull request body names is exempt.
+
+With no base ref the check skips.
+The pull request body is read from the event, so the reusable workflow's example stub also runs on `edited`.
+
+## Usage
+
+Copy
+[`examples/check-removed-content.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-removed-content.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `base-ref` | (empty) | Git ref or SHA to diff against; empty skips the check |
+| `globs` | `*.qmd *.md` | Space-separated git pathspecs of tracked files to check |
+| `pr-body` | (empty) | Pull request body, searched for the opt-out and for deleted files' names |
+| `min-overlap` | `0.6` | Trigram overlap that counts as moved |
+| `min-words` | `5` | Fewest alphabetic words of an examined sentence |
+| `fail` | `true` | Fail on a finding; `false` gives warnings only |
+| `python-version` | `3.x` | Python version to set up |
