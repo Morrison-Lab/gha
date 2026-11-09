@@ -9870,6 +9870,10 @@ jobs:
         shell: bash
         run: bash .github/workflows/scripts/tests/run-wait-runner-capacity-tests.sh
 
+      - name: Run sample-runner-load tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-sample-runner-load-tests.sh
+
       - name: Run runner-group-is-private tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-runner-group-is-private-tests.sh
