@@ -22,7 +22,9 @@ inputs:
       the review workflow emits by design (a newer push supersedes a review,
       a PR edits workflow files, and `require-clean-verdict` fails on a
       non-clean verdict), and the two notices the runner job-started hook
-      emits about the host (a busy host held the job, a low-disk host).
+      emits about the host (a busy host held the job, a low-disk host), and
+      the git transport errors of a checkout fetch that `actions/checkout`
+      retried: a fetch that keeps failing fails the job itself (gha#1731).
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
@@ -41,6 +43,11 @@ inputs:
       ^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead
       ^wait-runner-capacity: still short after \d+ minutes
       ^prune-runner-workdir: measured .+ GB free, under \d+ GB
+      ^fetch-pack: (invalid index-pack output|unexpected disconnect while reading sideband packet)
+      ^early EOF$
+      ^\d+ bytes of body are still expected$
+      ^RPC failed; curl \d+\b
+      ^the remote end hung up unexpectedly$
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always
