@@ -12,7 +12,7 @@ The check flags a `#thm-`, `#lem-`, `#cor-`, or `#prp-` div
 that holds no definition link.
 A definition link is either:
 
-- a cross-reference to a definition, `@def-id` or `[@def-id]`; or
+- a cross-reference to a definition, such as `@def-id`; or
 - a Markdown link whose target ends in `#def-id`,
   on this site or on a prerequisite site.
 
