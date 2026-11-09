@@ -166,6 +166,24 @@ out=$(RUNNER_NAME=private-gate-2 WAIT_SKIP_RUNNER_NAMES= WAIT_MAX_BLOCKED=2 PROC
 status=$?
 [ "$status" = 124 ] || fail "an empty skip list should hold a gate runner too (exit $status): $out"
 
+# Memory-based job cap (gha#1509): 16 GB at 4 GB a job allows 4 running jobs.
+printf '%s\n' 'MemTotal:       16777216 kB' > "$work/meminfo"
+out=$(WAIT_GB_PER_JOB=4 MEMINFO="$work/meminfo" WAIT_WORKER_COUNT=3 bash "$script") || fail "3 jobs under a memory cap of 4 should not fail"
+case "$out" in *holding*) fail "3 jobs under a memory cap of 4 should not hold: $out" ;; esac
+
+out=$(WAIT_GB_PER_JOB=4 MEMINFO="$work/meminfo" WAIT_WORKER_COUNT=5 WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+status=$?
+[ "$status" = 124 ] || fail "4 running jobs (5 workers, one of them this job) at a memory cap of 4 should hold the job (exit $status): $out"
+
+# The lower of the memory cap and WAIT_MAX_WORKERS applies.
+out=$(WAIT_GB_PER_JOB=4 WAIT_MAX_WORKERS=2 MEMINFO="$work/meminfo" WAIT_WORKER_COUNT=3 WAIT_MAX_MINUTES=1 timeout 8 bash "$script")
+status=$?
+[ "$status" = 124 ] || fail "WAIT_MAX_WORKERS=2 with 2 running jobs should beat a memory cap of 4 (exit $status): $out"
+
+# A job that needs more than the whole host still gets one slot.
+out=$(WAIT_GB_PER_JOB=64 MEMINFO="$work/meminfo" WAIT_WORKER_COUNT=0 bash "$script") || fail "an empty host should not fail"
+case "$out" in *holding*) fail "an empty host should run one job whatever the memory cap: $out" ;; esac
+
 # A busy or full host is not a defect of the code under test (gha#1584): the
 # hold-expired and low-disk messages are notices, so no consumer's annotation
 # gate has to allow-list them. Setup mistakes stay warnings.
