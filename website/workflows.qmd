@@ -245,9 +245,11 @@ still on `@v1` would miss (audited in
 freeze - see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as does
 `sync-upstream.yml` (added after the freeze - see
 [gha#254](https://github.com/Morrison-Lab/gha/issues/254)),
-`altdoc-multiversion-docs.yml` (added after the freeze), and
+`altdoc-multiversion-docs.yml` (added after the freeze),
 `report-failure.yml` (added after the freeze - see
-[gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
+[gha#325](https://github.com/Morrison-Lab/gha/issues/325)),
+and `report-main-failure.yml` (added after the freeze - see
+[gha#1770](https://github.com/Morrison-Lab/gha/issues/1770)).
 `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`,
 `opencode-code-review.yml`, and `ai-code-review.yml` likewise only

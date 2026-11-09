@@ -806,9 +806,11 @@ a security fix) that a consumer still on `@v1` would miss (audited in
 the freeze -- see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as
 does `sync-upstream.yml` (added after the freeze -- see
 [gha#254](https://github.com/Morrison-Lab/gha/issues/254)),
-`altdoc-multiversion-docs.yml` (added after the freeze), and
+`altdoc-multiversion-docs.yml` (added after the freeze),
 `report-failure.yml` (added after the freeze -- see
-[gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
+[gha#325](https://github.com/Morrison-Lab/gha/issues/325)),
+and `report-main-failure.yml` (added after the freeze -- see
+[gha#1770](https://github.com/Morrison-Lab/gha/issues/1770)).
 `bump-dev-version.yml` and `version-check.yml` postdate the freeze too (added
 in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
 `@v2`.
@@ -906,7 +908,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `lint-qmd.yml`, `lint-changed-lines.yml`, `lint-changed-files.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
-`report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
+`report-failure.yml`, `report-main-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `small-model-agent.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
