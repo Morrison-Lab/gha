@@ -46,7 +46,8 @@ cached_download() {
   fi
 
   curl --fail --silent --show-error --location \
-    --retry 8 --retry-delay 10 --retry-all-errors \
+    --retry "${GHA_DOWNLOAD_RETRIES:-20}" \
+    --retry-delay "${GHA_DOWNLOAD_RETRY_DELAY:-15}" --retry-all-errors \
     --output "$out" "$url" || return $?
 
   if [ -n "$cached" ] && [ -w "$GHA_RELEASE_CACHE_DIR" ] &&
