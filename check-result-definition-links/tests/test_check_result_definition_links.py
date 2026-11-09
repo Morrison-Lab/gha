@@ -54,8 +54,8 @@ def test_link_to_a_non_definition_is_flagged():
     assert len(run(div(body="By [Jensen](#thm-jensen) and @thm-jensen."))) == 1
 
 
-def test_email_or_path_with_at_sign_is_not_a_reference():
-    assert len(run(div(body="Mail me@def-x.org or see a/@def-x."))) == 1
+def test_handle_or_path_with_at_sign_is_not_a_reference():
+    assert len(run(div(body="Handle name@def-x or see a/@def-x."))) == 1
 
 
 @pytest.mark.parametrize("kind", ["thm", "lem", "cor", "prp"])
