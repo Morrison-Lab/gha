@@ -58,11 +58,13 @@ on:
           libcairo2-dev gettext
       preinstalled-toolchain:
         description: >
-          The runner already provides R (with the pak package), Julia and the
+          The runner already provides R, Julia and the
           apt packages, and has no sudo, as a self-hosted runner does. Skips
           setup-julia, the apt install, setup-r and setup-r-dependencies;
           installs the package's dependencies (Suggests included) and
-          extra-packages with pak. needs has no effect in this mode.
+          extra-packages with pak, or with remotes::install_deps into a
+          per-job library when the runner's R has no pak.
+          needs has no effect in this mode.
         type: boolean
         default: false
       commit-message:
@@ -175,14 +177,22 @@ jobs:
         run: |
           # setup-r installs R with sudo apt-get, which a runner without
           # passwordless sudo cannot do (gha#1706). Use the runner's own R
-          # when sudo is missing and R, with pak, is already there.
+          # when sudo is missing and R is already there, with or without
+          # pak (gha#1726): pak fails inside some containers and is absent
+          # from the distro R on cf463-02, so the install step falls back to
+          # remotes::install_deps into a per-job library.
           pre="$DECLARED"
           if [ "$pre" != "true" ] && ! sudo -n true 2> /dev/null; then
-            if Rscript -e 'quit(status = !requireNamespace("pak", quietly = TRUE))' 2> /dev/null; then
+            if ! command -v Rscript > /dev/null 2>&1; then
+              echo "::warning::No passwordless sudo and no R on the runner; setup-r will fail. Use a runner image with R (gha#1638)."
+            elif Rscript -e 'quit(status = !requireNamespace("pak", quietly = TRUE))' 2> /dev/null; then
               echo "::notice::No passwordless sudo; using the runner's own R and pak instead of setup-r."
               pre=true
             else
-              echo "::warning::No passwordless sudo and no runner R with pak; setup-r will fail. Use a runner image with R (gha#1638)."
+              echo "::notice::No passwordless sudo and no pak; using the runner's own R with remotes::install_deps in a per-job library."
+              pre=true
+              echo "R_LIBS_USER=$RUNNER_TEMP/r-library" >> "$GITHUB_ENV"
+              mkdir -p "$RUNNER_TEMP/r-library"
             fi
           fi
           echo "preinstalled=$pre" >> "$GITHUB_OUTPUT"
@@ -209,7 +219,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          Rscript -e 'extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; pak::local_install_dev_deps(dependencies = TRUE); if (length(extra)) pak::pkg_install(extra)'
+          # Keep pak when the runner has it; otherwise remotes::install_deps
+          # (Suggests included) into the per-job library from the detect step.
+          if Rscript -e 'quit(status = !requireNamespace("pak", quietly = TRUE))' 2> /dev/null; then
+            Rscript -e 'extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; pak::local_install_dev_deps(dependencies = TRUE); if (length(extra)) pak::pkg_install(extra)'
+          else
+            Rscript -e 'repos <- "https://cloud.r-project.org"; if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes", repos = repos); extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; remotes::install_deps(dependencies = TRUE, upgrade = "never", repos = repos); if (length(extra)) remotes::install_cran(extra, repos = repos, upgrade = "never")'
+          fi
 
       - name: Set up R dependencies
         if: ${{ steps.toolchain.outputs.preinstalled != 'true' }}
