@@ -31,6 +31,9 @@ Findings:
   matches no known term, so it is introduced as technical with no definition
   anywhere in the corpus. Give it a `#def-` div.
 
+- `stale-allow`: a `check-term-links: allow` pragma on an added line that suppresses
+  no finding. Delete it (gha#1771).
+
 Skipped: code fences and spans, math, HTML comments, YAML front matter, include
 shortcodes, headings, images, and the `(...)` of a link.
 
@@ -414,6 +417,7 @@ def scan_passage(
     opted: Set[int],
     added: Optional[Set[int]],
     own_defs: Optional[Set[str]] = None,
+    used_optouts: Optional[Set[int]] = None,
 ) -> List[Finding]:
     findings: List[Finding] = []
     line_of: List[int] = []  # offset -> 1-based line number
@@ -439,7 +443,12 @@ def scan_passage(
     prose = "".join(chars)
 
     def reportable(n: int) -> bool:
-        return n not in opted and (added is None or n in added)
+        if n in opted:
+            # The pragma on this line suppressed a finding, so it is not stale.
+            if used_optouts is not None:
+                used_optouts.add(n)
+            return False
+        return added is None or n in added
 
     seen: Set[str] = set()
     if rx is not None:
@@ -520,8 +529,17 @@ def scan_file(
     findings: List[Finding] = []
     passages = split_passages(masked)
     own_defs = {p.div_id for p in passages if p.div_id}
+    used_optouts: Set[int] = set()
     for passage in passages:
-        findings.extend(scan_passage(path, passage, terms, rx, opted, added, own_defs))
+        findings.extend(scan_passage(path, passage, terms, rx, opted, added, own_defs, used_optouts))
+    # A pragma that suppresses nothing is dead weight, and being line-wide it would hide
+    # the next finding on that line (gha#1771).
+    for n in sorted(opted - used_optouts):
+        if added is None or n in added:
+            findings.append(Finding(
+                file=path, line=n, rule="stale-allow", term="",
+                message="This check-term-links allow pragma suppresses no finding on its line; delete it.",
+            ))
     return sorted(findings, key=lambda f: (f.line, f.rule, f.term))
 
 
