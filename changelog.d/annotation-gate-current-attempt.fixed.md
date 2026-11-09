@@ -1,0 +1,1 @@
+- `annotation-gate` reads each gated run's current attempt from the run itself, not the runs listing, so a gate triggered by another workflow no longer reports a superseded attempt's annotations (gha#1742).

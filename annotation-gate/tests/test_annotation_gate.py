@@ -312,9 +312,12 @@ def check_run(job, count, names):
     return c
 
 
-def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extra_env=None, names=None):
+def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extra_env=None, names=None, attempts=None):
     names = names or {}
+    attempts = attempts or {}
+    monkeypatch.setattr(g, "api", lambda url, token: {"run_attempt": attempts.get(int(url.rsplit("/", 1)[1]))})
     posted, fetched = [], []
+    commit_mode.seen_attempts = []
     for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
         monkeypatch.delenv(key, raising=False)
     env = {
@@ -335,6 +338,7 @@ def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extr
             return iter([check_run(job, n, names) for job, n in counts.items()])
         if key == "jobs":
             run_id = int(url.split("/runs/")[1].split("/")[0])
+            commit_mode.seen_attempts.append((run_id, int(url.split("/attempts/")[1].split("/")[0])))
             return iter(jobs_by_run[run_id])
         job = int(url.split("/check-runs/")[1].split("/")[0])
         fetched.append(job)
@@ -460,3 +464,15 @@ def test_demoted_untrusted_certificate_warning_is_allowed():
 def test_undemoted_certificate_error_is_still_a_violation():
     msg = DEMOTED.split(" (the host")[0]
     assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_commit_mode_gates_the_attempt_a_run_reports_now_not_the_listing(monkeypatch):
+    """gha#1742: a listing that shows attempt 1 for a run already at attempt 2."""
+    stale = dict(run(1, "pull_request", 1, rid=10), run_attempt=1)
+    code, _, _ = commit_mode(monkeypatch, [stale], {10: []}, {}, {}, attempts={10: 2})
+    assert code == 0 and commit_mode.seen_attempts == [(10, 2)]
+
+
+def test_current_attempts_never_lowers_and_ignores_a_missing_attempt(monkeypatch):
+    monkeypatch.setattr(g, "api", lambda url, token: {"run_attempt": 1} if url.endswith("/10") else {})
+    assert g.current_attempts("b", "o/r", "t", [(10, 3), (20, 2)]) == [(10, 3), (20, 2)]
