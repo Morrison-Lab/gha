@@ -60,6 +60,11 @@ a label such as "note" or "example".
   known term: it is introduced as technical and defined nowhere.
   Give it a `#def-` div and link to it.
   Bold function words ("not", "once") are ignored.
+- **`stale-allow`.**
+  An opt-out pragma on a line the pull request adds, with no finding on that
+  line for it to suppress.
+  Delete it: an exemption is line-wide, so a dead one also hides the next
+  finding that lands on its line.
 
 It skips code fences and spans, math, HTML comments, YAML front matter,
 include shortcodes, headings, images, and the target of a link.
