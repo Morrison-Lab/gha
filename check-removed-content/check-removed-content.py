@@ -46,6 +46,9 @@ ADVICE = ("move the content (to a subfile, another page, or an outtakes file) "
 
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 OK_RE = re.compile(r"removed-content-ok:", re.I)
+# In a file the marker counts only as an HTML comment, so prose that documents
+# it (this check's own pages) does not silence the check.
+ADDED_OK_RE = re.compile(r"<!--\s*removed-content-ok:", re.I)
 SKIP_LINE_RE = re.compile(
     r"^\s*(?::::*|```|~~~|\{\{<|#\||<!--|\||---+\s*$|#{1,6}\s|\$\$|!\[|\[\^)")
 MATH_RE = re.compile(r"\$\$.*?\$\$|\$[^$\n]+\$")
@@ -78,9 +81,18 @@ def parse_diff(diff: str) -> Tuple[List[Removed], List[str], Dict[str, bool]]:
     added: List[str] = []
     deleted: Dict[str, bool] = {}
     old_path: Optional[str] = None
-    old_no = 0
+    old_no = old_left = new_left = 0
     for line in diff.splitlines():
-        if line.startswith("--- "):
+        # A hunk's own line counts say how many lines are content, so a removed
+        # line starting "-- " or an added one starting "++ " is not a header.
+        if old_left > 0 and line.startswith("-"):
+            old_left -= 1
+            removed.append(Removed(old_path or "", old_no, line[1:]))
+            old_no += 1
+        elif new_left > 0 and line.startswith("+"):
+            new_left -= 1
+            added.append(line[1:])
+        elif line.startswith("--- "):
             target = line[4:].rstrip("\t")
             old_path = None if target == "/dev/null" else target.removeprefix("a/")
         elif line.startswith("+++ "):
@@ -88,12 +100,33 @@ def parse_diff(diff: str) -> Tuple[List[Removed], List[str], Dict[str, bool]]:
                 deleted[old_path] = True
         elif (m := HUNK_RE.match(line)):
             old_no = int(m.group(1))
-        elif line.startswith("-") and old_path:
-            removed.append(Removed(old_path, old_no, line[1:]))
-            old_no += 1
-        elif line.startswith("+"):
-            added.append(line[1:])
+            old_left = int(m.group(2) if m.group(2) is not None else 1)
+            new_left = int(m.group(4) if m.group(4) is not None else 1)
     return removed, added, deleted
+
+
+def non_prose_lines(text: str) -> Set[int]:
+    """1-based numbers of the lines inside fenced code or YAML front matter."""
+    lines = text.splitlines()
+    skip: Set[int] = set()
+    start = 0
+    if lines and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() in ("---", "..."):
+                skip.update(range(1, i + 2))
+                start = i + 1
+                break
+    fence = ""
+    for i in range(start, len(lines)):
+        m = re.match(r"^\s*(`{3,}|~{3,})", lines[i])
+        if fence:
+            skip.add(i + 1)
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+                fence = ""
+        elif m:
+            fence = m.group(1)
+            skip.add(i + 1)
+    return skip
 
 
 def sentences_of(removed: List[Removed], min_words: int
@@ -143,7 +176,9 @@ def missing(removed: List[Removed], added: List[str], min_overlap: float,
 
 def exempt_deleted(path: str, body: str) -> bool:
     """Whether the PR body names the deleted file (by path or file name)."""
-    return path in body or os.path.basename(path) in body
+    names = (path, os.path.basename(path))
+    return any(re.search(r"(?<![\w./-])" + re.escape(n) + r"(?![\w-])", body)
+               for n in names)
 
 
 def _git(args: List[str]) -> Optional[str]:
@@ -165,15 +200,25 @@ def _number(name: str, default: float) -> float:
         return default
 
 
-def diff_since(base_ref: str, globs: List[str]) -> Optional[str]:
-    """``git diff -U0`` of the PR's changes, or None when it cannot be computed."""
-    if not base_ref:
-        return None
-    base = _git(["merge-base", base_ref, "HEAD"])
-    if not base or not base.strip():
-        return None
+def merge_base(base_ref: str) -> Optional[str]:
+    """The merge base of ``base_ref`` and HEAD, or None when it cannot be found."""
+    out = _git(["merge-base", base_ref, "HEAD"]) if base_ref else None
+    return out.strip() if out and out.strip() else None
+
+
+def diff_since(base: str, globs: List[str]) -> Optional[str]:
+    """``git diff -U0`` of the PR's changes since ``base``."""
     return _git(["diff", "-U0", "--no-color", "--no-ext-diff", "-M",
-                 base.strip(), "HEAD", "--", *globs])
+                 base, "HEAD", "--", *globs])
+
+
+def prose_only(removed: List[Removed], base: str) -> List[Removed]:
+    """Drop removed lines that sat inside fenced code or YAML front matter."""
+    skips: Dict[str, Set[int]] = {}
+    for path in {r.path for r in removed}:
+        old = _git(["show", f"{base}:{path}"])
+        skips[path] = non_prose_lines(old) if old else set()
+    return [r for r in removed if r.line not in skips[r.path]]
 
 
 def main() -> int:
@@ -181,18 +226,20 @@ def main() -> int:
     globs = os.environ.get("RCO_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
     fail = _flag("RCO_FAIL", True)
     body = os.environ.get("RCO_PR_BODY", "")
-    diff = diff_since(base_ref, globs)
-    if diff is None:
+    base = merge_base(base_ref)
+    diff = diff_since(base, globs) if base else None
+    if diff is None or base is None:
         level = "::warning::" if base_ref else ""
         print(f"{level}Skipping the removed-content check for this run "
               f"({'could not diff against ' + repr(base_ref) if base_ref else 'no base-ref given'}).")
         return 0
     removed, added, deleted = parse_diff(diff)
-    if OK_RE.search(body) or any(OK_RE.search(a) for a in added):
+    if OK_RE.search(body) or any(ADDED_OK_RE.search(a) for a in added):
         print(f"removed-content-ok marker found; {len(removed)} removed line(s) not examined.")
         return 0
-    removed = [r for r in removed
-               if not (deleted.get(r.path) and exempt_deleted(r.path, body))]
+    removed = prose_only([r for r in removed
+                          if not (deleted.get(r.path) and exempt_deleted(r.path, body))],
+                         base)
     found = missing(removed, added, _number("RCO_MIN_OVERLAP", 0.6),
                     int(_number("RCO_MIN_WORDS", 5)))
     severity = "error" if fail else "warning"

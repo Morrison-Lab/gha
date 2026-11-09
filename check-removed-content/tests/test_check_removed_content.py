@@ -106,3 +106,25 @@ def test_no_base_ref_skips(tmp_path, monkeypatch):
 def test_normalize_drops_markup_and_math():
     assert rco.normalize("The **mean** $\\mu$ of [a link](http://x.y) is `x`.") == [
         "the", "mean", "of", "a", "link", "is", "x"]
+
+
+def test_removed_code_and_front_matter_words_ignored(tmp_path, monkeypatch):
+    before = ("---\ndescription: fit the model to the simulated data and plot it\n---\n\n"
+              "```r\n# fit the model to the simulated data and plot the residuals\nx <- 1\n```\n")
+    assert run(tmp_path, monkeypatch, {"a.qmd": before}, {"a.qmd": "\n"}) == 0
+
+
+def test_removed_line_starting_with_dashes_is_content():
+    diff = "--- a/a.qmd\n+++ b/a.qmd\n@@ -1,2 +1,1 @@\n-- not a header line\n-" + SENT + "\n+x\n"
+    removed, _, _ = rco.parse_diff(diff)
+    assert len(removed) == 2
+
+
+def test_deleted_file_name_needs_whole_word():
+    assert not rco.exempt_deleted("data.qmd", "Replaced a.qmd by the new page")
+    assert rco.exempt_deleted("data.qmd", "Replaced data.qmd by the new page")
+
+
+def test_prose_mentioning_marker_does_not_exempt(tmp_path, monkeypatch):
+    assert run(tmp_path, monkeypatch, {"a.qmd": SENT + "\n"},
+               {"a.qmd": "Write removed-content-ok: reason in the PR body.\n"}) == 1

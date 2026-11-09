@@ -23,7 +23,7 @@ are not examined.
 Two opt-outs cover a deliberate removal:
 
 - `removed-content-ok: reason` in the pull request body,
-  or in an added line such as an HTML comment,
+  or in an added HTML comment,
   exempts the whole pull request.
 - A deleted file whose path or file name the pull request body names
   is exempt.
@@ -42,9 +42,9 @@ to `.github/workflows/` in your repository.
 
 | Input | Default | Meaning |
 | --- | --- | --- |
-| `base-ref` | (empty) | Git ref or SHA to diff against; empty skips the check |
+| `base-ref` | (empty) | Git ref or SHA to diff against; empty skips the check (composite only; the workflow sets it) |
 | `globs` | `*.qmd *.md` | Space-separated git pathspecs of tracked files to check |
-| `pr-body` | (empty) | Pull request body, searched for the opt-out and for deleted files' names |
+| `pr-body` | (empty) | Pull request body, searched for the opt-out and for deleted files' names (composite only; the workflow sets it) |
 | `min-overlap` | `0.6` | Trigram overlap that counts as moved |
 | `min-words` | `5` | Fewest alphabetic words of an examined sentence |
 | `fail` | `true` | Fail on a finding; `false` gives warnings only |

@@ -17,6 +17,10 @@ on:
           the added lines for it to count as moved.
         type: string
         default: '0.6'
+      min-words:
+        description: Fewest alphabetic words of an examined sentence.
+        type: string
+        default: '5'
       fail:
         description: >-
           Fail the workflow when removed content is not found. Defaults to
@@ -43,6 +47,7 @@ jobs:
           python-version: ${{ inputs.python-version }}
           globs: ${{ inputs.globs }}
           min-overlap: ${{ inputs.min-overlap }}
+          min-words: ${{ inputs.min-words }}
           fail: ${{ inputs.fail }}
           pr-body: ${{ github.event.pull_request.body }}
           # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base
