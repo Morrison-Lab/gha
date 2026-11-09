@@ -14,4 +14,37 @@ Call it from a `workflow_run` stub; see `examples/report-main-failure.yml`.
   [`report-failure.yml`](report-failure.qmd).
   A second infrastructure-looking failure carries the `infra-suspect` label.
 
-The caller grants `issues: write` and `actions: write`.
+## Inputs
+
+| Input    | Type   | Default | Description                                                                                                                                  |
+| -------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `labels` | string | `''`    | Comma-separated labels for a newly filed issue. Labels the repository does not define are dropped with a warning rather than failing the report. |
+
+## Permissions
+
+Grant `issues: write` to file the issue and `actions: write` to re-run the
+failed jobs, on the calling job and nothing else.
+The job performs no checkout, so it needs no `contents` grant.
+
+## Example
+
+`workflow_run` takes workflow names, not globs, so list each workflow to watch.
+
+```yaml
+name: Report main failure
+
+on:
+  workflow_run:
+    workflows: [Check links, Quarto Publish]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  report:
+    permissions:
+      issues: write
+      actions: write
+    uses: Morrison-Lab/gha/.github/workflows/report-main-failure.yml@v3
+```

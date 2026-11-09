@@ -49,12 +49,16 @@ jobs:
           # A failed job is infrastructure-looking when its first failed step
           # is set-up or checkout, or when no step failed at all (runner lost,
           # job cancelled by its timeout).
-          infra="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}/jobs?filter=latest&per_page=100" --paginate \
-            --jq '[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
+          # One `true` or `false` line per failed job, from every page: `--jq`
+          # runs once per page, so the verdict is reduced here, not in jq.
+          verdicts="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}/jobs?filter=latest&per_page=100" --paginate \
+            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
               | ([.steps[] | select(.conclusion == "failure")] | first) as $s
-              | ($s == null) or ($s.name | test("^(Set up job|Run actions/checkout|Checkout)"; "i"))]
-              | if length == 0 then "false" elif all then "true" else "false" end' \
-            | tail -n 1)"
+              | ($s == null) or ($s.name | test("^(Set up job|Run actions/checkout|Checkout)"; "i"))')"
+          infra=false
+          if [ -n "$verdicts" ] && ! grep -qx false <<< "$verdicts"; then
+            infra=true
+          fi
           echo "infra=${infra}" >> "$GITHUB_OUTPUT"
           echo "Failed jobs all look like infrastructure: ${infra}"
 
@@ -70,18 +74,19 @@ jobs:
           echo "Re-running failed jobs of run ${RUN_ID} once; no issue filed."
 
       - name: File or update the failure issue
-        if: steps.rerun.outcome != 'success'
+        # `!cancelled()` keeps a failed re-run call from skipping the report.
+        if: ${{ !cancelled() && steps.rerun.outcome != 'success' }}
         uses: Morrison-Lab/gha/.github/actions/open-failure-issue@v3
         with:
           title: "Main CI failing: ${{ github.event.workflow_run.name }}"
           labels: >-
-            ${{ inputs.labels }}${{ steps.classify.outputs.infra == 'true' && (inputs.labels && ',infra-suspect' || 'infra-suspect') || '' }}
+            ${{ inputs.labels }}${{ (steps.classify.outputs.infra == 'true' && github.event.workflow_run.run_attempt > 1) && (inputs.labels && ',infra-suspect' || 'infra-suspect') || '' }}
           body: |
             `${{ github.event.workflow_run.name }}` failed on `${{ github.event.workflow_run.head_branch }}`.
 
             - **Run:** ${{ github.event.workflow_run.html_url }} (attempt ${{ github.event.workflow_run.run_attempt }})
             - **Commit:** `${{ github.event.workflow_run.head_sha }}`
-            - **Looks like infrastructure:** ${{ steps.classify.outputs.infra == 'true' && 'yes, and the re-run also failed; check the runner before the code' || 'no' }}
+            - **Looks like infrastructure:** ${{ (steps.classify.outputs.infra == 'true' && github.event.workflow_run.run_attempt > 1) && 'yes, and the re-run also failed; check the runner before the code' || (steps.classify.outputs.infra == 'true' && 'yes, but the re-run could not be started') || 'no' }}
 
             Later failures of this workflow are added here as comments.
             Close this once the workflow is green again.
