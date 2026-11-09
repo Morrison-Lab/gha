@@ -46,7 +46,9 @@ that are ordinary English in this corpus.
 
 Scope: only a finding on a line a diff adds is reported (`--base-ref`, `--diff`),
 so adopting the check does not reflag the corpus. An added line whose exact text
-the same diff also deletes is moved, not new, so splitting a file reflags nothing.
+the same diff also deletes is moved, not new, so splitting a file reflags nothing;
+so is a line, ignoring indentation and a list marker, that an unchanged line of
+another file in the same directory holds, for a split that keeps the original.
 `--whole-tree` reports every
 finding, to measure a corpus. With no base and no `--whole-tree`, the check
 skips with a warning rather than widening to the whole tree.
@@ -611,7 +613,55 @@ def diff_added_lines(
     )
     if diff.returncode != 0:
         return None
-    return parse_added_lines(diff.stdout, repo_root)
+    return drop_sibling_moves(parse_added_lines(diff.stdout, repo_root))
+
+
+LIST_MARKER_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s+")
+
+
+def moved_key(text: str) -> str:
+    """A line's text with surrounding whitespace and a list marker removed."""
+    return LIST_MARKER_RE.sub("", text.strip())
+
+
+def file_lines(path: Path) -> List[str]:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace").split("\n")
+    except OSError:
+        return []
+
+
+def drop_sibling_moves(added: Dict[Path, Set[int]]) -> Dict[Path, Set[int]]:
+    """Drop an added line whose text an unchanged line of a sibling file holds.
+
+    A split that keeps the original file deletes nothing, so the exact-deletion
+    test misses it (gha#1792). A line counts as moved when, with its list
+    marker and indentation removed, it equals a line of another file in the same
+    directory that the diff does not add; lines the deletion test already
+    dropped count as not added here too.
+    """
+    unchanged: Dict[Path, Set[str]] = {}
+    for path in added:
+        for sib in path.parent.glob("*" + path.suffix):
+            if sib not in unchanged:
+                skip = added.get(sib, set())
+                unchanged[sib] = {
+                    moved_key(t) for n, t in enumerate(file_lines(sib), start=1)
+                    if n not in skip and t.strip()
+                }
+    out: Dict[Path, Set[int]] = {}
+    for path, numbers in added.items():
+        lines = file_lines(path)
+        others: Set[str] = set()
+        for sib, keys in unchanged.items():
+            if sib != path and sib.parent == path.parent and sib.suffix == path.suffix:
+                others |= keys
+        out[path] = {
+            n for n in numbers
+            if not (0 < n <= len(lines) and lines[n - 1].strip()
+                    and moved_key(lines[n - 1]) in others)
+        }
+    return out
 
 
 def glob_to_regex(pat: str) -> "re.Pattern[str]":
