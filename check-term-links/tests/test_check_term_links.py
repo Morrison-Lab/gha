@@ -185,6 +185,11 @@ def test_bare_allow_is_flagged_but_still_suppresses():
     assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("bare-allow", "")]
 
 
+def test_allow_with_an_empty_reason_is_bare():
+    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow:  -->\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("bare-allow", "")]
+
+
 def test_allow_with_a_reason_is_clean():
     page = (
         "::: {#exm-a}\n\nThe risk is large. "

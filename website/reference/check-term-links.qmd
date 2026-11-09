@@ -72,7 +72,7 @@ a label such as "note" or "example".
 
 It skips code fences and spans, math, HTML comments, YAML front matter,
 include shortcodes, headings, images, and the target of a link.
-`<!-- check-term-links: allow -->` exempts a line, and
+`<!-- check-term-links: allow: reason -->` exempts a line, and
 `<!-- check-term-links: ignore-file -->` a file.
 
 ## Scope

@@ -39,7 +39,8 @@ Findings:
 Skipped: code fences and spans, math, HTML comments, YAML front matter, include
 shortcodes, headings, images, and the `(...)` of a link.
 
-Opt-outs: `<!-- check-term-links: allow -->` on a line skips that line;
+Opt-outs: `<!-- check-term-links: allow: reason -->` on a line skips that line
+(a pragma with no reason still skips it but is reported as `bare-allow`);
 `<!-- check-term-links: ignore-file -->` skips a file; `--allow-file` names terms
 that are ordinary English in this corpus.
 
@@ -81,7 +82,7 @@ LINE_OPT_OUT_RE = re.compile(
     r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:(?:(?!-->).)*)?\s*-->", re.I
 )
 # The same pragma with nothing after `allow`: it gives no reason (gha#1772).
-BARE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)\s*-->", re.I)
+BARE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:)?\s*-->", re.I)
 
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
