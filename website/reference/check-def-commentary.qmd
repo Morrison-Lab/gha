@@ -12,10 +12,9 @@ This implements
 The check reports a sentence inside a `::: {#def-...}` div that opens with
 "It is not", "This is not", "That is not", "Note that", "Notice that",
 "Unlike", "Do not confuse", "Be careful", "Beware", "In contrast",
-"By contrast", "Intuitively", "Informally", "Historically",
-"Extends" or "Generalizes" (also after "This" or "It"), "Just as",
-"Similarly", "Equivalently", "In other words", or a special case such as
-"For p = 1".
+"By contrast", "Intuitively", "Informally", "Historically", "Extends",
+"Generalizes" (these two also after "This" or "It"), "Just as", "Similarly",
+"Equivalently", "In other words", or a special case such as "For p = 1".
 The finding sits on the line that holds the sentence.
 
 The check does not read:
