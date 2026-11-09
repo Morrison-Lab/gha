@@ -83,7 +83,8 @@ inputs:
       gate stays until then. Turn it on only when the caller triggers on
       `workflow_run` for every workflow (`workflows: ["*"]`): with a narrower
       list, the deferring gate can wait on a run that starts no gate and leave
-      the commit ungated. Off by default, because a quick failure is then
+      the commit ungated. A `workflow_dispatch` run never defers, since no later
+      run would gate the commit for it (gha#1762). Off by default, because a quick failure is then
       reported only when the slowest workflow on the commit finishes.
     default: 'false'
   backfill:
