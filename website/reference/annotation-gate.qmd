@@ -156,12 +156,16 @@ A quick failure is reported only when the slowest workflow on the commit finishe
 A deferring gate posts nothing, and the last finishing run's `workflow_run` event
 is the only thing that starts the gate that posts.
 When that event is lost, the commit carries no `annotation-gate` check run,
-the required check is missing, and GitHub blocks the pull request with nothing to re-run (gha#1754).
-With `backfill`, the job gates each commit that a pull request run touched in the last 24 hours
+the required check is missing,
+and GitHub blocks the pull request with nothing to re-run (gha#1754).
+With `backfill`, the job gates each commit
+that a pull request run touched in the last 24 hours
 and that has no `annotation-gate` check run,
 and leaves a commit with a run still queued or in progress to that run's own gate.
-Call the workflow from a `schedule` trigger with `backfill: true`, beside the `workflow_run` caller.
-It reads runs and check runs only, so it needs no permission beyond the ones the workflow already holds.
+Call the workflow from a `schedule` trigger with `backfill: true`,
+beside the `workflow_run` caller.
+It reads runs and check runs only,
+so it needs no permission beyond the ones the workflow already holds.
 `head-sha` is required by the workflow but unused in this mode, so pass any value.
 
 To gate a commit again without a new commit and without re-running any other
