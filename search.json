@@ -4455,11 +4455,23 @@
     ]
   },
   {
+    "objectID": "reference/check-pr-size.html#exemptions",
+    "href": "reference/check-pr-size.html#exemptions",
+    "title": "check-pr-size.yml",
+    "section": "Exemptions",
+    "text": "Exemptions\nA pure rename (no line changed) does not count toward the file cap. A PR whose description says “mechanical, content-identical” (a pure move, rename, or split with no wording change) is exempt at any size, as one carrying the exemption label is. The reusable workflow reads the description live through the API. Content PRs keep the 10 file and 300 line caps (ai-config#5129).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-pr-size.yml"
+    ]
+  },
+  {
     "objectID": "reference/check-pr-size.html#inputs",
     "href": "reference/check-pr-size.html#inputs",
     "title": "check-pr-size.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nmax-files\n10\nMost files a PR may change\n\n\nmax-lines\n300\nMost added plus deleted lines\n\n\npaths-ignore\nnone\nExtra paths not counted (*, ?, **)\n\n\nexempt-label\nsize-exempt\nLabel that lifts the cap, read live through the API\n\n\nfail\ntrue\nBlock instead of warn\n\n\npython-version\n3.x\nPython used to run the check",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nmax-files\n10\nMost files a PR may change\n\n\nmax-lines\n300\nMost added plus deleted lines\n\n\npaths-ignore\nnone\nExtra paths not counted (*, ?, **)\n\n\nexempt-label\nsize-exempt\nLabel that lifts the cap, read live through the API\n\n\npr-body\nnone\nThe PR description (composite only; the reusable workflow reads it itself)\n\n\nfail\ntrue\nBlock instead of warn\n\n\npython-version\n3.x\nPython used to run the check",
     "crumbs": [
       "Overview",
       "Reference",
@@ -4471,7 +4483,7 @@
     "href": "reference/check-pr-size.html#scope",
     "title": "check-pr-size.yml",
     "section": "Scope",
-    "text": "Scope\nWith no base to diff against, or when the diff cannot be computed, the check skips with a warning instead of measuring the whole tree. The caller stub triggers on labeled and unlabeled, so adding the exemption label re-runs the check.",
+    "text": "Scope\nWith no base to diff against, or when the diff cannot be computed, the check skips with a warning instead of measuring the whole tree. The caller stub triggers on labeled, unlabeled, and edited, so adding the exemption label or editing the description re-runs the check.",
     "crumbs": [
       "Overview",
       "Reference",

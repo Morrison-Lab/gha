@@ -1160,7 +1160,8 @@ cookieconsent.run({
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#exemptions" id="toc-exemptions" class="nav-link active" data-scroll-target="#exemptions">Exemptions</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
@@ -1193,6 +1194,10 @@ cookieconsent.run({
 <p>The check counts the files a PR changes and the lines it adds plus deletes, measured from the merge base to <code>HEAD</code>. A rename counts as one file. A binary file counts as one file and no lines.</p>
 <p>These paths are not counted, since nobody writes them by hand: lockfiles, <code>renv.lock</code>, <code>_freeze/</code>, <code>docs/</code>, images, PDFs, CSV and R data files, and minified scripts. Add more with <code>paths-ignore</code>.</p>
 <p>The lines of a newly added <code>_fig-*</code> subfile are not counted either, since figure code in several languages is long but mechanical (<a href="https://github.com/Morrison-Lab/ai-config/issues/4928">ai-config#4928</a>). Each such file still counts as a file, and editing an existing <code>_fig-*</code> file still counts its lines.</p>
+<section id="exemptions" class="level2">
+<h2 class="anchored" data-anchor-id="exemptions">Exemptions</h2>
+<p>A pure rename (no line changed) does not count toward the file cap. A PR whose description says “mechanical, content-identical” (a pure move, rename, or split with no wording change) is exempt at any size, as one carrying the exemption label is. The reusable workflow reads the description live through the API. Content PRs keep the 10 file and 300 line caps (<a href="https://github.com/Morrison-Lab/ai-config/pull/5129">ai-config#5129</a>).</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -1230,11 +1235,16 @@ cookieconsent.run({
 <td>Label that lifts the cap, read live through the API</td>
 </tr>
 <tr class="odd">
+<td><code>pr-body</code></td>
+<td>none</td>
+<td>The PR description (composite only; the reusable workflow reads it itself)</td>
+</tr>
+<tr class="even">
 <td><code>fail</code></td>
 <td><code>true</code></td>
 <td>Block instead of warn</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>python-version</code></td>
 <td><code>3.x</code></td>
 <td>Python used to run the check</td>
@@ -1244,7 +1254,7 @@ cookieconsent.run({
 </section>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
-<p>With no base to diff against, or when the diff cannot be computed, the check skips with a warning instead of measuring the whole tree. The caller stub triggers on <code>labeled</code> and <code>unlabeled</code>, so adding the exemption label re-runs the check.</p>
+<p>With no base to diff against, or when the diff cannot be computed, the check skips with a warning instead of measuring the whole tree. The caller stub triggers on <code>labeled</code>, <code>unlabeled</code>, and <code>edited</code>, so adding the exemption label or editing the description re-runs the check.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
