@@ -172,7 +172,7 @@ def test_a_word_inside_another_word_or_hyphenated_name_is_not_a_use():
         "```r\nrisk <- 1\n```\n",
         "![risk](fig.png)\n",
         "Link [elsewhere](https://x/risk.html).\n",
-        "The risk. <!-- check-term-links: allow -->\n",
+        "The risk. <!-- check-term-links: allow: test reason -->\n",
     ],
 )
 def test_non_prose_is_skipped(body):
@@ -180,18 +180,31 @@ def test_non_prose_is_skipped(body):
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
+def test_bare_allow_is_flagged_but_still_suppresses():
+    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow -->\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("bare-allow", "")]
+
+
+def test_allow_with_a_reason_is_clean():
+    page = (
+        "::: {#exm-a}\n\nThe risk is large. "
+        "<!-- check-term-links: allow: risk here is ordinary English -->\n\n:::\n"
+    )
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
 def test_allow_pragma_that_suppresses_nothing_is_stale():
-    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow -->\n\n:::\n"
+    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow: test reason -->\n\n:::\n"
     assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("stale-allow", "")]
 
 
 def test_allow_pragma_that_suppresses_a_finding_is_not_stale():
-    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow -->\n\n:::\n"
+    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow: test reason -->\n\n:::\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
 def test_stale_allow_is_scoped_to_added_lines():
-    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow -->\n\n:::\n"
+    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow: test reason -->\n\n:::\n"
     assert run_text(page, {"d.qmd": RISK_DEF}, added={1}) == []
 
 

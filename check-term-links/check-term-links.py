@@ -33,6 +33,8 @@ Findings:
 
 - `stale-allow`: a `check-term-links: allow` pragma on an added line that suppresses
   no finding. Delete it (gha#1771).
+- `bare-allow`: an opt-out pragma on an added line with no reason. Write
+  `<!-- check-term-links: allow: why this line is exempt -->` (gha#1772).
 
 Skipped: code fences and spans, math, HTML comments, YAML front matter, include
 shortcodes, headings, images, and the `(...)` of a link.
@@ -75,7 +77,11 @@ DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
 HEADING_RE = re.compile(r"^#{1,6}\s+(?P<title>.+?)\s*(?:\{[^}]*\})?\s*$")
 FILE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*ignore-file\s*-->", re.I)
-LINE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)\s*-->", re.I)
+LINE_OPT_OUT_RE = re.compile(
+    r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:(?:(?!-->).)*)?\s*-->", re.I
+)
+# The same pragma with nothing after `allow`: it gives no reason (gha#1772).
+BARE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)\s*-->", re.I)
 
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
@@ -532,6 +538,15 @@ def scan_file(
     used_optouts: Set[int] = set()
     for passage in passages:
         findings.extend(scan_passage(path, passage, terms, rx, opted, added, own_defs, used_optouts))
+    for n in sorted(opted):
+        if (added is None or n in added) and BARE_OPT_OUT_RE.search(lines[n - 1]):
+            findings.append(Finding(
+                file=path, line=n, rule="bare-allow", term="",
+                message=(
+                    "This check-term-links opt-out pragma gives no reason; write "
+                    "`<!-- check-term-links: allow: <why this line is exempt> -->`."
+                ),
+            ))
     # A pragma that suppresses nothing is dead weight, and being line-wide it would hide
     # the next finding on that line (gha#1771).
     for n in sorted(opted - used_optouts):
