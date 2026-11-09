@@ -1,0 +1,51 @@
+name: Check result definition links
+description: >-
+  Diff-scoped, warn-only check that flags a result div (#thm-, #lem-, #cor-, #prp-) a PR edits that links no definition (an @def- cross-reference or a link to a #def- anchor). `<!-- check-result-definition-links: allow -->` exempts one. Warns by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only result divs with a line added since this
+      ref are checked. On a pull request the reusable
+      workflow passes `HEAD^1`. When the diff can't be computed, or no base-ref
+      is given on a push run, the check is skipped rather than scanning the whole tree.
+    default: ''
+  whole-tree:
+    description: >-
+      Check every result div the globs match, in full, instead of only
+      touched ones. Use it to measure a corpus; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check (recursive by
+      default).
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action on a finding. Defaults to 'false' (warning annotations
+      only), until a measured corpus shows no false positive.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check result definition links
+      shell: bash
+      env:
+        CRDL_BASE_REF: ${{ inputs.base-ref }}
+        CRDL_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CRDL_GLOBS: ${{ inputs.globs }}
+        CRDL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CRDL_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-result-definition-links.py"

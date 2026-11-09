@@ -132,7 +132,7 @@ def test_exit_code_annotation_allowed_by_default():
 
 def run_main(monkeypatch, env, annotations):
     posted = []
-    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW", "GITHUB_EVENT_NAME"):
         monkeypatch.delenv(key, raising=False)
     for key, value in {"GITHUB_TOKEN": "t", "GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "1", **env}.items():
         monkeypatch.setenv(key, value)
@@ -318,7 +318,7 @@ def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extr
     monkeypatch.setattr(g, "api", lambda url, token: {"run_attempt": attempts.get(int(url.rsplit("/", 1)[1]))})
     posted, fetched = [], []
     commit_mode.seen_attempts = []
-    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW", "GITHUB_EVENT_NAME"):
         monkeypatch.delenv(key, raising=False)
     env = {
         "GITHUB_TOKEN": "t",
@@ -443,6 +443,14 @@ def test_defer_while_running_still_gates_when_every_run_has_finished(monkeypatch
     assert code == 0 and posted[0][4] is True
 
 
+def test_a_manual_dispatch_never_defers_and_posts_the_check_run(monkeypatch):
+    monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
+    runs = [run(1, "push", 1, rid=10), run(2, "push", 1, status="in_progress", rid=20)]
+    env = {"GITHUB_EVENT_NAME": "workflow_dispatch"}
+    code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0}, env)
+    assert code == 0 and len(posted) == 1
+
+
 def test_without_defer_an_unfinished_run_does_not_stop_the_gate(monkeypatch):
     monkeypatch.delenv("GATE_DEFER_WHILE_RUNNING", raising=False)
     runs = [run(1, "push", 1, rid=10), run(2, "push", 1, status="in_progress", rid=20)]
@@ -486,7 +494,7 @@ def backfill_mode(monkeypatch, heads, gated, runs_by_head=None, found=()):
     """
     gated = gated if isinstance(gated, dict) else dict.fromkeys(gated, "2026-01-01T00:00:00Z")
     runs_by_head = runs_by_head or {}
-    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW", "GITHUB_EVENT_NAME"):
         monkeypatch.delenv(key, raising=False)
     for key, value in {"GITHUB_TOKEN": "t", "GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "1", "GITHUB_WORKFLOW": "Annotation gate", "GATE_BACKFILL": "true"}.items():
         monkeypatch.setenv(key, value)

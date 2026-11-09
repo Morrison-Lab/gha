@@ -315,7 +315,8 @@ def main():
         "token": token,
         "gate": gate,
         "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
-        "defer": os.environ.get("GATE_DEFER_WHILE_RUNNING") == "true",
+        # A manual dispatch has no later run to gate the commit for it, so it never defers (gha#1762).
+        "defer": os.environ.get("GATE_DEFER_WHILE_RUNNING") == "true" and os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch",
         "levels": parse_levels(os.environ.get("GATE_LEVELS", ",".join(LEVELS_ALL))),
         "allow": split_lines(os.environ.get("GATE_DEFAULT_ALLOW")) + split_lines(os.environ.get("GATE_ALLOW")),
     }
