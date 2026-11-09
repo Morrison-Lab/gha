@@ -40,9 +40,24 @@ _DEFAULT_FAIL = False
 ALLOW_RE = re.compile(r"<!--\s*check-gradient-lhs:\s*allow\s*-->")
 NEVER_RE = re.compile(r"(?!x)x")
 
+# Words that make "gradient" part of a compound noun, as in "gradient descent are".
+COMPOUND_WORDS = (
+    "descent|ascent|boosting|clipping|norm|method|methods|step|steps|algorithm|"
+    "flow|vanishing|exploding|checkpointing|accumulation")
+# A link target or a crossref id can carry the word "gradient" without stating one.
+LINK_TARGET_RE = re.compile(r"\]\([^)]*\)")
+CROSSREF_RE = re.compile(r"@[\w:.-]+")
+URL_RE = re.compile(r"https?://\S+")
+# Math that is only a zero states a condition ("where its gradient is $\vzero$"), not a gradient.
+ZERO_RE = re.compile(r"\s*(?:0|\\[vm]?zero(?:_\{[^}]*\}|_\w)?)\s*")
+CONDITION_LEAD_RE = re.compile(
+    r"(?i)\b(?:where|when|whenever|if|unless|makes?|exactly when|"
+    r"(?:component|entry|coordinate)s? of)\b")
+FIRST_MATH_RE =re.compile(r"\$([^$]*)\$")
+
 # "gradient ... is|equals" followed by math, a colon, or the end of the line.
 STATED_RE = re.compile(
-    r"(?i)\bgradients?\b[^$.;:]{0,40}?\b(?:is|are|equals?)\b(?P<rest>(?:\s*[:$].*|\s*)$)")
+    r"(?i)\bgradients?\b(?!\s+(?:" + COMPOUND_WORDS + r")\b)[^$.;:]{0,40}?\b(?:is|are|equals?)\b(?P<rest>(?:\s*[:$].*|\s*)$)")
 GRAD_SYMBOL_RE = re.compile(r"\\(?:grad[A-Za-z]*|nabla)\b")
 LOOKAHEAD_LINES = 8
 
@@ -88,13 +103,34 @@ def _display_before_equals(lines: List[str], start: int) -> Optional[str]:
     return None
 
 
+def _strip_references(masked: str) -> str:
+    """``masked`` without link targets, crossref ids and bare URLs."""
+    masked = LINK_TARGET_RE.sub("]", masked)
+    masked = URL_RE.sub("", masked)
+    return CROSSREF_RE.sub("@", masked)
+
+
+def _is_zero_condition(before: str, rest: str) -> bool:
+    """True for a subordinate clause whose math is only a zero.
+
+    ``before`` is the text ahead of "gradient". "The gradient equals $\vzero$"
+    as a main clause still states a gradient, so a condition needs a lead-in
+    such as "where", "when", "makes" or "component of".
+    """
+    math = FIRST_MATH_RE.search(rest)
+    return bool(math and ZERO_RE.fullmatch(math.group(1)) and CONDITION_LEAD_RE.search(before))
+
+
 def _is_stated_gradient(masked: str, lines: List[str], index: int) -> bool:
     """True when the candidate at 0-based ``index`` states a gradient with no symbol on the left."""
-    hit = STATED_RE.search(masked)
+    cleaned = _strip_references(masked)
+    hit = STATED_RE.search(cleaned)
     if not hit:
         return False
     rest = hit.group("rest")
     if "$" in rest:
+        if _is_zero_condition(cleaned[:hit.start()], rest):
+            return False
         head = _before_first_equals(rest)
         if head is None:
             return True  # math with no equation: the gradient is given by value only
@@ -106,7 +142,7 @@ def _is_stated_gradient(masked: str, lines: List[str], index: int) -> bool:
 def scan_file(lines: List[str], keep: Optional[Set[int]] = None) -> Tuple[List[Finding], int]:
     """``([Finding, ...], lines examined)``; ``keep`` is the added-line set."""
     hits, examined = engine.scan_markdown(
-        lines, lambda masked: [masked] if STATED_RE.search(masked) else [], ALLOW_RE)
+        lines, lambda masked: [masked] if STATED_RE.search(_strip_references(masked)) else [], ALLOW_RE)
     findings: List[Finding] = []
     for number, masked in hits:
         if keep is not None and number not in keep:
