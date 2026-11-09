@@ -226,6 +226,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-graph.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
+`report-main-failure.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
 only ever shipped at `@v3` (or moved to `@v3` for
@@ -245,11 +246,9 @@ still on `@v1` would miss (audited in
 freeze - see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as does
 `sync-upstream.yml` (added after the freeze - see
 [gha#254](https://github.com/Morrison-Lab/gha/issues/254)),
-`altdoc-multiversion-docs.yml` (added after the freeze),
+`altdoc-multiversion-docs.yml` (added after the freeze), and
 `report-failure.yml` (added after the freeze - see
-[gha#325](https://github.com/Morrison-Lab/gha/issues/325)),
-and `report-main-failure.yml` (added after the freeze - see
-[gha#1770](https://github.com/Morrison-Lab/gha/issues/1770)).
+[gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
 `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`,
 `opencode-code-review.yml`, and `ai-code-review.yml` likewise only
