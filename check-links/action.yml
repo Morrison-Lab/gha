@@ -72,6 +72,12 @@ runs:
         set +e
         bash "$GITHUB_ACTION_PATH/../.github/workflows/scripts/install-lychee.sh"
         code=$?
+        if [ "$code" -ne 0 ] && [ "$code" -ne 3 ]; then
+          echo "::warning::Cached lychee install failed (exit $code); retrying once in 60 s."
+          sleep 60
+          bash "$GITHUB_ACTION_PATH/../.github/workflows/scripts/install-lychee.sh"
+          code=$?
+        fi
         if [ "$code" -eq 0 ]; then
           echo "installed=true" >> "$GITHUB_OUTPUT"
         elif [ "$code" -eq 3 ]; then
