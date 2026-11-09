@@ -1,0 +1,50 @@
+---
+title: "report-main-failure.yml"
+---
+
+Follow up when a workflow fails on the default branch.
+Call it from a `workflow_run` stub; see `examples/report-main-failure.yml`.
+
+- A cancelled or skipped run is ignored.
+- A first-attempt failure whose failed jobs all look like infrastructure
+  (failed in set-up or checkout, or no step failed) is re-run once, and no
+  issue is filed.
+- Any other failure files or updates one issue per workflow, titled
+  `Main CI failing: <workflow>`, through the same deduplication as
+  [`report-failure.yml`](report-failure.qmd).
+  A second infrastructure-looking failure carries the `infra-suspect` label.
+
+## Inputs
+
+| Input    | Type   | Default | Description                                                                                                                                  |
+| -------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `labels` | string | `''`    | Comma-separated labels for a newly filed issue. Labels the repository does not define are dropped with a warning rather than failing the report. |
+
+## Permissions
+
+Grant `issues: write` to file the issue and `actions: write` to re-run the
+failed jobs, on the calling job and nothing else.
+The job performs no checkout, so it needs no `contents` grant.
+
+## Example
+
+`workflow_run` takes workflow names, not globs, so list each workflow to watch.
+
+```yaml
+name: Report main failure
+
+on:
+  workflow_run:
+    workflows: [Check links, Quarto Publish]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  report:
+    permissions:
+      issues: write
+      actions: write
+    uses: Morrison-Lab/gha/.github/workflows/report-main-failure.yml@v3
+```
