@@ -1247,7 +1247,7 @@ cookieconsent.run({
 <li><strong><code>stale-allow</code>.</strong> An opt-out pragma on a line the pull request adds, with no finding on that line for it to suppress. Delete it: an exemption is line-wide, so a dead one also hides the next finding that lands on its line.</li>
 <li><strong><code>bare-allow</code>.</strong> An opt-out pragma on a line the pull request adds, with no reason. Write <code>&lt;!-- check-term-links: allow: why this line is exempt --&gt;</code>, so a reviewer sees why each exemption exists.</li>
 </ul>
-<p>It skips code fences and spans, math, HTML comments, YAML front matter, include shortcodes, headings, images, and the target of a link. <code>&lt;!-- check-term-links: allow --&gt;</code> exempts a line, and <code>&lt;!-- check-term-links: ignore-file --&gt;</code> a file.</p>
+<p>It skips code fences and spans, math, HTML comments, YAML front matter, include shortcodes, headings, images, and the target of a link. <code>&lt;!-- check-term-links: allow: reason --&gt;</code> exempts a line, and <code>&lt;!-- check-term-links: ignore-file --&gt;</code> a file.</p>
 </section>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
