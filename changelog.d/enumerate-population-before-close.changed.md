@@ -1,0 +1,1 @@
+- `CLAUDE.md` says to enumerate the full population before closing a rollout issue whose checkbox is defined by a condition, after gha#1746 was closed on the named repos alone.
