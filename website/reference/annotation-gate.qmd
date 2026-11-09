@@ -158,9 +158,12 @@ is the only thing that starts the gate that posts.
 When that event is lost, the commit carries no `annotation-gate` check run,
 the required check is missing,
 and GitHub blocks the pull request with nothing to re-run (gha#1754).
+Or it keeps an earlier failure that a re-run of the failing jobs has since fixed
+(gha#1752).
 With `backfill`, the job gates each commit
 that a pull request run touched in the last 24 hours
 and that has no `annotation-gate` check run,
+or whose newest one finished before a run on the commit did,
 and leaves a commit with a run still queued or in progress to that run's own gate.
 Call the workflow from a `schedule` trigger with `backfill: true`,
 beside the `workflow_run` caller.

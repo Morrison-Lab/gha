@@ -479,7 +479,12 @@ def test_current_attempts_never_lowers_and_ignores_a_missing_attempt(monkeypatch
 
 
 def backfill_mode(monkeypatch, heads, gated, runs_by_head=None, found=()):
-    """Run backfill mode with open PR `heads`; `gated` are the heads that already have a check run."""
+    """Run backfill mode with open PR `heads`.
+
+    `gated` maps each head that already has a check run to when it finished
+    (a set means 2026-01-01T00:00:00Z).
+    """
+    gated = gated if isinstance(gated, dict) else dict.fromkeys(gated, "2026-01-01T00:00:00Z")
     runs_by_head = runs_by_head or {}
     for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
         monkeypatch.delenv(key, raising=False)
@@ -489,7 +494,7 @@ def backfill_mode(monkeypatch, heads, gated, runs_by_head=None, found=()):
 
     def fake_api(url, token):
         sha = url.split("/commits/")[1].split("/")[0]
-        return {"total_count": 1 if sha in gated else 0}
+        return {"check_runs": [{"completed_at": gated[sha]}] if sha in gated else []}
 
     def fake_paged(url, token, key=None):
         if "event=pull_request" in url:
@@ -516,6 +521,25 @@ def test_backfill_gates_only_the_open_heads_with_no_check_run(monkeypatch):
 
 def test_backfill_posts_nothing_when_every_open_head_has_a_check_run(monkeypatch):
     code, posted = backfill_mode(monkeypatch, ["a1", "b2"], {"a1", "b2"})
+    assert code == 0 and posted == []
+
+
+def test_backfill_gates_again_a_head_whose_check_predates_a_finished_run(monkeypatch):
+    """gha#1752: the last run finished after a gate posted a failure and its event never started a gate."""
+    later = dict(run(1, "pull_request", 1, rid=10), updated_at="2026-01-01T00:05:00Z")
+    code, posted = backfill_mode(monkeypatch, ["a1"], {"a1": "2026-01-01T00:01:00Z"}, {"a1": [later]})
+    assert code == 0 and [p[3] for p in posted] == ["a1"] and posted[0][4] is True
+
+
+def test_backfill_keeps_a_check_that_finished_after_every_run(monkeypatch):
+    earlier = dict(run(1, "pull_request", 1, rid=10), updated_at="2026-01-01T00:00:30Z")
+    code, posted = backfill_mode(monkeypatch, ["a1"], {"a1": "2026-01-01T00:01:00Z"}, {"a1": [earlier]})
+    assert code == 0 and posted == []
+
+
+def test_backfill_ignores_the_gates_own_runs_when_judging_a_check_stale(monkeypatch):
+    own = dict(run(9, "workflow_run", 1, name="Annotation gate", rid=30), updated_at="2026-01-01T00:09:00Z")
+    code, posted = backfill_mode(monkeypatch, ["a1"], {"a1": "2026-01-01T00:01:00Z"}, {"a1": [own]})
     assert code == 0 and posted == []
 
 
