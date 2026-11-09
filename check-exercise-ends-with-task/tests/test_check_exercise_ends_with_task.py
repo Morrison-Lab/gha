@@ -91,7 +91,7 @@ def test_diff_scoping_and_whole_tree(tmp_path, monkeypatch):
         subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
 
     git("init", "-q", "-b", "main")
-    git("config", "user.email", "t@example.invalid")
+    git("config", "user.email", "t@example.invalid")  # phi-allow
     git("config", "user.name", "t")
     bad = exercise("What?\n\n![A](a.png)", "{#exr-old}")
     (tmp_path / "a.qmd").write_text(bad + "\n", encoding="utf-8")
