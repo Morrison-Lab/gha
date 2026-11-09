@@ -30,7 +30,7 @@ and editing an existing `_fig-*` file still counts its lines.
 
 A pure rename (no line changed) does not count toward the file cap.
 A PR whose description says "mechanical, content-identical"
-(a pure move, rename or split with no wording change)
+(a pure move, rename, or split with no wording change)
 is exempt at any size, as one carrying the exemption label is.
 The reusable workflow reads the description live through the API.
 Content PRs keep the 10 file and 300 line caps
@@ -52,7 +52,7 @@ Content PRs keep the 10 file and 300 line caps
 
 With no base to diff against, or when the diff cannot be computed,
 the check skips with a warning instead of measuring the whole tree.
-The caller stub triggers on `labeled`, `unlabeled` and `edited`,
+The caller stub triggers on `labeled`, `unlabeled`, and `edited`,
 so adding the exemption label or editing the description re-runs the check.
 
 ## Example

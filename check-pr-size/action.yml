@@ -39,7 +39,7 @@ inputs:
   pr-body:
     description: >-
       The pull request description. One saying "mechanical,
-      content-identical" (a pure move, rename or split with no wording
+      content-identical" (a pure move, rename, or split with no wording
       change) exempts the PR from the caps.
     default: ''
   fail:
