@@ -476,3 +476,57 @@ def test_commit_mode_gates_the_attempt_a_run_reports_now_not_the_listing(monkeyp
 def test_current_attempts_never_lowers_and_ignores_a_missing_attempt(monkeypatch):
     monkeypatch.setattr(g, "api", lambda url, token: {"run_attempt": 1} if url.endswith("/10") else {})
     assert g.current_attempts("b", "o/r", "t", [(10, 3), (20, 2)]) == [(10, 3), (20, 2)]
+
+
+def backfill_mode(monkeypatch, heads, gated, runs_by_head=None, found=()):
+    """Run backfill mode with open PR `heads`; `gated` are the heads that already have a check run."""
+    runs_by_head = runs_by_head or {}
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in {"GITHUB_TOKEN": "t", "GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "1", "GITHUB_WORKFLOW": "Annotation gate", "GATE_BACKFILL": "true"}.items():
+        monkeypatch.setenv(key, value)
+    posted = []
+
+    def fake_api(url, token):
+        sha = url.split("/commits/")[1].split("/")[0]
+        return {"total_count": 1 if sha in gated else 0}
+
+    def fake_paged(url, token, key=None):
+        if "event=pull_request" in url:
+            return iter([{"head_sha": sha} for sha in heads] + [{"head_sha": heads[0]}])
+        if key == "workflow_runs":
+            return iter(runs_by_head.get(url.split("head_sha=")[1], []))
+        if key == "check_runs":
+            return iter([])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(g, "api", fake_api)
+    monkeypatch.setattr(g, "paged", fake_paged)
+    monkeypatch.setattr(g, "current_attempts", lambda base, repo, token, targets: targets)
+    monkeypatch.setattr(g, "gate_jobs", lambda *args: (list(found), 1))
+    monkeypatch.setattr(g, "post_check_run", lambda *args: posted.append(args))
+    return g.main(), posted
+
+
+def test_backfill_gates_only_the_open_heads_with_no_check_run(monkeypatch):
+    runs = {"a1": [run(1, "pull_request", 1, rid=10)], "b2": [run(1, "pull_request", 1, rid=20)]}
+    code, posted = backfill_mode(monkeypatch, ["a1", "b2"], {"b2"}, runs)
+    assert code == 0 and [p[3] for p in posted] == ["a1"] and posted[0][4] is True
+
+
+def test_backfill_posts_nothing_when_every_open_head_has_a_check_run(monkeypatch):
+    code, posted = backfill_mode(monkeypatch, ["a1", "b2"], {"a1", "b2"})
+    assert code == 0 and posted == []
+
+
+def test_backfill_leaves_a_head_with_an_unfinished_run_to_that_runs_own_gate(monkeypatch):
+    runs = {"a1": [run(1, "pull_request", 1, rid=10), run(2, "pull_request", 1, status="in_progress", rid=20)]}
+    code, posted = backfill_mode(monkeypatch, ["a1"], set(), runs)
+    assert code == 0 and posted == []
+
+
+def test_backfill_fails_and_posts_a_failure_when_a_head_has_an_unallowed_annotation(monkeypatch):
+    runs = {"a1": [run(1, "pull_request", 1, rid=10)]}
+    bad = ("job", {"annotation_level": "warning", "message": "odd"})
+    code, posted = backfill_mode(monkeypatch, ["a1"], set(), runs, found=[bad])
+    assert code == 1 and posted[0][4] is False

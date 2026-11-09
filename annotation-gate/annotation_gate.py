@@ -27,6 +27,7 @@ message matches an allow pattern. Environment:
   GATE_ALLOW          newline list of regexes; a message matching one is allowed
   GATE_DEFAULT_ALLOW  newline list of regexes allowed for every caller
 """
+import datetime
 import json
 import os
 import re
@@ -205,6 +206,87 @@ def gate_jobs(base, repo, token, run_id, attempt, own_job, gate, counts, newest=
     return annotations, checked
 
 
+BACKFILL_HOURS = 24
+
+
+def recent_pr_heads(base, repo, token, now=None):
+    """Commits that a pull request run touched in the last BACKFILL_HOURS hours.
+
+    Read from the runs listing, not the pulls listing: a pull request read
+    needs `pull-requests: read`, and widening a reusable workflow's permissions
+    breaks every caller that grants less. A closed pull request's head is
+    included, and gating it is harmless.
+    """
+    since = (now or datetime.datetime.now(datetime.timezone.utc)) - datetime.timedelta(hours=BACKFILL_HOURS)
+    url = f"{base}/repos/{repo}/actions/runs?event=pull_request&created=>={since:%Y-%m-%dT%H:%M:%SZ}"
+    return list(dict.fromkeys(run["head_sha"] for run in paged(url, token, "workflow_runs")))
+
+
+def has_gate_check(base, repo, token, sha):
+    """True when the commit already carries an `annotation-gate` check run."""
+    data = api(f"{base}/repos/{repo}/commits/{sha}/check-runs?check_name=annotation-gate&per_page=1", token)
+    return data.get("total_count", 0) > 0
+
+
+def heads_missing_gate(base, repo, token):
+    """Recent pull request commits with no `annotation-gate` check run.
+
+    A deferred gate posts nothing and relies on the last finishing run to start
+    the gate that posts. When that event never arrives (gha#1754), the required
+    check stays missing and GitHub blocks the merge with nothing to re-run.
+    """
+    return [sha for sha in recent_pr_heads(base, repo, token) if not has_gate_check(base, repo, token, sha)]
+
+
+def report(settings, head_sha, targets, annotations, checked, post):
+    """Print the result, post the check run when asked, and return the exit code."""
+    bad = find_violations(annotations, settings["levels"], settings["allow"])
+    print(f"annotation-gate: {len(targets)} run(s), {checked} job(s), {len(annotations)} annotation(s), {len(bad)} not allowed.")
+    lines = []
+    for job, ann in bad:
+        message = (ann.get("message") or "").replace(chr(10), " ")[:300]
+        print(f"::error title=Unallowed {ann['annotation_level']} annotation::[{job}] {message}")
+        lines.append(f"- {ann['annotation_level']} in `{job}`: {message}")
+    if post and head_sha:
+        summary = chr(10).join(lines) or f"{len(annotations)} annotation(s) in {checked} job(s), all allowed."
+        post_check_run(settings["base"], settings["repo"], settings["token"], head_sha, not bad, summary)
+    if bad:
+        print("Fix the cause, or allow a tracked exception with the `allow-patterns` input.")
+        return 1
+    return 0
+
+
+def gate_commit(settings, head_sha, trigger_id="", trigger_attempt=""):
+    """Gate every workflow's latest run on one commit and post the check run.
+
+    Returns the exit code: 0 clean or deferred, 1 an annotation nobody allowed.
+    """
+    base, repo, token = settings["base"], settings["repo"], settings["token"]
+    runs = list(paged(f"{base}/repos/{repo}/actions/runs?head_sha={head_sha}", token, "workflow_runs"))
+    own = settings["workflow"]
+    waiting = unfinished_runs(runs, own)
+    if settings["defer"] and waiting:
+        print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
+        return 0
+    targets = gate_targets(runs, own, trigger_id, trigger_attempt)
+    targets = current_attempts(base, repo, token, targets)
+    counts, newest = annotation_counts(base, repo, token, head_sha)
+    annotations, checked = [], 0
+    for target_id, target_attempt in targets:
+        found, n = gate_jobs(base, repo, token, target_id, target_attempt, "", settings["gate"], counts, newest)
+        annotations += found
+        checked += n
+    return report(settings, head_sha, targets, annotations, checked, True)
+
+
+def backfill(settings):
+    """Gate each recent pull request commit that has no `annotation-gate` check run."""
+    missing = heads_missing_gate(settings["base"], settings["repo"], settings["token"])
+    print(f"annotation-gate: backfill, {len(missing)} recent pull request commit(s) with no check run.")
+    codes = [gate_commit(settings, sha) for sha in missing]
+    return 1 if any(codes) else 0
+
+
 def main():
     token = os.environ["GITHUB_TOKEN"]
     repo = os.environ["GITHUB_REPOSITORY"]
@@ -214,46 +296,28 @@ def main():
     head_sha = os.environ.get("GATE_HEAD_SHA", "")
     base = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     gate = os.environ.get("GATE_JOB_NAME", "")
-    own_job = "" if target_run or os.environ.get("GATE_ALL_RUNS") == "true" else os.environ.get("GITHUB_JOB", "")
-    levels = parse_levels(os.environ.get("GATE_LEVELS", ",".join(LEVELS_ALL)))
-    allow = split_lines(os.environ.get("GATE_DEFAULT_ALLOW")) + split_lines(os.environ.get("GATE_ALLOW"))
-
     all_runs = os.environ.get("GATE_ALL_RUNS") == "true"
+    own_job = "" if target_run or all_runs else os.environ.get("GITHUB_JOB", "")
+    settings = {
+        "base": base,
+        "repo": repo,
+        "token": token,
+        "gate": gate,
+        "workflow": os.environ.get("GITHUB_WORKFLOW", ""),
+        "defer": os.environ.get("GATE_DEFER_WHILE_RUNNING") == "true",
+        "levels": parse_levels(os.environ.get("GATE_LEVELS", ",".join(LEVELS_ALL))),
+        "allow": split_lines(os.environ.get("GATE_DEFAULT_ALLOW")) + split_lines(os.environ.get("GATE_ALLOW")),
+    }
+
+    if os.environ.get("GATE_BACKFILL") == "true":
+        return backfill({**settings, "defer": True})
     if all_runs and not head_sha:
         print("::error::all-runs needs head-sha, the commit to gate.")
         return 2
     if all_runs:
-        runs = list(paged(f"{base}/repos/{repo}/actions/runs?head_sha={head_sha}", token, "workflow_runs"))
-        own = os.environ.get("GITHUB_WORKFLOW", "")
-        waiting = unfinished_runs(runs, own)
-        if os.environ.get("GATE_DEFER_WHILE_RUNNING") == "true" and waiting:
-            print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
-            return 0
-        targets = gate_targets(runs, own, target_run, os.environ.get("GATE_RUN_ATTEMPT", ""))
-        targets = current_attempts(base, repo, token, targets)
-        counts, newest = annotation_counts(base, repo, token, head_sha)
-    else:
-        targets, counts, newest = [(run_id, attempt)], {}, {}
-    annotations, checked = [], 0
-    for target_id, target_attempt in targets:
-        found, n = gate_jobs(base, repo, token, target_id, target_attempt, own_job, gate, counts, newest)
-        annotations += found
-        checked += n
-
-    bad = find_violations(annotations, levels, allow)
-    print(f"annotation-gate: {len(targets)} run(s), {checked} job(s), {len(annotations)} annotation(s), {len(bad)} not allowed.")
-    lines = []
-    for job, ann in bad:
-        message = (ann.get("message") or "").replace("\n", " ")[:300]
-        print(f"::error title=Unallowed {ann['annotation_level']} annotation::[{job}] {message}")
-        lines.append(f"- {ann['annotation_level']} in `{job}`: {message}")
-    if (target_run or all_runs) and head_sha:
-        summary = "\n".join(lines) or f"{len(annotations)} annotation(s) in {checked} job(s), all allowed."
-        post_check_run(base, repo, token, head_sha, not bad, summary)
-    if bad:
-        print("Fix the cause, or allow a tracked exception with the `allow-patterns` input.")
-        return 1
-    return 0
+        return gate_commit(settings, head_sha, target_run, os.environ.get("GATE_RUN_ATTEMPT", ""))
+    annotations, checked = gate_jobs(base, repo, token, run_id, attempt, own_job, gate, {}, {})
+    return report(settings, head_sha, [(run_id, attempt)], annotations, checked, bool(target_run and head_sha))
 
 
 if __name__ == "__main__":
