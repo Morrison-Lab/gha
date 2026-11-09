@@ -26,6 +26,16 @@ since figure code in several languages is long but mechanical
 Each such file still counts as a file,
 and editing an existing `_fig-*` file still counts its lines.
 
+## Exemptions
+
+A pure rename (no line changed) does not count toward the file cap.
+A PR whose description says "mechanical, content-identical"
+(a pure move, rename or split with no wording change)
+is exempt at any size, as one carrying the exemption label is.
+The reusable workflow reads the description live through the API.
+Content PRs keep the 10 file and 300 line caps
+([ai-config#5129](https://github.com/Morrison-Lab/ai-config/pull/5129)).
+
 ## Inputs
 
 | Input | Default | Meaning |
@@ -34,6 +44,7 @@ and editing an existing `_fig-*` file still counts its lines.
 | `max-lines` | `300` | Most added plus deleted lines |
 | `paths-ignore` | none | Extra paths not counted (`*`, `?`, `**`) |
 | `exempt-label` | `size-exempt` | Label that lifts the cap, read live through the API |
+| `pr-body` | none | The PR description (composite only; the reusable workflow reads it itself) |
 | `fail` | `true` | Block instead of warn |
 | `python-version` | `3.x` | Python used to run the check |
 
@@ -41,8 +52,8 @@ and editing an existing `_fig-*` file still counts its lines.
 
 With no base to diff against, or when the diff cannot be computed,
 the check skips with a warning instead of measuring the whole tree.
-The caller stub triggers on `labeled` and `unlabeled`,
-so adding the exemption label re-runs the check.
+The caller stub triggers on `labeled`, `unlabeled` and `edited`,
+so adding the exemption label or editing the description re-runs the check.
 
 ## Example
 
