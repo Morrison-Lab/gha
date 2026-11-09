@@ -54,6 +54,16 @@ on:
           commit. See the `annotation-gate` action's input of the same name.
         type: boolean
         default: false
+      backfill:
+        description: >-
+          Gate each commit that a pull request run touched in the last 24
+          hours and that has no `annotation-gate` check run, for a scheduled
+          caller that repairs heads whose final `workflow_run` event never
+          arrived (gha#1754). Needs no permission beyond the ones this
+          workflow already holds. `run-id` and `all-runs` are unused; pass
+          any `head-sha`.
+        type: boolean
+        default: false
       levels:
         description: Comma list of annotation levels to enforce (notice, warning, failure).
         type: string
@@ -91,5 +101,6 @@ jobs:
           head-sha: ${{ inputs.head-sha }}
           all-runs: ${{ inputs.all-runs }}
           defer-while-running: ${{ inputs.defer-while-running }}
+          backfill: ${{ inputs.backfill }}
           levels: ${{ inputs.levels }}
           allow-patterns: ${{ inputs.allow-patterns }}

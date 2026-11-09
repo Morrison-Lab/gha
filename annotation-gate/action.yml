@@ -86,6 +86,19 @@ inputs:
       the commit ungated. Off by default, because a quick failure is then
       reported only when the slowest workflow on the commit finishes.
     default: 'false'
+  backfill:
+    description: >-
+      Gate each commit that a pull request run touched in the last 24 hours
+      and that has no `annotation-gate` check run, instead of one commit, and
+      post a check run on each. Run it on a schedule beside the `workflow_run`
+      gate: a gate that defers posts nothing and relies on the last finishing
+      run to start the gate that posts, so a lost or very late event leaves the
+      required check missing and the pull request blocked with nothing to
+      re-run (gha#1754). A commit with a run still queued or in progress is
+      left alone. It reads runs and check runs only, so it needs no permission
+      beyond `actions: read`, `checks: write` and `contents: read`; `head-sha`
+      and `all-runs` are unused.
+    default: 'false'
   token:
     description: Token granted actions read and checks read, plus checks write with `head-sha`.
     default: ${{ github.token }}
@@ -105,4 +118,5 @@ runs:
         GATE_HEAD_SHA: ${{ inputs.head-sha }}
         GATE_ALL_RUNS: ${{ inputs.all-runs }}
         GATE_DEFER_WHILE_RUNNING: ${{ inputs.defer-while-running }}
+        GATE_BACKFILL: ${{ inputs.backfill }}
       run: python3 "$GITHUB_ACTION_PATH/annotation_gate.py"
