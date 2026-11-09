@@ -5699,6 +5699,18 @@ because the review job downloads from the same host and fails, so the PR never g
 Fix a download that fails for hours by serving it from `GHA_RELEASE_CACHE_DIR` through `cached_download` with a pinned sha256 (gha#1678), not by lengthening the retries.
 No hook or check can detect this: whether an outage outlasts a retry window is known only after the outage.
 
+## Enumerate the population before closing a rollout issue
+
+A wiring or rollout issue often carries a checkbox defined by a condition,
+such as "repos with no caller get one", beside boxes that name repos.
+Confirming the named repos satisfies only the named boxes.
+gha#1746 was closed on 2026-11-09 after six named repos were checked,
+and reopened because rme, ids and other repos with no caller were never enumerated.
+Before closing, list the full population from the primitive
+(the org's repositories, a search for the caller file),
+and name any repo the session cannot read as unchecked.
+No hook or check can detect this, because the open-ended set is known only from the issue's wording.
+
 ## Never just theorize -- investigate empirically
 
 A hypothesis that is cheap to test must be tested before it is asserted, and
