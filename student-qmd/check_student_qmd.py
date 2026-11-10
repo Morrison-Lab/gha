@@ -390,7 +390,8 @@ def check_one(
             )
     want = without_answers(source_blocks, cfg)
     got = without_answers(student_blocks, cfg)
-    if want != got or without_answers(source["meta"], cfg) != without_answers(student["meta"], cfg):
+    source_meta = {k: v for k, v in source["meta"].items() if k not in cfg.drop_front_matter_keys}
+    if want != got or without_answers(source_meta, cfg) != without_answers(student["meta"], cfg):
         failures.append(
             f"{dest}: does not match {src} with its answers and comments removed; "
             + first_difference(source, want, got)
