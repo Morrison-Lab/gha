@@ -882,6 +882,9 @@ jobs:
       - name: Check the preinstalled-toolchain package list matches
         shell: bash
         run: bash .github/workflows/scripts/tests/run-check-bibliography-dois-package-list-tests.sh
+      - name: Check that submodule bibliographies are skipped
+        shell: bash
+        run: bash check-bibliography-dois/tests/test-list-bib-files.sh
       - name: Run check-bibliography-dois offline test runner
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-check-bibliography-dois-tests.py
