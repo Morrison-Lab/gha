@@ -59,7 +59,10 @@ on:
         description: >-
           When greater than 0, also remove the preview of an OPEN pull request
           whose last update is more than this many days old. The pull request is
-          untouched and its next push rebuilds the preview. Keeps a repository
+          untouched and its next push rebuilds the preview; until then its earlier
+          preview links return 404. Counts whole days since the PR's last update
+          (a comment or label counts, not only a push). Must be a non-negative
+          whole number. Keeps a repository
           with many long-lived open PRs under the 1 GB GitHub Pages artifact cap.
           Default 0 (disabled): a preview of an open PR is always kept.
         type: number
@@ -109,6 +112,14 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # idle-days must be a whole number of days: a fractional or negative
+          # value would truncate or flip the threshold and delete live previews.
+          if ! [[ "${IDLE_DAYS:-0}" =~ ^[0-9]+$ ]]; then
+            echo "::error::idle-days must be a non-negative whole number of days, got '${IDLE_DAYS}'."
+            exit 1
+          fi
+          IDLE_DAYS=$((10#${IDLE_DAYS:-0}))
 
           declare -A PR_ACTION=()
 
@@ -187,7 +198,7 @@ jobs:
                   updated_epoch=$(date -u -d "$pr_updated_at" +%s 2>/dev/null || echo "")
                   if [ -n "$updated_epoch" ]; then
                     idle_age_days=$(( ( $(date -u +%s) - updated_epoch ) / 86400 ))
-                    if [ "$idle_age_days" -gt "${IDLE_DAYS%.*}" ]; then
+                    if [ "$idle_age_days" -gt "$IDLE_DAYS" ]; then
                       PR_ACTION["$pr_number"]="remove"
                       echo "PR #${pr_number} is open but idle for ${idle_age_days} days (idle-days ${IDLE_DAYS}) - removing preview at ${dir}"
                       rm -rf "$dir"
