@@ -1251,7 +1251,7 @@ cookieconsent.run({
 
 
 <p>Diff-scoped, blocking check that flags commentary written inside a <code>#def-</code> div. A definition div holds the definition, its notation and its display equation only. Commentary, contrasts, motivation and history go in a <code>#rem-</code> div right after it, one div per subfile. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1180">gha#1180</a>.</p>
-<p>The check reports a sentence inside a <code>::: {#def-...}</code> div that opens with “It is not”, “This is not”, “That is not”, “Note that”, “Notice that”, “Unlike”, “Do not confuse”, “Be careful”, “Beware”, “In contrast”, “By contrast”, “Intuitively”, “Informally” or “Historically”. The finding sits on the line that holds the sentence.</p>
+<p>The check reports a sentence inside a <code>::: {#def-...}</code> div that opens with “It is not”, “This is not”, “That is not”, “Note that”, “Notice that”, “Unlike”, “Do not confuse”, “Be careful”, “Beware”, “In contrast”, “By contrast”, “Intuitively”, “Informally”, “Historically”, “Extends”, “Generalizes” (these two also after “This” or “It”), “Just as”, “Similarly”, “Equivalently”, “In other words”, or a special case such as “For p = 1”. The finding sits on the line that holds the sentence.</p>
 <p>The check does not read:</p>
 <ul>
 <li>lines inside a code fence, display math (<code>$$</code>) or an HTML comment;</li>
