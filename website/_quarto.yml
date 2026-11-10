@@ -107,6 +107,7 @@ website:
           - reference/check-serial-comma.qmd
           - reference/check-exercise-background.qmd
           - reference/check-exercise-question-paragraph.qmd
+          - reference/check-exercise-ends-with-task.qmd
           - reference/check-removed-content.qmd
           - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd

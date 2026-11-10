@@ -64,6 +64,7 @@ updates:
       - "/check-serial-comma"
       - "/check-exercise-background"
       - "/check-exercise-question-paragraph"
+      - "/check-exercise-ends-with-task"
       - "/check-removed-content"
       - "/check-key-equations-displayed"
       - "/check-multipart-exercises"
