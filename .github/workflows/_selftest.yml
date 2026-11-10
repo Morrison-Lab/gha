@@ -3455,6 +3455,89 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-c3d || true
           rm -rf _ci-c3d
+  # check-static-figures is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-static-figures@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  static-figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-static-figures unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-static-figures/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-static-figures
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # This repo has no interactive figures, so stage an HTML-only one and
+      # assert that the blocking call really fails.
+      - name: Stage an HTML-only interactive figure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-csf
+          printf '%s\n' '```{r}' '#| eval: !expr knitr::is_html_output()' 'plotly::plot_ly(z = z)' '```' > _ci-csf/page.qmd
+          git add -f _ci-csf/page.qmd
+      - name: Check the staged figure, expecting a failure
+        id: csf-expected-failure
+        continue-on-error: true
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.csf-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-static-figures to fail on a staged figure, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is warn-only, so the same finding must pass with no fail input.
+      - name: Check the staged figure with the default fail
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-static-figures
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Check again with the figure exempted through paths-ignore
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-csf'
+      - name: Check again with globs excluding the figure
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged figure
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-csf || true
+          rm -rf _ci-csf
   # check-visualization-figures is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-visualization-figures@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The

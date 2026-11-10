@@ -51,6 +51,7 @@ input tables and a copy-paste example.
 | [`check-caller-permissions.yml`](reference/check-caller-permissions.qmd) | Whole-tree, blocking check that fails when a caller job lacks the permissions a `Morrison-Lab/gha` reusable workflow's jobs request | `workflows-dir`, `fail` |
 | [`check-exm-figures.yml`](reference/check-exm-figures.qmd) | Diff-scoped, blocking check that flags an example div (`#exm-`) with no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-contour-3d.yml`](reference/check-contour-3d.qmd) | Diff-scoped, warn-only check that flags a contour plot with no 3D surface plot of the same function, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-static-figures.yml`](reference/check-static-figures.qmd) | Diff-scoped, warn-only check that flags an interactive figure that runs only in HTML output with no static version, and a note pointing readers to the HTML version instead of the figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-tree-lists.yml`](reference/check-tree-lists.qmd) | Diff-scoped, blocking check that flags a definition, example or other labelled div that mentions a tree, holds a list nested three or more levels deep and has no figure, when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-search-shortcut.yml`](reference/check-search-shortcut.qmd) | Blocking check that flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S: a `_quarto*.yml` project that sets no `keyboard-shortcut`, or any `keyboard-shortcut` that lists more than `"/"` | `globs`, `paths-ignore`, `fail` |
 | [`check-visualization-figures.yml`](reference/check-visualization-figures.qmd) | Diff-scoped, blocking check that flags a div that asks for a picture (a visual word in its title, or a sketch or plot request in an exercise prompt) but has no figure (an exercise may have it in its solution), when a PR adds a line to it | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -205,7 +206,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-extracted-lemmas.yml`, `check-definition-equations.yml`,
 `check-hybrid-sentences.yml`,
 `check-format-output-files.yml`,
-`check-caller-permissions.yml`, `check-exm-figures.yml`, `check-contour-3d.yml`,
+`check-caller-permissions.yml`, `check-exm-figures.yml`, `check-contour-3d.yml`, `check-static-figures.yml`,
 `check-visualization-figures.yml`,
 `check-axis-titles.yml`,
 `check-tree-lists.yml`, `check-search-shortcut.yml`, `check-self-contained-captions.yml`,
