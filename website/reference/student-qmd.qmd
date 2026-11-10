@@ -95,6 +95,7 @@ and shows them under the `solution`, `solutions` and `rubric` profiles.
 | `student-profile` | string | `'assign'` | The profile the student copy renders under. |
 | `drop-render-chunks` | boolean | `false` | Also remove fenced code blocks that run `quarto render`. |
 | `prune-macros` | boolean | `false` | Also remove LaTeX macro definitions the document never uses. A definition inside an answer-key-only div is refused, and so is one whose braces do not close before a blank line or a fence. The check leaves definitions out of its comparison, so a needed one that went missing still fails it, through the math it changes. |
+| `drop-front-matter-keys` | string | `''` | Top-level front-matter keys, separated by spaces, to remove from each student file, such as a `canvas:` block that syncs the assignment to a course site. A nested key of the same name stays. The check removes the same keys from the source before comparing. |
 | `require-answers` | boolean | `true` | Fail a source with no answer-key-only div; when false, warn instead. A run in which no source has one still fails. |
 | `check` | boolean | `true` | Check each student file against its source. |
 | `render` | boolean | `true` | Render each student file alone in an empty directory. |
@@ -138,6 +139,7 @@ jobs:
         Exams/**/exam*.qmd
       # drop-render-chunks: true      # also drop `quarto render` code blocks
       # prune-macros: true            # drop unused LaTeX macro definitions
+      # drop-front-matter-keys: canvas  # drop instructor-only front-matter keys
       # require-answers: false        # warn, not fail, on a source with no answers
       # render: false                 # skip rendering (e.g. cells need R)
       # artifact-name: student-qmd    # upload the files

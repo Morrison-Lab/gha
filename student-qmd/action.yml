@@ -52,6 +52,13 @@ inputs:
       Pandoc expands the macros inside math,
       so a needed definition that went missing still fails it.
     default: 'false'
+  drop-front-matter-keys:
+    description: >-
+      Top-level front-matter keys, separated by spaces, to remove from each
+      student file, for instructor-only settings such as a `canvas:` block that
+      syncs the assignment to a course site.
+      The check removes the same keys from the source before comparing.
+    default: ''
   require-answers:
     description: >-
       Fail a source that has no answer-key-only div, since nothing about its
@@ -133,6 +140,7 @@ runs:
         INPUT_STUDENT_PROFILE: ${{ inputs.student-profile }}
         INPUT_DROP_RENDER_CHUNKS: ${{ inputs.drop-render-chunks }}
         INPUT_PRUNE_MACROS: ${{ inputs.prune-macros }}
+        INPUT_DROP_FRONT_MATTER_KEYS: ${{ inputs.drop-front-matter-keys }}
         INPUT_INDEX_TITLE: ${{ inputs.index-title }}
         INPUT_INDEX_BACK_HREF: ${{ inputs.index-back-href }}
       run: |
@@ -153,6 +161,7 @@ runs:
           --student-profile "$INPUT_STUDENT_PROFILE" \
           --drop-render-chunks "$INPUT_DROP_RENDER_CHUNKS" \
           --prune-macros "$INPUT_PRUNE_MACROS" \
+          --drop-front-matter-keys "$INPUT_DROP_FRONT_MATTER_KEYS" \
           --index-title "$INPUT_INDEX_TITLE" \
           --index-back-href "$INPUT_INDEX_BACK_HREF" \
           --list-file "$list"
@@ -174,6 +183,7 @@ runs:
         INPUT_STUDENT_PROFILE: ${{ inputs.student-profile }}
         INPUT_DROP_RENDER_CHUNKS: ${{ inputs.drop-render-chunks }}
         INPUT_PRUNE_MACROS: ${{ inputs.prune-macros }}
+        INPUT_DROP_FRONT_MATTER_KEYS: ${{ inputs.drop-front-matter-keys }}
         INPUT_REQUIRE_ANSWERS: ${{ inputs.require-answers }}
       run: |
         set -euo pipefail
@@ -187,6 +197,7 @@ runs:
           --student-profile "$INPUT_STUDENT_PROFILE" \
           --drop-render-chunks "$INPUT_DROP_RENDER_CHUNKS" \
           --prune-macros "$INPUT_PRUNE_MACROS" \
+          --drop-front-matter-keys "$INPUT_DROP_FRONT_MATTER_KEYS" \
           --require-answers "$INPUT_REQUIRE_ANSWERS"
 
     # A student renders the file on their own machine, outside the project,

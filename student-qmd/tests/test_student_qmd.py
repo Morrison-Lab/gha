@@ -165,6 +165,37 @@ def test_generator_drops_whole_line_yaml_comment_and_html_comment(project):
     assert 'title: "Homework 1"' in text
 
 
+CANVAS_BLOCK = """canvas:
+  due_at: 2026-11-05T23:59:00-08:00
+  attachments:
+    - _output/{stem}.pdf
+other:
+  canvas: nested stays
+"""
+
+
+def test_drop_front_matter_keys_removes_the_key_and_its_value(project):
+    source = project / "hw" / "hw1.qmd"
+    source.write_text(source.read_text().replace("format: html\n", "format: html\n" + CANVAS_BLOCK, 1))
+    assert generate() == 0
+    kept = student(project).read_text()
+    assert "due_at" in kept, "without the option the key is kept"
+    assert generate("--drop-front-matter-keys", "canvas") == 0
+    text = student(project).read_text()
+    assert "due_at" not in text and "attachments" not in text and "_output" not in text
+    assert "canvas: nested stays" in text, "a nested key of the same name stays"
+    assert 'title: "Homework 1"' in text and "format: html" in text
+
+
+def test_checker_accepts_dropped_keys_only_when_asked(project, capsys):
+    source = project / "hw" / "hw1.qmd"
+    source.write_text(source.read_text().replace("format: html\n", "format: html\n" + CANVAS_BLOCK, 1))
+    assert generate("--drop-front-matter-keys", "canvas") == 0
+    assert check("--drop-front-matter-keys", "canvas") == 0
+    assert check() == 1
+    assert "metadata differs" in capsys.readouterr().out
+
+
 def test_generator_drops_two_line_sol_opener(project):
     write(project / "hw" / "hw1.qmd", HOMEWORK + '\n::: {.sol\n  data-x="1"}\nsecret answer\n:::\n')
     assert generate() == 0
