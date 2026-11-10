@@ -3,7 +3,7 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Eight rules; the first three each have a source that was read (psw#418),
+Ten rules; the first three each have a source that was read (psw#418),
 and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402,
 gha#1568):
 
