@@ -251,7 +251,7 @@ the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`,
-while `opposition-research`, `check-dependency-updates`,
+while `opposition-research`, `report-main-failure`, `check-dependency-updates`,
 `check-duplicate-roxygen`, `check-math-definitions`,
 `check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
@@ -259,7 +259,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -5698,6 +5698,18 @@ A retry PR also cannot merge during such an outage,
 because the review job downloads from the same host and fails, so the PR never gets a Clean review.
 Fix a download that fails for hours by serving it from `GHA_RELEASE_CACHE_DIR` through `cached_download` with a pinned sha256 (gha#1678), not by lengthening the retries.
 No hook or check can detect this: whether an outage outlasts a retry window is known only after the outage.
+
+## Enumerate the population before closing a rollout issue
+
+A wiring or rollout issue often carries a checkbox defined by a condition,
+such as "repos with no caller get one", beside boxes that name repos.
+Confirming the named repos satisfies only the named boxes.
+gha#1746 was closed on 2026-11-09 after six named repos were checked,
+and reopened because rme, ids, and other repos with no caller were never enumerated.
+Before closing, list the full population from the primitive
+(the org's repositories, a search for the caller file),
+and name any repo the session cannot read as unchecked.
+No hook or check in this repo detects this today, because the open-ended set is known only from the issue's wording.
 
 ## Never just theorize -- investigate empirically
 

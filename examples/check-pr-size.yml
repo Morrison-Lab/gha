@@ -3,12 +3,13 @@
 # (added plus deleted). Every PR should be as small and focused as it can be
 # while completely solving its task; a sweep goes out as minimal batches.
 # Generated, lock, image and data paths are not counted. The `size-exempt`
-# label lifts the cap. Needs contents:read and pull-requests:read.
+# label, or a description saying "mechanical, content-identical", lifts the
+# cap; a pure rename does not count toward the file cap. Needs contents:read and pull-requests:read.
 name: Check pull request size
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
 
 jobs:
   check:

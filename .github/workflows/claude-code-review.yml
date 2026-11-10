@@ -1958,6 +1958,12 @@ jobs:
             exit 0
           fi
           COMMIT_SHA="$HEAD_SHA"
+          # The model can still write its own commit_sha over the interpolated
+          # one (gha#1068: GitHub's merge ref). Rewrite any hex value in the
+          # review-data JSON to the commit this step stamps below, so the
+          # structured field and the trailing "Reviewed commit:" line agree.
+          # Only hex is touched: SKIPPED reviews write "unknown", left as is.
+          REVIEW="$(printf '%s' "$REVIEW" | sed -E "s/(\"commit_sha\"[[:space:]]*:[[:space:]]*\")[0-9a-fA-F]{7,40}(\")/\1${COMMIT_SHA}\2/g")"
           BODY_FILE="$(mktemp)"
           if [[ "$VERDICT" == "skipped" || "$VERDICT" == "unreviewed-commits-skipped" ]]; then
             printf '%s\n\n---\n\n%s' \

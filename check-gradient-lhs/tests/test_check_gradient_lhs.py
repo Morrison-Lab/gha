@@ -61,6 +61,32 @@ def test_no_equation_following_passes():
     assert flagged("The gradient is\n\nMore prose follows.\n") == []
 
 
+def test_crossref_id_naming_gradient_is_not_a_statement():
+    assert flagged("The factor of @sol-exploding-gradient-part1c is $1$ when $s = 2$:") == []
+
+
+def test_link_target_naming_gradient_is_not_a_statement():
+    assert flagged("The [bound](gradient-descent.qmd#def-gradient-descent) is $1$.") == []
+
+
+def test_link_text_still_states_a_gradient():
+    assert flagged("Its [gradient](linear-regression.qmd#def-gradient) is $2 \\vx$.") == [1]
+
+
+def test_compound_noun_is_not_a_statement():
+    assert flagged("[stochastic gradient descent](#def-sgd) are") == []
+
+
+def test_zero_condition_passes():
+    assert flagged("where its gradient is $\\vzero$,") == []
+    assert flagged("the intercept component of the gradient is $0$,") == []
+    assert flagged("so $\\vx$ makes the gradients equal $\\vzero_{p \\times 1}$") == []
+
+
+def test_nonzero_value_is_still_flagged():
+    assert flagged("the gradient there is $\\tp{(-2, 0)}$.") == [1]
+
+
 def test_gradient_without_is_passes():
     assert flagged("The gradient points uphill.") == []
 

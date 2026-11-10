@@ -6,7 +6,7 @@
 # Any OTHER group name is fine,
 # and is how you serialize this workflow's own runs.
 # The reusable workflow serializes gh-pages deploys internally
-# on its `deploy` job (`group: gh-pages`).
+# on its `deploy` job (`group: gh-pages-main`; do not use that name either).
 # A caller-level block with the same group name deadlocks GitHub Actions
 # against the nested job:
 # the job fails with no runner, no steps, and no log, so the site silently

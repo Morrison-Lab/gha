@@ -102,16 +102,20 @@ website:
           - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
+          - reference/check-def-wiktionary.qmd
           - reference/check-bare-yes-no.qmd
           - reference/check-code-fold.qmd
           - reference/check-serial-comma.qmd
           - reference/check-exercise-background.qmd
           - reference/check-exercise-question-paragraph.qmd
+          - reference/check-exercise-ends-with-task.qmd
+          - reference/check-removed-content.qmd
           - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd
           - reference/check-split-solutions.qmd
           - reference/check-restated-results.qmd
           - reference/check-results-in-remarks.qmd
+          - reference/check-result-definition-links.qmd
           - reference/check-definition-expectation.qmd
           - reference/check-extracted-lemmas.qmd
           - reference/check-definition-equations.qmd
@@ -145,6 +149,7 @@ website:
           - reference/summary.qmd
           - reference/quarto-publish.qmd
           - reference/report-failure.qmd
+          - reference/report-main-failure.qmd
           - reference/preview.qmd
           - reference/preview-deploy.qmd
           - reference/check-equation-renders.qmd

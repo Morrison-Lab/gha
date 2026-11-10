@@ -23,6 +23,11 @@ DEFAULT = [
     r"^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead",
     r"^wait-runner-capacity: still short after \d+ minutes",
     r"^prune-runner-workdir: measured .+ GB free, under \d+ GB",
+    r"^fetch-pack: (invalid index-pack output|unexpected disconnect while reading sideband packet)",
+    r"^early EOF$",
+    r"^\d+ bytes of body are still expected$",
+    r"^RPC failed; curl \d+\b",
+    r"^the remote end hung up unexpectedly$",
 ]
 
 
@@ -127,7 +132,7 @@ def test_exit_code_annotation_allowed_by_default():
 
 def run_main(monkeypatch, env, annotations):
     posted = []
-    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW", "GITHUB_EVENT_NAME"):
         monkeypatch.delenv(key, raising=False)
     for key, value in {"GITHUB_TOKEN": "t", "GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "1", **env}.items():
         monkeypatch.setenv(key, value)
@@ -228,10 +233,37 @@ def test_runner_hook_patterns_are_anchored_and_leave_other_text_gated():
         assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
-def test_action_default_allow_lists_the_runner_hook_patterns():
+def test_action_default_allow_lists_the_runner_hook_and_git_transport_patterns():
     text = open(os.path.join(os.path.dirname(__file__), "..", "action.yml")).read()
-    for pattern in DEFAULT[-2:]:
+    for pattern in DEFAULT[-7:]:
         assert pattern in text
+
+
+# The failure annotations of a checkout fetch that actions/checkout retried
+# (lds#2131, gha#1731); the job passed, so they are not about the commit.
+GIT_TRANSPORT_ERRORS = (
+    "fetch-pack: invalid index-pack output",
+    "early EOF",
+    "10 bytes of body are still expected",
+    "RPC failed; curl 55 Send failure: Broken pipe",
+    "fetch-pack: unexpected disconnect while reading sideband packet",
+    "the remote end hung up unexpectedly",
+)
+
+
+def test_git_transport_errors_of_a_retried_fetch_are_allowed():
+    for msg in GIT_TRANSPORT_ERRORS:
+        assert not g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_git_transport_patterns_are_anchored_and_leave_other_text_gated():
+    for msg in (
+        "Error: early EOF while parsing the lockfile",
+        "fatal: repository 'https://github.com/x/y/' not found",
+        "RPC failed; HTTP 403 curl 22 The requested URL returned error: 403",
+        "see: the remote end hung up unexpectedly",
+    ):
+        assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def run(wid, event, number, status="completed", name=None, rid=None):
@@ -280,10 +312,13 @@ def check_run(job, count, names):
     return c
 
 
-def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extra_env=None, names=None):
+def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extra_env=None, names=None, attempts=None):
     names = names or {}
+    attempts = attempts or {}
+    monkeypatch.setattr(g, "api", lambda url, token: {"run_attempt": attempts.get(int(url.rsplit("/", 1)[1]))})
     posted, fetched = [], []
-    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW"):
+    commit_mode.seen_attempts = []
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW", "GITHUB_EVENT_NAME"):
         monkeypatch.delenv(key, raising=False)
     env = {
         "GITHUB_TOKEN": "t",
@@ -303,6 +338,7 @@ def commit_mode(monkeypatch, runs, jobs_by_run, annotations_by_job, counts, extr
             return iter([check_run(job, n, names) for job, n in counts.items()])
         if key == "jobs":
             run_id = int(url.split("/runs/")[1].split("/")[0])
+            commit_mode.seen_attempts.append((run_id, int(url.split("/attempts/")[1].split("/")[0])))
             return iter(jobs_by_run[run_id])
         job = int(url.split("/check-runs/")[1].split("/")[0])
         fetched.append(job)
@@ -407,6 +443,14 @@ def test_defer_while_running_still_gates_when_every_run_has_finished(monkeypatch
     assert code == 0 and posted[0][4] is True
 
 
+def test_a_manual_dispatch_never_defers_and_posts_the_check_run(monkeypatch):
+    monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
+    runs = [run(1, "push", 1, rid=10), run(2, "push", 1, status="in_progress", rid=20)]
+    env = {"GITHUB_EVENT_NAME": "workflow_dispatch"}
+    code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0}, env)
+    assert code == 0 and len(posted) == 1
+
+
 def test_without_defer_an_unfinished_run_does_not_stop_the_gate(monkeypatch):
     monkeypatch.delenv("GATE_DEFER_WHILE_RUNNING", raising=False)
     runs = [run(1, "push", 1, rid=10), run(2, "push", 1, status="in_progress", rid=20)]
@@ -428,3 +472,93 @@ def test_demoted_untrusted_certificate_warning_is_allowed():
 def test_undemoted_certificate_error_is_still_a_violation():
     msg = DEMOTED.split(" (the host")[0]
     assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_commit_mode_gates_the_attempt_a_run_reports_now_not_the_listing(monkeypatch):
+    """gha#1742: a listing that shows attempt 1 for a run already at attempt 2."""
+    stale = dict(run(1, "pull_request", 1, rid=10), run_attempt=1)
+    code, _, _ = commit_mode(monkeypatch, [stale], {10: []}, {}, {}, attempts={10: 2})
+    assert code == 0 and commit_mode.seen_attempts == [(10, 2)]
+
+
+def test_current_attempts_never_lowers_and_ignores_a_missing_attempt(monkeypatch):
+    monkeypatch.setattr(g, "api", lambda url, token: {"run_attempt": 1} if url.endswith("/10") else {})
+    assert g.current_attempts("b", "o/r", "t", [(10, 3), (20, 2)]) == [(10, 3), (20, 2)]
+
+
+def backfill_mode(monkeypatch, heads, gated, runs_by_head=None, found=()):
+    """Run backfill mode with open PR `heads`.
+
+    `gated` maps each head that already has a check run to when it finished
+    (a set means 2026-01-01T00:00:00Z).
+    """
+    gated = gated if isinstance(gated, dict) else dict.fromkeys(gated, "2026-01-01T00:00:00Z")
+    runs_by_head = runs_by_head or {}
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GATE_HEAD_SHA", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW", "GITHUB_EVENT_NAME"):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in {"GITHUB_TOKEN": "t", "GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "1", "GITHUB_WORKFLOW": "Annotation gate", "GATE_BACKFILL": "true"}.items():
+        monkeypatch.setenv(key, value)
+    posted = []
+
+    def fake_api(url, token):
+        sha = url.split("/commits/")[1].split("/")[0]
+        return {"check_runs": [{"completed_at": gated[sha]}] if sha in gated else []}
+
+    def fake_paged(url, token, key=None):
+        if "event=pull_request" in url:
+            return iter([{"head_sha": sha} for sha in heads] + [{"head_sha": heads[0]}])
+        if key == "workflow_runs":
+            return iter(runs_by_head.get(url.split("head_sha=")[1], []))
+        if key == "check_runs":
+            return iter([])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(g, "api", fake_api)
+    monkeypatch.setattr(g, "paged", fake_paged)
+    monkeypatch.setattr(g, "current_attempts", lambda base, repo, token, targets: targets)
+    monkeypatch.setattr(g, "gate_jobs", lambda *args: (list(found), 1))
+    monkeypatch.setattr(g, "post_check_run", lambda *args: posted.append(args))
+    return g.main(), posted
+
+
+def test_backfill_gates_only_the_open_heads_with_no_check_run(monkeypatch):
+    runs = {"a1": [run(1, "pull_request", 1, rid=10)], "b2": [run(1, "pull_request", 1, rid=20)]}
+    code, posted = backfill_mode(monkeypatch, ["a1", "b2"], {"b2"}, runs)
+    assert code == 0 and [p[3] for p in posted] == ["a1"] and posted[0][4] is True
+
+
+def test_backfill_posts_nothing_when_every_open_head_has_a_check_run(monkeypatch):
+    code, posted = backfill_mode(monkeypatch, ["a1", "b2"], {"a1", "b2"})
+    assert code == 0 and posted == []
+
+
+def test_backfill_gates_again_a_head_whose_check_predates_a_finished_run(monkeypatch):
+    """gha#1752: the last run finished after a gate posted a failure and its event never started a gate."""
+    later = dict(run(1, "pull_request", 1, rid=10), updated_at="2026-01-01T00:05:00Z")
+    code, posted = backfill_mode(monkeypatch, ["a1"], {"a1": "2026-01-01T00:01:00Z"}, {"a1": [later]})
+    assert code == 0 and [p[3] for p in posted] == ["a1"] and posted[0][4] is True
+
+
+def test_backfill_keeps_a_check_that_finished_after_every_run(monkeypatch):
+    earlier = dict(run(1, "pull_request", 1, rid=10), updated_at="2026-01-01T00:00:30Z")
+    code, posted = backfill_mode(monkeypatch, ["a1"], {"a1": "2026-01-01T00:01:00Z"}, {"a1": [earlier]})
+    assert code == 0 and posted == []
+
+
+def test_backfill_ignores_the_gates_own_runs_when_judging_a_check_stale(monkeypatch):
+    own = dict(run(9, "workflow_run", 1, name="Annotation gate", rid=30), updated_at="2026-01-01T00:09:00Z")
+    code, posted = backfill_mode(monkeypatch, ["a1"], {"a1": "2026-01-01T00:01:00Z"}, {"a1": [own]})
+    assert code == 0 and posted == []
+
+
+def test_backfill_leaves_a_head_with_an_unfinished_run_to_that_runs_own_gate(monkeypatch):
+    runs = {"a1": [run(1, "pull_request", 1, rid=10), run(2, "pull_request", 1, status="in_progress", rid=20)]}
+    code, posted = backfill_mode(monkeypatch, ["a1"], set(), runs)
+    assert code == 0 and posted == []
+
+
+def test_backfill_fails_and_posts_a_failure_when_a_head_has_an_unallowed_annotation(monkeypatch):
+    runs = {"a1": [run(1, "pull_request", 1, rid=10)]}
+    bad = ("job", {"annotation_level": "warning", "message": "odd"})
+    code, posted = backfill_mode(monkeypatch, ["a1"], set(), runs, found=[bad])
+    assert code == 1 and posted[0][4] is False
