@@ -1256,10 +1256,11 @@ cookieconsent.run({
 
 
 <p>Diff-scoped check that flags a heading that breaks its page’s outline. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). A page’s title is not a numbered level, so the body starts at level 1 (Ezra, 2026-11-02, correcting 2026-10-30): a body that starts at level 2 numbers its sections 0.1, 0.2 under <code>number-sections: true</code>. Each heading is at most one level deeper than the one before it. Pages split out of larger pages kept the headings of the page they came from, and a shared include opened ten chapters one level too deep.</p>
-<p>The check reports three mistakes:</p>
+<p>The check reports four mistakes:</p>
 <ul>
 <li><strong>Skipped level.</strong> A heading more than one level deeper than the heading before it in the same file (<code>#</code> then <code>###</code>). The first heading of a page is compared with level 0, so it must be level 1. The first heading of an included subfile is compared with nothing, since it takes its level from the page that includes it.</li>
 <li><strong>Page starts too deep.</strong> The first heading a page renders, following its <code>{{&lt; include &gt;}}</code> shortcodes, is deeper than level 1. The finding sits on that heading, in the include that holds it.</li>
+<li><strong>Section numbered 0.x.</strong> A numbered heading below level 1 that no numbered level-1 heading precedes, such as <code>## A</code> after <code># Overview {.unnumbered}</code> (Ezra, 2026-11-10: “so no section number starts with <code>0.</code>”). Quarto numbers it 0.1, because an unnumbered heading does not count. A page whose front matter sets <code>number-sections: false</code> is not checked for 0.x sections.</li>
 <li><strong>Title repeated as a heading.</strong> The first heading a page renders is a level 1 heading that repeats the page’s <code>title:</code>.</li>
 </ul>
 <p>A page is a <code>.qmd</code> file with a <code>title:</code> in its front matter. A file without one is an include, whatever its name.</p>

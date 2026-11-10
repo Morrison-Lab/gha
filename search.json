@@ -7615,7 +7615,7 @@
     "href": "reference/check-heading-levels.html",
     "title": "check-heading-levels.yml",
     "section": "",
-    "text": "Diff-scoped check that flags a heading that breaks its page’s outline. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). A page’s title is not a numbered level, so the body starts at level 1 (Ezra, 2026-11-02, correcting 2026-10-30): a body that starts at level 2 numbers its sections 0.1, 0.2 under number-sections: true. Each heading is at most one level deeper than the one before it. Pages split out of larger pages kept the headings of the page they came from, and a shared include opened ten chapters one level too deep.\nThe check reports three mistakes:\nA page is a .qmd file with a title: in its front matter. A file without one is an include, whatever its name.\nThe check does not count:",
+    "text": "Diff-scoped check that flags a heading that breaks its page’s outline. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). A page’s title is not a numbered level, so the body starts at level 1 (Ezra, 2026-11-02, correcting 2026-10-30): a body that starts at level 2 numbers its sections 0.1, 0.2 under number-sections: true. Each heading is at most one level deeper than the one before it. Pages split out of larger pages kept the headings of the page they came from, and a shared include opened ten chapters one level too deep.\nThe check reports four mistakes:\nA page is a .qmd file with a title: in its front matter. A file without one is an include, whatever its name.\nThe check does not count:",
     "crumbs": [
       "Overview",
       "Reference",
