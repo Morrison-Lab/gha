@@ -138,7 +138,7 @@ def scan_blocks(lines: List[str]) -> Tuple[List[Fence], List[int], bool]:
     placeholders: List[int] = []
     exempt = False
     for idx, raw in enumerate(lines):
-        if EXEMPT_RE.search(raw):
+        if fence is None and EXEMPT_RE.search(raw):
             exempt = True
         if fence is None:
             raw, in_comment = ods.strip_comments(raw, in_comment)

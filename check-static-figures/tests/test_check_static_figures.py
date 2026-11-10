@@ -3,7 +3,7 @@
 Covers the placeholder finding, what counts as an interactive call, which
 fences run only in HTML (an eval option or a format div), what counts as a
 static version, the exemption comment and its reason, diff scoping, and the
-defaults the action, the reusable workflow and the script must agree on.
+defaults the action and the script must agree on.
 
 The script's name has a hyphen, so load it by path.
 """
@@ -168,10 +168,22 @@ def test_scope_reports_a_placeholder_only_on_its_own_line():
 
 def test_defaults_agree():
     action = (_DIR / "action.yml").read_text()
-    workflow = (_DIR.parent / ".github" / "workflows" / "check-static-figures.yml").read_text()
     assert csf._DEFAULT_FAIL is False
     assert csf.DEFAULT_GLOBS == "*.qmd"
     assert "default: 'false'" in action.split("\n  fail:")[1]
-    assert "default: false" in workflow.split("\n      fail:")[1]
     assert "default: '*.qmd'" in action.split("\n  globs:")[1]
-    assert "default: '*.qmd'" in workflow.split("\n      globs:")[1]
+
+
+def test_an_html_div_decides_over_a_static_eval_inside_it():
+    # The div keeps the fence out of static output, so its plot is no static version.
+    doc = ('::: {.content-visible when-format="html"}\n'
+           + chunk(STATIC_EVAL, "persp(x, y, z)") + ":::\n"
+           + chunk(HTML_EVAL, "plot_ly(z = z)"))
+    assert flagged(doc) == [(9, "html-only")]
+
+
+def test_an_exemption_inside_a_code_fence_does_not_exempt():
+    # A fenced example of the comment, as in documentation, is not an exemption.
+    doc = ("```\n<!-- static-version: shown as an example -->\n```\n"
+           + chunk(HTML_EVAL, "plot_ly(z = z)"))
+    assert flagged(doc) == [(6, "html-only")]
