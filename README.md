@@ -796,7 +796,8 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `report-main-failure.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`,
+`sync-shared-fragments.yml`, and
 `update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine
 
@@ -937,6 +938,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
 `report-main-failure.yml`,
+`sync-shared-fragments.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.

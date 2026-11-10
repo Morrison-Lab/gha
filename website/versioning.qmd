@@ -85,7 +85,8 @@ only ever shipped at
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
 only ever shipped at
-`@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
+`@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`,
+`sync-shared-fragments.yml`, and
 `update-snapshots.yml`).
 See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
@@ -259,6 +260,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
 `report-main-failure.yml`,
+`sync-shared-fragments.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at
 `@v3` - see the
