@@ -546,9 +546,9 @@ def test_one_word_alias_of_a_multiword_term_is_not_learned():
 
 
 def test_link_text_still_teaches_a_one_word_alias():
-    text = "See the [positive](https://x.github.io/sds/c.html#def-positive-classification).\n"
+    text = "See the [affirmative](https://x.github.io/sds/c.html#def-positive-classification).\n"
     masked, _ = ctl.preprocess((POSITIVE_DEF + text).splitlines())
-    assert "positive" in ctl.harvest_terms(masked, set())
+    assert "affirmative" in ctl.harvest_terms(masked, set())
 
 
 @pytest.mark.parametrize("title", ["sample mean, mean", "mean, sample mean", "sample mean or mean"])
@@ -612,3 +612,18 @@ def test_following_word_outside_target_title_is_clean():
 def test_partial_link_on_untouched_line_is_not_reported():
     page = "A [marginal](d.qmd#def-marginal-density) density estimate is used.\n"
     assert rules(run_text(page, {"d.qmd": MARGINAL_DEF}, added={5})) == []
+
+
+def test_common_word_from_link_only_is_not_a_term():
+    masked, _ = ctl.preprocess("See a [linear](https://x.io/m.html#def-linear-map) map.\n".splitlines())
+    assert "linear" not in ctl.harvest_terms(masked, set())
+
+
+def test_common_word_from_def_title_is_still_a_term():
+    masked, _ = ctl.preprocess("::: {#def-linear}\n\n#### Linear\n\nA **linear** function.\n\n:::\n".splitlines())
+    assert "linear" in ctl.harvest_terms(masked, set())
+
+
+def test_uncommon_one_word_link_term_is_still_learned():
+    masked, _ = ctl.preprocess("See the [estimator](https://x.io/m.html#def-estimator).\n".splitlines())
+    assert "estimator" in ctl.harvest_terms(masked, set())

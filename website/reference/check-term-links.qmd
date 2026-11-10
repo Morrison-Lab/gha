@@ -82,6 +82,11 @@ include shortcodes, headings, images, and the target of a link.
 ## Scope
 
 Terms are always learned from every tracked file the globs match.
+A one-word term from the built-in list of ordinary English words
+(`linear`, `sum`, `memory`, and similar) is learned only from a def-div title
+or bold term, not from a link to a `#def-` anchor,
+because such a link usually wraps the word inside a sentence.
+Use `allow-file` for other ordinary words.
 Findings are reported only on lines the pull request adds, so adopting the
 check does not reflag what the corpus already carries.
 With no `base-ref`, the check skips with a warning instead of widening to the
