@@ -1,0 +1,1 @@
+- `check-serial-comma` no longer flags a pair of participles set off after a word of another form, such as "the older deploy, queued or running,", as a list missing its serial comma ([#1829](https://github.com/Morrison-Lab/gha/issues/1829)).
