@@ -5,8 +5,7 @@
   the submodule's files from an earlier job (the checkout step reports
   `submodules: false` and then lists the submodule), while a fresh runner did
   not.
-  The same commit passed on one runner and failed on another
-  ([lds#2288](https://github.com/Morrison-Lab/lds/issues/2288)).
+  The same commit passed on one runner and failed on another.
   Submodules are read from the index (gitlinks), so a missing `.gitmodules`
   does not hide one.
   The new `include-submodules` input (default `false`) restores the old

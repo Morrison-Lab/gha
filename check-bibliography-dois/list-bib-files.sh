@@ -6,8 +6,7 @@
 # A submodule's files are present in the workspace only when something put them
 # there (a `submodules:` checkout, or a leftover from an earlier job on a
 # self-hosted runner that reuses its work directory), so scanning them made the
-# verdict depend on the runner's history rather than on the repository
-# (Morrison-Lab/lds#2288).
+# verdict depend on the runner's history rather than on the repository.
 #
 # Submodules are read from the index as gitlinks (mode 160000), not from
 # .gitmodules, so a stale or missing .gitmodules cannot hide one.
