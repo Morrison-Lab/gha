@@ -15,3 +15,4 @@ jobs:
     #   exclude-keys: vapnik1998   # BibTeX keys without DOIs to skip
     #   install-quarto: false
     #   no-metadata-check: false
+    #   include-submodules: false  # true also scans .bib files inside submodules
