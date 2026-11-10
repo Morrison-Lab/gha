@@ -63,6 +63,16 @@ and PR previews silently stop updating -- the published site itself is
 unaffected, since this workflow deploys only under `pr-preview/`
 ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 
+A newer head's deploy cancels the same PR's older deploy, even one already running
+([gha#1827](https://github.com/Morrison-Lab/gha/issues/1827)),
+since the newer preview would overwrite it anyway.
+The reusable workflow cancels it through a top-level group named
+`preview-deploy-<PR number>`
+(or `preview-deploy-<head repository>:<head branch>` for a fork PR),
+so do not name a caller group with that prefix either.
+Deploys for different PRs, and the main-site publish, are not cancelled:
+they still queue on `gh-pages`.
+
 ```yaml
 # Copy to .github/workflows/preview-deploy.yml in your repo.
 # Deploy half of the PR-preview family: triggered when the build workflow

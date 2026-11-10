@@ -31,6 +31,28 @@ on:
         type: string
         default: ''
 
+# One deploy per PR at a time, and the newest head wins (gha#1827).
+# An old head's preview is overwritten by the new head's deploy anyway, so
+# finishing it only holds a runner and the gh-pages queue: on lds#2297 an
+# old-head deploy stuck in rsync on an I/O-starved runner kept the current
+# head's deploy waiting behind it.
+# A reusable workflow's top-level block applies to the calling job, so this
+# group nests OUTSIDE the deploy job's own `group: gh-pages`
+# (cancel-in-progress: false), which still serializes pushes across PRs and
+# the main-site publish.
+# Only runs for the SAME PR cancel each other; quarto-publish.yml is untouched.
+# The key is the PR number from the workflow_run event. A fork PR's event
+# carries no pull_requests entry, so it falls back to the head repository and
+# branch, with the repository included so two forks' same-named branches do
+# not cancel each other.
+# Callers must not declare this group name themselves (gha#809).
+concurrency:
+  group: >-
+    preview-deploy-${{ github.event.workflow_run.pull_requests[0].number
+    || format('{0}:{1}', github.event.workflow_run.head_repository.full_name,
+    github.event.workflow_run.head_branch) }}
+  cancel-in-progress: true
+
 jobs:
   # Cheap gate: verify the build job actually ran (vs. being skipped due to an
   # unrecognized label). When all jobs in a workflow are skipped GitHub still
