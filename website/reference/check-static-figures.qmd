@@ -14,7 +14,8 @@ It warns by default while the notes repositories catch up.
 It reports two findings:
 
 - **A placeholder note.**
-  A line that tells readers to view the figure in the HTML or slide version,
+  A line that says "see the HTML version"
+  (or the web, website, online, or "HTML or slides" version),
   in prose or in a code chunk that prints it.
   It is reported per line, even when the file has a static version elsewhere,
   because the note is still what a reader of that tab sees.
@@ -26,7 +27,7 @@ It reports two findings:
 A fence runs only in HTML output when its `#| eval:` option calls `is_html_output()` without negating it,
 or when it sits in a `.content-visible when-format="html"` (or `"revealjs"`) div
 or a `.content-hidden unless-format="html"` div.
-A file has a static version when another fence runs outside HTML output
+A file has a static version when another fence runs only outside HTML output
 (a negated `is_html_output()`, `is_latex_output()`, or a div shown only in a static format)
 and draws a plot, such as `persp(`, `ggplot(`, `plt.`, `plot(`, `plotly::save_image(` or `webshot`.
 A chunk that only prints a note is not a plot.
@@ -47,7 +48,7 @@ The check matches call names in the source, not what a render draws, so it has t
 - A widget call inside a code comment, such as `# plotly::plot_ly(z = z)`, still counts as an interactive figure.
   Delete the commented-out call, or add the `static-version` exemption.
 - A static version is judged per file, not per figure.
-  Any plot call in a fence that runs outside HTML output,
+  Any plot call in a fence that runs only outside HTML output,
   including a bare `ax.` method or `include_graphics(`,
   counts as the static version of every HTML-only figure in the file.
   So a file with two HTML-only figures and one static plot is not flagged.
@@ -55,15 +56,16 @@ The check matches call names in the source, not what a render draws, so it has t
 ## Scope
 
 Only a finding whose fence or line holds a line a pull request adds is reported,
-so existing figures are never reflagged.
+so untouched figures are not reflagged.
 An added line whose exact text was also deleted in the same diff
 counts as moved rather than new, and a blank added line is not content.
 
 With no `base-ref`, or when the diff cannot be computed,
-the check skips with a warning instead of scanning the whole tree.
+the check skips instead of scanning the whole tree.
+It logs the skip, as a warning annotation when a given `base-ref` cannot be diffed.
 Set `whole-tree: true` to scan every tracked file on purpose,
 which measures how many existing figures lack a static version.
-Every run prints how many lines, files, and interactive figures it examined.
+Every run that does not skip prints how many lines, files, and interactive figures it examined.
 
 ## Inputs
 
