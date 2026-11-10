@@ -29,12 +29,15 @@ def run_text(text, extra_files=None, added=None):
     files = dict(extra_files or {})
     files["page.qmd"] = text
     terms = {}
+    def_words = {}
     for name, body in files.items():
         masked, _ = ctl.preprocess(body.splitlines())
         for k, ids in ctl.harvest_terms(masked, set()).items():
             terms.setdefault(k, set()).update(ids)
+        for did, ws in ctl.harvest_def_words(masked).items():
+            def_words.setdefault(did, set()).update(ws)
     rx = ctl.term_regex(list(terms)) if terms else None
-    return ctl.scan_file(Path("page.qmd"), text.splitlines(), terms, rx, added)
+    return ctl.scan_file(Path("page.qmd"), text.splitlines(), terms, rx, added, def_words)
 
 
 def rules(findings):
@@ -554,3 +557,58 @@ def test_listed_alias_is_learned_in_either_order(title):
     definition = "::: {#def-m}\n\nThe **" + title + "** is x.\n\n:::\n"
     masked, _ = ctl.preprocess(definition.splitlines())
     assert {"mean", "sample mean"} <= set(ctl.harvest_terms(masked, set()))
+
+
+MARGINAL_DEF = """
+::: {#def-marginal-density}
+
+#### Marginal density
+
+The **marginal density** of a variable is its density with the others integrated out.
+
+:::
+
+::: {#def-fitted-value}
+
+#### Fitted value
+
+A **fitted value** is a model's prediction.
+
+:::
+"""
+
+
+PDF_DEF = """
+::: {#def-pdf}
+
+#### Probability density function
+
+A **probability density function** integrates to a probability.
+
+:::
+"""
+
+
+def test_link_on_part_of_target_title_is_partial_link():
+    page = "A [probability](d.qmd#def-pdf) density is used.\n"
+    assert rules(run_text(page, {"d.qmd": PDF_DEF})) == [("partial-link", "probability")]
+
+
+def test_link_before_a_defined_longer_phrase_is_reported_once():
+    page = "A [marginal](d.qmd#def-marginal-density) density is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == [("partial-link", "marginal density")]
+
+
+def test_link_on_whole_target_title_is_clean():
+    page = "A [marginal density](d.qmd#def-marginal-density) is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
+
+
+def test_following_word_outside_target_title_is_clean():
+    page = "A [fitted](d.qmd#def-fitted-value) probability is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
+
+
+def test_partial_link_on_untouched_line_is_not_reported():
+    page = "A [marginal](d.qmd#def-marginal-density) density estimate is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF}, added={5})) == []
