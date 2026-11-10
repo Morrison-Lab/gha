@@ -1263,7 +1263,7 @@ cookieconsent.run({
 </section>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
-<p>Terms are always learned from every tracked file the globs match. Findings are reported only on lines the pull request adds, so adopting the check does not reflag what the corpus already carries. With no <code>base-ref</code>, the check skips with a warning instead of widening to the whole tree; <code>whole-tree: true</code> asks for that scan on purpose, to measure a corpus.</p>
+<p>Terms are always learned from every tracked file the globs match. A one-word term from the built-in list of ordinary English words (<code>linear</code>, <code>sum</code>, <code>memory</code>, and similar) is learned only from a def-div title or bold term, not from a link to a <code>#def-</code> anchor, because such a link usually wraps the word inside a sentence. Use <code>allow-file</code> for other ordinary words. Findings are reported only on lines the pull request adds, so adopting the check does not reflag what the corpus already carries. With no <code>base-ref</code>, the check skips with a warning instead of widening to the whole tree; <code>whole-tree: true</code> asks for that scan on purpose, to measure a corpus.</p>
 </section>
 <section id="usage" class="level2">
 <h2 class="anchored" data-anchor-id="usage">Usage</h2>
