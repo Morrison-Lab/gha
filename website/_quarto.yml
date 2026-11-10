@@ -96,6 +96,7 @@ website:
           - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
           - reference/check-contour-3d.qmd
+          - reference/check-static-figures.qmd
           - reference/check-axis-titles.qmd
           - reference/check-tree-lists.qmd
           - reference/check-search-shortcut.qmd

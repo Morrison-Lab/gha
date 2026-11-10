@@ -52,6 +52,7 @@ updates:
       - "/check-caller-permissions"
       - "/check-exm-figures"
       - "/check-contour-3d"
+      - "/check-static-figures"
       - "/check-figure-placement"
       - "/check-axis-titles"
       - "/check-tree-lists"
