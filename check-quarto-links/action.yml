@@ -33,6 +33,31 @@ inputs:
       only). Read fail-closed: only an explicit `false` (trimmed,
       case-insensitive) opts out.
     default: 'true'
+  check-fragments:
+    description: >-
+      Also verify the #fragment of each link to a .qmd/.md/.Rmd page: the
+      page, with its {{< include >}} files expanded, must define that id
+      (`{#id}`, `id="id"`, or a heading whose Pandoc auto-id matches). Catches
+      an anchor that moved to another page. Opt-in ('true') until the callers
+      have been measured.
+    default: 'false'
+  partial-globs:
+    description: >-
+      Comma/newline-separated globs (`*`, `?`, `**`) of files the project's
+      `render:` list leaves unrendered although their names do not start with
+      `_` (a `chapters/*/` directory of include-only files). They are treated
+      like `_`-prefixed files: a link in one resolves from the page that
+      includes it, not from the file's own directory.
+    default: ''
+  external-targets:
+    description: >-
+      Comma/newline-separated globs (`*`, `?`, `**`) of link targets that a
+      Lua filter repoints at render time, such as links to pages of a
+      submodule's site that this project does not have. A link to a matching
+      target that does not exist here is not reported. The match is on the
+      target with leading `./` and `../` removed (`algebra.qmd` matches
+      `../algebra.qmd`).
+    default: ''
 runs:
   using: composite
   steps:
@@ -43,4 +68,7 @@ runs:
         QL_TARGET_EXTENSIONS: ${{ inputs.target-extensions }}
         QL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         QL_FAIL: ${{ inputs.fail }}
+        QL_CHECK_FRAGMENTS: ${{ inputs.check-fragments }}
+        QL_PARTIAL_GLOBS: ${{ inputs.partial-globs }}
+        QL_EXTERNAL_TARGETS: ${{ inputs.external-targets }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-quarto-links.py"

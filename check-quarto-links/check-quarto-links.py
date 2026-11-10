@@ -45,6 +45,15 @@ Configuration (environment variables, set by the composite action):
                         (default: '.qmd, .md, .Rmd, .ipynb').
   QL_PATHS_IGNORE       Comma/newline-separated globs (``*``, ``?``, ``**``)
                         of source files to skip.
+  QL_PARTIAL_GLOBS      Comma/newline-separated globs of files that the project's
+                        ``render:`` list leaves unrendered although their names
+                        are not ``_``-prefixed; they are treated as include-only.
+  QL_EXTERNAL_TARGETS   Comma/newline-separated globs of link targets that a
+                        filter repoints at render time (a link to a page this
+                        project does not have). A link whose target matches
+                        and does not exist locally is not reported; the match
+                        is on the target with leading ``./`` and ``../``
+                        removed, so ``algebra.qmd`` matches ``../algebra.qmd``.
   QL_FAIL               Only an explicit 'false' makes findings non-blocking.
 """
 
@@ -53,11 +62,14 @@ import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set
 from urllib.parse import unquote
 
 DEFAULT_GLOBS = "*.qmd *.md *.Rmd"
 DEFAULT_TARGET_EXTENSIONS = ".qmd, .md, .Rmd, .ipynb"
+# Targets whose source can be read for ids (not an .ipynb).
+PAGE_SOURCE_EXTENSIONS = {".qmd", ".md", ".rmd"}
+DEFAULT_CHECK_FRAGMENTS = "false"
 PROJECT_FILES = ("_quarto.yml", "_quarto.yaml")
 
 # ``](target)`` or ``](target "title")`` or ``](<target with spaces>)``; the
@@ -86,6 +98,8 @@ class Finding(NamedTuple):
     # The directory the target was resolved from and not found in: the
     # file's own, or that of the page including it.
     base: str = "."
+    # Set when the page exists but does not define this #fragment.
+    fragment: str = ""
 
 
 def _run_git(args: List[str], cwd: Optional[Path] = None) -> Optional[str]:
@@ -250,6 +264,78 @@ def normalize_target(raw: str, extensions: Set[str]) -> Optional[str]:
     return target
 
 
+def fragment_of(raw: str) -> Optional[str]:
+    """The ``#fragment`` of a link target, or None when it has none."""
+    target = raw.strip()
+    if target.startswith("<") and target.endswith(">"):
+        target = target[1:-1].strip()
+    target = target.split("?", 1)[0]
+    if "#" not in target:
+        return None
+    return unquote(target.split("#", 1)[1]) or None
+
+
+_ATTR_ID_RE = re.compile(r"""\b(?:id|name)\s*=\s*["']([^"'\s]+)["']""")
+# ``{#id ...}`` or ``{.class #id ...}``; the attribute block may continue on
+# later lines (a long ``fig-alt``), so the closing brace is not required.
+_BRACE_ID_RE = re.compile(r"\{(?:[^{}\n]*?[ \t])?#([A-Za-z][\w:.\-]*)")
+_CHUNK_LABEL_RE = re.compile(r"""^[ ]*#\|[ \t]*label:[ \t]*["']?([^"'\s]+)""", re.M)
+# A chunk that writes raw output can emit headings and ids the source never shows.
+_ASIS_CHUNK_RE = re.compile(r"""^[ ]*#\|[ \t]*results:[ \t]*["']?asis\b""", re.M)
+_HEADING_RE = re.compile(r"^[ ]{0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$", re.M)
+
+
+def heading_auto_id(title: str) -> str:
+    """Pandoc's auto identifier for a heading (an approximation: the word class is Unicode-aware)."""
+    title = re.sub(r"\{[^{}]*\}\s*$", "", title)
+    title = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", title)
+    title = re.sub(r"[*`$]", "", title).lower()
+    title = re.sub(r"[^\w\s.\-]", "", title)
+    title = re.sub(r"\s+", "-", title.strip())
+    return re.sub(r"^[^a-z]+", "", title)
+
+
+def page_ids(
+    path: str, texts: Dict[str, str], root: Path, tracked: Set[str]
+) -> Optional[Set[str]]:
+    """Every id a page defines, with its ``{{< include >}}`` files expanded.
+
+    ``None`` when a chunk on the page writes ``results: asis``: the ids it
+    emits exist only at render time, so the page cannot be checked from source.
+    """
+    ids: Set[str] = set()
+    heading_counts: Dict[str, int] = {}
+    doc_dir = PurePosixPath(path).parent
+    stack, seen = [path], {path}
+    while stack:
+        cur = stack.pop()
+        text = texts.get(cur)
+        if text is None:
+            try:
+                text = (root / cur).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+        if _ASIS_CHUNK_RE.search(text):
+            return None
+        prose = blank_non_prose(text)
+        ids.update(m.group(1) for m in _ATTR_ID_RE.finditer(prose))
+        ids.update(_BRACE_ID_RE.findall(prose))
+        # Headings and chunk labels are read from the raw text: a code span
+        # in a heading is part of its auto-id, and a label sits in a code block.
+        for m in _HEADING_RE.finditer(text):
+            base = heading_auto_id(m.group(1)) or "section"
+            n = heading_counts.get(base, 0)
+            heading_counts[base] = n + 1
+            # Pandoc numbers repeated auto-ids: examples, examples-1, ...
+            ids.add(base if n == 0 else f"{base}-{n}")
+        ids.update(m.group(1) for m in _CHUNK_LABEL_RE.finditer(text))
+        for inc in include_targets(cur, text, doc_dir, root, tracked):
+            if inc not in seen:
+                seen.add(inc)
+                stack.append(inc)
+    return ids
+
+
 def project_root(rel_dir: PurePosixPath, root: Path, tracked: Set[str]) -> PurePosixPath:
     """Nearest ancestor of ``rel_dir`` (inclusive) holding ``_quarto.yml``."""
     for cand in [rel_dir, *rel_dir.parents]:
@@ -285,17 +371,33 @@ def include_targets(path: str, text: str, doc_dir: PurePosixPath,
     return out
 
 
-def is_partial(path: str) -> bool:
+def is_partial(path: str, partials: Sequence["re.Pattern[str]"] = ()) -> bool:
     """True for a file Quarto never renders on its own.
 
     Quarto skips files and directories whose names start with ``_`` or ``.``
     when it renders a project; such a file only reaches a page through an
-    include.
+    include. A project's ``render:`` list can also leave a directory of
+    unprefixed files unrendered, which ``partials`` (compiled
+    ``partial-globs``) declares.
     """
+    if any(r.search(path) for r in partials):
+        return True
     return any(part.startswith(("_", ".")) for part in PurePosixPath(path).parts)
 
 
-def render_contexts(texts: Dict[str, str], root: Path) -> Dict[str, Set[PurePosixPath]]:
+def is_external(target: str, externals: Sequence["re.Pattern[str]"] = ()) -> bool:
+    """True when ``target`` matches ``external-targets``: a page that a render
+    filter repoints elsewhere, so its absence here is not a dead link.
+    """
+    bare = re.sub(r"^(?:\.{1,2}/)+", "", target)
+    return any(r.match(bare) for r in externals)
+
+
+def render_contexts(
+    texts: Dict[str, str],
+    root: Path,
+    partials: Sequence["re.Pattern[str]"] = (),
+) -> Dict[str, Set[PurePosixPath]]:
     """Map each file to the directories its links are resolved from.
 
     A page Quarto renders resolves its own links, and those of everything it
@@ -307,7 +409,7 @@ def render_contexts(texts: Dict[str, str], root: Path) -> Dict[str, Set[PurePosi
     tracked = set(texts)
     contexts: Dict[str, Set[PurePosixPath]] = {}
     for doc in texts:
-        if is_partial(doc):
+        if is_partial(doc, partials):
             continue
         doc_dir = PurePosixPath(doc).parent
         stack, seen = [doc], {doc}
@@ -329,6 +431,9 @@ def find_dead_links(
     extensions: Set[str],
     all_tracked: Optional[Set[str]] = None,
     skipped: Optional[List[str]] = None,
+    check_fragments: bool = False,
+    partials: Sequence["re.Pattern[str]"] = (),
+    externals: Sequence["re.Pattern[str]"] = (),
 ) -> List[Finding]:
     """Scan ``files`` (repo-relative) under ``root`` for dead page links.
 
@@ -347,8 +452,9 @@ def find_dead_links(
         except OSError:
             continue
     tracked = set(all_tracked or ()) | set(texts)
-    contexts = render_contexts(texts, root)
+    contexts = render_contexts(texts, root, partials)
     findings = []
+    ids_cache: Dict[str, Optional[Set[str]]] = {}
     for rel, text in texts.items():
         dirs = sorted(contexts.get(rel, ()))
         if not dirs:
@@ -367,8 +473,18 @@ def find_dead_links(
                 else:
                     cand = d / target
                 if not (root / cand).exists():
+                    if is_external(target, externals):
+                        break
                     findings.append(Finding(rel, line, raw.strip(), d.as_posix()))
                     break
+                frag = fragment_of(raw) if check_fragments else None
+                key = os.path.normpath(cand.as_posix())
+                if frag and PurePosixPath(key).suffix.lower() in PAGE_SOURCE_EXTENSIONS:
+                    if key not in ids_cache:
+                        ids_cache[key] = page_ids(key, texts, root, tracked)
+                    if ids_cache[key] is not None and frag not in ids_cache[key]:
+                        findings.append(Finding(rel, line, raw.strip(), d.as_posix(), frag))
+                        break
     return findings
 
 
@@ -393,6 +509,12 @@ def main() -> int:
     ignores = compile_ignores(
         t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PATHS_IGNORE", "")) if t.strip()
     )
+    partials = compile_ignores(
+        t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PARTIAL_GLOBS", "")) if t.strip()
+    )
+    externals = compile_ignores(
+        t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_EXTERNAL_TARGETS", "")) if t.strip()
+    )
     fail = os.environ.get("QL_FAIL", "true").strip().lower() != "false"
 
     files = tracked_files(globs, ignores)
@@ -402,7 +524,8 @@ def main() -> int:
     all_out = _run_git(["ls-files", "-z"]) or ""
     all_tracked = {f for f in all_out.split("\0") if f}
     skipped: List[str] = []
-    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped)
+    check_fragments = os.environ.get("QL_CHECK_FRAGMENTS", DEFAULT_CHECK_FRAGMENTS).strip().lower() == "true"
+    findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments, partials, externals)
 
     print(
         f"Examined {len(files) - len(skipped)} file(s) matching {' '.join(globs)} "
@@ -415,10 +538,16 @@ def main() -> int:
         )
     level = "error" if fail else "warning"
     for f in findings:
+        if f.fragment:
+            title = "Link to a missing anchor"
+            detail = (f"points at #{_escape_annotation(f.fragment)}, which that page "
+                      "does not define (did the anchor move to another page?)")
+        else:
+            title = "Link to a missing page"
+            detail = "does not exist"
         print(
-            f"::{level} file={f.path},line={f.line},title=Link to a missing page::"
-            f"{_escape_annotation(f.target)} does not exist "
-            f"(resolved from {f.base}/)"
+            f"::{level} file={f.path},line={f.line},title={title}::"
+            f"{_escape_annotation(f.target)} {detail} (resolved from {f.base}/)"
         )
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

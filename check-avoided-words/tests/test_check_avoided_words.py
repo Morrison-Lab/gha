@@ -68,11 +68,41 @@ def found(text: str):
     ("Studies have shown that it helps.", "vague", "studies have shown"),
     ("It is well known that the mean is sensitive.", "vague", "it is well known"),
     ("Experts agree on the choice.", "vague", "experts agree"),
+    ("The errors have a normal distribution.", "gaussian", "normal distribution"),
+    ("Draw from a standard normal sample.", "gaussian", "standard normal"),
+    ("A multivariate normal prior.", "gaussian", "multivariate normal"),
+    ("The data are normally distributed.", "gaussian", "normally distributed"),
+    ("Let X be a normal random variable.", "gaussian", "normal random variable"),
+    ("Draw a normal random vector.", "gaussian", "normal random vector"),
+    ("A bivariate normal model.", "gaussian", "bivariate normal"),
     ("Name two things that this argument omits.", "thing", "things"),
     ("The main thing to check is the residuals.", "thing", "thing"),
+    ("At the score $\\eta$, the slope is 0.25.", "linpred", "score"),
+    ("The sigmoid turns any score into a probability.", "linpred", "score"),
+    ("A log-odds of 0 is a score of zero.", "linpred", "score"),
+    ("The scores are the linear predictor of each class.", "linpred",
+     "scores"),
 ])
 def test_flagged_forms(text, rule, phrase):
     assert found(text) == {1: (rule, phrase)}
+
+
+def test_gaussian_passes_other_senses_of_normal():
+    assert found("Solve the normal equations.") == {}
+    assert found("Take a normal vector to the plane.") == {}
+    assert found("The kernel is a normal subgroup.") == {}
+    assert found("The standard normal equations are solved.") == {}
+    assert found("Use the Gaussian distribution.") == {}
+    assert found("A <!-- check-avoided-words: allow --> normal distribution.") == {}
+
+
+def test_gaussian_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nThe errors have a normal distribution.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CAW_FAIL="true")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
 
 
 def test_thing_passes_compounds_code_and_allow_comment():
@@ -279,3 +309,23 @@ def test_action_passes_every_input_to_the_script_under_the_caw_prefix():
     action = (_DIR / "action.yml").read_text()
     for var in ("BASE_REF", "WHOLE_TREE", "GLOBS", "PATHS_IGNORE", "FAIL"):
         assert f"CAW_{var}:" in action
+
+
+@pytest.mark.parametrize("text", [
+    "The score function of the logistic regression is a gradient.",
+    "The score equations set the sigmoid residuals to zero.",
+    "A score test of the log-odds ratio.",
+    "The Brier score of the logit model is 0.2.",
+    "The z-score of a logit is large.",
+    "The F1 score at the sigmoid threshold.",
+    "The [score](https://x.org/intro-MLEs.html#def-score) of the logit model.",
+    "The score of the logit model is #def-score here.",
+    "The log-odds are the linear predictor.",
+    "The score of a held-out set measures the model.",
+])
+def test_linpred_score_passes_the_statistical_score(text):
+    assert found(text) == {}
+
+
+def test_linpred_score_takes_the_allow_comment():
+    assert found("The sigmoid of a score <!-- check-avoided-words: allow -->") == {}

@@ -75,8 +75,6 @@ runs:
     - name: Set up R
       if: inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
-      with:
-        use-public-rspm: true
 
     - name: Install system dependencies
       if: inputs.apt-packages != ''
@@ -91,8 +89,10 @@ runs:
           exit 0
         fi
         if ! sudo -n true 2>/dev/null; then
-          echo "::error::apt needs passwordless sudo and these packages are missing: $missing. Preinstall them on this runner."
-          exit 1
+          # Another route may still provide the libraries; a build that lacks a
+          # header fails at the package install with the compiler's own error.
+          echo "::warning::No passwordless sudo, and dpkg does not list these packages: $missing. Continuing without apt."
+          exit 0
         fi
         sudo apt-get update
         sudo apt-get install -y $APT_PACKAGES
@@ -148,7 +148,7 @@ runs:
 
     - name: Set up Quarto (renv)
       if: inputs.use-renv == 'true' && inputs.install-quarto == 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
 
     - name: Ensure lintr and gh installed (renv or no DESCRIPTION)
       if: inputs.use-renv == 'true' || steps.desc.outputs.present != 'true'

@@ -17,6 +17,15 @@ A figure is any of these inside the example div:
 - a cross-reference to a figure (`@fig-...`);
 - an include of a figure subfile (`{{< include ..._fig.qmd >}}`).
 
+The same run also flags a crossref div
+(`#def-`, `#thm-`, `#exm-`, and the other theorem-like prefixes)
+whose level 4 or deeper heading has a block ahead of it,
+such as an HTML comment.
+Quarto reads a heading as the div's title only when it is the first block,
+so the title otherwise renders as a section heading
+([gha#1567](https://github.com/Morrison-Lab/gha/issues/1567)).
+Move the comment after the title.
+
 A justified exception carries a reason:
 an HTML comment `<!-- no-figure: reason -->` inside the div exempts it.
 A comment with no reason does not.

@@ -48,12 +48,12 @@ dry() {
 
 host=$(hostname -s)
 out=$(dry)
-check "one instance" "$out" "runner name=private-$host dir=$work/home/actions-runner-private-$host work=/var/tmp/gha-work/private-$host"
+check "one instance" "$out" "runner name=private-$host dir=$work/home/actions-runner-private-$host work=/tmp/gha-work/private-$host"
 
 out=$(dry RUNNER_INSTANCES=3)
 check "three instances: count" "$(wc -l <<< "$out" | tr -d ' ')" "3"
-check "three instances: second" "$(sed -n 2p <<< "$out")" "runner name=private-$host-2 dir=$work/home/actions-runner-private-$host-2 work=/var/tmp/gha-work/private-$host-2"
-check "three instances: third" "$(sed -n 3p <<< "$out")" "runner name=private-$host-3 dir=$work/home/actions-runner-private-$host-3 work=/var/tmp/gha-work/private-$host-3"
+check "three instances: second" "$(sed -n 2p <<< "$out")" "runner name=private-$host-2 dir=$work/home/actions-runner-private-$host-2 work=/tmp/gha-work/private-$host-2"
+check "three instances: third" "$(sed -n 3p <<< "$out")" "runner name=private-$host-3 dir=$work/home/actions-runner-private-$host-3 work=/tmp/gha-work/private-$host-3"
 
 out=$(dry RUNNER_INSTANCES=2 RUNNER_WORK_DIRECTORY=/data/work)
 check "explicit work folder: instance 1" "$(sed -n 1p <<< "$out")" "runner name=private-$host dir=$work/home/actions-runner-private-$host work=/data/work"
@@ -208,6 +208,19 @@ new_work
 touch -d '156 hours ago' "$w/a"; touch -d '180 hours ago' "$w/b"
 run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
 check "prune: the age boundary is 7 days" "$(left)" "_tool a c cur d "
+
+# The toolcache is cleared once, when the recorded work folder differs (gha#1569).
+new_work
+mkdir -p "$w/_tool/Python/3.13.5"
+run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
+check "prune: with no marker the toolcache is kept and the path recorded" "$(ls "$w/_tool/Python") $(cat "$w/_tool/.work-folder")" "3.13.5 $w"
+run_prune STUB_BASE_KB=$((100 * gb)) > /dev/null
+check "prune: a marker naming this folder keeps the toolcache" "$(ls "$w/_tool/Python")" "3.13.5"
+mkdir -p "$w/_tool/node/20.0.0"
+echo /var/tmp/gha-work > "$w/_tool/.work-folder"
+out=$(run_prune STUB_BASE_KB=$((100 * gb)))
+check "prune: a marker naming another folder clears only the Python toolcache" "$(ls -A "$w/_tool" | tr '\n' ' ')$(grep -c 'removed the Python toolcache .*(built for /var/tmp/gha-work)' <<< "$out")" ".work-folder node 1"
+check "prune: the cleared toolcache records the new folder" "$(cat "$w/_tool/.work-folder")" "$w"
 
 # A directory that is not a checkout (r-lib/setup-r's R library, R/library)
 # is never removed, however old it is or however low space is.

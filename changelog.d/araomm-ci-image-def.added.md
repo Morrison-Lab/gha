@@ -1,0 +1,1 @@
+- `condor-batch/image/araomm-ci.def` builds an image with the R packages araomm's chapters load, including `car`, for cluster renders (gha#1714).

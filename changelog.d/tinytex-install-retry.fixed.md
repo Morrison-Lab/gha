@@ -1,0 +1,1 @@
+- The `install-quarto` composite now retries `quarto install tinytex` once after 60 seconds, with debug logging, when the first attempt fails, so a transient release-host failure no longer fails the job and a repeat failure shows its cause (gha#1674).

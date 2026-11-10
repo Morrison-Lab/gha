@@ -29,6 +29,21 @@
 set +e
 set -uo pipefail
 
+# Run from a private copy (gha#1589). The runner executes this hook from the
+# shared checkout, which sits on NFS and is fast-forwarded while jobs run; bash
+# reads a script as it runs, so a replaced file fails mid-read with "Stale file
+# handle". Copy this script and the ones it calls to a temp folder and run the
+# copy. The if block is one compound command, so bash reads all of it before
+# the exec; if copying fails, the hook runs in place as before.
+if [ -z "${GHA_HOOK_STAGED:-}" ]; then
+  src=$(dirname "${BASH_SOURCE[0]}")
+  stage=$(mktemp -d) && cp "$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,sweep-runner-git-locks,seed-runner-python-toolcache,wait-runner-capacity}.sh "$stage" &&
+    GHA_HOOK_STAGED=$stage exec bash "$stage/$(basename "${BASH_SOURCE[0]}")" "$@"
+  echo "::warning::$(basename "${BASH_SOURCE[0]}"): could not stage a private copy; running in place."
+else
+  trap 'rm -rf "$GHA_HOOK_STAGED"' EXIT
+fi
+
 warn() { echo "::warning::prune-runner-workdir: $*"; }
 
 max_age_days="${PRUNE_MAX_AGE_DAYS:-7}"
@@ -62,6 +77,36 @@ fi
 
 # Stale temp folders (Rtmp*, quarto-session*) that killed jobs left behind (gha#1495).
 bash "$(dirname "${BASH_SOURCE[0]}")/sweep-runner-tmp.sh"
+
+# Stale index.lock files that killed jobs left in a checkout or its submodules (gha#1661).
+bash "$(dirname "${BASH_SOURCE[0]}")/sweep-runner-git-locks.sh" "$work"
+
+# Clear the Python toolcache when the work folder has moved (gha#1569). The
+# scripts in <work>/_tool/Python (pip, for one) carry absolute shebangs, so a
+# toolcache copied from the old folder fails with "required file not found"
+# while setup-python reuses it without reinstalling. Other cached tools hold no
+# such scripts and are kept. The folder's path is recorded in a marker; a
+# marker naming another path means the cache was built elsewhere. With no
+# marker the hook only records the path, so it never deletes a cache it cannot
+# date. The marker is updated only after the clearing succeeds, so a failed
+# removal is retried by the next job.
+marker="$work/_tool/.work-folder"
+if [ -d "$work/_tool" ]; then
+  recorded=$(cat "$marker" 2> /dev/null)
+  record=1
+  if [ -n "$recorded" ] && [ "$recorded" != "$work" ]; then
+    # The hook runs after the job, and a runner runs one job at a time.
+    if rm -rf -- "$work/_tool/Python" "$work/_tool/PyPy"; then
+      echo "prune-runner-workdir: removed the Python toolcache in $work/_tool (built for $recorded)"
+    else
+      warn "could not remove the Python toolcache in $work/_tool"
+      record=0
+    fi
+  fi
+  if [ "$record" = 1 ]; then
+    echo "$work" > "$marker" 2> /dev/null || warn "could not record the work folder in $marker"
+  fi
+fi
 
 # Prints the free kilobytes on the work folder's filesystem, or nothing.
 free_kb() {
@@ -125,6 +170,10 @@ if [ -n "$free" ] && [ "$free" -lt "$min_free_kb" ] && [ "$pruned_all" = 1 ]; th
   mount=$(df -Pk "$work" 2> /dev/null | awk 'NR == 2 { print $1 " mounted on " $6 }')
   work_kb=$(du -skx "$work" 2> /dev/null | awk '{ print $1 }')
   cur_kb=$(du -skx "$current" 2> /dev/null | awk '{ print $1 }')
-  warn "measured $work on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
+  # df follows a symlinked work folder, so name where the link points (gha#1585).
+  real=$(realpath "$work" 2> /dev/null)
+  shown="$work"
+  if [ -n "$real" ] && [ "$real" != "$work" ]; then shown="$work (a link to $real)"; fi
+  echo "::notice::prune-runner-workdir: measured $shown on ${mount:-an unknown mount}: $((free / 1048576)) GB free, under ${min_free_gb} GB, after removing every other checkout; the next jobs will re-clone them. Work folder: $((${work_kb:-0} / 1048576)) GB; this job's checkout: $((${cur_kb:-0} / 1048576)) GB."
 fi
 exit 0

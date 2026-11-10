@@ -29,12 +29,15 @@ def run_text(text, extra_files=None, added=None):
     files = dict(extra_files or {})
     files["page.qmd"] = text
     terms = {}
+    def_words = {}
     for name, body in files.items():
         masked, _ = ctl.preprocess(body.splitlines())
         for k, ids in ctl.harvest_terms(masked, set()).items():
             terms.setdefault(k, set()).update(ids)
+        for did, ws in ctl.harvest_def_words(masked).items():
+            def_words.setdefault(did, set()).update(ws)
     rx = ctl.term_regex(list(terms)) if terms else None
-    return ctl.scan_file(Path("page.qmd"), text.splitlines(), terms, rx, added)
+    return ctl.scan_file(Path("page.qmd"), text.splitlines(), terms, rx, added, def_words)
 
 
 def rules(findings):
@@ -172,12 +175,45 @@ def test_a_word_inside_another_word_or_hyphenated_name_is_not_a_use():
         "```r\nrisk <- 1\n```\n",
         "![risk](fig.png)\n",
         "Link [elsewhere](https://x/risk.html).\n",
-        "The risk. <!-- check-term-links: allow -->\n",
+        "The risk. <!-- check-term-links: allow: test reason -->\n",
     ],
 )
 def test_non_prose_is_skipped(body):
     page = "::: {#exm-a}\n\n" + body + "\n:::\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_bare_allow_is_flagged_but_still_suppresses():
+    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow -->\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("bare-allow", "")]
+
+
+def test_allow_with_an_empty_reason_is_bare():
+    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow:  -->\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("bare-allow", "")]
+
+
+def test_allow_with_a_reason_is_clean():
+    page = (
+        "::: {#exm-a}\n\nThe risk is large. "
+        "<!-- check-term-links: allow: risk here is ordinary English -->\n\n:::\n"
+    )
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_allow_pragma_that_suppresses_nothing_is_stale():
+    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow: test reason -->\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("stale-allow", "")]
+
+
+def test_allow_pragma_that_suppresses_a_finding_is_not_stale():
+    page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow: test reason -->\n\n:::\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_stale_allow_is_scoped_to_added_lines():
+    page = "::: {#exm-a}\n\nA plain sentence. <!-- check-term-links: allow: test reason -->\n\n:::\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}, added={1}) == []
 
 
 def test_ignore_file_directive():
@@ -417,3 +453,177 @@ def test_ordinary_words_defined_in_a_prerequisite_are_not_flagged():
     )
     page = "::: {#exm-a}\n\nThe sum and the number of values are not equal.\n\n:::\n"
     assert run_text(page, {"d.qmd": defs}) == []
+
+
+@pytest.mark.parametrize("div_id", ["sol-b", "exr-b", "exm-b", "thm-b", "prf-b"])
+def test_worked_div_in_the_defining_file_is_checked(div_id):
+    """gha#1316, gha#1539: a solution in the same file as the definition was never checked."""
+    page = (
+        RISK_DEF
+        + f"\n::: {{#{div_id}}}\n\nThe risk is large here.\n\n:::\n"
+    )
+    assert rules(run_text(page)) == [("unlinked-first-use", "risk")]
+
+
+def test_proof_class_div_in_the_defining_file_is_checked():
+    page = RISK_DEF + "\n::: {.proof}\n\nThe risk is large here.\n\n:::\n"
+    assert rules(run_text(page)) == [("unlinked-first-use", "risk")]
+
+
+def test_source_callout_beside_the_definition_stays_exempt():
+    page = RISK_DEF + "\n::: {#rem-source-risk}\n\nThe risk is defined as in the text.\n\n:::\n"
+    assert run_text(page) == []
+
+
+ENTROPY_DEF = """\
+::: {#def-entropy}
+
+#### Entropy
+
+The **entropy** of a variable is its expected surprisal.
+
+:::
+"""
+
+
+@pytest.mark.parametrize(
+    "title,plural",
+    [
+        ("Entropy", "entropies"),
+        ("Matrix", "matrices"),
+        ("Hypothesis", "hypotheses"),
+        ("Maximum", "maxima"),
+        ("Criterion", "criteria"),
+        ("Half", "halves"),
+        ("Loss function", "loss functions"),
+    ],
+)
+def test_irregular_plural_of_a_defined_term_is_flagged(title, plural):
+    """gha#1630: only a trailing s or es used to count as a plural."""
+    definition = f"::: {{#def-t}}\n\n#### {title}\n\nA **{title.lower()}** is x.\n\n:::\n"
+    page = f"::: {{#sol-a}}\n\nAll finite {plural} are fine.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": definition})) == [("unlinked-first-use", title.lower())]
+
+
+def test_a_linked_singular_covers_a_plural_in_the_same_div():
+    page = "::: {#sol-a}\n\nThe [entropy](d.qmd#def-entropy) of two entropies.\n\n:::\n"
+    assert run_text(page, {"d.qmd": ENTROPY_DEF}) == []
+
+
+def test_parenthetical_alias_and_dashed_term_are_learned():
+    """gha#1631: the title's parenthetical is an alias, and an en dash is part of a term."""
+    definition = (
+        "::: {#def-kl}\n\n#### Kullback\u2013Leibler divergence (KL divergence)\n\nx\n\n:::\n"
+    )
+    masked, _ = ctl.preprocess(definition.splitlines())
+    assert set(ctl.harvest_terms(masked, set())) == {
+        "kullback leibler divergence",
+        "kl divergence",
+    }
+    page = "::: {#sol-a}\n\nThe KL divergence is large.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": definition})) == [("unlinked-first-use", "kl divergence")]
+
+
+POSITIVE_DEF = """::: {#def-positive-classification}
+
+a **positive classification**
+(also called **positive**) is a prediction of the target class.
+
+:::
+"""
+
+
+def test_one_word_alias_of_a_multiword_term_is_not_learned():
+    """gha#1635: "positive" for "positive classification" is an ordinary adjective elsewhere."""
+    masked, _ = ctl.preprocess(POSITIVE_DEF.splitlines())
+    assert set(ctl.harvest_terms(masked, set())) == {"positive classification"}
+    page = "::: {#exm-a}\n\nEvery value has positive probability.\n\n:::\n"
+    assert run_text(page, {"d.qmd": POSITIVE_DEF}) == []
+    page = "::: {#exm-a}\n\nThis is a positive classification.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": POSITIVE_DEF})) == [
+        ("unlinked-first-use", "positive classification")
+    ]
+
+
+def test_link_text_still_teaches_a_one_word_alias():
+    text = "See the [affirmative](https://x.github.io/sds/c.html#def-positive-classification).\n"
+    masked, _ = ctl.preprocess((POSITIVE_DEF + text).splitlines())
+    assert "affirmative" in ctl.harvest_terms(masked, set())
+
+
+@pytest.mark.parametrize("title", ["sample mean, mean", "mean, sample mean", "sample mean or mean"])
+def test_listed_alias_is_learned_in_either_order(title):
+    """gha#1636: a plainly listed alias is a term whichever side of the multi-word term it sits."""
+    definition = "::: {#def-m}\n\nThe **" + title + "** is x.\n\n:::\n"
+    masked, _ = ctl.preprocess(definition.splitlines())
+    assert {"mean", "sample mean"} <= set(ctl.harvest_terms(masked, set()))
+
+
+MARGINAL_DEF = """
+::: {#def-marginal-density}
+
+#### Marginal density
+
+The **marginal density** of a variable is its density with the others integrated out.
+
+:::
+
+::: {#def-fitted-value}
+
+#### Fitted value
+
+A **fitted value** is a model's prediction.
+
+:::
+"""
+
+
+PDF_DEF = """
+::: {#def-pdf}
+
+#### Probability density function
+
+A **probability density function** integrates to a probability.
+
+:::
+"""
+
+
+def test_link_on_part_of_target_title_is_partial_link():
+    page = "A [probability](d.qmd#def-pdf) density is used.\n"
+    assert rules(run_text(page, {"d.qmd": PDF_DEF})) == [("partial-link", "probability")]
+
+
+def test_link_before_a_defined_longer_phrase_is_reported_once():
+    page = "A [marginal](d.qmd#def-marginal-density) density is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == [("partial-link", "marginal density")]
+
+
+def test_link_on_whole_target_title_is_clean():
+    page = "A [marginal density](d.qmd#def-marginal-density) is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
+
+
+def test_following_word_outside_target_title_is_clean():
+    page = "A [fitted](d.qmd#def-fitted-value) probability is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
+
+
+def test_partial_link_on_untouched_line_is_not_reported():
+    page = "A [marginal](d.qmd#def-marginal-density) density estimate is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF}, added={5})) == []
+
+
+def test_common_word_from_link_only_is_not_a_term():
+    masked, _ = ctl.preprocess("See a [linear](https://x.io/m.html#def-linear-map) map.\n".splitlines())
+    assert "linear" not in ctl.harvest_terms(masked, set())
+
+
+def test_common_word_from_def_title_is_still_a_term():
+    masked, _ = ctl.preprocess("::: {#def-linear}\n\n#### Linear\n\nA **linear** function.\n\n:::\n".splitlines())
+    assert "linear" in ctl.harvest_terms(masked, set())
+
+
+def test_uncommon_one_word_link_term_is_still_learned():
+    masked, _ = ctl.preprocess("See the [estimator](https://x.io/m.html#def-estimator).\n".splitlines())
+    assert "estimator" in ctl.harvest_terms(masked, set())

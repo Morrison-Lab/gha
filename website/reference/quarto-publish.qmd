@@ -11,7 +11,7 @@ skip the deploy.
 
 | Input                      | Type    | Default                                           | Description                                                                                                                                       |
 | -------------------------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `runs-on`                  | string  | empty (`CI_RUNNER` variable, else `ubuntu-latest`)            | Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo. |
+| `runs-on`                  | string  | empty (`CI_RUNNER_HEAVY` variable for the build job, else `CI_RUNNER`, else `ubuntu-latest`) | Runner label for every job. Use a self-hosted label only for a private repository, never a public one. A self-hosted runner without root cannot run steps that call apt or sudo. |
 | `path`                     | string  | `'.'`                                             | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`).                                                       |
 | `setup-r`                  | boolean | `false`                                           | Install R and project R dependencies before rendering (for R/knitr Quarto projects).                                                              |
 | `r-packages`               | string  | `(long; see workflow file)`                       | r-lib/actions package specs installed when `setup-r` is true and `use-renv` is false. Defaults to `any::knitr` and `any::rmarkdown`.              |
@@ -28,11 +28,16 @@ skip the deploy.
 | `formats`                  | string  | `''`                                              | Whitespace- or newline-separated Quarto output formats to render individually in order to prevent V8 out-of-memory errors on large sites.         |
 | `per-file-formats`         | string  | `''`                                              | Whitespace- or newline-separated formats (e.g. `pdf`) to render one file at a time, each in its own process, after the normal render. Prevents Deno heap exhaustion on a large PDF pass; list the other formats in `formats`. |
 | `freeze-cache`             | boolean | `false`                                           | Restore and save Quarto `_freeze` directory via `actions/cache` keyed on `renv.lock` and commit SHA. After the restore, frozen results of pages whose file, included subfiles or named data files changed since the cached commit are removed. The saved cache also seeds PR previews. |
-| `freeze-cache-save-on-failure` | boolean | `true`                                        | Also save `_freeze` when the render fails, so a re-run resumes from the pages already executed. Only used when `freeze-cache` is true. A run killed outright, by a timeout or a lost runner, may not get to save. |
+| `incremental-cache`        | boolean | `false`                                           | After a successful render, also save `_freeze`, the output directory, and `.quarto` under the `quarto-incremental-` key that an incremental preview restores, so a pull request's first preview renders only what it changed. Use the same `render-profile` as the preview. |
+| `freeze-cache-save-on-failure` | boolean | `true`                                      | Also save `_freeze` when the render fails, so a re-run resumes from the pages already executed. Only used when `freeze-cache` is true. A run killed outright, by a timeout or a lost runner, may not get to save. |
 | `deno-v8-options`          | string  | `'--max-old-space-size=12288,--max-heap-size=12288'` | Options passed to Deno V8 via `QUARTO_DENO_V8_OPTIONS` to raise the heap limit for large site renders.                                           |
 | `fail-on-render-warning`   | boolean | `false`                                           | Fail the build if Quarto emits any render warnings (`WARN` in the render log).                                                                   |
 | `forbid-log-patterns`      | string  | `''`                                              | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files).                              |
 | `timezone`                 | string  | `''`                                              | IANA time zone (e.g. `America/Los_Angeles`) exported as `TZ` for the render and later steps, so `date: last-modified` stamps are not in UTC. Empty leaves the runner's time zone unchanged. A value containing a newline or `=` is rejected. |
+| `cluster-render` | boolean | `false` | Run the render on a WWU CS cluster node through `condor-batch` instead of on the runner. The output directory, `_freeze` and `.quarto` come back, so later steps are unchanged. Needs a runner with the cluster ssh key; the setup steps still run on the runner, and `lds-ci.sif` has no renv and no Chromium. Falls back to the runner when the cluster cannot run the job. |
+| `cluster-head` | string | `cse-head.cluster.cs.wwu.edu` | Cluster head, or a space- or comma-separated list, for `cluster-render`. |
+| `cluster-image` | string | `''` | Apptainer image on the cluster home that `cluster-render` runs in. Required with `cluster-render`. |
+| `cluster-image-file` | string | `''` | The same image on the runner, for heads without the cluster home. |
 | `timeout-minutes`          | number  | `45`                                              | Timeout, in minutes, for the render (`build` job). The default is the hang ceiling, not a budget; raise it for a site whose full render (every page in every format) takes longer. A caller cannot set `timeout-minutes` on a job that uses `uses:`. |
 | `checkout-submodules`      | boolean | `false`                                           | Initialize the caller's git submodules before rendering.                                                                                          |
 | `pre-render-artifact`      | string  | `''`                                              | Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip.     |
@@ -60,7 +65,7 @@ deadlock identically.
 Any other group name is fine, and is how you serialize the caller's own
 runs.
 `quarto-publish.yml` serializes gh-pages deploys internally on its `deploy`
-job (`group: gh-pages`).
+job (`group: gh-pages-main`; do not use that name either).
 A caller-level block with the same group name deadlocks GitHub Actions
 against the nested job: `deploy` fails with no runner, no steps, and no log,
 and the site silently stops publishing
@@ -119,6 +124,7 @@ jobs:
     #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
     #   per-file-formats: pdf   # render these formats one file at a time (list the others in formats)
     #   freeze-cache: true      # cache Quarto _freeze across runs
+    #   incremental-cache: true  # also save the bundle an incremental preview restores
     #   freeze-cache-save-on-failure: false  # default true; set false to drop the cache when the render fails
     #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
     #   fail-on-render-warning: true # fail if Quarto emits WARN in render log

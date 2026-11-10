@@ -29,7 +29,7 @@ RSYNC_STUB = """\
 echo "rsync $*" >> "$STUB_LOG"
 [ -z "${STUB_RSYNC_RC:-}" ] || exit "$STUB_RSYNC_RC"
 dest="${@: -1}"; dest="${dest#*:}"
-src="${@: -2:1}"
+src="${@: -2:1}"; src="${src#*:}"
 if [ -f "$src" ]; then mkdir -p "$(dirname "$dest")"; cp "$src" "$dest"
 else mkdir -p "$dest"; fi
 """
@@ -48,6 +48,7 @@ echo "condor_wait $*" >> "$STUB_LOG"
 if [ -n "${STUB_RV:-}" ]; then
   echo "004 (1.0) Job terminated. (1) Normal termination (return value $STUB_RV)" >> condor.log
 fi
+[ -z "${STUB_MADE:-}" ] || tar -czf output.tar.gz -C "$STUB_MADE" _site
 exit "${STUB_WAIT_RC:-0}"
 """
 
@@ -103,6 +104,16 @@ def test_five_steps_make_exactly_one_submission(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert _count(calls, "condor_submit") == 1
     assert _count(calls, "ssh ") == 1
+
+
+def test_ssh_accepts_a_new_host_key_but_never_turns_checking_off(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b", "c", "d", "e"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    ssh_calls = [c for c in calls if c.startswith("ssh ")]
+    assert ssh_calls
+    for call in ssh_calls:
+        assert "StrictHostKeyChecking=accept-new" in call
+        assert "StrictHostKeyChecking=no" not in call
 
 
 def test_single_step_is_refused_without_contacting_the_cluster(tmp_path):
@@ -204,6 +215,38 @@ def test_ssh_key_with_whitespace_is_refused(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], CONDOR_SSH_KEY="/tmp/my key")
     assert proc.returncode == 64
     assert calls == []
+
+
+def test_output_paths_that_break_the_submit_file_or_leave_the_checkout_are_refused(
+    tmp_path,
+):
+    bad = [
+        "my site",
+        "_site,my site",
+        'a"b',
+        "a'b",
+        "a\\b",
+        "/etc",
+        "..",
+        "../up",
+        "a/..",
+        "a/../b",
+        "_site,/abs",
+    ]
+    for i, output in enumerate(bad):
+        run_dir = tmp_path / str(i)
+        run_dir.mkdir()
+        proc, calls = _run(run_dir, ["a", "b"], CONDOR_OUTPUT=output)
+        assert proc.returncode == 64, output
+        assert "CONDOR_OUTPUT" in proc.stderr, output
+        assert calls == [], output
+
+
+def test_output_paths_inside_the_checkout_are_accepted(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site,docs/out,a..b")
+    assert proc.returncode != 64, proc.stderr
+    assert "CONDOR_OUTPUT must" not in proc.stderr
+    assert "must stay inside" not in proc.stderr
 
 
 def _arguments(tmp_path: Path) -> str:
@@ -439,3 +482,101 @@ def test_unreachable_desktop_head_falls_back_with_its_port_probed(tmp_path):
     assert proc.returncode == 0, proc.stderr
     probe = next(c for c in calls if c.endswith(" true") and "desk.example" in c)
     assert "-p 922" in probe, probe
+
+
+def _site_stub(tmp_path: Path) -> str:
+    """Stand in for the job's output: wait stub drops output.tar.gz in the run dir."""
+    site = tmp_path / "made" / "_site"
+    site.mkdir(parents=True)
+    (site / "index.html").write_text("built")
+    return str(tmp_path / "made")
+
+
+def test_no_output_path_returns_nothing(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    sub = (tmp_path / "calls.log.sub").read_text()
+    assert 'transfer_output_files = ""' in sub
+    assert "CONDOR_OUTPUT" not in sub
+
+
+def test_output_path_is_returned_by_file_transfer_and_unpacked(tmp_path):
+    made = _site_stub(tmp_path)
+    proc, calls = _run(
+        tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site", STUB_MADE=made
+    )
+    assert proc.returncode == 0, proc.stderr
+    sub = (tmp_path / "calls.log.sub").read_text()
+    assert "transfer_output_files = output.tar.gz" in sub
+    assert 'environment = "CONDOR_OUTPUT=_site"' in sub
+    assert (tmp_path / "checkout" / "_site" / "index.html").read_text() == "built"
+    # The one extra rsync is the fetch, and the run directory is removed after it.
+    assert _count(calls, "rsync ") == 3
+    assert not (tmp_path / "ci" / "42").exists()
+
+
+def _pack(tmp_path: Path, output: str, step: str) -> list[str]:
+    """Run the generated .condor-run.sh directly and list what output.tar.gz holds."""
+    _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT=output)
+    work = tmp_path / "scratch"
+    work.mkdir()
+    (work / ".condor-steps").write_text(step + "\n")
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    subprocess.run(["tar", "-czf", str(work / "checkout.tar.gz"), "-C", str(seed), "."], check=True)
+    env = {**os.environ, "CONDOR_OUTPUT": output}
+    proc = subprocess.run(
+        ["bash", str(tmp_path / "calls.log.run")], cwd=work, env=env,
+        capture_output=True, text=True, check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    listing = subprocess.run(
+        ["tar", "-tzf", str(work / "output.tar.gz")], capture_output=True, text=True, check=True,
+    )
+    return sorted(line for line in listing.stdout.splitlines() if not line.endswith("/"))
+
+
+def test_several_output_paths_are_packed_together(tmp_path):
+    step = "mkdir _site _freeze && echo a > _site/i.html && echo b > _freeze/p.json"
+    assert _pack(tmp_path, "_site,_freeze", step) == ["_freeze/p.json", "_site/i.html"]
+
+
+def test_a_missing_output_path_is_skipped_and_the_rest_returned(tmp_path):
+    step = "mkdir _site && echo a > _site/i.html"
+    assert _pack(tmp_path, "_site,_freeze", step) == ["_site/i.html"]
+
+
+def test_no_output_path_made_packs_an_empty_tarball(tmp_path):
+    assert _pack(tmp_path, "_site,_freeze", "true") == []
+
+
+def test_output_is_returned_even_when_a_step_fails(tmp_path):
+    made = _site_stub(tmp_path)
+    proc, _ = _run(
+        tmp_path, ["a", "b"], STUB_RV="3", CONDOR_OUTPUT="_site", STUB_MADE=made
+    )
+    assert proc.returncode == 3, proc.stderr
+    assert (tmp_path / "checkout" / "_site" / "index.html").exists()
+    assert not (tmp_path / "ci" / "42").exists()
+
+
+def test_failed_fetch_of_the_output_exits_70(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site")
+    assert proc.returncode == 70
+    assert "could not bring _site back" in proc.stderr
+
+
+def test_jobs_of_one_run_get_different_run_directories(tmp_path):
+    dirs = set()
+    for job in ("render-solution", "render-assign"):
+        case_dir = tmp_path / job
+        case_dir.mkdir()
+        proc, calls = _run(
+            case_dir, ["a", "b"], STUB_RV="0", RUN_ID="",
+            GITHUB_RUN_ID="9001", GITHUB_JOB=job, GITHUB_RUN_ATTEMPT="1",
+        )
+        assert proc.returncode == 0, proc.stderr
+        copied = [c for c in calls if c.startswith("rsync") and c.endswith(".condor-steps")]
+        assert len(copied) == 1
+        dirs.add(copied[0].rsplit(":", 1)[1].split("/ci/", 1)[1])
+    assert len(dirs) == 2, dirs

@@ -88,6 +88,15 @@ def check_quarto_publish(
                 f".github/workflows/quarto-publish.yml is missing input '{inp}'"
             )
 
+    # 2b. Only the build job may take the heavy runner variable (gha#1563)
+    jobs = workflow_doc.get("jobs", {})
+    build_runs_on = str(jobs.get("build", {}).get("runs-on", ""))
+    deploy_runs_on = str(jobs.get("deploy", {}).get("runs-on", ""))
+    if "vars.CI_RUNNER_HEAVY" not in build_runs_on:
+        errors.append("quarto-publish.yml build job does not read CI_RUNNER_HEAVY")
+    if "CI_RUNNER_HEAVY" in deploy_runs_on:
+        errors.append("quarto-publish.yml deploy job must not read CI_RUNNER_HEAVY")
+
     # 3. Check default agreement for setup-julia and julia-version
     if (
         str(comp_inputs.get("setup-julia", {}).get("default", "")).lower()

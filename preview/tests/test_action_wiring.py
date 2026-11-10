@@ -84,6 +84,14 @@ def workflow():
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
+def test_a_private_repository_never_builds_a_fork_pr(workflow):
+    # The build job runs on the caller's runner, which for a private repository
+    # is a lab runner or the cluster (gha#1653).
+    condition = workflow["jobs"]["build"]["if"]
+    assert "github.event.pull_request.head.repo.full_name == github.repository" in condition
+    assert "!github.event.repository.private" in condition
+
+
 @pytest.fixture(scope="module")
 def steps(action):
     return action["runs"]["steps"]

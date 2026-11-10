@@ -1,0 +1,1 @@
+- `check-gradient-lhs` no longer flags "gradient" inside a link target or crossref id, a compound noun such as "gradient descent", or a condition that sets a gradient to zero, and it now sees a gradient stated after a link (gha#1749).

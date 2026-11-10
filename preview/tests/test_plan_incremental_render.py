@@ -116,3 +116,40 @@ def test_missing_cache_or_bad_key_forces_full(planner, repo_factory):
     (work / "_site" / "index.html").unlink()
     (work / "_site").rmdir()
     assert plan(planner, work, sha)[0] == "full"
+
+
+def plan_without_inspect(planner, work, sha, profile="website"):
+    """As a failed `quarto inspect` leaves it: an empty JSON object (gha#1608)."""
+    inspect = work.parent / f"{work.name}-inspect-failed.json"
+    inspect.write_text("{}", encoding="utf-8")
+    return planner.decide(
+        work, f"quarto-incremental-Linux--{sha}-1", inspect,
+        planner.patterns(FULL), planner.patterns(IGNORE), 15,
+        planner._load_pruner(), profile,
+    )
+
+
+def site_with_render_list(work):
+    write(work, "_quarto-website.yml",
+          "project:\n  render:\n    - chapters/a.qmd\n    - chapters/b.qmd\n"
+          "    - chapters/c.qmd\n    - '!chapters/c.qmd'\n")
+    return site(work)
+
+
+def test_failed_inspect_uses_the_profile_render_list(planner, repo_factory):
+    work = repo_factory(published=None)
+    sha = site_with_render_list(work)
+    write(work, "chapters/_subfiles/a/_part.qmd", "Part, revised.\n")
+    commit(work, "edit subfile")
+    mode, reason, pages = plan_without_inspect(planner, work, sha)
+    assert (mode, pages) == ("incremental", ["chapters/a.qmd"])
+    assert "of 2" in reason
+
+
+def test_failed_inspect_without_a_render_list_forces_full(planner, repo_factory):
+    work = repo_factory(published=None)
+    sha = site(work)
+    write(work, "chapters/_subfiles/a/_part.qmd", "Part, revised.\n")
+    commit(work, "edit subfile")
+    assert plan_without_inspect(planner, work, sha)[0] == "full"
+    assert plan_without_inspect(planner, work, sha, profile="")[0] == "full"

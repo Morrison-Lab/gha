@@ -208,3 +208,47 @@ def test_main_exit_codes(repo, monkeypatch):
     assert exf.main() == 1
     monkeypatch.setenv("EXF_FAIL", "false")
     assert exf.main() == 0
+
+
+# -- a block ahead of a div's title (gha#1567) --------------------------------
+
+def blockers(text: str):
+    return [at for at, _ in exf.scan_titles(text.split("\n"), None)]
+
+
+def test_comment_before_the_title_is_flagged():
+    text = "::: {#exm-a}\n<!-- no-figure: x -->\n#### Title\n\nBody.\n:::\n"
+    assert blockers(text) == [2]
+
+
+def test_title_first_is_clean():
+    text = "::: {#exm-a}\n#### Title\n<!-- no-figure: x -->\n\nBody.\n:::\n"
+    assert blockers(text) == []
+
+
+def test_blank_lines_before_the_title_are_clean():
+    assert blockers("::: {#thm-a}\n\n#### Title\n\nBody.\n:::\n") == []
+
+
+def test_paragraph_before_the_title_is_flagged_for_any_crossref_div():
+    assert blockers("::: {#def-a}\nIntro.\n#### Title\n:::\n") == [2]
+
+
+def test_div_without_a_heading_is_clean():
+    assert blockers("::: {#exm-a}\n<!-- note -->\nBody.\n:::\n") == []
+
+
+def test_plain_div_is_not_checked():
+    assert blockers("::: {.callout-note}\nText.\n#### Title\n:::\n") == []
+
+
+def test_heading_after_a_nested_div_is_not_the_outer_title():
+    text = "::: {#exm-a}\n::: {.sol}\nText.\n:::\n#### Later\n:::\n"
+    assert blockers(text) == []
+
+
+def test_main_reports_the_title_blocker(repo, monkeypatch, capsys):
+    _write(repo, "a.qmd", "::: {#exm-a}\n<!-- c -->\n#### T\n![x](f.png)\n:::\n")
+    monkeypatch.setenv("EXF_WHOLE_TREE", "true")
+    assert exf.main() == 1
+    assert "precedes the title heading of #exm-a" in capsys.readouterr().out

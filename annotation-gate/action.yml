@@ -21,7 +21,10 @@ inputs:
       third-party action emits that no repository can silence, and the four
       the review workflow emits by design (a newer push supersedes a review,
       a PR edits workflow files, and `require-clean-verdict` fails on a
-      non-clean verdict).
+      non-clean verdict), and the two notices the runner job-started hook
+      emits about the host (a busy host held the job, a low-disk host), and
+      the git transport errors of a checkout fetch that `actions/checkout`
+      retried: a fetch that keeps failing fails the job itself (gha#1731).
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
@@ -38,6 +41,13 @@ inputs:
       ^No files were found with the provided path: .*claude-execution-output\.json
       ^execution_file output not set; falling back to
       ^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead
+      ^wait-runner-capacity: still short after \d+ minutes
+      ^prune-runner-workdir: measured .+ GB free, under \d+ GB
+      ^fetch-pack: (invalid index-pack output|unexpected disconnect while reading sideband packet)
+      ^early EOF$
+      ^\d+ bytes of body are still expected$
+      ^RPC failed; curl \d+\b
+      ^the remote end hung up unexpectedly$
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always
@@ -73,8 +83,25 @@ inputs:
       gate stays until then. Turn it on only when the caller triggers on
       `workflow_run` for every workflow (`workflows: ["*"]`): with a narrower
       list, the deferring gate can wait on a run that starts no gate and leave
-      the commit ungated. Off by default, because a quick failure is then
+      the commit ungated.
+      A `workflow_dispatch` run never defers, since no later run would gate the commit for it (gha#1762).
+      Off by default, because a quick failure is then
       reported only when the slowest workflow on the commit finishes.
+    default: 'false'
+  backfill:
+    description: >-
+      Gate each commit that a pull request run touched in the last 24 hours
+      and that has no `annotation-gate` check run, or whose newest one
+      finished before a run on the commit did (a failure that a re-run has
+      since fixed, gha#1752), instead of one commit, and post a check run on
+      each. Run it on a schedule beside the `workflow_run`
+      gate: a gate that defers posts nothing and relies on the last finishing
+      run to start the gate that posts, so a lost or very late event leaves the
+      required check missing and the pull request blocked with nothing to
+      re-run (gha#1754). A commit with a run still queued or in progress is
+      left alone. It reads runs and check runs only, so it needs no permission
+      beyond `actions: read`, `checks: write` and `contents: read`; `head-sha`
+      and `all-runs` are unused.
     default: 'false'
   token:
     description: Token granted actions read and checks read, plus checks write with `head-sha`.
@@ -95,4 +122,5 @@ runs:
         GATE_HEAD_SHA: ${{ inputs.head-sha }}
         GATE_ALL_RUNS: ${{ inputs.all-runs }}
         GATE_DEFER_WHILE_RUNNING: ${{ inputs.defer-while-running }}
+        GATE_BACKFILL: ${{ inputs.backfill }}
       run: python3 "$GITHUB_ACTION_PATH/annotation_gate.py"

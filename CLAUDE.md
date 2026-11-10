@@ -17,11 +17,14 @@ Guidance for Claude Code when working in this repository.
 
 ## Standing tag-slide policy
 
-- **Sliding this repo's major tag is a standing grant**: AI agent sessions may
-  dispatch `slide-major-tag.yml` on their own judgment, without asking first
-  (user directive, 2026-08-27), unless explicitly instructed otherwise for a
-  specific occasion or session.
-  Like the `mwc` grant above, it removes the *asking* and not the judgment.
+- **Sliding this repo's major tag needs Ezra's typed "slide v3" in the runner
+  thread, and only the runner thread slides it.**
+  An owner thread whose fix has merged reports the merge to the coordinator
+  and waits; it does not dispatch `slide-major-tag.yml` or schedule a
+  check-in that would (coordinator rule, 2026-11-08, gha#1614).
+  This replaces the earlier standing grant (user directive, 2026-08-27),
+  which let any agent session slide on its own judgment.
+  The readiness bar and audits below still apply to the runner's slide.
 
 - **The readiness bar is the same one `mwc` uses, on the commit being slid.**
   Every check run on that exact commit is green or skipped, with none pending,
@@ -186,15 +189,44 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** slide when the commit is green, the callees' `permissions:` blocks
-  gained no key and widened no value since the tagged commit, and consumers
-  need it --- then report both SHAs.
+- **Do:** (runner thread only, on Ezra's typed "slide v3") slide when the
+  commit is green, the callees' `permissions:` blocks gained no key and
+  widened no value since the tagged commit, and consumers need it
+  --- then report both SHAs.
+  The bullets above that say "you" describe the runner thread's duties
+  in this section; other threads do not dispatch the slide.
 
 - **Don't:** read a green readiness bar as the whole gate; it was green when
   gha#830 shipped the outage.
 
 - **Don't:** read this as covering a release or version bump, another
   repository, or a slide over a commit whose checks you have not read.
+
+## Standing checkout fast-forward policy
+
+- **Fast-forwarding the runners' gha checkout is a standing grant**: AI agent
+  sessions may run `git pull --ff-only origin main` in
+  `~/Documents/GitHub/gha` on every self-hosted runner host (over ssh when the
+  host is not the one the session runs on), without asking first
+  (user directive, Ezra, 2026-11-07: "record permanent permission to fast
+  forward gha", gha#1588).
+  The runners read their hook scripts (`check-runner-disk.sh`,
+  `wait-runner-capacity.sh`, `prune-runner-workdir.sh`) from that checkout, so a
+  merged hook fix only takes effect once the checkout is fast-forwarded.
+  Like the grants above, it removes the *asking* and not the judgment.
+
+- **Limits.**
+  Fast-forward only: stop and report, instead of resolving it, when a
+  checkout has local commits, a diverged branch, or changes to tracked files.
+  Untracked leftovers (an `.nfs...` lock file, for example) are left alone.
+  Report the before and after SHA for each host.
+
+- **Don't:** read this as covering the `v3` tag slide (that has its own policy
+  above), merging a pull request (a merge still needs the user's own `mwc` or
+  merge words), a pull in any other repository, or anything but a fast-forward.
+  The auto-mode classifier may still ask for the user's typed words the first
+  time in a session; this grant records the user's standing intent, so cite
+  it, and do not retry past a denial.
 
 ## About this repo
 
@@ -219,7 +251,7 @@ the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`,
-while `opposition-research`, `check-dependency-updates`,
+while `opposition-research`, `report-main-failure`, `check-dependency-updates`,
 `check-duplicate-roxygen`, `check-math-definitions`,
 `check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
@@ -227,7 +259,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
 
@@ -239,6 +271,13 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 - the read-only capability lists in `README.md` and `website/permissions.qmd`;
 - the `@v3` lists in `CLAUDE.md`, `README.md` (two), `website/versioning.qmd` (two) and `website/workflows.qmd`, and the table rows in `README.md` and `website/workflows.qmd`;
 - `.github/dependabot.yml`, `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
+
+A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
+The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub.
+Until the slide, a caller PR pinned at `@v3` fails `check-caller-permissions` with a 404, because the new workflow does not exist at that tag yet.
+In lds, a new caller workflow must also be listed under `workflows:` in `annotation-gate.yml`, or `check-orphans` fails.
+sds uses `workflows: ["*"]`.
+The pds, mds, and mcs repos have no gate.
 
 A synthetic email address in a test needs a `# phi-allow` comment.
 When a check fails within seconds, read its `##[error]` lines with a log tail of 120 lines or more before calling it an infrastructure failure.
@@ -4893,6 +4932,19 @@ PR #528 hardens the reviewer prompt and fails that deferral pattern in
 This paragraph is the matching guardrail for **agent sessions** driving
 ARDI/GII loops in this repo.
 
+**Read every non-notice check-run annotation on the head before sending it
+as final.**
+A job can conclude `success` and still carry `warning` or `failure` annotations,
+because selftest negative-control steps run with `continue-on-error`,
+and `check-pr-fully-clean.py` reads them.
+List the head's check runs (all pages), fetch each run's annotations when its
+`annotations_count` is above zero, drop the `notice` level, and for each
+remaining one either fix it or say why it is not this PR's in the head message.
+Comparing the count of `failure`-level annotations on the PR head with the
+count on `main`'s tip is enough for negative controls (gha#1698: 242 on both).
+A deny-form mechanism for owners does not exist: the checker already denies
+the head, which is why the runner caught it, so this is the owner-side half.
+
 **Cheap self-check before marking ✅ Clean in a GII summary or invoking
 `mwc`:**
 
@@ -5636,6 +5688,28 @@ the check's tests include that example verbatim, and the first whole-tree run mu
 A trigger written from the rule's wording alone missed its own example,
 because the title said "Mark every zero-gradient point on a surface" and never "visualization".
 If the check misses the example, the trigger is too narrow: broaden it, then sweep the whole tree and fix what it newly finds.
+
+## A sustained release-host outage needs a cache, not a retry
+
+A retry step only helps when the outage is shorter than the retry window.
+On 2026-11-08 the `github.com` release downloads returned 504 for hours (gha#1667),
+and the Quarto action's own 20 retries, a 90-second second attempt (gha#1669) and the curl retries (gha#1668) all gave up inside the outage.
+A retry PR also cannot merge during such an outage,
+because the review job downloads from the same host and fails, so the PR never gets a Clean review.
+Fix a download that fails for hours by serving it from `GHA_RELEASE_CACHE_DIR` through `cached_download` with a pinned sha256 (gha#1678), not by lengthening the retries.
+No hook or check can detect this: whether an outage outlasts a retry window is known only after the outage.
+
+## Enumerate the population before closing a rollout issue
+
+A wiring or rollout issue often carries a checkbox defined by a condition,
+such as "repos with no caller get one", beside boxes that name repos.
+Confirming the named repos satisfies only the named boxes.
+gha#1746 was closed on 2026-11-09 after six named repos were checked,
+and reopened because rme, ids, and other repos with no caller were never enumerated.
+Before closing, list the full population from the primitive
+(the org's repositories, a search for the caller file),
+and name any repo the session cannot read as unchecked.
+No hook or check in this repo detects this today, because the open-ended set is known only from the issue's wording.
 
 ## Never just theorize -- investigate empirically
 

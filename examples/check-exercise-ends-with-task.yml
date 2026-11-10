@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-exercise-ends-with-task.yml in your repo.
+# Diff-scoped check: fails when a PR adds or edits an exercise (#exr- div) whose
+# last paragraph holds no question or instruction, or that ends with a figure,
+# table, code block or include after its last task.
+# <!-- ends-with-task-ok: reason --> exempts one exercise.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check exercises end with a task
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-exercise-ends-with-task.yml@v3
+    # with:
+    #   globs: '*.qmd'        # pathspecs to check (recursive)
+    #   fail: false           # warn instead of block (defaults to true)
+    #   whole-tree: true      # scan every exercise, not just a PR's additions

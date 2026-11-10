@@ -1,0 +1,5 @@
+# lychee release pins: VERSION ARCH SHA256 of the linux gnu .tar.gz.
+# The digests were computed from a downloaded copy of each release asset, 2026-11-08 (gha#1678).
+# The cache file name is sha256(URL)[:16] + "-" + the asset name, as cached-download.sh derives it.
+0.24.2 x86_64 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
+0.24.2 aarch64 91a7bd65685da41b90ccb9bc867a3d649a7818042dae04ff405e55a25bddee4c

@@ -71,6 +71,22 @@ jobs:
             echo "exempt=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Read the pull request description
+        id: body
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          {
+            echo 'text<<PRS_BODY_EOF'
+            gh api "repos/$REPO/pulls/$PR" --jq '.body // ""'
+            echo 'PRS_BODY_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Check pull request size
         uses: Morrison-Lab/gha/check-pr-size@v3
         with:
@@ -79,6 +95,7 @@ jobs:
           max-lines: ${{ inputs.max-lines }}
           paths-ignore: ${{ inputs.paths-ignore }}
           exempt: ${{ steps.label.outputs.exempt || 'false' }}
+          pr-body: ${{ steps.body.outputs.text }}
           fail: ${{ inputs.fail }}
           # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
           # it was built on (gha#1007). On a push there is no base, so it skips.

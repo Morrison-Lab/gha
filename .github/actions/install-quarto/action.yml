@@ -1,0 +1,82 @@
+name: Install Quarto through the release cache
+description: >-
+  Installs a pinned Quarto release from the group-share release cache when the
+  runner can use it, and falls back to quarto-dev/quarto-actions/setup
+  otherwise, so a release-host outage does not block the job (gha#1678).
+
+inputs:
+  version:
+    description: >-
+      Quarto version with a pinned digest in install-quarto-pins.txt.
+      Any other version uses the setup action.
+    default: '1.11.9'
+  tinytex:
+    description: Install TinyTeX after Quarto, as the setup action's `tinytex` input does.
+    default: 'false'
+  github-token:
+    description: Token the setup action and `quarto install tinytex` use for GitHub API lookups.
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install Quarto from the release cache
+      id: cached
+      shell: bash
+      env:
+        QUARTO_VERSION: ${{ inputs.version }}
+      # Exit 3 means this runner cannot use the cache path; the next step takes over.
+      run: |
+        set +e
+        bash "${{ github.action_path }}/../../workflows/scripts/install-quarto.sh"
+        code=$?
+        if [ "$code" -eq 0 ]; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+        elif [ "$code" -eq 3 ]; then
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::Cached Quarto install failed (exit $code); using the setup action."
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Set up Quarto
+      if: steps.cached.outputs.installed != 'true'
+      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      with:
+        version: ${{ inputs.version }}
+        tinytex: ${{ inputs.tinytex }}
+
+    - name: Install TinyTeX from the release cache
+      id: cached-tinytex
+      if: steps.cached.outputs.installed == 'true' && inputs.tinytex == 'true'
+      shell: bash
+      # Exit 3 means this runner or version cannot use the cache path; the next step takes over.
+      run: |
+        set +e
+        bash "${{ github.action_path }}/../../workflows/scripts/install-tinytex.sh"
+        code=$?
+        if [ "$code" -eq 0 ]; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+        else
+          if [ "$code" -ne 3 ]; then
+            echo "::warning::Cached TinyTeX install failed (exit $code); using quarto install tinytex."
+          fi
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Install TinyTeX
+      if: steps.cached.outputs.installed == 'true' && inputs.tinytex == 'true' && steps.cached-tinytex.outputs.installed != 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      # A second attempt after a wait covers a transient release-host failure, and it
+      # logs at debug level, so a repeat failure shows its cause (gha#1674).
+      run: |
+        if quarto install tinytex --no-prompt; then
+          exit 0
+        fi
+        echo "::warning::quarto install tinytex failed; retrying once in 60 s with debug logging."
+        sleep 60
+        quarto install tinytex --no-prompt --log-level debug
