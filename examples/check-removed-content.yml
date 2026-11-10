@@ -1,0 +1,19 @@
+# Copy to .github/workflows/check-removed-content.yml in your repo.
+# Diff-scoped check: fails when a PR removes prose sentences that reappear
+# nowhere among the lines it adds. Content is moved, never deleted.
+# Write `removed-content-ok: reason` in the PR body to opt out of a deliberate removal.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check removed content is moved
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-removed-content.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'   # pathspecs to check (recursive)
+    #   min-overlap: '0.6'    # trigram overlap that counts as moved
+    #   fail: false           # warn instead of block (defaults to true)
