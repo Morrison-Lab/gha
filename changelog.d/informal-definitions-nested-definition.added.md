@@ -1,0 +1,1 @@
+- `check-informal-definitions` adds a `nested-definition` rule: a `#def-` div whose own statement names a further term by an italic label in parentheses, a labelled list item, or "is called *x*" is reported, since each such term belongs in its own sibling def div (psw's "Don't nest definitions", Morrison-Lab/psw#569; gha#1823).

@@ -35,6 +35,16 @@ The check flags:
   A repeated term, a bare abbreviation, a symbol, a gloss in parentheses
   or quotes, and bold inside a nested div are not counted.
   One definition per div, so each term gets its own cross-reference ID.
+- **A definition nested inside another (`nested-definition`).**
+  A `::: {#def-...}` div whose own statement names a further term
+  in a form the bold count does not see:
+  an italic label in parentheses (`(*additivity*)`),
+  a list item that opens with a bold or italic label (`1. **Base case:**`),
+  or "is called *x*".
+  Give each such term its own sibling def div before this one, and link it
+  (psw's "Don't nest definitions", Morrison-Lab/psw#569).
+  A step label in a procedure can match too, which is one reason the check is warn-only;
+  mark such a div with the `allow` directive.
 
 Sections titled "Notation", "Typographic Conventions", or "Symbols" are
 recognized as notation guides and exempt from definition requirements.

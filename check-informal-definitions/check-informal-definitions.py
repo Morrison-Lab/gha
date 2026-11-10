@@ -26,6 +26,11 @@ This check flags:
 6. A `::: {#def-...}` div with prose and no hyperlink or cross-reference
    (`no-link-in-definition`): every technical term is linked on first use in
    each div (ai-config#4600). Warn-only like the rest; `allow` opts out.
+7. A `::: {#def-...}` div whose own statement names a further term by an
+   italic label in parentheses, a list item opening with a bold or italic
+   label, or "is called *X*" (`nested-definition`): psw's "Don't nest
+   definitions" (psw#569, gha#1823). Step labels in a procedure match too,
+   so it is warn-only like the rest; `allow` opts out.
 
 Opt-out directives:
 - Line/block level: `<!-- check-informal-definitions: allow -->` or
@@ -367,6 +372,22 @@ ALIAS_CUE_RE = re.compile(
     r"|other\s+(?:names?|terms?)|synonyms?)\s*:?\s*(?:(?:the|a|an)\s*)?$"
 )
 DEF_ID_RE = re.compile(r"#def-")
+# A term defined inside a def div's own statement, in a form rule 5 cannot see
+# because it is not bold (psw "Don't nest definitions", psw#569; gha#1823):
+# an italic label in parentheses, "(*additivity*)";
+NESTED_PAREN_LABEL_RE = re.compile(
+    r"\((?P<mark>\*|_)(?!\s)(?P<term>[^*_()\n]+?)(?<!\s)(?P=mark)\)"
+)
+# a list item that opens with a bold or italic label, "1. **Base case:**";
+NESTED_ITEM_LABEL_RE = re.compile(
+    r"^\s*(?:\d+[.)]|[-*+])\s+(?P<mark>\*\*|\*|_)(?!\s)(?P<term>[^*_\n]+?)"
+    r"(?:[:.]\s*(?P=mark)|(?P=mark)\s*[:.])"
+)
+# "called *X*", an italic name that the bold-term count does not see.
+NESTED_CALLED_RE = re.compile(
+    r"(?i)\b(?:is|are)\s+called\s+(?:(?:the|a|an)\s+)?"
+    r"(?<![*\w])(?P<mark>\*|_)(?!\*|\s)(?P<term>[^*_\n]+?)(?<!\s)(?P=mark)(?![*\w])"
+)
 # The text between two bold aliases of one list: "A, B", "A and B", "A, or B".
 LIST_JOIN_RE = re.compile(r"\s*(?:,\s*)?(?:(?:and|or)\s+)?")
 TITLE_RE = re.compile(r"^#{1,6}\s+(?P<title>.+)$")
@@ -492,6 +513,7 @@ def scan_def_div_terms(
     open_line = 0
     end_line = 0
     terms: List[str] = []
+    nested: List[str] = []  # terms defined by a label inside the div
     seen: Set[str] = set()
     prev_prose = ""
     code_fence = ""
@@ -525,6 +547,23 @@ def scan_def_div_terms(
                         "term with no definition its own def div."
                     ),
                     snippet="",
+                )
+            )
+        if nested:
+            labels = ", ".join(nested)
+            findings.append(
+                Finding(
+                    file=path,
+                    line=open_line,
+                    rule="nested-definition",
+                    term=labels,
+                    message=(
+                        "Definition div defines further terms inside its "
+                        f"statement ({labels}); give each its own sibling def "
+                        "div before this one and link it (psw: don't nest "
+                        "definitions)."
+                    ),
+                    snippet=labels,
                 )
             )
         if len(terms) < 2:
@@ -574,6 +613,7 @@ def scan_def_div_terms(
                 def_depth = len(stack)
                 open_line, end_line = idx, idx
                 terms, seen, prev_prose, opted_out = [], set(), "", False
+                nested = []
                 has_link, has_prose = False, False
                 div_words, own_words = set(), set()
             continue
@@ -603,6 +643,11 @@ def scan_def_div_terms(
         prose = INLINE_MATH_RE.sub(_blank, prose)
         if prose.strip() and not TITLE_RE.match(stripped):
             has_prose = True
+            for rx in (NESTED_ITEM_LABEL_RE, NESTED_PAREN_LABEL_RE, NESTED_CALLED_RE):
+                for m in rx.finditer(prose):
+                    label = m.group("term").strip()
+                    if label and label not in nested:
+                        nested.append(label)
         for m in BOLD_SPAN_RE.finditer(prose):
             term = m.group("term").strip()
             before = prose[: m.start()]
