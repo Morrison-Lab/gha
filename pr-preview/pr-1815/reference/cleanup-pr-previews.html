@@ -1295,7 +1295,7 @@ cookieconsent.run({
 <td><code>idle-days</code></td>
 <td>number</td>
 <td><code>0</code></td>
-<td>When greater than <code>0</code>, also remove the preview of an open pull request whose last update is more than this many days old. The pull request is untouched and its next push rebuilds the preview. Keeps a repository with many long-lived open PRs under the 1 GB GitHub Pages artifact cap. Default <code>0</code> disables it.</td>
+<td>When greater than <code>0</code>, also remove the preview of an open pull request whose last update is more than this many days old. The pull request is untouched and its next push rebuilds the preview; until then its earlier preview links return 404. Counts whole days since the PR’s last update (a comment or label counts, not only a push). Must be a non-negative whole number. Keeps a repository with many long-lived open PRs under the 1 GB GitHub Pages artifact cap. Default <code>0</code> disables it.</td>
 </tr>
 <tr class="even">
 <td><code>runs-on</code></td>
