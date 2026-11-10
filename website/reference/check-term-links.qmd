@@ -65,10 +65,14 @@ a label such as "note" or "example".
   line for it to suppress.
   Delete it: an exemption is line-wide, so a dead one also hides the next
   finding that lands on its line.
+- **`bare-allow`.**
+  An opt-out pragma on a line the pull request adds, with no reason.
+  Write `<!-- check-term-links: allow: why this line is exempt -->`,
+  so a reviewer sees why each exemption exists.
 
 It skips code fences and spans, math, HTML comments, YAML front matter,
 include shortcodes, headings, images, and the target of a link.
-`<!-- check-term-links: allow -->` exempts a line, and
+`<!-- check-term-links: allow: reason -->` exempts a line, and
 `<!-- check-term-links: ignore-file -->` a file.
 
 ## Scope
