@@ -1,0 +1,35 @@
+Bootstrap: localimage
+From: lds-ci.sif
+
+# araomm render image for condor-batch (gha#1714): lds-ci.sif plus the R packages
+# araomm's chapters load, installed from Posit Package Manager binaries into a
+# system library inside the image. A render copies only its working directory in
+# and the output paths out, so the library has to live in the image; restoring it
+# into the cluster home would break WWU CS IT rule 4 (the home quota is 5 GB).
+#
+# The package list is the one araomm's pages load (reported on araomm#27 and
+# araomm#29). Add a package here when a page starts loading it, then rebuild.
+# Build on cf463-02 with Apptainer, next to lds-ci.sif:
+#   apptainer build araomm-ci.sif condor-batch/image/araomm-ci.def
+
+%environment
+    export R_LIBS_SITE=/opt/araomm-library
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    # System libraries the packages below compile against when no binary exists.
+    apt-get update
+    apt-get install -y --no-install-recommends libnlopt-dev
+
+    mkdir -p /opt/araomm-library
+    export R_LIBS_SITE=/opt/araomm-library
+    export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages(c("knitr", "rmarkdown", "tibble", "DT", "ggplot2", "ppcor", "emmeans", "car", "geepack", "leaps", "lme4", "nnet", "pwr", "MASS"), lib = "/opt/araomm-library")'
+    chmod -R a+rX /opt/araomm-library
+
+%test
+    set -e
+    export R_LIBS_SITE=/opt/araomm-library
+    Rscript -e 'for (p in c("knitr", "rmarkdown", "tibble", "DT", "ggplot2", "ppcor", "emmeans", "car", "geepack", "leaps", "lme4", "nnet", "pwr", "MASS")) library(p, character.only = TRUE)'

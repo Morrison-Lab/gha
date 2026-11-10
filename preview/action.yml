@@ -23,7 +23,7 @@ inputs:
       an empty string to skip the apt step entirely.
     default: >-
       jags libcurl4-openssl-dev libpng-dev libfontconfig1-dev libjpeg-dev
-      libglpk-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libtiff5-dev
+      libglpk-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libtiff-dev
       libwebp-dev libnode109 cmake libgit2-dev libnode-dev libx11-dev pandoc
   use-renv:
     description: Restore R dependencies with renv (r-lib/actions/setup-renv). Set 'false' for non-renv repos.
@@ -332,11 +332,29 @@ runs:
         add_newest julia "$HOME/opt/julia-*/bin" "$HOME/.juliaup/bin" "$HOME/julia-*/bin"
         add_newest pdflatex "$HOME/.TinyTeX/bin/*"
 
-    - name: Set up Quarto
-      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+    - name: Detect whether the Quarto install can be skipped
+      id: quarto-skip
+      shell: bash
       env:
-        GH_TOKEN: ${{ github.token }}
+        CLUSTER_RENDER: ${{ inputs.cluster-render }}
+      run: |
+        # The install runs sudo. A runner without passwordless sudo cannot
+        # install, so skipping loses nothing when Quarto is already there or
+        # the cluster image supplies it (gha#1642). With sudo the install
+        # always runs, because condor-batch can still fall back to a local
+        # render (exit 70 or 71) that needs it.
+        key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
+        skip=false
+        if ! sudo -n true 2>/dev/null; then
+          if command -v quarto > /dev/null || { [ "$CLUSTER_RENDER" = "true" ] && [ -r "$key" ]; }; then
+            skip=true
+          fi
+        fi
+        echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Quarto
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         # Install TinyTeX in the same setup only when a PDF render is requested;
         # composite actions can't vary `with:` conditionally, so gate it on the
@@ -344,11 +362,10 @@ runs:
         tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
 
     - name: Set up R
-      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true'
+      if: github.event.action != 'closed' && inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         r-version: ${{ inputs.r-version }}
-        use-public-rspm: true
 
     - name: Install system dependencies
       if: github.event.action != 'closed' && inputs.apt-packages != '' && inputs.preinstalled-toolchain != 'true'
@@ -357,13 +374,38 @@ runs:
         APT_PACKAGES: ${{ inputs.apt-packages }}
       run: |
         set -euo pipefail
+        # word-splitting on $APT_PACKAGES is intentional
+        # shellcheck disable=SC2086
+        missing=$(for p in $APT_PACKAGES; do dpkg -s "$p" > /dev/null 2>&1 || echo "$p"; done)
+        if [ -z "$missing" ]; then
+          echo "::notice::All apt packages are already installed; skipping apt."
+          exit 0
+        fi
+        if ! sudo -n true 2> /dev/null; then
+          echo "::warning::No passwordless sudo, and dpkg does not list these packages: $missing. Continuing without apt."
+          exit 0
+        fi
         sudo apt-get update
-        # Intentional word-splitting: APT_PACKAGES is a space-separated list.
+        # shellcheck disable=SC2086
         sudo apt-get install -y $APT_PACKAGES
+
+    - name: Detect passwordless sudo
+      id: sudo
+      if: github.event.action != 'closed' && inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
+      shell: bash
+      run: |
+        # setup-chrome installs through sudo on Linux unless told not to (gha#1642).
+        if sudo -n true 2> /dev/null; then
+          echo "none=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "none=true" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Setup Chrome
       if: github.event.action != 'closed' && inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+      with:
+        no-sudo: ${{ steps.sudo.outputs.none }}
 
     - name: Restore R dependencies (renv)
       if: github.event.action != 'closed' && inputs.use-renv == 'true'
@@ -828,7 +870,24 @@ runs:
     - name: Install Python dependencies for DOCX tracked changes
       if: github.event.action != 'closed' && inputs.docx-tracked-changes == 'true'
       shell: bash
-      run: python3 -m pip install --quiet python-docx==1.2.0
+      run: |
+        # Skip when python-docx is already importable; otherwise install it,
+        # bootstrapping pip first on runners whose Python ships without it.
+        if python3 -c "import docx" 2>/dev/null; then
+          echo "python-docx already available"
+          exit 0
+        fi
+        if ! python3 -m pip --version >/dev/null 2>&1; then
+          python3 -m ensurepip --user >/dev/null 2>&1 || true
+        fi
+        if python3 -m pip --version >/dev/null 2>&1; then
+          python3 -m pip install --quiet python-docx==1.2.0
+        elif command -v uv >/dev/null 2>&1; then
+          uv pip install --quiet --system python-docx==1.2.0
+        else
+          echo "::error::python3 has no pip, ensurepip, or uv to install python-docx"
+          exit 1
+        fi
 
     - name: Create DOCX tracked changes
       id: docx-tracked-changes

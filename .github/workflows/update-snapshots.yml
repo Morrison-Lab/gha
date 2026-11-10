@@ -54,7 +54,7 @@ on:
         default: >-
           libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev
           libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev
-          libtiff5-dev libjpeg-dev zlib1g-dev libomp-dev build-essential
+          libtiff-dev libjpeg-dev zlib1g-dev libomp-dev build-essential
           libcairo2-dev gettext
       preinstalled-toolchain:
         description: >
@@ -147,19 +147,52 @@ jobs:
           APT_PACKAGES: ${{ inputs.apt-packages }}
         shell: bash
         run: |
-          sudo apt-get update
+          set -euo pipefail
           # word-splitting on $APT_PACKAGES is intentional
+          # shellcheck disable=SC2086
+          missing=$(for p in $APT_PACKAGES; do dpkg -s "$p" > /dev/null 2>&1 || echo "$p"; done)
+          if [ -z "$missing" ]; then
+            echo "::notice::All apt packages are already installed; skipping apt."
+            exit 0
+          fi
+          if ! sudo -n true 2> /dev/null; then
+            # Another route may still provide the libraries (a different package
+            # name on this distribution, or a toolchain outside dpkg). A build
+            # that really lacks a header fails at the package install with the
+            # compiler's own error, so continue rather than stop here.
+            echo "::warning::No passwordless sudo, and dpkg does not list these packages: $missing. Continuing without apt."
+            exit 0
+          fi
+          sudo apt-get update
           # shellcheck disable=SC2086
           sudo apt-get install -y $APT_PACKAGES
 
+      - name: Detect a preinstalled R
+        id: toolchain
+        shell: bash
+        env:
+          DECLARED: ${{ inputs.preinstalled-toolchain }}
+        run: |
+          # setup-r installs R with sudo apt-get, which a runner without
+          # passwordless sudo cannot do (gha#1706). Use the runner's own R
+          # when sudo is missing and R, with pak, is already there.
+          pre="$DECLARED"
+          if [ "$pre" != "true" ] && ! sudo -n true 2> /dev/null; then
+            if Rscript -e 'quit(status = !requireNamespace("pak", quietly = TRUE))' 2> /dev/null; then
+              echo "::notice::No passwordless sudo; using the runner's own R and pak instead of setup-r."
+              pre=true
+            else
+              echo "::warning::No passwordless sudo and no runner R with pak; setup-r will fail. Use a runner image with R (gha#1638)."
+            fi
+          fi
+          echo "preinstalled=$pre" >> "$GITHUB_OUTPUT"
+
       - name: Set up R
-        if: ${{ !inputs.preinstalled-toolchain }}
+        if: ${{ steps.toolchain.outputs.preinstalled != 'true' }}
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
-        with:
-          use-public-rspm: true
 
       - name: Keep renv from activating (preinstalled R)
-        if: inputs.preinstalled-toolchain
+        if: steps.toolchain.outputs.preinstalled == 'true'
         shell: bash
         run: |
           # A project .Rprofile that bootstraps renv would otherwise replace
@@ -168,7 +201,7 @@ jobs:
           echo "RENV_CONFIG_AUTOLOADER_ENABLED=false" >> "$GITHUB_ENV"
 
       - name: Install R dependencies (preinstalled R)
-        if: inputs.preinstalled-toolchain
+        if: steps.toolchain.outputs.preinstalled == 'true'
         env:
           EXTRA_PACKAGES: ${{ inputs.extra-packages }}
         shell: bash
@@ -177,7 +210,7 @@ jobs:
           Rscript -e 'extra <- trimws(strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]); extra <- extra[nzchar(extra)]; pak::local_install_dev_deps(dependencies = TRUE); if (length(extra)) pak::pkg_install(extra)'
 
       - name: Set up R dependencies
-        if: ${{ !inputs.preinstalled-toolchain }}
+        if: ${{ steps.toolchain.outputs.preinstalled != 'true' }}
         uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           extra-packages: ${{ inputs.extra-packages }}

@@ -28,7 +28,7 @@
 # comma-separated list of host or host:port entries spreads runs over the heads
 # and falls back to the next one when a head does not answer ssh),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
-# (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID or the
+# (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID, attempt and job, or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
 # REQUEST_DISK (default 20GB: scratch space for the unpacked checkout, the uv
 # caches and render outputs),
@@ -69,7 +69,15 @@ steps="${2:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
 heads_in="${CONDOR_HEAD:-cse-head.cluster.cs.wwu.edu}"
 key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
 root="${CLUSTER_CI_ROOT:-/cluster/research-groups/morrison/lds-ci}"
-run="${RUN_ID:-${GITHUB_RUN_ID:-$(date +%Y%m%d-%H%M%S)}}"
+# Two jobs of one workflow run must not share a run directory, so the default
+# names the job and the attempt as well as the run (gha#1680).
+if [ -n "${GITHUB_RUN_ID:-}" ]; then
+  default_run="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT:-1}-${GITHUB_JOB:-job}"
+  default_run="${default_run//[^A-Za-z0-9_-]/_}"
+else
+  default_run=$(date +%Y%m%d-%H%M%S)
+fi
+run="${RUN_ID:-$default_run}"
 min_steps="${MIN_STEPS:-2}"
 
 n=$(grep -c -E '[^[:space:]]' "$steps" || true)
@@ -81,7 +89,24 @@ fi
 case "$key" in
   *[[:space:]]*) echo "CONDOR_SSH_KEY must not contain whitespace: $key" >&2; exit 64 ;;
 esac
-ssh_opts=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$key")
+# CONDOR_OUTPUT goes into HTCondor's environment attribute, whose syntax is
+# whitespace-delimited and quote-sensitive, and names paths inside the checkout
+# (gha#1601). Refuse what would break the submit file or leave the checkout.
+if [ -n "${CONDOR_OUTPUT:-}" ]; then
+  IFS=, read -ra out_paths <<< "$CONDOR_OUTPUT"
+  for p in "${out_paths[@]}"; do
+    case "$p" in
+      *[[:space:]\"\'\\]*)
+        echo "CONDOR_OUTPUT must not contain whitespace, quotes or backslashes: $p" >&2; exit 64 ;;
+      /* | .. | ../* | */.. | */../*)
+        echo "CONDOR_OUTPUT paths must stay inside the checkout: $p" >&2; exit 64 ;;
+    esac
+  done
+fi
+# accept-new records a head's key the first time it is seen and still refuses a
+# head whose recorded key changed, so a head missing from known_hosts is usable
+# (gha#1634) without weakening the check on the heads already recorded.
+ssh_opts=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes -i "$key")
 # CONDOR_HEAD may list several heads, separated by spaces or commas, each as
 # host or host:port. Each run starts at head (run number mod count), spreading
 # runs over the heads, and takes the first head that answers ssh; none answering
@@ -208,7 +233,8 @@ if [ -n "${CONDOR_OUTPUT:-}" ]; then
   IFS=, read -ra outs <<< "$CONDOR_OUTPUT"; keep=()
   for p in "${outs[@]}"; do [ ! -e "$scratch/work/$p" ] || keep+=("$p"); done
   if [ "${#keep[@]}" -gt 0 ]; then
-    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "${keep[@]}"
+    tar -czf "$scratch/output.tar.gz" -C "$scratch/work" "${keep[@]}" \
+      || echo "::could not pack the output: tar failed (is the scratch disk full?)"
   else
     tar -czf "$scratch/output.tar.gz" -T /dev/null
   fi

@@ -26,7 +26,9 @@ set -uo pipefail
 # the exec; if copying fails, the hook runs in place as before.
 if [ -z "${GHA_HOOK_STAGED:-}" ]; then
   src=$(dirname "${BASH_SOURCE[0]}")
-  stage=$(mktemp -d) && cp "$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,seed-runner-python-toolcache,wait-runner-capacity}.sh "$stage" &&
+  # A fast-forward during the copy makes cp skip a file, so try once more (gha#1720).
+  stage=$(mktemp -d) && hook_files=("$src"/{check-runner-disk,prune-runner-workdir,sweep-runner-tmp,sweep-runner-git-locks,seed-runner-python-toolcache,wait-runner-capacity}.sh) &&
+    { cp "${hook_files[@]}" "$stage" || cp "${hook_files[@]}" "$stage"; } &&
     GHA_HOOK_STAGED=$stage exec bash "$stage/$(basename "${BASH_SOURCE[0]}")" "$@"
   echo "::warning::$(basename "${BASH_SOURCE[0]}"): could not stage a private copy; running in place."
 else
@@ -39,6 +41,21 @@ if [ -n "$tool_cache" ]; then
   RUNNER_TOOL_CACHE="$tool_cache" RUNNER_DIR="$tool_cache" \
     bash "$(dirname "${BASH_SOURCE[0]}")/seed-runner-python-toolcache.sh" > /dev/null ||
     echo "::warning::check-runner-disk: Python toolcache seeding failed; Python-based checks may fail."
+fi
+
+# Remove a .git that is not a valid repository from this job's workspace
+# (gha#1720). A job cancelled mid-checkout leaves one, and actions/checkout then
+# prints "--local can only be used inside a git repository" as an error
+# annotation before it deletes the contents, which fails annotation gates on a
+# passing job. Only the .git folder is removed, so checkout starts clean.
+workspace_git="${GITHUB_WORKSPACE:+$GITHUB_WORKSPACE/.git}"
+if [ -n "$workspace_git" ] && [ -d "$workspace_git" ] &&
+  ! git -c safe.directory='*' -C "$GITHUB_WORKSPACE" rev-parse --git-dir > /dev/null 2>&1; then
+  if rm -rf -- "$workspace_git"; then
+    echo "check-runner-disk: removed $workspace_git, which was not a valid repository."
+  else
+    echo "::warning::check-runner-disk: could not remove the broken $workspace_git."
+  fi
 fi
 
 min_free_gb="${CHECK_DISK_MIN_FREE_GB:-5}"

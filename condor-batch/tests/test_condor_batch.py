@@ -106,6 +106,16 @@ def test_five_steps_make_exactly_one_submission(tmp_path):
     assert _count(calls, "ssh ") == 1
 
 
+def test_ssh_accepts_a_new_host_key_but_never_turns_checking_off(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b", "c", "d", "e"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    ssh_calls = [c for c in calls if c.startswith("ssh ")]
+    assert ssh_calls
+    for call in ssh_calls:
+        assert "StrictHostKeyChecking=accept-new" in call
+        assert "StrictHostKeyChecking=no" not in call
+
+
 def test_single_step_is_refused_without_contacting_the_cluster(tmp_path):
     proc, calls = _run(tmp_path, ["only"])
     assert proc.returncode == 71
@@ -205,6 +215,38 @@ def test_ssh_key_with_whitespace_is_refused(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], CONDOR_SSH_KEY="/tmp/my key")
     assert proc.returncode == 64
     assert calls == []
+
+
+def test_output_paths_that_break_the_submit_file_or_leave_the_checkout_are_refused(
+    tmp_path,
+):
+    bad = [
+        "my site",
+        "_site,my site",
+        'a"b',
+        "a'b",
+        "a\\b",
+        "/etc",
+        "..",
+        "../up",
+        "a/..",
+        "a/../b",
+        "_site,/abs",
+    ]
+    for i, output in enumerate(bad):
+        run_dir = tmp_path / str(i)
+        run_dir.mkdir()
+        proc, calls = _run(run_dir, ["a", "b"], CONDOR_OUTPUT=output)
+        assert proc.returncode == 64, output
+        assert "CONDOR_OUTPUT" in proc.stderr, output
+        assert calls == [], output
+
+
+def test_output_paths_inside_the_checkout_are_accepted(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site,docs/out,a..b")
+    assert proc.returncode != 64, proc.stderr
+    assert "CONDOR_OUTPUT must" not in proc.stderr
+    assert "must stay inside" not in proc.stderr
 
 
 def _arguments(tmp_path: Path) -> str:
@@ -522,3 +564,19 @@ def test_failed_fetch_of_the_output_exits_70(tmp_path):
     proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", CONDOR_OUTPUT="_site")
     assert proc.returncode == 70
     assert "could not bring _site back" in proc.stderr
+
+
+def test_jobs_of_one_run_get_different_run_directories(tmp_path):
+    dirs = set()
+    for job in ("render-solution", "render-assign"):
+        case_dir = tmp_path / job
+        case_dir.mkdir()
+        proc, calls = _run(
+            case_dir, ["a", "b"], STUB_RV="0", RUN_ID="",
+            GITHUB_RUN_ID="9001", GITHUB_JOB=job, GITHUB_RUN_ATTEMPT="1",
+        )
+        assert proc.returncode == 0, proc.stderr
+        copied = [c for c in calls if c.startswith("rsync") and c.endswith(".condor-steps")]
+        assert len(copied) == 1
+        dirs.add(copied[0].rsplit(":", 1)[1].split("/ci/", 1)[1])
+    assert len(dirs) == 2, dirs

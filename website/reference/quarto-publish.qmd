@@ -65,7 +65,7 @@ deadlock identically.
 Any other group name is fine, and is how you serialize the caller's own
 runs.
 `quarto-publish.yml` serializes gh-pages deploys internally on its `deploy`
-job (`group: gh-pages`).
+job (`group: gh-pages-main`; do not use that name either).
 A caller-level block with the same group name deadlocks GitHub Actions
 against the nested job: `deploy` fails with no runner, no steps, and no log,
 and the site silently stops publishing

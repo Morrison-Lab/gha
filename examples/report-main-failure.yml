@@ -1,0 +1,24 @@
+# Copy this file to `.github/workflows/report-main-failure.yml` in a repo whose
+# default-branch failures should be followed up (gha#1770).
+#
+# List the workflows to watch by name: `workflow_run` takes names, not globs.
+# A cancelled run is ignored; an infrastructure-looking failure is re-run once;
+# any other failure files one issue per workflow.
+name: Report main failure
+
+on:
+  workflow_run:
+    workflows: [Check links, Quarto Publish] # replace with your workflow names
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  report:
+    permissions:
+      issues: write
+      actions: write
+    uses: Morrison-Lab/gha/.github/workflows/report-main-failure.yml@v3
+    # with:
+    #   labels: bug,automated   # must already exist in your repo to be applied

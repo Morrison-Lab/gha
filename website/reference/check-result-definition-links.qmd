@@ -1,0 +1,46 @@
+---
+title: "check-result-definition-links.yml"
+---
+
+Diff-scoped, warn-only check for the lab's rule
+(Ezra, 2026-11-09)
+that every result div links at least one definition.
+A reader of a theorem, lemma, corollary, or proposition
+can then reach the meaning of the terms it uses.
+
+The check flags a `#thm-`, `#lem-`, `#cor-`, or `#prp-` div
+that holds no definition link.
+A definition link is either:
+
+- a cross-reference to a definition, such as `@def-id`; or
+- a Markdown link whose target ends in `#def-id`,
+  on this site or on a prerequisite site.
+
+A link inside a comment or a code fence does not count.
+A link in a nested proof does count.
+A result with no defined term to link,
+such as an identity between numbers,
+is exempt with `<!-- check-result-definition-links: allow: reason -->`.
+
+A div is checked when the pull request adds a line inside it.
+With no base to diff against,
+the check skips instead of scanning the whole tree,
+so existing results are fixed when someone edits them anyway.
+It only warns by default;
+set `fail: true` after a measured corpus shows no false positive.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
+| `paths-ignore` | none | Comma or newline separated globs to skip |
+| `fail` | `false` | Fail on a finding; `false` warns |
+| `whole-tree` | `false` | Check every result div, to measure a corpus |
+| `python-version` | `3.x` | Python version |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |
+
+## Usage
+
+Copy `examples/check-result-definition-links.yml` to
+`.github/workflows/check-result-definition-links.yml`.

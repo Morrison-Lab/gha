@@ -199,29 +199,68 @@ runs:
         APT_PACKAGES: ${{ inputs.apt-packages }}
       run: |
         set -euo pipefail
+        # word-splitting on $APT_PACKAGES is intentional
+        # shellcheck disable=SC2086
+        missing=$(for p in $APT_PACKAGES; do dpkg -s "$p" > /dev/null 2>&1 || echo "$p"; done)
+        if [ -z "$missing" ]; then
+          echo "::notice::All apt packages are already installed; skipping apt."
+          exit 0
+        fi
+        if ! sudo -n true 2> /dev/null; then
+          echo "::warning::No passwordless sudo, and dpkg does not list these packages: $missing. Continuing without apt."
+          exit 0
+        fi
         sudo apt-get update
+        # shellcheck disable=SC2086
         sudo apt-get install -y $APT_PACKAGES
+
+    - name: Detect passwordless sudo
+      id: sudo
+      if: inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
+      shell: bash
+      run: |
+        # setup-chrome installs through sudo on Linux unless told not to (gha#1642).
+        if sudo -n true 2> /dev/null; then
+          echo "none=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "none=true" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Setup Chrome
       if: inputs.setup-chrome == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+      with:
+        no-sudo: ${{ steps.sudo.outputs.none }}
+
+    - name: Detect whether the Quarto install can be skipped
+      id: quarto-skip
+      shell: bash
+      env:
+        CLUSTER_RENDER: ${{ inputs.cluster-render }}
+      run: |
+        # The install runs sudo. A runner without passwordless sudo cannot
+        # install, so skipping loses nothing when Quarto is already there or
+        # the cluster image supplies it (gha#1642). With sudo the install
+        # always runs, because condor-batch can still fall back to a local
+        # render (exit 70 or 71) that needs it.
+        key="${CONDOR_SSH_KEY:-$HOME/.ssh/id_ed25519_condor}"
+        skip=false
+        if ! sudo -n true 2>/dev/null; then
+          if command -v quarto > /dev/null || { [ "$CLUSTER_RENDER" = "true" ] && [ -r "$key" ]; }; then
+            skip=true
+          fi
+        fi
+        echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
     - name: Set up Quarto
-      if: inputs.preinstalled-toolchain != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-      env:
-        # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
-        # release via the GitHub API; unauthenticated, that intermittently 403s on
-        # shared runners (#270). Authenticate it, matching the `preview` composite.
-        GH_TOKEN: ${{ github.token }}
+      if: inputs.preinstalled-toolchain != 'true' && steps.quarto-skip.outputs.skip != 'true'
+      uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
       with:
         tinytex: ${{ inputs.tinytex }}
 
     - name: Set up R
       if: inputs.setup-r == 'true' && inputs.preinstalled-toolchain != 'true'
       uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
-      with:
-        use-public-rspm: true
 
     - name: Restore R dependencies (renv)
       if: inputs.setup-r == 'true' && inputs.use-renv == 'true'

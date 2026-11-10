@@ -440,8 +440,6 @@ jobs:
       - name: Set up R
         if: steps.gate.outputs.skip != 'true' && inputs.setup-r
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
-        with:
-          use-public-rspm: true
 
       - name: Set up Quarto
         if: steps.gate.outputs.skip != 'true' && inputs.install-quarto
