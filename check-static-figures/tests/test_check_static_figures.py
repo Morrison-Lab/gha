@@ -9,6 +9,7 @@ The script's name has a hyphen, so load it by path.
 """
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -166,12 +167,29 @@ def test_scope_reports_a_placeholder_only_on_its_own_line():
     assert [f.line for f in csf.scan_file(lines, {4})[0]] == [4]
 
 
+def _input_default(text, indent, name):
+    # The default line inside one input's block, which ends at the next line
+    # indented no deeper than the input's own key.
+    block = text.split(f"\n{indent}{name}:\n", 1)[1]
+    block = re.split(rf"\n(?!{indent} )(?=\s{{0,{len(indent)}}}\S)", block, maxsplit=1)[0]
+    defaults = [line.strip() for line in block.split("\n") if line.strip().startswith("default:")]
+    assert len(defaults) == 1, (name, defaults)
+    return defaults[0]
+
+
 def test_defaults_agree():
     action = (_DIR / "action.yml").read_text()
     assert csf._DEFAULT_FAIL is False
     assert csf.DEFAULT_GLOBS == "*.qmd"
-    assert "default: 'false'" in action.split("\n  fail:")[1]
-    assert "default: '*.qmd'" in action.split("\n  globs:")[1]
+    assert _input_default(action, "  ", "fail") == "default: 'false'"
+    assert _input_default(action, "  ", "globs") == "default: '*.qmd'"
+
+
+def test_reusable_workflow_defaults_agree():
+    workflow = (_DIR.parent / ".github" / "workflows" / "check-static-figures.yml").read_text()
+    assert _input_default(workflow, "      ", "fail") == "default: false"
+    assert "type: boolean" in workflow.split("\n      fail:\n", 1)[1].split("default:", 1)[0]
+    assert _input_default(workflow, "      ", "globs") == "default: '*.qmd'"
 
 
 def test_an_html_div_decides_over_a_static_eval_inside_it():
