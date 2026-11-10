@@ -132,6 +132,18 @@ FUNCTION_WORDS = frozenset({
     "computed", "computing", "use", "uses", "used", "using", "given", "gives", "give",
 })
 GENERIC_NOUNS = frozenset({"number", "numbers", "value", "values"})
+# Ordinary English words that a link to a `#def-` anchor often wraps inside a sentence
+# ("a [linear](...) map").  As a one-word term learned only from such a link they flag
+# every ordinary use, so they count as terms only when a def-div title or bold term
+# names them (gha#1773).
+LINK_ONLY_COMMON_WORDS = frozenset({
+    "even", "exists", "approximate", "ranges", "labels", "uniform", "sum", "average",
+    "memory", "linear", "random", "negative", "positive", "steps", "length", "function",
+    "term", "terms", "mean", "fit", "fits", "set", "sets", "input", "inputs", "output",
+    "outputs", "direction", "square", "score", "weight", "weights", "class", "cost",
+    "costs", "loss", "filter", "constant", "deep", "diagonal", "identity", "binary",
+    "fraction", "degrees", "gates", "model", "models", "estimate", "feature", "features",
+})
 LEADING_ARTICLE_RE =re.compile(r"^(?:the|a|an)\s+", re.I)
 MIN_TERM_LEN = 3
 MAX_TERM_WORDS = 5
@@ -367,6 +379,8 @@ def harvest_terms(
                 if not usable_term(candidate, allowed_out):
                     continue
                 key = term_key(candidate)
+                if from_link and key in LINK_ONLY_COMMON_WORDS:
+                    continue
                 if " " in key:
                     multiword.setdefault(def_id, set()).update(key.split())
                 elif not (from_link or listed) and key in multiword.get(def_id, ()):
