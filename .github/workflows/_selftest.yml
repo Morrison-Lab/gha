@@ -3747,6 +3747,9 @@ jobs:
           whole-tree: 'true'
           fail: 'true'
           paths-ignore: '_ci-csf'
+          globs: '_ci-csf/*.qmd'
+      # This call scans the real website/reference pages, so it also
+      # fails if one of them ever quotes the note phrase.
       - name: Check again with globs excluding the page
         uses: ./check-static-figures
         with:
