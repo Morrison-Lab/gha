@@ -168,9 +168,10 @@ def test_scope_reports_a_placeholder_only_on_its_own_line():
 
 
 def _input_default(text, indent, name):
-    # The default line inside one input's block, ending at the next key at the same indent.
+    # The default line inside one input's block, which ends at the next line
+    # indented no deeper than the input's own key.
     block = text.split(f"\n{indent}{name}:\n", 1)[1]
-    block = re.split(rf"\n{indent}[A-Za-z0-9_-]+:", block, maxsplit=1)[0]
+    block = re.split(rf"\n(?!{indent} )(?=\s{{0,{len(indent)}}}\S)", block, maxsplit=1)[0]
     defaults = [line.strip() for line in block.split("\n") if line.strip().startswith("default:")]
     assert len(defaults) == 1, (name, defaults)
     return defaults[0]
@@ -187,6 +188,7 @@ def test_defaults_agree():
 def test_reusable_workflow_defaults_agree():
     workflow = (_DIR.parent / ".github" / "workflows" / "check-static-figures.yml").read_text()
     assert _input_default(workflow, "      ", "fail") == "default: false"
+    assert "type: boolean" in workflow.split("\n      fail:\n", 1)[1].split("default:", 1)[0]
     assert _input_default(workflow, "      ", "globs") == "default: '*.qmd'"
 
 
