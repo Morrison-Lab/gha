@@ -47,10 +47,30 @@ def test_regression_sds_444_sentence_is_flagged():
     "It is not", "This is not", "That is not", "Note that", "Notice that",
     "Unlike", "Do not confuse", "Don't confuse", "Be careful", "Beware",
     "In contrast", "By contrast", "Intuitively", "Informally", "Historically",
+    "Extends", "This extends", "It generalizes", "Just as", "Similarly",
+    "Equivalently", "In other words", "For $p = 1$", "For p = 1",
 ])
 def test_each_starter_is_flagged(phrase):
     text = f"::: {{#def-x}}\nA thing is a thing. {phrase} the other thing.\n:::"
-    assert hits(text) == [(2, phrase)]
+    # The closing dollar sign is not part of the reported phrase.
+    assert hits(text) == [(2, phrase.rstrip("$"))]
+
+
+def test_pds_385_precision_matrix_commentary_is_flagged():
+    text = "\n".join([
+        "::: {#def-precision-matrix}",
+        "The **precision matrix** is the inverse of the variance matrix.",
+        "This extends the precision of a random variable to a vector,",
+        "just as the precision of a random variable is the reciprocal.",
+        "For $p = 1$ it is the reciprocal of the variance.",
+        ":::",
+    ])
+    assert [h[0] for h in hits(text)] == [3, 5]
+
+
+def test_mid_sentence_extends_is_not_flagged():
+    text = "::: {#def-x}\nThe set that extends the base set is closed.\n:::"
+    assert hits(text) == []
 
 
 def test_starter_at_line_start():

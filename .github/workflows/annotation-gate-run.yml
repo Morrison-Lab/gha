@@ -87,7 +87,7 @@ jobs:
     # every few seconds on one commit cancelled each gate job seconds after it
     # started, before its first step, so the commit never got a check run (gha#1649).
     concurrency:
-      group: annotation-gate-run-${{ inputs.head-sha }}-${{ inputs.all-runs && 'all' || inputs.workflow-id || inputs.run-id }}
+      group: annotation-gate-run-${{ github.event_name == 'workflow_dispatch' && 'dispatch-' || '' }}${{ inputs.head-sha }}-${{ inputs.all-runs && 'all' || inputs.workflow-id || inputs.run-id }}
       cancel-in-progress: false
     permissions:
       actions: read
