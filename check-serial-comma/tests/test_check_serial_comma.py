@@ -39,6 +39,7 @@ def flagged(text: str):
     "- Fit the model, check the residuals and report the result.",
     "The rows are sorted, filtered or grouped.",
     "We tried walking, jogging and running.",
+    "Add bread, baking or cooking.",
     "# Bias, variance and noise",
     "In practice, we use means, medians and modes.",
 ])

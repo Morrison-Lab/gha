@@ -13,8 +13,8 @@ single-word placeholders, a sentence part ``A, B and C`` or ``A, B or C``
 where the final comma is missing.
 Not flagged: ``A, B, and C``; a two-item list; an introductory phrase
 followed by a pair ("However, x and y", "In practice, a and b");
-a pair of participles describing the word before them
-("the older deploy, queued or running, is cancelled");
+a pair of participles, at least one ending in "-ed", describing the word
+before them ("the older deploy, queued or running, is cancelled");
 anything in a code fence, an HTML comment, YAML front matter, a table row,
 or on a line carrying ``<!-- check-serial-comma: allow -->``.
 
@@ -84,6 +84,9 @@ NOT_ITEM = frozenset({"not", "so", "both", "vice"})
 # A participle ("queued", "running"): two of them after a comma that follows a
 # word of another form are a phrase describing that word, not list items.
 PARTICIPLE_RE = re.compile(r"[a-z]{2,}(?:ed|ing)$")
+# A past participle ("queued"). An "-ing" word can also be a noun ("baking"),
+# so an appositive pair must hold at least one of these (gha#1831).
+PAST_PARTICIPLE_RE = re.compile(r"[a-z]{2,}ed$")
 
 
 def clean(line: str) -> str:
@@ -198,6 +201,7 @@ def missing_serial(sentence: str) -> Optional[int]:
         words = [re.sub(r"\W", "", w).lower() for w in (first.split()[-1], item2, item3)]
         if (len(item2.split()) == 1 and len(item3.split()) == 1
                 and all(PARTICIPLE_RE.match(w) for w in words[1:])
+                and any(PAST_PARTICIPLE_RE.match(w) for w in words[1:])
                 and not PARTICIPLE_RE.match(words[0])):
             continue
         return offset + m.start(1) - 1
