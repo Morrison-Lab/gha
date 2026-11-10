@@ -16,7 +16,7 @@ to `@v2`;
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
-`request-dependabot-review.yml`, `sync-shared-fragments.yml`, `sync-upstream.yml`,
+`request-dependabot-review.yml`, `sync-upstream.yml`,
 `altdoc-multiversion-docs.yml`, `report-failure.yml`,
 `gemini.yml`,
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
@@ -85,7 +85,8 @@ only ever shipped at
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
 only ever shipped at
-`@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
+`@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`,
+`sync-shared-fragments.yml`, and
 `update-snapshots.yml`).
 See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
@@ -194,8 +195,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`,
 `lint-changed-lines.yml`, `lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`,
-`check-junk-files.yml`, `request-dependabot-review.yml`,
-`sync-shared-fragments.yml`, `sync-upstream.yml`,
+`check-junk-files.yml`, `request-dependabot-review.yml`, `sync-upstream.yml`,
 `check-news.yml`,
 `altdoc-multiversion-docs.yml`, `report-failure.yml`,
 `gemini.yml`,
@@ -260,6 +260,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
 `report-main-failure.yml`,
+`sync-shared-fragments.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at
 `@v3` - see the

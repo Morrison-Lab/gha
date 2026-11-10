@@ -68,7 +68,8 @@ jobs:
         run: |
           # An org-level WORKFLOW_TOKEN is visible to every repo, but it may be
           # expired or lack access to this one. Use it only if it can read this
-          # repository; otherwise fall back to the built-in token (gha#1807).
+          # repository (the probe proves read access only, not push rights);
+          # otherwise fall back to the built-in token (gha#1807).
           use=false
           if [ -n "$WORKFLOW_TOKEN" ]; then
             if curl -fsS -o /dev/null -H "Authorization: Bearer ${WORKFLOW_TOKEN}" "${GITHUB_API_URL}/repos/${REPO}"; then

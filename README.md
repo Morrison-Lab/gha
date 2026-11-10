@@ -796,7 +796,8 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `report-main-failure.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`, and
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`,
+`sync-shared-fragments.yml`, and
 `update-snapshots.yml`).
 `quarto-publish.yml` additionally has a genuine
 
@@ -914,7 +915,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `lint-changed-files.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
-`sync-shared-fragments.yml`, `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
+`sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `small-model-agent.yml`,
@@ -937,6 +938,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
 `report-main-failure.yml`,
+`sync-shared-fragments.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
