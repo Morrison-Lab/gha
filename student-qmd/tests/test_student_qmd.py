@@ -187,6 +187,7 @@ def test_drop_front_matter_keys_removes_the_key_and_its_value(project):
     assert 'title: "Homework 1"' in text and "format: html" in text
 
 
+@needs_quarto
 def test_checker_accepts_dropped_keys_only_when_asked(project, capsys):
     source = project / "hw" / "hw1.qmd"
     source.write_text(source.read_text().replace("format: html\n", "format: html\n" + CANVAS_BLOCK, 1))
