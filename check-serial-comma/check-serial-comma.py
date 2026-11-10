@@ -13,6 +13,8 @@ single-word placeholders, a sentence part ``A, B and C`` or ``A, B or C``
 where the final comma is missing.
 Not flagged: ``A, B, and C``; a two-item list; an introductory phrase
 followed by a pair ("However, x and y", "In practice, a and b");
+a pair of participles describing the word before them
+("the older deploy, queued or running, is cancelled");
 anything in a code fence, an HTML comment, YAML front matter, a table row,
 or on a line carrying ``<!-- check-serial-comma: allow -->``.
 
@@ -79,6 +81,9 @@ ABBREV_RE = re.compile(r"\b(e\.g|i\.e|vs|etc|cf|al|Fig|Eq|Sec|No)\.")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?:;])\s+")
 # A conjunction that does not join list items.
 NOT_ITEM = frozenset({"not", "so", "both", "vice"})
+# A participle ("queued", "running"): two of them after a comma that follows a
+# word of another form are a phrase describing that word, not list items.
+PARTICIPLE_RE = re.compile(r"[a-z]{2,}(?:ed|ing)$")
 
 
 def clean(line: str) -> str:
@@ -186,6 +191,14 @@ def missing_serial(sentence: str) -> Optional[int]:
         # "A, such as B or C", "A, which uses B or C": the second part opens a
         # phrase or clause, not a list item.
         if re.sub(r"\W", "", item2.split()[0]).lower() in INTRO_WORDS | CLAUSE_WORDS:
+            continue
+        # "the older deploy, queued or running, is cancelled": a pair of
+        # participles set off after a word of another form is an appositive
+        # describing that word, not the last two items of a list (gha#1829).
+        words = [re.sub(r"\W", "", w).lower() for w in (first.split()[-1], item2, item3)]
+        if (len(item2.split()) == 1 and len(item3.split()) == 1
+                and all(PARTICIPLE_RE.match(w) for w in words[1:])
+                and not PARTICIPLE_RE.match(words[0])):
             continue
         return offset + m.start(1) - 1
     return None

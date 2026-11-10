@@ -37,6 +37,8 @@ def flagged(text: str):
     "The `lm`, `glm` and `nls` functions fit models.",
     "The data have 1, 2 and 3 as values.",
     "- Fit the model, check the residuals and report the result.",
+    "The rows are sorted, filtered or grouped.",
+    "We tried walking, jogging and running.",
     "# Bias, variance and noise",
     "In practice, we use means, medians and modes.",
 ])
@@ -60,6 +62,8 @@ def test_missing_serial_comma_is_flagged(text):
     "The values are 1,000 and 2,000.",
     "Ask whether it holds, whether or not it is true.",
     "| a, b and c | d |",
+    "It now cancels a PR's older preview deploy, queued or running, first.",
+    "It cancels the same PR's older deploy, queued or running.",
     "We fit linear models, trees and forests. <!-- check-serial-comma: allow -->",
 ])
 def test_other_prose_is_not_flagged(text):
