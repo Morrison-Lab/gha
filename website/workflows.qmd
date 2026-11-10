@@ -79,6 +79,7 @@ input tables and a copy-paste example.
 | [`check-python-qmd-chunks.yml`](reference/check-python-qmd-chunks.qmd) | Diff-scoped check that lints the Python chunks of the `.qmd` files a PR changes with the repository's `ruff.toml` (the lab config is `python/ruff.toml` in Morrison-Lab/psc), joining a file's chunks in document order and reporting findings at their `.qmd` lines; fails by default | `config`, `globs`, `fail`, `whole-tree` |
 | [`check-single-ask-parts.yml`](reference/check-single-ask-parts.qmd) | Diff-scoped, warn-only check that flags a part of an exercise div (`#exr-`), meaning a list item or paragraph outside its solution, that asks for more than one thing; each part asks for one thing | `globs`, `paths-ignore`, `python-version`, `fail`, `whole-tree` |
 | [`check-def-title-synonyms.yml`](reference/check-def-title-synonyms.qmd) | Diff-scoped, warn-only check that flags a `#def-` div title listing synonyms with parentheses or "also called" instead of a comma list, primary term first | `globs`, `fail`, `whole-tree` |
+| [`check-def-wiktionary.yml`](reference/check-def-wiktionary.qmd) | Diff-scoped, warn-only check that flags a `#def-` div whose first bolded defined term is not linked to its Wiktionary entry, or that links a Wiktionary page that does not exist | `globs`, `fail`, `whole-tree` |
 | [`check-bare-yes-no.yml`](reference/check-bare-yes-no.qmd) | Diff-scoped check that fails when a PR adds a solution paragraph opening with a bare "Yes." or "No." instead of saying what the answer means in the question's terms | `globs`, `fail`, `whole-tree` |
 | [`check-code-fold.yml`](reference/check-code-fold.qmd) | Diff-scoped check that fails when a PR adds `code-fold: false` to an executed chunk; a chunk is `show` when the prose mentions the code and `true` when it does not | `globs`, `fail`, `whole-tree` |
 | [`check-serial-comma.yml`](reference/check-serial-comma.qmd) | Diff-scoped check that fails when a PR adds a list of three or more items with no comma before the final "and" or "or" | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -214,6 +215,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-pr-concerns.yml`, `cancel-superseded.yml`,
 `check-pr-size.yml`,
 `check-def-title-synonyms.yml`,
+`check-def-wiktionary.yml`,
 `check-bare-yes-no.yml`, `check-code-fold.yml`,
 `check-serial-comma.yml`,
 `check-exercise-background.yml`,

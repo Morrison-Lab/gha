@@ -59,6 +59,7 @@ updates:
       - "/check-visualization-figures"
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
+      - "/check-def-wiktionary"
       - "/check-bare-yes-no"
       - "/check-code-fold"
       - "/check-serial-comma"
