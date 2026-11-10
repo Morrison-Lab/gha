@@ -1,0 +1,17 @@
+# Copy to .github/workflows/check-def-wiktionary.yml in your repo.
+# Diff-scoped check: flags a #def- div whose first bolded defined term is not
+# linked to its Wiktionary entry (where one exists), and a Wiktionary link to a
+# page that does not exist. Warn-only by default. Only contents:read is needed.
+name: Check definition Wiktionary links
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-def-wiktionary.yml@v3
+    # with:
+    #   globs: '*.qmd'        # pathspecs to check
+    #   fail: true            # block instead of warn (defaults to false)
+    #   whole-tree: true      # scan every definition, not just a PR's additions

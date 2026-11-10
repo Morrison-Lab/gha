@@ -412,6 +412,17 @@ jobs:
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py
           python3 .github/workflows/scripts/tests/run-preview-deploy-metadata-tests.py
 
+  update-snapshots-toolchain-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run update-snapshots toolchain tests
+        run: python3 .github/workflows/scripts/tests/run-update-snapshots-toolchain-tests.py
+
   quarto-publish-workflow-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -1742,6 +1753,33 @@ jobs:
         uses: ./check-def-title-synonyms
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-def-wiktionary is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-def-wiktionary@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  def-wiktionary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-def-wiktionary unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-def-wiktionary/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-def-wiktionary
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # check-bare-yes-no is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-bare-yes-no@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
@@ -1876,6 +1914,62 @@ jobs:
       - name: Check this PR's added lines
         uses: ./check-exercise-question-paragraph
         with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-exercise-ends-with-task is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-exercise-ends-with-task@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  exercise-ends-with-task:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-exercise-ends-with-task unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-exercise-ends-with-task/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-exercise-ends-with-task
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-removed-content is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-removed-content@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly;
+  # warn-only here, since this repo's own PRs rewrite docs freely.
+  removed-content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-removed-content unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-removed-content/tests/ -v
+      - name: Check this PR's removed lines (warn only)
+        uses: ./check-removed-content
+        with:
+          fail: 'false'
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # check-key-equations-displayed is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-key-equations-displayed@v3` does not resolve until
@@ -8586,6 +8680,37 @@ jobs:
             exit 1
           fi
           echo "Empty corpus refused, as expected."
+
+  # Covers the classify step of report-main-failure.yml: which failed jobs
+  # count as infrastructure, and that the verdict spans every page of jobs.
+  report-main-failure-classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the classifier table test
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-report-main-failure-classify-tests.sh
+
+  # Pins the layout modes of sync-shared-fragments.yml's vendoring step
+  # (gha#1796). The workflow itself opens a PR, a write side effect selftest
+  # cannot run, so this runs the step's own script against a stub gh.
+  sync-shared-fragments-vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the vendoring table test
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-sync-shared-fragments-tests.sh
 
   # Covers the open-failure-issue action used by report-failure.yml and
   # check-links.yml.

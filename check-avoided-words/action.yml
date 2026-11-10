@@ -8,7 +8,7 @@ description: >-
   linear predictor (write "log-odds" or "linear predictor"; gha#1568). Skips code
   fences and spans, HTML comments and front matter. Scoped to lines a diff
   adds (an added line whose exact text was also deleted in the same diff
-  counts as moved). Fails by default; the trailing-parenthetical-link and "thing"
+  counts as moved). Fails by default; the trailing-parenthetical-link, "thing" and vague-attribution
   rules fail even with fail off.
 inputs:
   python-version:
@@ -45,7 +45,7 @@ inputs:
     description: >-
       Fail the action when an avoided word is found
       (else non-blocking). Defaults to 'true' (Ezra, 2026-11-04; gha#1473).
-      Set 'false' for warning annotations only; the `parenref` and `thing`
+      Set 'false' for warning annotations only; the `parenref`, `thing` and `vague`
       rules always fail.
     default: 'true'
 runs:

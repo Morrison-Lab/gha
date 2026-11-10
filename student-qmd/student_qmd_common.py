@@ -81,6 +81,7 @@ class Config:
     student_profile: str = DEFAULT_STUDENT_PROFILE
     drop_render_chunks: bool = False
     prune_macros: bool = False
+    drop_front_matter_keys: frozenset[str] = frozenset()
     misnamed: frozenset[str] = field(init=False)
 
     def __post_init__(self) -> None:

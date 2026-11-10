@@ -29,12 +29,15 @@ def run_text(text, extra_files=None, added=None):
     files = dict(extra_files or {})
     files["page.qmd"] = text
     terms = {}
+    def_words = {}
     for name, body in files.items():
         masked, _ = ctl.preprocess(body.splitlines())
         for k, ids in ctl.harvest_terms(masked, set()).items():
             terms.setdefault(k, set()).update(ids)
+        for did, ws in ctl.harvest_def_words(masked).items():
+            def_words.setdefault(did, set()).update(ws)
     rx = ctl.term_regex(list(terms)) if terms else None
-    return ctl.scan_file(Path("page.qmd"), text.splitlines(), terms, rx, added)
+    return ctl.scan_file(Path("page.qmd"), text.splitlines(), terms, rx, added, def_words)
 
 
 def rules(findings):
@@ -543,9 +546,9 @@ def test_one_word_alias_of_a_multiword_term_is_not_learned():
 
 
 def test_link_text_still_teaches_a_one_word_alias():
-    text = "See the [positive](https://x.github.io/sds/c.html#def-positive-classification).\n"
+    text = "See the [affirmative](https://x.github.io/sds/c.html#def-positive-classification).\n"
     masked, _ = ctl.preprocess((POSITIVE_DEF + text).splitlines())
-    assert "positive" in ctl.harvest_terms(masked, set())
+    assert "affirmative" in ctl.harvest_terms(masked, set())
 
 
 @pytest.mark.parametrize("title", ["sample mean, mean", "mean, sample mean", "sample mean or mean"])
@@ -576,3 +579,72 @@ def test_drop_sibling_moves_ignores_lines_the_sibling_also_adds(tmp_path):
     (tmp_path / "b.qmd").write_text("A brand new sentence.\n")
     added = {tmp_path / "a.qmd": {1}, tmp_path / "b.qmd": {1}}
     assert ctl.drop_sibling_moves(added) == added
+
+MARGINAL_DEF = """
+::: {#def-marginal-density}
+
+#### Marginal density
+
+The **marginal density** of a variable is its density with the others integrated out.
+
+:::
+
+::: {#def-fitted-value}
+
+#### Fitted value
+
+A **fitted value** is a model's prediction.
+
+:::
+"""
+
+
+PDF_DEF = """
+::: {#def-pdf}
+
+#### Probability density function
+
+A **probability density function** integrates to a probability.
+
+:::
+"""
+
+
+def test_link_on_part_of_target_title_is_partial_link():
+    page = "A [probability](d.qmd#def-pdf) density is used.\n"
+    assert rules(run_text(page, {"d.qmd": PDF_DEF})) == [("partial-link", "probability")]
+
+
+def test_link_before_a_defined_longer_phrase_is_reported_once():
+    page = "A [marginal](d.qmd#def-marginal-density) density is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == [("partial-link", "marginal density")]
+
+
+def test_link_on_whole_target_title_is_clean():
+    page = "A [marginal density](d.qmd#def-marginal-density) is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
+
+
+def test_following_word_outside_target_title_is_clean():
+    page = "A [fitted](d.qmd#def-fitted-value) probability is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
+
+
+def test_partial_link_on_untouched_line_is_not_reported():
+    page = "A [marginal](d.qmd#def-marginal-density) density estimate is used.\n"
+    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF}, added={5})) == []
+
+
+def test_common_word_from_link_only_is_not_a_term():
+    masked, _ = ctl.preprocess("See a [linear](https://x.io/m.html#def-linear-map) map.\n".splitlines())
+    assert "linear" not in ctl.harvest_terms(masked, set())
+
+
+def test_common_word_from_def_title_is_still_a_term():
+    masked, _ = ctl.preprocess("::: {#def-linear}\n\n#### Linear\n\nA **linear** function.\n\n:::\n".splitlines())
+    assert "linear" in ctl.harvest_terms(masked, set())
+
+
+def test_uncommon_one_word_link_term_is_still_learned():
+    masked, _ = ctl.preprocess("See the [estimator](https://x.io/m.html#def-estimator).\n".splitlines())
+    assert "estimator" in ctl.harvest_terms(masked, set())

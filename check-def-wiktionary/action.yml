@@ -1,0 +1,41 @@
+name: Check definition Wiktionary links
+description: >-
+  Diff-scoped check that flags a `#def-` div whose first bolded defined term is
+  not linked to its Wiktionary entry when one exists, or that links a
+  Wiktionary page that does not exist (Ezra, 2026-11-06; Morrison-Lab/psw#505).
+  Warn-only by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only definitions with added lines are
+      checked. Needs the base commit in history (fetch-depth: 0). Without it
+      the check is skipped.
+    default: ''
+  whole-tree:
+    description: Scan every tracked matching file in full; `base-ref` is ignored.
+    default: 'false'
+  globs:
+    description: Space-separated git pathspecs of tracked files to check.
+    default: '*.qmd'
+  fail:
+    description: Fail the action on a finding (else warnings only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check definition Wiktionary links
+      shell: bash
+      env:
+        DWK_BASE_REF: ${{ inputs.base-ref }}
+        DWK_WHOLE_TREE: ${{ inputs.whole-tree }}
+        DWK_GLOBS: ${{ inputs.globs }}
+        DWK_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-def-wiktionary.py"
