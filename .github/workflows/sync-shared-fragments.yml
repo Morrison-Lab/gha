@@ -29,12 +29,27 @@ on:
           Newline-separated list of file paths in the upstream repo to vendor.
           Each is written to dest-dir under its basename (the upstream directory
           structure is flattened); two paths sharing a basename are rejected.
+          Use this with dest-dir, or use dest-files instead.
         type: string
-        required: true
+        default: ''
       dest-dir:
-        description: Directory in this repo to write the vendored copies into.
+        description: >-
+          Directory in this repo to write the vendored copies into.
+          Required with source-paths.
         type: string
-        required: true
+        default: ''
+      dest-files:
+        description: >-
+          Newline-separated source=destination pairs, for files that belong at
+          explicit paths in this repo (for example scaffolding files at the
+          repository root) rather than flattened into one directory.
+          Each source is a path in the upstream repo,
+          and each destination is a path in this repo.
+          Use this instead of source-paths and dest-dir.
+          Only the listed destinations are staged.
+          Two pairs sharing a destination are rejected.
+        type: string
+        default: ''
       manifest-path:
         description: >-
           Path to a JSON manifest recording the source repo, pinned commit, and
@@ -63,12 +78,31 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Choose the push token
+        id: token
+        env:
+          WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # An org-level WORKFLOW_TOKEN is visible to every repo, but it may be
+          # expired or lack access to this one. Use it only if it can read this
+          # repository; otherwise fall back to the built-in token (gha#1807).
+          use=false
+          if [ -n "$WORKFLOW_TOKEN" ]; then
+            if curl -fsS -o /dev/null -H "Authorization: Bearer ${WORKFLOW_TOKEN}" "${GITHUB_API_URL}/repos/${REPO}"; then
+              use=true
+            else
+              echo "::warning::WORKFLOW_TOKEN cannot read ${REPO}; falling back to the built-in github.token."
+            fi
+          fi
+          echo "use-workflow-token=${use}" >> "$GITHUB_OUTPUT"
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Persist a push-capable token so open-sync-pr can push without putting
           # the token in the remote URL.
-          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+          token: ${{ (steps.token.outputs.use-workflow-token == 'true' && secrets.WORKFLOW_TOKEN) || github.token }}
 
       - name: Vendor upstream fragments
         id: fetch
@@ -78,26 +112,56 @@ jobs:
           SOURCE_REF: ${{ inputs.source-ref }}
           SOURCE_PATHS: ${{ inputs.source-paths }}
           DEST_DIR: ${{ inputs.dest-dir }}
+          DEST_FILES: ${{ inputs.dest-files }}
           MANIFEST_PATH: ${{ inputs.manifest-path }}
         run: |
           set -euo pipefail
-          echo "::notice::Vendoring from ${SOURCE_REPO}@${SOURCE_REF} into ${DEST_DIR}"
-          mkdir -p "$DEST_DIR"
+          echo "::notice::Vendoring from ${SOURCE_REPO}@${SOURCE_REF}"
 
-          entries='[]'
-          declare -A seen_basenames
-          while IFS= read -r path; do
-            [ -z "$path" ] && continue
-            # Flatten to the basename under dest-dir, so guard against two source
-            # paths that share one (they'd silently overwrite each other). Track
-            # only names written this run -- the pre-existing vendored copies are
-            # expected to be present.
-            base=$(basename "$path")
-            if [ -n "${seen_basenames[$base]:-}" ]; then
-              echo "::error::Basename collision: ${path} and ${seen_basenames[$base]} both map to ${DEST_DIR}/${base}."
+          # Build one "source<TAB>destination" line per file, from either input.
+          tab=$(printf '\t')
+          if [ -n "$DEST_FILES" ] && { [ -n "$SOURCE_PATHS" ] || [ -n "$DEST_DIR" ]; }; then
+            echo "::error::Set dest-files, or set source-paths with dest-dir, not both."
+            exit 1
+          fi
+          pairs=''
+          if [ -n "$DEST_FILES" ]; then
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              case "$line" in
+                *=*) ;;
+                *)
+                  echo "::error::dest-files line '${line}' is not source=destination."
+                  exit 1
+                  ;;
+              esac
+              pairs+="${line%%=*}${tab}${line#*=}"$'\n'
+            done <<< "$DEST_FILES"
+          else
+            if [ -z "$SOURCE_PATHS" ] || [ -z "$DEST_DIR" ]; then
+              echo "::error::Set dest-files, or set both source-paths and dest-dir."
               exit 1
             fi
-            seen_basenames[$base]="$path"
+            mkdir -p "$DEST_DIR"
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              pairs+="${path}${tab}${DEST_DIR}/$(basename "$path")"$'\n'
+            done <<< "$SOURCE_PATHS"
+          fi
+
+          entries='[]'
+          declare -A seen_dests
+          while IFS="$tab" read -r path dest; do
+            [ -z "$path" ] && continue
+            # Two source paths that share a destination (a shared basename under
+            # dest-dir, or a repeated dest-files destination) would silently
+            # overwrite each other. Track only destinations written this run --
+            # the pre-existing vendored copies are expected to be present.
+            if [ -n "${seen_dests[$dest]:-}" ]; then
+              echo "::error::Destination collision: ${path} and ${seen_dests[$dest]} both map to ${dest}."
+              exit 1
+            fi
+            seen_dests[$dest]="$path"
             # Pin each file to the last commit that touched it, not the bare
             # upstream HEAD, so the manifest changes (and a PR opens) only when a
             # vendored file actually changes -- not on every unrelated upstream
@@ -109,7 +173,7 @@ jobs:
               echo "::error::No commit found for ${path} in ${SOURCE_REPO}@${SOURCE_REF}."
               exit 1
             fi
-            dest="${DEST_DIR}/${base}"
+            mkdir -p "$(dirname "$dest")"
             # Raw media type returns the file content directly (no base64).
             gh api -H "Accept: application/vnd.github.raw" \
               "repos/${SOURCE_REPO}/contents/${path}?ref=${file_commit}" > "$dest"
@@ -119,7 +183,12 @@ jobs:
             entries=$(echo "$entries" | jq \
               --arg p "$dest" --arg sp "$path" --arg c "$file_commit" --arg sha "$sha" --arg repo "$SOURCE_REPO" \
               '. + [{"path": $p, "source_path": $sp, "commit": $c, "sha256": $sha, "source_url": (env.GITHUB_SERVER_URL + "/" + $repo + "/blob/" + $c + "/" + $sp)}]')
-          done <<< "$SOURCE_PATHS"
+          done <<< "$pairs"
+
+          # Stage only what was written, so a repository-root destination does
+          # not stage the whole tree.
+          staged=$(jq -r '.[].path' <<< "$entries" | tr '\n' ' ')
+          echo "paths=${staged}${MANIFEST_PATH}" >> "$GITHUB_OUTPUT"
 
           if [ -n "$MANIFEST_PATH" ]; then
             mkdir -p "$(dirname "$MANIFEST_PATH")"
@@ -132,8 +201,9 @@ jobs:
         with:
           branch: ${{ inputs.pr-branch }}
           base: ${{ inputs.base-branch }}
-          paths: ${{ inputs.dest-dir }} ${{ inputs.manifest-path }}
+          paths: ${{ steps.fetch.outputs.paths }}
           commit-message: "chore: sync vendored fragments from ${{ inputs.source-repo }}"
+          token: ${{ (steps.token.outputs.use-workflow-token == 'true' && secrets.WORKFLOW_TOKEN) || github.token }}
           pr-body: |
             Automated refresh of vendored fragments from
             [`${{ inputs.source-repo }}`](https://github.com/${{ inputs.source-repo }}).
@@ -143,4 +213,3 @@ jobs:
             Don't hand-edit the vendored files -- edit them upstream and let this
             workflow refresh the copy. Generated by the `sync-shared-fragments`
             reusable workflow in [`Morrison-Lab/gha`](https://github.com/Morrison-Lab/gha).
-          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}

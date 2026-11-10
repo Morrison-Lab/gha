@@ -322,12 +322,36 @@ def drop_yaml_comments(lines: list[str]) -> list[str]:
     return [lines[0], *kept, *lines[end:]]
 
 
+def drop_front_matter_keys(lines: list[str], keys: frozenset[str]) -> list[str]:
+    """Remove the named top-level keys, with their values, from the front matter.
+
+    A key starts on an unindented `key:` line, and its value runs until the next
+    unindented line that is not a `- ` list item.
+    Nested keys are never matched, so a `canvas` key under another key stays.
+    """
+    end = front_matter_end(lines)
+    if not end or not keys:
+        return lines
+    kept: list[str] = []
+    dropping = False
+    for line in lines[1:end]:
+        top = re.match(r"([A-Za-z0-9_-]+):(\s|$)", line)
+        if top:
+            dropping = top.group(1) in keys
+        elif line.strip() and not line.startswith((" ", "\t", "-")):
+            dropping = False
+        if not dropping:
+            kept.append(line)
+    return [lines[0], *kept, *lines[end:]]
+
+
 def student_qmd(src: Path, cfg: Config) -> str:
     raw: list[str] = []
     expanded = expand_includes(src, visit=lambda path, ls: raw.extend(raw_answer_divs(path, ls, cfg)))
     if raw:
         raise StudentQmdError("; ".join(raw))
     lines = drop_html_comments(drop_yaml_comments(expanded))
+    lines = drop_front_matter_keys(lines, cfg.drop_front_matter_keys)
     shown = drop_hidden_divs(lines, cfg)
     if cfg.drop_render_chunks:
         shown = drop_render_chunks(shown)
@@ -421,6 +445,7 @@ def config_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--student-profile", default=DEFAULT_STUDENT_PROFILE)
     parser.add_argument("--drop-render-chunks", default="false")
     parser.add_argument("--prune-macros", default="false")
+    parser.add_argument("--drop-front-matter-keys", default="")
 
 
 def config_from(args: argparse.Namespace) -> Config:
@@ -430,6 +455,7 @@ def config_from(args: argparse.Namespace) -> Config:
         student_profile=args.student_profile.strip(),
         drop_render_chunks=parse_bool(args.drop_render_chunks, "drop-render-chunks"),
         prune_macros=parse_bool(args.prune_macros, "prune-macros"),
+        drop_front_matter_keys=frozenset(split_list(args.drop_front_matter_keys)),
     )
 
 

@@ -40,6 +40,10 @@ on:
         description: Keep only the LaTeX macro definitions the source uses, answers included.
         type: boolean
         default: false
+      drop-front-matter-keys:
+        description: Top-level front-matter keys, separated by spaces, to remove from each student file.
+        type: string
+        default: ''
       require-answers:
         description: Fail a source that has no answer-key-only div, rather than warn.
         type: boolean
@@ -113,6 +117,7 @@ jobs:
           student-profile: ${{ inputs.student-profile }}
           drop-render-chunks: ${{ inputs.drop-render-chunks }}
           prune-macros: ${{ inputs.prune-macros }}
+          drop-front-matter-keys: ${{ inputs.drop-front-matter-keys }}
           require-answers: ${{ inputs.require-answers }}
           check: ${{ inputs.check }}
           render: ${{ inputs.render }}
