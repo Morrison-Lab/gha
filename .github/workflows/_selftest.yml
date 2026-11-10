@@ -3684,6 +3684,51 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-tls || true
           rm -rf _ci-tls
+  # check-static-figures has no reusable workflow until part 3 of gha#1822.
+  static-figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-static-figures unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-static-figures/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-static-figures
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - name: Stage a page that points readers to the HTML version
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-csf
+          printf '%s\n' '# Page' '' 'See the HTML version for this figure.' > _ci-csf/page.qmd
+          git add -f _ci-csf/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: csf-expected-failure
+        continue-on-error: true
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+          globs: '_ci-csf/*.qmd'
+          fail: 'true'
+      - name: Assert the blocking call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.csf-expected-failure.outcome }}
+        run: test "$OUTCOME" = failure || { echo "::error::expected a failure, got '$OUTCOME'"; exit 1; }
   # check-search-shortcut is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-search-shortcut@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
