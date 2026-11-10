@@ -55,6 +55,15 @@ on:
           merged PR previews are removed immediately regardless of publish status.
         type: boolean
         default: true
+      idle-days:
+        description: >-
+          When greater than 0, also remove the preview of an OPEN pull request
+          whose last update is more than this many days old. The pull request is
+          untouched and its next push rebuilds the preview. Keeps a repository
+          with many long-lived open PRs under the 1 GB GitHub Pages artifact cap.
+          Default 0 (disabled): a preview of an open PR is always kept.
+        type: number
+        default: 0
 
 jobs:
   cleanup:
@@ -95,6 +104,7 @@ jobs:
           COMPACT: ${{ inputs.compact-history }}
           PUBLISH_WORKFLOW: ${{ inputs.publish-workflow }}
           WAIT_FOR_PUBLISH: ${{ inputs.wait-for-publish }}
+          IDLE_DAYS: ${{ inputs.idle-days }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -127,6 +137,7 @@ jobs:
               return 0
             fi
             local dir pr_number pr_json pr_state pr_merged_at merge_oid base_ref http_status
+            local pr_updated_at updated_epoch idle_age_days
             for dir in "$PREVIEW_DIR"/pr-*/; do
               [ -d "$dir" ] || continue
               pr_number=$(basename "$dir" | sed 's/pr-//')
@@ -144,8 +155,9 @@ jobs:
 
               if pr_json=$(gh pr view "$pr_number" \
                 --repo "$GITHUB_REPOSITORY" \
-                --json state,mergedAt,mergeCommit,baseRefName 2>/dev/null); then
+                --json state,mergedAt,mergeCommit,baseRefName,updatedAt 2>/dev/null); then
                 pr_state=$(jq -r '.state // empty' <<< "$pr_json")
+                pr_updated_at=$(jq -r '.updatedAt // empty' <<< "$pr_json")
                 pr_merged_at=$(jq -r '.mergedAt // empty' <<< "$pr_json")
                 merge_oid=$(jq -r '.mergeCommit.oid // empty' <<< "$pr_json")
                 base_ref=$(jq -r '.baseRefName // empty' <<< "$pr_json")
@@ -169,6 +181,21 @@ jobs:
               fi
 
               if [ "$pr_state" = "OPEN" ]; then
+                # An idle open PR loses its preview when idle-days is set; its
+                # next push rebuilds it. A missing or unparsable updatedAt keeps it.
+                if [ "${IDLE_DAYS:-0}" != "0" ] && [ -n "$pr_updated_at" ]; then
+                  updated_epoch=$(date -u -d "$pr_updated_at" +%s 2>/dev/null || echo "")
+                  if [ -n "$updated_epoch" ]; then
+                    idle_age_days=$(( ( $(date -u +%s) - updated_epoch ) / 86400 ))
+                    if [ "$idle_age_days" -gt "${IDLE_DAYS%.*}" ]; then
+                      PR_ACTION["$pr_number"]="remove"
+                      echo "PR #${pr_number} is open but idle for ${idle_age_days} days (idle-days ${IDLE_DAYS}) - removing preview at ${dir}"
+                      rm -rf "$dir"
+                      REMOVED=$((REMOVED + 1))
+                      continue
+                    fi
+                  fi
+                fi
                 PR_ACTION["$pr_number"]="keep"
                 echo "PR #${pr_number} is still open - keeping preview"
                 continue

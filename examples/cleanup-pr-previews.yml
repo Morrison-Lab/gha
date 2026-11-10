@@ -38,3 +38,4 @@ jobs:
     #                               # the repo. Branch-based Pages only.
     #   publish-workflow: ''        # base-branch publish workflow name/pattern
     #   wait-for-publish: true      # wait for publish before pruning merged PRs
+    #   idle-days: 0                # >0: also remove previews of open PRs idle this many days
