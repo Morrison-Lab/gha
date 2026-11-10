@@ -8587,6 +8587,21 @@ jobs:
           fi
           echo "Empty corpus refused, as expected."
 
+  # Covers the classify step of report-main-failure.yml: which failed jobs
+  # count as infrastructure, and that the verdict spans every page of jobs.
+  report-main-failure-classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the classifier table test
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-report-main-failure-classify-tests.sh
+
   # Covers the open-failure-issue action used by report-failure.yml and
   # check-links.yml.
   # The unit tests pin the matching and splitting rules; the end-to-end step
