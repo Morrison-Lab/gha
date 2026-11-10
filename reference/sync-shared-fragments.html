@@ -1289,28 +1289,34 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>source-paths</code></td>
 <td>string</td>
-<td>required</td>
-<td>Newline-separated list of upstream file paths to vendor. Each is written to <code>dest-dir</code> under its basename; two paths sharing a basename are rejected.</td>
+<td><code>''</code></td>
+<td>Newline-separated list of upstream file paths to vendor. Each is written to <code>dest-dir</code> under its basename; two paths sharing a basename are rejected. Use with <code>dest-dir</code>, or use <code>dest-files</code> instead.</td>
 </tr>
 <tr class="even">
 <td><code>dest-dir</code></td>
 <td>string</td>
-<td>required</td>
-<td>Directory in this repo to write the vendored copies into.</td>
+<td><code>''</code></td>
+<td>Directory in this repo to write the vendored copies into. Required with <code>source-paths</code>.</td>
 </tr>
 <tr class="odd">
+<td><code>dest-files</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Newline-separated <code>source=destination</code> pairs, for files that belong at explicit paths in this repo, such as scaffolding files at the repository root. Use instead of <code>source-paths</code> and <code>dest-dir</code>; only the listed destinations are staged, and two pairs sharing a destination are rejected.</td>
+</tr>
+<tr class="even">
 <td><code>manifest-path</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Path to a JSON manifest recording the source repo, pinned commit, and file list. Empty to skip writing a manifest.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>base-branch</code></td>
 <td>string</td>
 <td><code>main</code></td>
 <td>Base branch to open the PR against.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>pr-branch</code></td>
 <td>string</td>
 <td><code>automated/sync-shared-fragments</code></td>
