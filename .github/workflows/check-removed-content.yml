@@ -1,0 +1,55 @@
+name: Check removed content is moved (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      globs:
+        description: Space-separated git pathspecs of tracked files to check.
+        type: string
+        default: '*.qmd *.md'
+      min-overlap:
+        description: >-
+          Fraction of a removed sentence's word trigrams that must appear among
+          the added lines for it to count as moved.
+        type: string
+        default: '0.6'
+      min-words:
+        description: Fewest alphabetic words of an examined sentence.
+        type: string
+        default: '5'
+      fail:
+        description: >-
+          Fail the workflow when removed content is not found. Defaults to
+          true; false gives warning annotations only.
+        type: boolean
+        default: true
+
+jobs:
+  check-removed-content:
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff against the base.
+          fetch-depth: 0
+
+      - name: Check removed content is moved
+        uses: Morrison-Lab/gha/check-removed-content@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          globs: ${{ inputs.globs }}
+          min-overlap: ${{ inputs.min-overlap }}
+          min-words: ${{ inputs.min-words }}
+          fail: ${{ inputs.fail }}
+          pr-body: ${{ github.event.pull_request.body }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base
+          # tip it was built on; a push has no base, so the check is skipped.
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

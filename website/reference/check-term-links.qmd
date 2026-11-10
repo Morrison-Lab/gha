@@ -55,6 +55,10 @@ a label such as "note" or "example".
   A link covers only part of a longer defined phrase,
   such as "logistic [regression](...)" when "logistic regression" is defined.
   Link the whole phrase to its own definition.
+  It also fires when a link's text is part of its target definition's title
+  and the next word is another word of that title,
+  such as "[probability](...#def-pdf) density" for "probability density function"
+  (a different next word, as in "[fitted](...) probability", is not flagged).
 - **`no-definition`.**
   A bold term in a passage that is not a definition div, and that matches no
   known term: it is introduced as technical and defined nowhere.
@@ -65,15 +69,24 @@ a label such as "note" or "example".
   line for it to suppress.
   Delete it: an exemption is line-wide, so a dead one also hides the next
   finding that lands on its line.
+- **`bare-allow`.**
+  An opt-out pragma on a line the pull request adds, with no reason.
+  Write `<!-- check-term-links: allow: why this line is exempt -->`,
+  so a reviewer sees why each exemption exists.
 
 It skips code fences and spans, math, HTML comments, YAML front matter,
 include shortcodes, headings, images, and the target of a link.
-`<!-- check-term-links: allow -->` exempts a line, and
+`<!-- check-term-links: allow: reason -->` exempts a line, and
 `<!-- check-term-links: ignore-file -->` a file.
 
 ## Scope
 
 Terms are always learned from every tracked file the globs match.
+A one-word term from the built-in list of ordinary English words
+(`linear`, `sum`, `memory`, and similar) is learned only from a def-div title
+or bold term, not from a link to a `#def-` anchor,
+because such a link usually wraps the word inside a sentence.
+Use `allow-file` for other ordinary words.
 Findings are reported only on lines the pull request adds, so adopting the
 check does not reflag what the corpus already carries.
 With no `base-ref`, the check skips with a warning instead of widening to the

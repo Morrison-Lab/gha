@@ -12,7 +12,9 @@ corrected before and was written again.
 What is flagged: a sentence inside a ``::: {#def-...}`` div that opens with a
 commentary phrase: "It is not", "This is not", "That is not", "Note that",
 "Notice that", "Unlike", "Do not confuse", "Be careful", "Beware", "In
-contrast", "By contrast", "Intuitively", "Informally", "Historically". The
+contrast", "By contrast", "Intuitively", "Informally", "Historically", "Extends" and "Generalizes"
+(also after "This" or "It"), "Just as", "Similarly", "Equivalently", "In
+other words", and a special-case opener such as "For $p = 1$". The
 finding sits on the line that holds the sentence.
 
 What is not counted: lines inside code fences, display math (``$$``), HTML
@@ -67,7 +69,10 @@ ADVICE = (
 STARTERS = (
     r"It is not|It isn't|This is not|That is not|Note that|Notice that|"
     r"Unlike|Do not confuse|Don't confuse|Be careful|Beware|In contrast|"
-    r"By contrast|Intuitively|Informally|Historically"
+    r"By contrast|Intuitively|Informally|Historically|"
+    r"(?:This |It )?[Ee]xtends|(?:This |It )?[Gg]eneralizes|Just as|"
+    r"Similarly|Equivalently|In other words|"
+    r"For \$?[A-Za-z] ?= ?\d+\$?"
 )
 # A starter at the start of a line, or after a sentence end on the line.
 COMMENTARY_RE = re.compile(r"(?:^\s*|(?<=[.!?])\s+)(" + STARTERS + r")\b")
