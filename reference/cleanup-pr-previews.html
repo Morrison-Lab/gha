@@ -1292,6 +1292,12 @@ cookieconsent.run({
 <td>When <code>true</code> (default), wait until the base branch’s publish/deploy workflow succeeds before removing preview directories for merged PRs. When <code>false</code>, merged PR previews are removed immediately regardless of publish status.</td>
 </tr>
 <tr class="odd">
+<td><code>idle-days</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>When greater than <code>0</code>, also remove the preview of an open pull request whose last update is more than this many days old. The pull request is untouched and its next push rebuilds the preview; until then its earlier preview links return 404. Counts whole days since the PR’s last update (a comment or label counts, not only a push). Must be a non-negative whole number. Keeps a repository with many long-lived open PRs under the 1 GB GitHub Pages artifact cap. Default <code>0</code> disables it.</td>
+</tr>
+<tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
@@ -1331,7 +1337,8 @@ cookieconsent.run({
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # pruning, so deleted snapshots stop bloating</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # the repo. Branch-based Pages only.</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   publish-workflow: ''        # base-branch publish workflow name/pattern</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   wait-for-publish: true      # wait for publish before pruning merged PRs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   wait-for-publish: true      # wait for publish before pruning merged PRs</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   idle-days: 0                # &gt;0: also remove previews of open PRs idle this many days</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/cleanup-pr-previews.yml"><code>examples/cleanup-pr-previews.yml</code></a> for the full caller stub.</p>
 
 
