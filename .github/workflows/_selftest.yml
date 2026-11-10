@@ -8685,6 +8685,22 @@ jobs:
         shell: bash
         run: bash .github/workflows/scripts/tests/run-report-main-failure-classify-tests.sh
 
+  # Pins the layout modes of sync-shared-fragments.yml's vendoring step
+  # (gha#1796). The workflow itself opens a PR, a write side effect selftest
+  # cannot run, so this runs the step's own script against a stub gh.
+  sync-shared-fragments-vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the vendoring table test
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-sync-shared-fragments-tests.sh
+
   # Covers the open-failure-issue action used by report-failure.yml and
   # check-links.yml.
   # The unit tests pin the matching and splitting rules; the end-to-end step
