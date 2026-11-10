@@ -914,7 +914,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `lint-changed-files.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
-`sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
+`sync-shared-fragments.yml`, `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `small-model-agent.yml`,

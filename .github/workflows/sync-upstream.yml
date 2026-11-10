@@ -60,6 +60,25 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Choose the push token
+        id: token
+        env:
+          WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # An org-level WORKFLOW_TOKEN is visible to every repo, but it may be
+          # expired or lack access to this one. Use it only if it can read this
+          # repository; otherwise fall back to the built-in token (gha#1807).
+          use=false
+          if [ -n "$WORKFLOW_TOKEN" ]; then
+            if curl -fsS -o /dev/null -H "Authorization: Bearer ${WORKFLOW_TOKEN}" "${GITHUB_API_URL}/repos/${REPO}"; then
+              use=true
+            else
+              echo "::warning::WORKFLOW_TOKEN cannot read ${REPO}; falling back to the built-in github.token."
+            fi
+          fi
+          echo "use-workflow-token=${use}" >> "$GITHUB_OUTPUT"
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -67,7 +86,7 @@ jobs:
           # token so open-sync-pr can push without putting the token in the
           # remote URL.
           fetch-depth: 0
-          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+          token: ${{ (steps.token.outputs.use-workflow-token == 'true' && secrets.WORKFLOW_TOKEN) || github.token }}
 
       - name: Merge upstream into the working tree
         id: merge
@@ -152,4 +171,4 @@ jobs:
           paths: '.'
           commit-message: ${{ steps.merge.outputs.commit-message }}
           pr-body: ${{ steps.merge.outputs.pr-body }}
-          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+          token: ${{ (steps.token.outputs.use-workflow-token == 'true' && secrets.WORKFLOW_TOKEN) || github.token }}
