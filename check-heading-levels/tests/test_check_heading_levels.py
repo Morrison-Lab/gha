@@ -90,6 +90,51 @@ def test_a_level_two_start_is_flagged_as_deep_not_as_a_repeated_title(tmp_path):
     assert kinds(tmp_path, "## Newton\n") == [("deep", 5)]
 
 
+# -- section numbered 0.x ----------------------------------------------------
+
+def test_numbered_level_two_after_an_unnumbered_top_is_flagged(tmp_path):
+    body = "# Overview {.unnumbered}\n\n## A\n\n# B\n\n## C\n"
+    assert kinds(tmp_path, body) == [("zero", 7)]
+
+
+def test_dash_shorthand_counts_as_unnumbered(tmp_path):
+    assert kinds(tmp_path, "# Overview {-}\n\n## A\n") == [("zero", 7)]
+
+
+def test_unnumbered_level_two_before_a_numbered_top_is_fine(tmp_path):
+    body = "# Overview {.unnumbered}\n\n## Aside {.unnumbered}\n\n# A\n\n## B\n"
+    assert kinds(tmp_path, body) == []
+
+
+def test_numbered_top_first_is_fine(tmp_path):
+    assert kinds(tmp_path, "# A\n\n## B\n\n# R {.unnumbered}\n\n## C\n") == []
+
+
+def test_unnumbered_class_must_be_a_whole_word(tmp_path):
+    body = "# Overview {.unnumbered-ish}\n\n## A\n"
+    assert kinds(tmp_path, body) == []
+
+
+def test_numbered_level_two_from_an_include_is_flagged_at_the_include(tmp_path):
+    (tmp_path / "_sec.qmd").write_text("## Bernoulli\n")
+    path = page(tmp_path, "# Overview {.unnumbered}\n\n{{< include _sec.qmd >}}\n")
+    found = hlv.scan_page(path, str(tmp_path))
+    assert [(f.kind, f.line) for f in found] == [("zero", 1)]
+    assert found[0].path.endswith("_sec.qmd")
+
+
+def test_page_with_numbering_off_has_no_zero_section(tmp_path):
+    path = tmp_path / "page.qmd"
+    path.write_text('---\ntitle: "N"\nnumber-sections: false\n---\n\n'
+                    "# Welcome {.unnumbered}\n\n## A\n")
+    assert hlv.scan_page(str(path), str(tmp_path)) == []
+
+
+def test_allow_marker_exempts_a_zero_heading(tmp_path):
+    body = "# O {-}\n\n## A <!-- check-heading-levels: allow -->\n"
+    assert kinds(tmp_path, body) == []
+
+
 # -- what is not counted -----------------------------------------------------
 
 def test_div_titles_are_not_headings(tmp_path):

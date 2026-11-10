@@ -8,7 +8,7 @@ headings from the page they came from; corrected 2026-11-02): a page's title
 comes from its front matter and is not a numbered level, so the body starts
 at level 1 (``#``) and each heading is at most one level deeper than the one
 before it. A body that starts at level 2 numbers its sections 0.1, 0.2 under
-``number-sections: true``. Three mistakes are flagged:
+``number-sections: true``. Four mistakes are flagged:
 
 - **Skipped level.** A heading more than one level deeper than the heading
   before it in the same file (``#`` then ``###``). The first heading of a
@@ -18,6 +18,10 @@ before it. A body that starts at level 2 numbers its sections 0.1, 0.2 under
   ``{{< include >}}`` shortcodes, is deeper than level 1 (a shared
   ``### Configuring R`` include that opens ten chapters, or a body of ``##``
   sections that number 0.1, 0.2).
+- **Section numbered 0.x.** A numbered heading below level 1 that comes
+  before any numbered level-1 heading, when the page's first heading is an
+  unnumbered ``# Overview {.unnumbered}``: Quarto numbers it 0.1 all the
+  same (Ezra, 2026-11-10: "so no section number starts with `0.`").
 - **Title repeated as a heading.** The first heading a page renders repeats
   the page's ``title:`` (a section copied into its own page with its
   ``# Newton's method`` heading still on it).
@@ -89,6 +93,12 @@ ADVICE_DEEP = (
     "start the page at level 1: raise this heading, or the include's other "
     "headings with it"
 )
+ADVICE_ZERO = (
+    "add a numbered level-1 heading above it, or raise it to level 1"
+)
+# ``{.unnumbered}`` or ``{-}`` among a heading's trailing attributes.
+UNNUMBERED_RE = re.compile(
+    r"\{[^{}]*(?:(?<![\w-])\.unnumbered(?![\w-])|(?<![^\s{])-(?![^\s}]))[^{}]*\}\s*$")
 ADVICE_TITLE = (
     "drop the heading (the title already names the page) and raise its "
     "subsections one level, or add <!-- check-heading-levels: allow -->"
@@ -152,6 +162,27 @@ def read_lines(path: str) -> Optional[List[str]]:
         return None
     cached = _read_cached(path, info.st_mtime_ns, info.st_size)
     return None if cached is None else list(cached)
+
+
+def is_unnumbered(text: str) -> bool:
+    """Whether a heading's attributes drop it from the section numbering."""
+    return bool(UNNUMBERED_RE.search(text))
+
+
+NUMBER_OFF_RE = re.compile(r"^number-sections:\s*(?:false|no)\s*(?:#.*)?$")
+
+
+def numbering_off(lines: List[str]) -> bool:
+    """Whether the front matter sets ``number-sections: false`` at its top
+    level, so the page numbers no section at all."""
+    if not lines or lines[0].strip() != "---":
+        return False
+    for raw in lines[1:]:
+        if raw.strip() in ("---", "..."):
+            return False
+        if NUMBER_OFF_RE.match(raw):
+            return True
+    return False
 
 
 def page_title(lines: List[str]) -> Optional[str]:
@@ -270,6 +301,17 @@ def scan_page(path: str, root: str) -> List[Finding]:
                 first.path, first.line, "title",
                 f"The page's first heading ('{first.text}') repeats its "
                 f"title. Fix: {ADVICE_TITLE}"))
+    for heading, _own in ([] if numbering_off(lines) else headings):
+        if is_unnumbered(heading.text):
+            continue
+        if heading.level == 1:
+            break
+        if heading is not headings[0][0] and not heading.allowed:
+            findings.append(Finding(
+                heading.path, heading.line, "zero",
+                f"Heading '{heading.text}' is numbered 0.x: no numbered "
+                f"level-1 heading comes before it. Fix: {ADVICE_ZERO}"))
+        break
     prev = 0
     for heading, own in headings:
         reported_deep = (heading is headings[0][0] and heading.level > 1)
