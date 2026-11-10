@@ -17,14 +17,30 @@ Guidance for Claude Code when working in this repository.
 
 ## Standing tag-slide policy
 
-- **Sliding this repo's major tag needs Ezra's typed "slide v3" in the runner
-  thread, and only the runner thread slides it.**
-  An owner thread whose fix has merged reports the merge to the coordinator
-  and waits; it does not dispatch `slide-major-tag.yml` or schedule a
-  check-in that would (coordinator rule, 2026-11-08, gha#1614).
-  This replaces the earlier standing grant (user directive, 2026-08-27),
-  which let any agent session slide on its own judgment.
-  The readiness bar and audits below still apply to the runner's slide.
+- **The runner thread slides this repo's major tag without asking, once the gates below pass.**
+  Ezra, 2026-11-10, in the project thread:
+  "can we make `slide v3` allowed without needing my permission" (gha#1834).
+  This replaces the rule that the slide waits for Ezra's typed "slide v3"
+  (coordinator rule, 2026-11-08, gha#1614).
+  Only the runner thread dispatches `slide-major-tag.yml`, so two threads never race:
+  an owner thread whose fix has merged reports the merge to the coordinator
+  and does not dispatch the slide or schedule a check-in that would.
+  Like the other grants here, it removes the asking and not the judgment;
+  the readiness bar and audits below still apply.
+
+- **Dispatch with the commit you checked.**
+  Pass that commit as `expected_sha`:
+
+  ```bash
+  gh workflow run slide-major-tag.yml -R Morrison-Lab/gha --ref main -f expected_sha=<sha>
+  ```
+
+  The run refuses unless the commit it would tag is that one,
+  so a merge that lands between your checks and the dispatch fails the slide
+  instead of shipping a commit nobody checked.
+  Where you know a gha PR in the serial queue is about to merge, wait for it,
+  so its merge does not need a second slide straight after;
+  this is advice, not a gate, since `expected_sha` already makes a mid-flight merge fail safe.
 
 - **The readiness bar is the same one `mwc` uses, on the commit being slid.**
   Every check run on that exact commit is green or skipped, with none pending,
@@ -189,7 +205,7 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** (runner thread only, on Ezra's typed "slide v3") slide when the
+- **Do:** (runner thread only, without waiting to be asked) slide when the
   commit is green, the callees' `permissions:` blocks gained no key and
   widened no value since the tagged commit, and consumers need it
   --- then report both SHAs.
