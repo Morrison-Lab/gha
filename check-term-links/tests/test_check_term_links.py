@@ -559,6 +559,27 @@ def test_listed_alias_is_learned_in_either_order(title):
     assert {"mean", "sample mean"} <= set(ctl.harvest_terms(masked, set()))
 
 
+def test_drop_sibling_moves_keeps_original_file_split(tmp_path):
+    (tmp_path / "orig.qmd").write_text("Setup text for the risk.\n  - The risk was here.\nOnly here.\n")
+    (tmp_path / "part.qmd").write_text("Setup text for the risk.\n1. The risk was here.\nBrand new line.\n")
+    added = {tmp_path / "part.qmd": {1, 2, 3}}
+    assert ctl.drop_sibling_moves(added) == {tmp_path / "part.qmd": {3}}
+
+
+def test_drop_sibling_moves_ignores_other_directories(tmp_path):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "orig.qmd").write_text("Setup text for the risk.\n")
+    (tmp_path / "sub" / "part.qmd").write_text("Setup text for the risk.\n")
+    added = {tmp_path / "sub" / "part.qmd": {1}}
+    assert ctl.drop_sibling_moves(added) == added
+
+
+def test_drop_sibling_moves_ignores_lines_the_sibling_also_adds(tmp_path):
+    (tmp_path / "a.qmd").write_text("A brand new sentence.\n")
+    (tmp_path / "b.qmd").write_text("A brand new sentence.\n")
+    added = {tmp_path / "a.qmd": {1}, tmp_path / "b.qmd": {1}}
+    assert ctl.drop_sibling_moves(added) == added
+
 MARGINAL_DEF = """
 ::: {#def-marginal-density}
 
