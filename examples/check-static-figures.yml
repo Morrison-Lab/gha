@@ -1,7 +1,8 @@
 # Copy to .github/workflows/check-static-figures.yml in your repo.
 # Diff-scoped check: flags an interactive figure that runs only in HTML output
 # with no static version in its file, and any note that sends readers to the
-# HTML version instead of showing the figure, when a PR adds a line to it.
+# HTML version instead of showing the figure, when a PR adds the note or a
+# line to that figure's chunk.
 # Add a static version, or <!-- static-version: reason --> in the file.
 # Warn-only by default.
 # Only contents:read is needed (the default), so no permissions block is required.
