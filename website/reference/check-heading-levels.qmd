@@ -29,7 +29,7 @@ The check reports four mistakes:
   such as `## A` after `# Overview {.unnumbered}`
   (Ezra, 2026-11-10: "so no section number starts with `0.`").
   Quarto numbers it 0.1, because an unnumbered heading does not count.
-  A page whose front matter sets `number-sections: false` is not checked for this.
+  A page whose front matter sets `number-sections: false` is not checked for 0.x sections.
 - **Title repeated as a heading.**
   The first heading a page renders is a level 1 heading
   that repeats the page's `title:`.
