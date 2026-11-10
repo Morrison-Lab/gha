@@ -28,7 +28,7 @@ Guidance for Claude Code when working in this repository.
   Like the other grants here, it removes the asking and not the judgment;
   the readiness bar and audits below still apply.
 
-- **Dispatch with the commit you checked, after the gha serial queue drains.**
+- **Dispatch with the commit you checked.**
   Pass that commit as `expected_sha`:
 
   ```bash
@@ -38,8 +38,9 @@ Guidance for Claude Code when working in this repository.
   The run refuses unless the commit it would tag is that one,
   so a merge that lands between your checks and the dispatch fails the slide
   instead of shipping a commit nobody checked.
-  Slide once no gha PR in the serial queue is about to merge;
-  otherwise the next merge needs a second slide straight after.
+  Where you know a gha PR in the serial queue is about to merge, wait for it,
+  so its merge does not need a second slide straight after;
+  this is advice, not a gate, since `expected_sha` already makes a mid-flight merge fail safe.
 
 - **The readiness bar is the same one `mwc` uses, on the commit being slid.**
   Every check run on that exact commit is green or skipped, with none pending,
