@@ -685,6 +685,36 @@ jobs:
             out,
         )
 
+        # An existing job taking a key another base job requests (gha#1365).
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read", "      pull-requests: read"), encoding="utf-8"
+        )
+        commit_all(repo, "two jobs")
+        run_git(["tag", "v1b"], cwd=repo)
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read\n      pull-requests: read", "      pull-requests: read"),
+            encoding="utf-8",
+        )
+        code, out = run_audit("v1b", None, cwd=repo)
+        check("existing job taking a key within the union passes", code == 0, out)
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read\n      pull-requests: write", "      pull-requests: read"),
+            encoding="utf-8",
+        )
+        code, out = run_audit("v1b", None, cwd=repo)
+        check("existing job widening beyond the union is rejected", code == 1, out)
+        check(
+            "violation names the existing job against the union",
+            "job 'build' (against the union of base jobs) widened permission 'pull-requests': 'read' -> 'write'" in out,
+            out,
+        )
+        (wf_dir / "split.yml").write_text(
+            new_job("      contents: read\n      issues: read", "      pull-requests: read"),
+            encoding="utf-8",
+        )
+        code, out = run_audit("v1b", None, cwd=repo)
+        check("existing job adding a key outside the union is rejected", code == 1, out)
+
         (wf_dir / "split.yml").write_text(
             base.replace("contents: write", "contents: read"), encoding="utf-8"
         )

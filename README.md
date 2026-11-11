@@ -976,6 +976,10 @@ the error text appears only on the run page in the UI).
 [gha#638](https://github.com/Morrison-Lab/gha/pull/638) added `issues: read`
 to `ai-code-review.yml` and the `v2` slide delivered it: every consumer run
 concluded `startup_failure` until the caller-side grant landed.
+The exception is a key another job of the same workflow already requests:
+every working caller grants it already, so a job may take it up to that level,
+and `audit_callee_permissions.py` allows it
+([gha#1365](https://github.com/Morrison-Lab/gha/issues/1365)).
 So treat a `permissions:` widening like any other breaking change: prefer a
 major-version bump; where a bump is disproportionate, find the callers and PR
 the caller-side grant **before** sliding the tag, and name the required caller
