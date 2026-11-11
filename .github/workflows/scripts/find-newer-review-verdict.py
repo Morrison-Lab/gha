@@ -24,6 +24,9 @@ The review with the highest run id decides. When that run is not newer than
 is newer, the answer is yes only if the classifier reads it as clean, so a
 newer not-clean review keeps the gate red.
 
+It loads find-fallback-verdict.py from its own directory for the classifier
+call, so keep the two scripts side by side.
+
 Each comment's decision is logged to stderr.
 Prints found=true|false and url=<comment html_url> to stdout, and to
 $GITHUB_OUTPUT when set. Exits 0 either way, and 2 on a usage or input error.
