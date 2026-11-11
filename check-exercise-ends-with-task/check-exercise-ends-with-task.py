@@ -91,6 +91,7 @@ def blocks_of(body: List[str]) -> List[tuple]:
             close()
             # A second "$$" on the opening line closes the display there, whatever follows it,
             # such as an attribute block like {#eq-a} (gha#1908).
+            # endswith() still matters for "$$$", whose closing "$$" overlaps the opener.
             one_line = len(stripped) > 2 and (stripped.endswith("$$") or "$$" in stripped[2:])
             in_math = not (in_math or one_line)
             continue
