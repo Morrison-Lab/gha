@@ -11,6 +11,7 @@ DEFAULT = [
     r"Node\.js \d+ is deprecated\. The following actions target Node",
     r"^Canceling since a higher priority waiting request for",
     r"^The operation was canceled\.$",
+    r"^The run was canceled by @[A-Za-z0-9-]+(\[bot\])?\.$",
     r"not posting a stale review",
     r"^PR edits workflow files; restored",
     r"^Claude review verdict is not clean \(verdict: .+\)\.$",
@@ -179,6 +180,24 @@ def test_current_run_mode_posts_nothing(monkeypatch):
 
 def test_superseded_job_cancellation_is_allowed():
     assert not g.find_violations([ann("failure", "The operation was canceled.")], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_manual_run_cancellation_is_allowed():
+    # Seen on lds run 39475711425, after `gh run cancel` (gha#1144).
+    for user in ("d-morrison", "github-actions[bot]"):
+        msg = f"The run was canceled by @{user}."
+        assert not g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_manual_cancellation_pattern_is_anchored_and_in_action_yml():
+    for msg in (
+        "Error: The run was canceled by @d-morrison.",
+        "The run was canceled by @d-morrison. Then the build failed.",
+        "The run was canceled by @two words.",
+    ):
+        assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+    text = open(os.path.join(os.path.dirname(__file__), "..", "action.yml")).read()
+    assert r"^The run was canceled by @[A-Za-z0-9-]+(\[bot\])?\.$" in text
 
 
 def test_non_clean_review_verdict_is_allowed():
