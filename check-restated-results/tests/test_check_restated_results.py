@@ -102,6 +102,38 @@ def test_theorem_in_a_later_subfile_counts():
     assert len(rr.check_page(rr.flatten("page.qmd", files), None)) == 1
 
 
+def test_nested_include_resolves_against_the_top_level_page():
+    # Quarto resolves a nested include from the top-level page's directory.
+    files = {
+        "page.qmd": "{{< include _s/_unit.qmd >}}".split("\n"),
+        "_s/_unit.qmd": ("{{< include _s/_exr.qmd >}}\n{{< include _s/_sol.qmd >}}\n"
+                         "{{< include _s/_thm.qmd >}}").split("\n"),
+        "_s/_exr.qmd": div("exr-a", "Derive it.").split("\n"),
+        "_s/_sol.qmd": div("sol-a", EQ).split("\n"),
+        "_s/_thm.qmd": div("thm-a", "T.").split("\n"),
+    }
+    assert rr.check_page(rr.flatten("page.qmd", files), None) == []
+    # Control: without the theorem the solution is found and flagged, so the
+    # pass above is not the includes going unread.
+    files["_s/_unit.qmd"] = files["_s/_unit.qmd"][:-1]
+    assert len(rr.check_page(rr.flatten("page.qmd", files), None)) == 1
+
+
+@pytest.mark.parametrize("follow_up", ["exr-a-part2b", "exr-a-deviation"])
+def test_follow_up_exercise_continues_the_group(follow_up):
+    # gha#1478: a lettered part, or a slug that extends the exercise's own,
+    # does not end the search for the restating theorem.
+    out = msgs(div("exr-a", "Derive it.") + div("sol-a", EQ)
+               + div(follow_up, "Show more.") + div("thm-a", "T."))
+    assert out == []
+
+
+def test_unrelated_exercise_still_ends_the_group():
+    out = msgs(div("exr-a", "Derive it.") + div("sol-a", EQ)
+               + div("exr-ab", "Show more.") + div("thm-a", "T."))
+    assert len(out) == 1
+
+
 def test_include_inside_a_code_fence_is_not_expanded():
     files = {"p.qmd": "```\n{{< include q.qmd >}}\n```".split("\n"), "q.qmd": ["x"]}
     assert len(rr.flatten("p.qmd", files)) == 3
@@ -148,6 +180,28 @@ def test_edited_solution_is_reported_in_diff_mode(repo):
     _git(repo, "add", ".")
     _git(repo, "commit", "-q", "-m", "edit")
     assert len(run(base="main").findings) == 1
+
+
+def test_include_through_a_symlink_is_followed(repo):
+    # gha#1478: sds includes "sds/_s/_x.qmd" through a "sds -> ." symlink.
+    # Without following it, each subfile was read as its own page and the
+    # theorem after the solution was never seen.
+    (repo / "p.qmd").unlink()
+    (repo / "_s").mkdir()
+    (repo / "_s" / "_exr.qmd").write_text(div("exr-a", "Derive it."))
+    (repo / "_s" / "_sol.qmd").write_text(div("sol-a", EQ))
+    (repo / "_s" / "_thm.qmd").write_text(div("thm-a", "T."))
+    (repo / "sds").symlink_to(".")
+    (repo / "page.qmd").write_text("".join(
+        f"{{{{< include sds/_s/_{n}.qmd >}}}}\n\n" for n in ("exr", "sol", "thm")))
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "symlink")
+    assert run(whole_tree=True).findings == []
+    (repo / "page.qmd").write_text("".join(
+        f"{{{{< include sds/_s/_{n}.qmd >}}}}\n\n" for n in ("exr", "sol")))
+    _git(repo, "commit", "-qam", "drop theorem")
+    findings = run(whole_tree=True).findings
+    assert len(findings) == 1 and findings[0].path == "_s/_sol.qmd"
 
 
 def test_no_base_skips(repo):
