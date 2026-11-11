@@ -96,7 +96,9 @@ jobs:
               morrison-lab/pds | morrison-lab/cds | morrison-lab/mcs) TERMS_FROM="Morrison-Lab/mds" ;;
               morrison-lab/sds | morrison-lab/ids) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds" ;;
               morrison-lab/lds | morrison-lab/rme) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds" ;;
-              morrison-lab/mlg) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds Morrison-Lab/lds" ;;
+              # dds (deep learning) builds on lds; lds is private, so without
+              # WORKFLOW_TOKEN its clone only warns, and mds, pds, and sds still load (gha#1523).
+              morrison-lab/mlg | morrison-lab/dds) TERMS_FROM="Morrison-Lab/mds Morrison-Lab/pds Morrison-Lab/sds Morrison-Lab/lds" ;;
               *) TERMS_FROM="" ;;
             esac
           fi

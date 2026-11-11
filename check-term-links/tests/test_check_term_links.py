@@ -86,9 +86,110 @@ def test_each_div_starts_over():
     assert [f.line for f in found] == [9]
 
 
-def test_each_paragraph_outside_a_div_starts_over():
+def test_paragraphs_outside_divs_share_one_scope_until_the_next_heading():
+    # psw's rule: a passage is the prose outside divs between one heading and the next (gha#1283).
     page = "The [risk](#def-risk) is large.\n\nThe risk is small.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_heading_starts_a_new_scope_outside_divs():
+    page = "## One\n\nThe [risk](#def-risk) is large.\n\n## Two\n\nThe risk is small.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [7]
+
+
+def test_an_unlinked_use_is_reported_once_per_section():
+    page = "The risk is large.\n\nThe risk is small.\n"
+    found = run_text(page, {"d.qmd": RISK_DEF})
+    assert [f.line for f in found] == [1]
+    assert "section" in found[0].message
+
+
+def test_a_div_inside_a_section_does_not_split_the_prose_around_it():
+    page = (
+        "The [risk](#def-risk) is large.\n\n"
+        "::: {.callout-note}\n\nAn aside.\n\n:::\n\n"
+        "The risk is small.\n"
+    )
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_div_keeps_its_own_scope_inside_a_section():
+    page = "The [risk](#def-risk) is large.\n\n::: {#exm-a}\n\nThe risk is small.\n\n:::\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [5]
+
+
+def test_a_link_inside_a_div_does_not_cover_the_prose_around_it():
+    page = "::: {#exm-a}\n\nThe [risk](#def-risk) is large.\n\n:::\n\nThe risk is small.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [7]
+
+
+def test_a_heading_inside_a_div_does_not_start_a_new_section():
+    page = (
+        "The [risk](#def-risk) is large.\n\n"
+        "::: {.callout-note}\n\n## Aside\n\nText.\n\n:::\n\n"
+        "The risk is small.\n"
+    )
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+@pytest.mark.parametrize("underline", ["===", "---", "-"])
+def test_a_setext_heading_starts_a_new_scope_outside_divs(underline):
+    page = f"One\n{underline}\n\nThe [risk](#def-risk) is large.\n\nTwo\n{underline}\n\nThe risk is small.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [9]
+
+
+def test_a_setext_title_is_not_prose():
+    page = "The risk\n===\n\nText.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+@pytest.mark.parametrize("before", ["\n", "- an item\n", "| a | b |\n"])
+def test_a_rule_that_is_not_an_underline_does_not_start_a_section(before):
+    page = f"The [risk](#def-risk) is large.\n\n{before}---\n\nThe risk is small.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_an_underline_after_a_longer_paragraph_is_not_a_heading():
+    # Pandoc reads `one\ntwo\n---` as one paragraph, so no new section starts
+    # and the last line is still prose.
+    page = "The [risk](#def-risk) is large.\nMore text\n---\n\nThe risk is small.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+    page = "Some text.\nThe risk is small.\n---\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [2]
+
+
+def test_an_underline_after_a_list_continuation_is_not_a_heading():
+    page = "- The [risk](#def-risk) is large.\n  more\n---\n\nThe risk is small.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_setext_heading_right_after_a_div_opens_is_a_heading():
+    page = "::: {.callout-note}\nThe risk\n---\n\nText.\n\n:::\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_setext_heading_right_after_an_atx_heading_is_a_heading():
+    page = "# One\nThe risk\n===\n\nThe [risk](#def-risk) is large.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_rule_after_a_blank_line_in_a_div_keeps_the_paragraph_above_it():
+    page = "::: {#exm-a}\n\nThe risk is large.\n\n---\n\nText.\n\n:::\n"
     assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [3]
+
+
+def test_an_opted_out_use_does_not_count_as_the_first_use():
+    page = (
+        "The risk table label. <!-- check-term-links: allow: table label -->\n\n"
+        "The risk is small.\n"
+    )
+    assert [(f.line, f.rule) for f in run_text(page, {"d.qmd": RISK_DEF})] == [(3, "unlinked-first-use")]
+
+
+def test_a_plural_link_covers_the_singular_in_later_paragraphs():
+    term_def = "::: {#def-term}\n\n#### Term\n\nA **term** is a word.\n\n:::\n"
+    page = "The [terms](#def-term) matter.\n\nEach term counts.\n"
+    assert run_text(page, {"d.qmd": term_def}) == []
 
 
 def test_a_terms_own_def_div_is_skipped():
@@ -706,3 +807,9 @@ def test_an_unquoted_fence_closes_a_quoted_one():
     # Pandoc reads a bare fence as closing a quoted one, so the next line is prose.
     page = f"> {FENCE}\n> code\n{FENCE}\nThe risk is after.\n"
     assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+
+
+def test_a_setext_heading_right_after_a_div_closes_is_a_heading():
+    # Flash review of gha#1906: the title after a closing fence is a heading, not prose.
+    page = "::: {#exm-a}\nbody\n:::\nThe risk\n---\n\nText.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []

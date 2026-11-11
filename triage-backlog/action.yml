@@ -1,0 +1,168 @@
+name: Triage the issue backlog (labels only)
+description: >-
+  Give each open issue that has no priority label the label the triage plan
+  proposes for it (`P1`, `P2` or `P3`), and close nothing. An issue the plan
+  would close (junk or a duplicate) is left unlabelled, for a reader to
+  review. Also reports the open-issue count, against `ceiling` when one is
+  given. Runs `triage-backlog.py` with `--apply --labels-only`. The script
+  reads issues through the `gh` CLI, so the caller needs no checkout. The job
+  needs `issues: write`, or `issues: read` when `dry-run` is `true`.
+inputs:
+  repo:
+    description: >-
+      The repository to triage, as `owner/name`. Defaults to the repository
+      the workflow runs in.
+    default: ${{ github.repository }}
+  dry-run:
+    description: >-
+      Print each label command without running it. Read fail-closed: only an
+      explicit `false` (case-insensitive, with spaces at either end removed)
+      changes labels, so neither a typo nor a missing input gives a real run.
+    default: 'true'
+  ceiling:
+    description: >-
+      The open-issue count to report against, as a whole number. Empty means
+      no ceiling. A run over the ceiling still passes, with a warning.
+    default: ''
+  limit:
+    description: >-
+      The most open issues to fetch, as a whole number of 1 or more. Empty
+      means the script's default of 1000. The run fails when the repository
+      has this many open issues or more, because the list may be cut short.
+    default: ''
+  github-token:
+    description: >-
+      The token `gh` uses. It needs `issues: write` on `repo`, or
+      `issues: read` for a dry run.
+    default: ${{ github.token }}
+outputs:
+  summary-file:
+    description: >-
+      Path of the file holding the script's stderr: its summary, or its error
+      when it failed. Empty when the labelling step did not run, because an
+      input was refused or a label was missing.
+    value: ${{ steps.triage.outputs.summary-file }}
+  dry-run:
+    description: Whether the run was a dry run (`true` or `false`), as resolved.
+    value: ${{ steps.mode.outputs.dry-run }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve the run mode
+      id: mode
+      shell: bash
+      env:
+        TRIAGE_DRY_RUN: ${{ inputs.dry-run }}
+        TRIAGE_CEILING: ${{ inputs.ceiling }}
+        TRIAGE_LIMIT: ${{ inputs.limit }}
+      run: |
+        set -euo pipefail
+        # Trim the ends only: a space inside the value is a typo, not `false`.
+        mode=$(printf '%s' "$TRIAGE_DRY_RUN" | tr '[:upper:]' '[:lower:]' \
+          | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        if [ "$mode" = "false" ]; then
+          echo "dry-run=false" >> "$GITHUB_OUTPUT"
+        else
+          if [ "$mode" != "true" ]; then
+            echo "::warning::dry-run is '$TRIAGE_DRY_RUN', which is neither true nor false. Treating it as a dry run."
+          fi
+          echo "dry-run=true" >> "$GITHUB_OUTPUT"
+        fi
+        case "$TRIAGE_CEILING" in
+          '' | *[!0-9]*)
+            if [ -n "$TRIAGE_CEILING" ]; then
+              echo "::error::ceiling must be a whole number or empty. It is '$TRIAGE_CEILING'."
+              exit 1
+            fi
+            ;;
+        esac
+        case "$TRIAGE_LIMIT" in
+          '') ;;
+          *[!0-9]* | 0*)
+            echo "::error::limit must be a whole number of 1 or more, with no leading zero, or empty. It is '$TRIAGE_LIMIT'."
+            exit 1
+            ;;
+        esac
+
+    - name: Check that the priority labels exist
+      if: steps.mode.outputs.dry-run == 'false'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        TRIAGE_REPO: ${{ inputs.repo }}
+      run: |
+        set -euo pipefail
+        # The script adds labels and creates none, so a missing label would
+        # stop the run part-way through the edits.
+        for label in P1 P2 P3; do
+          if ! gh api "repos/$TRIAGE_REPO/labels/$label" --silent; then
+            echo "::error::The label $label is missing from $TRIAGE_REPO, or could not be read. Create it, then run this again."
+            exit 1
+          fi
+        done
+
+    - name: Label the open issues the plan gives a priority
+      id: triage
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        TRIAGE_REPO: ${{ inputs.repo }}
+        TRIAGE_CEILING: ${{ inputs.ceiling }}
+        TRIAGE_IS_DRY_RUN: ${{ steps.mode.outputs.dry-run }}
+        TRIAGE_LIMIT: ${{ inputs.limit }}
+      run: |
+        set -euo pipefail
+        # --dry-run only has an effect together with --apply: the script then
+        # prints each command in place of running it. So a dry run passes both.
+        args=(-R "$TRIAGE_REPO" --apply --labels-only)
+        if [ "$TRIAGE_IS_DRY_RUN" = "true" ]; then
+          args+=(--dry-run)
+        fi
+        if [ -n "$TRIAGE_CEILING" ]; then
+          args+=(--ceiling "$TRIAGE_CEILING")
+        fi
+        if [ -n "$TRIAGE_LIMIT" ]; then
+          args+=(--limit "$TRIAGE_LIMIT")
+        fi
+        # The plan (stdout) goes to the log. The summary (stderr) goes to a
+        # file first, so the next step can copy it into the job summary
+        # whether this step passed or failed. Each call gets its own file, so
+        # a second call in one job does not overwrite the first call's summary.
+        summary=$(mktemp "$RUNNER_TEMP/triage-summary.XXXXXX")
+        rc=0
+        python3 "$GITHUB_ACTION_PATH/triage-backlog.py" "${args[@]}" 2> "$summary" || rc=$?
+        cat "$summary" >&2
+        echo "summary-file=$summary" >> "$GITHUB_OUTPUT"
+        exit "$rc"
+
+    - name: Copy the summary into the job summary
+      if: always()
+      shell: bash
+      env:
+        TRIAGE_SUMMARY: ${{ steps.triage.outputs.summary-file }}
+      run: |
+        set -euo pipefail
+        if [ -z "$TRIAGE_SUMMARY" ] || [ ! -s "$TRIAGE_SUMMARY" ]; then
+          echo "No summary was written."
+          {
+            echo '### Backlog triage (labels only)'
+            echo
+            echo 'The run stopped before the labelling step wrote a summary. Read the log for the error.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        {
+          echo '### Backlog triage (labels only)'
+          echo
+          echo '```text'
+          cat "$TRIAGE_SUMMARY"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+        # A run over the ceiling still passes, so say so where a reader of
+        # the run list sees it.
+        # grep exits 1 for no match, which is fine, and 2 for a read error,
+        # which fails the step.
+        over=$(grep -m 1 'over the ceiling of' "$TRIAGE_SUMMARY") || [ "$?" -eq 1 ]
+        if [ -n "$over" ]; then
+          echo "::warning::$over"
+        fi
