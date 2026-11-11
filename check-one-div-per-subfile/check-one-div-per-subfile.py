@@ -245,6 +245,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
 import diffscope  # noqa: E402
 
 _run_git = diffscope.run_git
+_git_paths = diffscope.git_paths
 parse_diff = diffscope.parse_diff
 parse_renames = diffscope.parse_renames
 is_repointed_include = diffscope.is_repointed_include
@@ -272,10 +273,10 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     """Scan subfiles with an added line since ``base_ref``, or all when whole-tree."""
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = _run_git(["ls-files", "--", *globs])
+        out = diffscope.git_paths(["ls-files", "--", *globs])
         if out is None:
             return Report([], 0, 0, 0, True)
-        for rel in out.splitlines():
+        for rel in out:
             if rel and not _ignored(rel, ignores):
                 wanted[rel] = None
     else:
@@ -289,12 +290,12 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         # added lines) and text deleted anywhere counts as moved.
         diff = _run_git(["diff", "-U0", "-M", "--no-color", "--no-ext-diff",
                          base.strip()])
-        names = _run_git(["diff", "--name-only", "-M", base.strip(),
-                          "--", *globs])
+        names = diffscope.git_paths(["diff", "--name-only", "-M", base.strip(),
+                                     "--", *globs])
         status = _run_git(["diff", "--name-status", "-M", base.strip()])
         if diff is None or names is None or status is None:
             return Report([], 0, 0, 0, True)
-        in_globs = set(names.splitlines())
+        in_globs = set(names)
         renames = parse_renames(status)
         added, deleted = parse_diff(diff)
         for rel, numbered in added.items():
