@@ -43,8 +43,11 @@ a label such as "note" or "example".
 
 - **`unlinked-first-use`.**
   The first occurrence of a known term in a passage is plain text.
-  A passage is one div (between its fences), or the prose outside divs between one heading and the next ([gha#1283](https://github.com/Morrison-Lab/gha/issues/1283)).
-  A div inside a section has its own scope and does not split the prose around it.
+  A passage is one div (between its fences),
+  or the prose outside divs between one heading and the next
+  ([gha#1283](https://github.com/Morrison-Lab/gha/issues/1283)).
+  A div inside a section has its own scope,
+  and does not split the prose around it.
   An occurrence inside a link, or followed by `(@def-...)`, is linked.
   A term's own definition div is skipped,
   and so is any other div in the file that holds that definition
