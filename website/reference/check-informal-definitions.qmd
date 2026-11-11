@@ -33,7 +33,8 @@ The check flags:
   Sentences ending in "is:" or "are:"
   immediately preceding display math (`$$...$$`)
   outside a def div,
-  when the sentence names a term (a bold term, "called", "defined", "known as").
+  when the sentence names a term (a bold term, "called", "defined", "known as", "termed", "we define").
+  A leading bold label such as "**Note**:" is not a bold term.
   "The inner derivative is:" computes a value and is not flagged.
 - **More than one term in one def div.**
   A `::: {#def-...}` div whose body bolds more than one distinct term

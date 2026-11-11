@@ -353,7 +353,9 @@ def scan_file_lines(
                     continue
 
         # Pattern 4: Naming sentence ending with is: or are: before display math
-        if IS_BEFORE_MATH_RE.search(prose_line) and NAMING_CUE_RE.search(prose_line):
+        # A leading bold label ("**Note**: ...") is not a bold term.
+        cue_text = LEADING_LABEL_RE.sub("", prose_line, count=1)
+        if IS_BEFORE_MATH_RE.search(prose_line) and NAMING_CUE_RE.search(cue_text):
             # Look ahead for next non-blank line
             next_idx = idx
             while next_idx < len(lines):

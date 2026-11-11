@@ -443,11 +443,24 @@ def test_eqdef_outside_proof_still_flagged():
 
 
 def test_bare_class_proof_div_is_tracked():
-    # "::: proof" (no braces) opens a div; its closer must not pop the theorem.
+    # "::: proof" (no braces) nested in a theorem opens a div, so its closer
+    # ends the proof and leaves the theorem open for the line after it.
     content = [
-        "::: {#thm-a}", "Statement.", ":::", "",
-        "::: proof", "Let $k \\eqdef 2$.", ":::", "",
+        "::: {#thm-a}", "Statement.", "",
+        "::: proof", "Then $k \\eqdef 2$.", ":::", "",
+        "Hence $j \\eqdef 3$ in the statement.", ":::", "",
         "## After", "", "The rate $m \\eqdef 2$ is fixed.",
     ]
     findings = scan_file_lines(Path("test.qmd"), content)
-    assert [(f.rule, f.line) for f in findings] == [("eqdef-outside-div", 11)]
+    assert [(f.rule, f.line) for f in findings] == [("eqdef-outside-div", 13)]
+
+
+def test_leading_bold_label_is_not_a_naming_cue():
+    content = ["**Note**: the inner derivative is:", "", "$$", "f'(x) = 2x", "$$"]
+    assert scan_file_lines(Path("test.qmd"), content) == []
+
+
+def test_bold_term_after_a_leading_label_is_still_a_naming_cue():
+    content = ["**Note**: the **variance** is:", "", "$$", "V = 1", "$$"]
+    rules = [f.rule for f in scan_file_lines(Path("test.qmd"), content)]
+    assert rules == ["naming-sentence-display-math"]
