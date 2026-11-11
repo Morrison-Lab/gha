@@ -136,12 +136,15 @@ echo '[]' > "$tmp/comments-empty.json"
 out=$(run_in "$full" "$tmp/comments-empty.json")
 check "no comments: emits nothing" "" "$out"
 
-# 6. Verdict comment with no Reviewed-commit line: emits nothing.
+# 6. Verdict comment with no Reviewed-commit line: an earlier round exists
+#    but names no boundary, so the script fails closed (gha#1032).
 jq -n '[{"user": {"login": "github-actions[bot]"},
         "body": "**Claude finished review**\n### Verdict\nReady for merge"}]' \
   > "$tmp/comments-nosha.json"
-out=$(run_in "$full" "$tmp/comments-nosha.json")
-check "no Reviewed-commit line: emits nothing" "" "$out"
+nosha_count="$tmp/nosha-count.txt"
+out=$(cd "$full" && bash "$script" "$tmp/comments-nosha.json" "" "$nosha_count")
+check "no Reviewed-commit line: says there is no usable boundary" "yes" "$(grep -q 'No usable review boundary' <<<"$out" && echo yes || echo no)"
+check "no Reviewed-commit line: count is nonzero (fail closed)" "1" "$(cat "$nosha_count")"
 
 # 7. Non-bot author: excluded from the population, so nothing is emitted --
 #    a human quoting a Reviewed-commit line must not steer the range.
@@ -181,9 +184,53 @@ out=$(cd "$fp" && bash "$script" "$tmp/comments-fp.json" "$FP_HEAD" "$fp_count")
 check "force-pushed prior (present but not an ancestor): says the boundary is unreachable" "yes" "$(grep -q 'Previous review boundary unreachable' <<<"$out" && echo yes || echo no)"
 check "force-pushed prior: count is nonzero (fail closed)" "1" "$(cat "$fp_count")"
 
-# 9. Missing comments file: nothing, exit 0.
-out=$(run_in "$full" "$tmp/does-not-exist.json")
-check "missing comments file: emits nothing" "" "$out"
+# 9. The review history is unknown (gha#1032): a missing file, an empty
+#    one (what the workflow writes when fetching the comments failed), and
+#    one that is not a JSON array each fail closed with a count of 1, and
+#    exit 0. Before gha#1032 a failed fetch wrote an empty array, read as a
+#    first round, and left the count at 0.
+: > "$tmp/comments-emptyfile.json"
+echo '{"message": "Bad credentials"}' > "$tmp/comments-object.json"
+echo '[{"user": ' > "$tmp/comments-truncated.json"
+for variant in does-not-exist emptyfile object truncated; do
+  f="$tmp/comments-$variant.json"
+  [ "$variant" = does-not-exist ] && f="$tmp/does-not-exist.json"
+  cf="$tmp/unknown-count-$variant.txt"
+  rc=0
+  out=$(cd "$full" && bash "$script" "$f" "" "$cf") || rc=$?
+  check "unknown history ($variant): exits 0" "0" "$rc"
+  check "unknown history ($variant): says the comments could not be read" "yes" "$(grep -q 'comments could not be read' <<<"$out" && echo yes || echo no)"
+  check "unknown history ($variant): count is nonzero (fail closed)" "1" "$(cat "$cf")"
+done
+
+# 9b. Every earlier bot verdict was skipped or claimed no new content
+#     (gha#1032): no usable boundary, so fail closed rather than read the
+#     PR as a first round. The second comment's no-diff claim is a pattern
+#     case 10 below pins as skipped.
+jq -n --arg c3 "$C3" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\n\n**Skipped**\n\n<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"SKIPPED\", \"findings\": [], \"commit_sha\": \"" + $c3 + "\"} -->\n\nReviewed commit: " + $c3)
+  },
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nNo new commits have been made since the last review.\n\nReviewed commit: " + $c3)
+  }
+]' > "$tmp/comments-all-unusable.json"
+cf="$tmp/all-unusable-count.txt"
+out=$(cd "$full" && bash "$script" "$tmp/comments-all-unusable.json" "" "$cf")
+check "all earlier verdicts unusable: says there is no usable boundary" "yes" "$(grep -q 'No usable review boundary' <<<"$out" && echo yes || echo no)"
+check "all earlier verdicts unusable: count is nonzero (fail closed)" "1" "$(cat "$cf")"
+
+# 9c. The negative control: a bot comment that is not a verdict (a preview
+#     link) does not make an earlier round, so the PR is still a first
+#     round, and the count stays 0 with nothing emitted.
+jq -n '[{"user": {"login": "github-actions[bot]"}, "body": "Preview available at https://example.invalid/"}]' \
+  > "$tmp/comments-nonverdict.json"
+cf="$tmp/nonverdict-count.txt"
+out=$(cd "$full" && bash "$script" "$tmp/comments-nonverdict.json" "" "$cf")
+check "non-verdict bot comment only: emits nothing" "" "$out"
+check "non-verdict bot comment only: count stays 0" "0" "$(cat "$cf")"
 
 # 10. Restated clean / "no new diff" comment skipped (gha#965).
 # Comment 1 is genuine on C3; comment 2 is on C4 claiming no new diff.
