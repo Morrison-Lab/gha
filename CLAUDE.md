@@ -534,10 +534,13 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
   It imports `check-exm-figures`' figure test.
   That script loads `check-one-div-per-subfile`'s git helpers, so keep the three directories together.
-- `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement (psw#426).
-  A proof hidden from the slides is deliberate and is never flagged (Ezra, 2026-11-04, gha#1491).
+- `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426):
+  a proof inside a `content-hidden` wrapper for `revealjs`, in any file a PR touches,
+  and reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement.
+  gha#1491 removed the hidden-proof rule on a paraphrase that Ezra did not confirm (2026-11-11), and psw says to show every proof on the slides.
   It loads `check-write-idiom`'s engine like `check-avoided-words`.
-  It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set.
+  It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set and reports its findings as returned,
+  because the hidden-proof rule is file-level, not line-level.
   Its env vars use the `CPS_` prefix.
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.

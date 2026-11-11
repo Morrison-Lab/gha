@@ -2,12 +2,20 @@
 title: "check-proof-statements.yml"
 ---
 
-Diff-scoped, failing-by-default check for one of the lab's proof rules
+Diff-scoped, failing-by-default check for two of the lab's proof rules
 ([psw#426](https://github.com/Morrison-Lab/psw/pull/426),
 [gha#1351](https://github.com/Morrison-Lab/gha/issues/1351)).
 
 ## Rules
 
+- **Proof hidden from slides.**
+  A proof div inside `::: {.content-hidden when-format="revealjs"}`
+  (or `.content-visible unless-format="revealjs"`),
+  or an include of a `_prf-` or `_proof-` subfile there,
+  is flagged on the proof's opening line.
+  Every proof is shown on slides.
+  The finding is reported when the pull request adds any line to the file,
+  not only the proof's own lines.
 - **Reasoning in a theorem statement.**
   "so", "because", "hence", "therefore", "thus" or "since", or an aside such as
   "without loss of generality", "moreover" or "furthermore", on an added line
@@ -40,7 +48,7 @@ Every run prints how many lines and files it examined.
 | ---------------- | ------- | ------- | ----------- |
 | `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`           | boolean | `true`  | Fail the workflow when reasoning is found in a theorem statement. Set `false` for warnings only. |
+| `fail`           | boolean | `true`  | Fail the workflow when a hidden proof or statement reasoning is found. Set `false` for warnings only. |
 | `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string  | `'3.x'` | Python version to set up. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
