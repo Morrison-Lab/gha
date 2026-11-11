@@ -195,10 +195,10 @@ def changed_lines(base_ref: str, globs: List[str], ignores: list,
     """Files to scan, each with its added lines (None = the whole file)."""
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = ods._run_git(["ls-files", "--", *globs])
+        out = ods._git_paths(["ls-files", "--", *globs])
         if out is None:
             return None
-        for rel in out.splitlines():
+        for rel in out:
             if rel and not ods._ignored(rel, ignores):
                 wanted[rel] = None
         return wanted

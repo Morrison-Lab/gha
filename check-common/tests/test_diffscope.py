@@ -127,3 +127,23 @@ def test_parse_renames_reads_quoted_paths_from_git(tmp_path, monkeypatch):
     subprocess.run(["git", "mv", 'b/q"u.qmd', 'b/r"e.qmd'], check=True)
     status = diffscope.run_git(["diff", "--name-status", "-M", "--cached", "HEAD"])
     assert diffscope.parse_renames(status) == [('b/q"u.qmd', 'b/r"e.qmd')]
+
+
+def test_git_paths_lists_quoted_names_unquoted(tmp_path, monkeypatch):
+    # A plain ls-files prints "b/q\"u.qmd" even under core.quotepath=false (gha#1923).
+    _two_file_commit(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert diffscope.git_paths(["ls-files", "--", "*.qmd"]) == ["b/plain.qmd", 'b/q"u.qmd']
+    assert sorted(diffscope.git_paths(["diff", "--name-only", "HEAD~1", "HEAD"])) == [
+        "b/plain.qmd", 'b/q"u.qmd']
+
+
+def test_git_paths_is_none_when_git_fails(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert diffscope.git_paths(["ls-files"]) is None
+
+
+def test_git_paths_of_an_empty_listing_is_empty(tmp_path, monkeypatch):
+    _two_file_commit(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert diffscope.git_paths(["ls-files", "--", "*.nothing"]) == []

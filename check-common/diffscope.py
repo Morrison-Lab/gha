@@ -43,6 +43,20 @@ def run_git(args: List[str]) -> Optional[str]:
     return res.stdout if res.returncode == 0 else None
 
 
+def git_paths(args: List[str]) -> Optional[List[str]]:
+    """The paths ``git args`` lists, or None when git exits non-zero.
+
+    For a listing command such as ``ls-files`` or ``diff --name-only``.  It
+    runs with ``-z``, so a name holding ``"``, a backslash or a tab arrives
+    unquoted; a plain line-per-path listing quotes such a name even under
+    ``core.quotepath=false`` (gha#1923).
+    """
+    out = run_git([args[0], "-z", *args[1:]])
+    if out is None:
+        return None
+    return [p for p in out.split("\0") if p]
+
+
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 _C_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13,

@@ -357,10 +357,10 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
               whole_tree: bool) -> Report:
     """Report findings whose heading line was added since ``base_ref``."""
     root = os.getcwd()
-    listing = diffscope.run_git(["ls-files", "--", *globs])
+    listing = diffscope.git_paths(["ls-files", "--", *globs])
     if listing is None:
         return Report([], 0, True)
-    files = [f for f in listing.splitlines()
+    files = [f for f in listing
              if f and not diffscope.ignored(f, ignores)]
     keep: Dict[str, Set[int]] = {}
     if not whole_tree:

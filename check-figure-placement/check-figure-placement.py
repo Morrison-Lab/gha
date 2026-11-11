@@ -195,10 +195,10 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
               whole_tree: bool) -> Report:
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = diffscope.run_git(["ls-files", "--", *globs])
+        out = diffscope.git_paths(["ls-files", "--", *globs])
         if out is None:
             return Report([], 0, 0, 0, True)
-        for rel in out.splitlines():
+        for rel in out:
             if rel and not diffscope.ignored(rel, ignores):
                 wanted[rel] = None
     else:
