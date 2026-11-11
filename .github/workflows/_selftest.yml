@@ -5697,6 +5697,9 @@ jobs:
       - name: Run sum-costs arithmetic tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-sum-costs-tests.sh
+      - name: Run prior-verdict link rewrite tests (gha#1766)
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-placeholder-link-tests.sh
       - name: Run detect-review-request matcher tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-review-request-tests.sh
