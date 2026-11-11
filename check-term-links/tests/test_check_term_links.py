@@ -197,6 +197,18 @@ def test_inline_r_next_to_a_math_delimiter_keeps_the_math_masked(body):
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
+def test_currency_dollar_before_inline_r_keeps_the_prose_unmasked():
+    # A `$` before `` `r ...` `` is currency once knitr runs, so the words
+    # between two such dollars stay prose and an unlinked term is reported.
+    masked = ctl.mask_inline("The fee is $`r a` for the risk ($`r b` in total).")
+    assert "for the risk (" in masked
+
+
+def test_url_stops_at_inline_code():
+    masked = ctl.mask_inline("see https://a.org`x`risk now")
+    assert "risk now" in masked
+
+
 def test_inline_code_outside_math_is_still_blank():
     masked = ctl.mask_inline("A `risk` and $x$ here.")
     assert "risk" not in masked

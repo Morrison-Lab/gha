@@ -89,7 +89,7 @@ BARE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 DISPLAY_MATH_RE = re.compile(r"\$\$.*?\$\$", re.S)
-INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?!\s)(?:[^$\\\n]|\\.)+?(?<!\s)\$(?![\d$])")
+INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?!\s)(?:[^$\\\n]|\\.)+?(?<!\s)\$(?![\d$\0])")
 SHORTCODE_RE = re.compile(r"\{\{<.*?>\}\}", re.S)
 IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)(?:\{[^}]*\})?")
 ATTR_RE = re.compile(r"\{[^{}\n]*\}")
@@ -269,10 +269,13 @@ def mask_inline(text: str) -> str:
     # Inline code is held as NUL, not spaces, until the math is masked:
     # `$x = `r 1`$` would otherwise leave a space before the closing `$`,
     # which `INLINE_MATH_RE` refuses, so the math would read as prose (gha#1143).
+    # Only the math pass sees the held span: the other patterns would read
+    # NUL as a URL or shortcode character and run on into the prose after it.
     text = INLINE_CODE_RE.sub(hold, text)
-    for rx in (INLINE_MATH_RE, SHORTCODE_RE, IMAGE_RE, URL_RE):
-        text = rx.sub(blank, text)
+    text = INLINE_MATH_RE.sub(blank, text)
     text = text.replace("\0", " ")
+    for rx in (SHORTCODE_RE, IMAGE_RE, URL_RE):
+        text = rx.sub(blank, text)
     # `ATTR_RE` last: `{...}` after a link or a header is markup, never prose.
     return ATTR_RE.sub(blank, text)
 
