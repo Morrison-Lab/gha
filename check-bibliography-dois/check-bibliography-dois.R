@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+# check-one-function-per-file: allow-multiple
 # Check bibliography files for DOI requirements:
 # 1. Every book and article must have a DOI field
 # 2. Every DOI must resolve to a valid URL
@@ -102,7 +103,8 @@ validate_doi_url <- function(doi, retry_on_network_error = TRUE) {
 
       status_code <- status_code(response)
 
-      if (status_code == 200) {
+      if (status_code >= 200 && status_code <= 299) {
+        # Any 2xx means the DOI resolved (some publishers answer 202).
         return(list(
           is_valid = TRUE,
           error = NULL,
