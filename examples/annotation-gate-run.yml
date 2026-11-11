@@ -23,8 +23,12 @@ on: # zizmor: ignore[dangerous-triggers] -- the gate checks out nothing and runs
 # re-checks every workflow's latest run on the commit. Do not set
 # `cancel-in-progress: true`: completions arriving every few seconds then cancel
 # each running gate before it posts a check run (gha#1649).
+# A gate run's own completion also starts a run of this workflow, whose job
+# is skipped (see `if:` below). That run gets a group of its own, keyed on its
+# run id: in the commit's group it would replace the real gate waiting behind
+# the running one, and the commit could go ungated (gha#1403).
 concurrency:
-  group: annotation-gate-${{ github.event.workflow_run.head_sha || inputs.head-sha }}
+  group: ${{ github.event.workflow_run.name == 'Annotation gate' && format('annotation-gate-self-{0}', github.run_id) || format('annotation-gate-{0}', github.event.workflow_run.head_sha || inputs.head-sha) }}
   cancel-in-progress: false
 
 jobs:
