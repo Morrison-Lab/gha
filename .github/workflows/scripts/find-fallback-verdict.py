@@ -9,18 +9,29 @@ a separate-agent review posted as a PR comment. This script reports whether
 such a comment exists for the CURRENT head and states a clean verdict.
 
 A comment counts only when all of these hold:
-  - its author_association is OWNER, MEMBER or COLLABORATOR, so it has the
-    standing of someone who can already merge. The PR author's own comment
+  - its author_association is OWNER, MEMBER or COLLABORATOR. That shows a
+    tie to the repository, not write access: an org member or collaborator
+    without push rights also qualifies, and the agent marker below is plain
+    text anyone can type. The PR author's own comment
     counts: the lab's agent sessions post under the account holder's login,
     so excluding the author would reject the real fallback review;
   - it carries the agent-authorship marker, so a human note is not mistaken
     for a review;
-  - it names the full 40-character head sha in a "Reviewed-Commit:" (or
-    "Reviewed commit:") line, so a push retires it with no extra logic;
+  - its LAST "Reviewed-Commit:" (or "Reviewed commit:") line names the full
+    40-character head sha, so a push retires it with no extra logic, and a
+    comment listing several shas speaks for the last one only (gha#1229);
   - the marker and the sha line sit in the comment's own prose, not in a
     fenced code block, a blockquote or an indented code block, so quoting
     another review does not count as posting one;
   - the classifier reads its verdict as clean.
+
+The newest qualifying comment decides. If the classifier fails on it, the
+search stops with found=false and a warning, rather than aborting, or
+falling back to an older review the newest one may have withdrawn (gha#1229).
+
+The head sha is the commit the review run was for (the caller passes it),
+not the live PR head, so re-running an older run cannot go green on a
+fallback recorded for a newer head (gha#1229).
 
 Prints found=true|false and url=<comment html_url> to stdout, and to
 $GITHUB_OUTPUT when set. Exits 0 either way: the caller decides what a miss
@@ -81,7 +92,7 @@ def reviewed_commits(body):
 
 
 def is_clean(body, head_sha, classifier):
-    """Run the shared classifier on the comment text."""
+    """Run the shared classifier on the comment text; None when it fails."""
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as handle:
         handle.write(body)
         path = handle.name
@@ -90,11 +101,13 @@ def is_clean(body, head_sha, classifier):
             ["bash", classifier, path, "0", head_sha],
             capture_output=True,
             text=True,
-            check=True,
+            check=False,
             env={**os.environ, "GITHUB_OUTPUT": "/dev/null"},
         )
     finally:
         os.unlink(path)
+    if result.returncode != 0:
+        return None
     return "clean=true" in result.stdout.splitlines()
 
 
@@ -110,11 +123,13 @@ def find(comments, head_sha, classifier):
             continue
         if MARKER not in own_prose(body).lower():
             continue
-        if head_sha not in reviewed_commits(body):
+        if reviewed_commits(body)[-1:] != [head_sha]:
             continue
-        if is_clean(body, head_sha, classifier):
-            return comment.get("html_url") or "unknown"
-        return ""
+        url = comment.get("html_url") or "unknown"
+        verdict = is_clean(body, head_sha, classifier)
+        if verdict is None:
+            print(f"::warning::The verdict classifier failed on {url}; no fallback review accepted.", file=sys.stderr)
+        return url if verdict else ""
     return ""
 
 

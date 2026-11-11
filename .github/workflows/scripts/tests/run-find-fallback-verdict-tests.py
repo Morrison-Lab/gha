@@ -50,12 +50,12 @@ def comment(body, association="MEMBER", created="2026-10-22T20:00:00Z"):
     }
 
 
-def run_finder(comments):
+def run_finder(comments, classifier=CLASSIFIER):
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "comments.json"
         path.write_text(json.dumps(comments))
         result = subprocess.run(
-            [sys.executable, str(FINDER), str(path), HEAD, str(CLASSIFIER)],
+            [sys.executable, str(FINDER), str(path), HEAD, str(classifier)],
             capture_output=True,
             text=True,
             check=True,
@@ -144,7 +144,37 @@ CASES = [
         [comment(f"````\n```\nReviewed-Commit: {HEAD}\n````\n\n{CLEAN}\n\n{MARKER}")],
         False,
     ),
+    (
+        "the last of several Reviewed-Commit lines decides (gha#1229)",
+        [comment(f"{CLEAN}\n\nReviewed-Commit: {HEAD}\n\nReviewed-Commit: {OLD}\n\n{MARKER}")],
+        False,
+    ),
+    (
+        "an earlier sha line does not block a last line naming the head",
+        [comment(f"{CLEAN}\n\nReviewed-Commit: {OLD}\n\nReviewed-Commit: {HEAD}\n\n{MARKER}")],
+        True,
+    ),
 ]
+
+
+def check_classifier_failure():
+    """A classifier crash on the newest review is a miss, not an abort or an older review (gha#1229)."""
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        broken = Path(tmp) / "broken.sh"
+        # Crash only on the newest review; classify the older one for real, so
+        # skipping past the crash to the older clean review would show as found.
+        broken.write_text(f'if grep -q CRASH-ME "$1"; then exit 3; fi\nexec bash "{CLASSIFIER}" "$@"\n')
+        try:
+            found = run_finder(
+                [comment(review() + "\n\nCRASH-ME", created="2026-10-22T21:00:00Z"), comment(review())],
+                classifier=broken,
+            )
+        except subprocess.CalledProcessError as error:
+            return [f"finder aborted on a classifier failure (exit {error.returncode})"]
+    if found.get("found") != "false":
+        problems.append("a classifier failure on the newest review still accepted a fallback")
+    return problems
 
 
 def check_wiring():
@@ -161,6 +191,18 @@ def check_wiring():
         problems.append("find-fallback-verdict job does not use the action")
     if "find-fallback-verdict" not in job.split("steps:")[0]:
         problems.append("require-clean-verdict does not need find-fallback-verdict")
+    head = finder.split("steps:")[0]
+    needs = re.search(r"\n    needs: \[([^\]]*)\]", head)
+    if not needs or {"gather-context", "claude-review"} - {n.strip() for n in needs.group(1).split(",")}:
+        problems.append("find-fallback-verdict must need gather-context and claude-review (gha#1229)")
+    if "fromJSON(needs.claude-review.outputs.quota_exhausted" not in head:
+        problems.append("find-fallback-verdict no longer runs only on a quota skip")
+    sha = re.search(r"\n          head-sha: (.*)\n", finder)
+    expected = "${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}"
+    if not sha or sha.group(1).strip() != expected:
+        problems.append("find-fallback-verdict must match the reviewed commit, not the live head (gha#1229)")
+    if "FALLBACK_FOUND: ${{ needs.find-fallback-verdict.outputs.found }}" not in job:
+        problems.append("FALLBACK_FOUND must come from find-fallback-verdict's job output")
     quota = re.search(r'if \[\[ "\$QUOTA_EXHAUSTED" == "true" \]\]; then(.*?)\n          fi\n', job, re.S)
     if not quota:
         problems.append("quota branch not found")
@@ -181,6 +223,9 @@ def main():
         if found != expected:
             failures += 1
         print(f"{status}: {name} (found={found}, expected={expected})")
+    for problem in check_classifier_failure():
+        failures += 1
+        print(f"FAIL: classifier failure: {problem}")
     for problem in check_wiring():
         failures += 1
         print(f"FAIL: wiring: {problem}")

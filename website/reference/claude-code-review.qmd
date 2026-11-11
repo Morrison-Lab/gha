@@ -202,7 +202,10 @@ A comment counts when all of these hold:
   The PR author's own comment counts, because the lab's agent sessions
   post under the account holder's login.
 - It carries the agent-authorship marker.
-- It names the full head sha on a `Reviewed-Commit:` line.
+- Its last `Reviewed-Commit:` line names the full sha of the commit
+  this run reviewed.
+  That is the run's own head, not the live PR head,
+  so re-running an older run does not accept a review of a newer head.
 - The marker and that line sit in the comment's own prose.
   Text inside a code fence, a blockquote or an indented code block
   is ignored, so quoting a review does not record one.
@@ -210,6 +213,12 @@ A comment counts when all of these hold:
 
 The newest such comment decides, and a push retires it
 ([gha#1182](https://github.com/Morrison-Lab/gha/issues/1182)).
+If the classifier fails on that comment, no fallback is accepted
+([gha#1229](https://github.com/Morrison-Lab/gha/issues/1229)).
+
+The author check shows a tie to the repository, not write access:
+a member or collaborator without push rights also qualifies,
+and the marker is plain text anyone can type.
 
 ## Concurrency
 
