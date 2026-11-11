@@ -22,11 +22,17 @@ when the left-hand side of its first display equation,
 up to the first `=`, `:=`, `\eqdef`, `\coloneqq`, `\triangleq`, or `\equiv`,
 is exactly a named function applied to one or two arguments:
 `f(x)`, `f(x, y)`, `\sigma\paren{z}`, or an f-form macro such as `\logitf{p}`.
-Each argument must be a Latin or Greek letter,
+Each argument must be a lowercase Latin or Greek letter,
 with an optional subscript or superscript.
-A vector or matrix macro (`\vx`, `\mA`), a set, an event, or an expression
-as an argument is not a scalar input,
-so a definition with one is not a candidate.
+An uppercase letter names a set, an event, or a random variable,
+and a vector or matrix macro (`\vx`, `\mA`) or an expression is not a scalar input either,
+so a definition with such an argument is not a candidate.
+
+The check reads only the first display equation outside HTML comments,
+so a definition that states its defining equation second is skipped.
+Any `=` counts as defining,
+so a first equation that states a property of a named function, such as `\log(x) = y`,
+makes the div a candidate.
 
 A candidate passes when its div holds a graph,
 which is anything `check-exm-figures` counts as a figure:
