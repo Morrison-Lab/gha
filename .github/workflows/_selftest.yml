@@ -8833,7 +8833,7 @@ jobs:
           fi
           echo "Empty corpus refused, as expected."
 
-  # Covers the classify step of report-main-failure.yml: which failed jobs
+  # Covers the classify and close steps of report-main-failure.yml: which failed jobs
   # count as infrastructure, and that the verdict spans every page of jobs.
   report-main-failure-classify:
     runs-on: ubuntu-latest
@@ -8847,6 +8847,10 @@ jobs:
       - name: Run the classifier table test
         shell: bash
         run: bash .github/workflows/scripts/tests/run-report-main-failure-classify-tests.sh
+
+      - name: Run the close-step table test
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-report-main-failure-close-tests.sh
 
   # Pins the layout modes of sync-shared-fragments.yml's vendoring step
   # (gha#1796). The workflow itself opens a PR, a write side effect selftest

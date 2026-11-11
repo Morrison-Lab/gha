@@ -3,7 +3,7 @@
 #
 # List the workflows to watch by name: `workflow_run` takes names, not globs.
 # A cancelled run is ignored; an infrastructure-looking failure is re-run once;
-# any other failure files one issue per workflow.
+# any other failure files one issue per workflow, and a later success closes it.
 name: Report main failure
 
 on:

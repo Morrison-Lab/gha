@@ -12,9 +12,11 @@ name: Report main failure (reusable)
 #   issue titled `Main CI failing: <workflow>`, or comments on the one already
 #   open, through the `open-failure-issue` composite. A second
 #   infrastructure-looking failure carries the `infra-suspect` label.
+# - A success closes every open issue with that exact title, with a comment
+#   naming the green run (gha#1776).
 #
-# Permissions: `issues: write` to file, `actions: write` to re-run. The caller
-# must grant both.
+# Permissions: `issues: write` to file and close, `actions: write` to re-run.
+# The caller must grant both.
 
 on:
   workflow_call:
@@ -92,3 +94,38 @@ jobs:
             Close this once the workflow is green again.
 
             _Filed automatically by the `report-main-failure` reusable workflow._
+
+  close:
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == github.event.repository.default_branch
+      && github.event.workflow_run.event != 'pull_request'
+    runs-on: ${{ (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - name: Close the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: "Main CI failing: ${{ github.event.workflow_run.name }}"
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          # The same exact-title match `open-failure-issue` files under,
+          # over every page; pull requests share the issues endpoint.
+          numbers="$(gh api "repos/${GH_REPO}/issues?state=open&per_page=100" --paginate \
+            --jq '.[] | select(.pull_request == null and .title == env.TITLE) | .number')"
+          if [ -z "$numbers" ]; then
+            echo "No open issue titled '${TITLE}'; nothing to close."
+            exit 0
+          fi
+          for n in $numbers; do
+            gh issue comment "$n" --body "The workflow is green again on \`${HEAD_SHA}\`: ${RUN_URL}
+
+          _Closed automatically by the \`report-main-failure\` reusable workflow._"
+            gh issue close "$n" --reason completed
+            echo "Closed #${n}."
+          done
