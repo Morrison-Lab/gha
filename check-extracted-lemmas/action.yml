@@ -1,9 +1,9 @@
 name: Check extracted lemmas
 description: >-
-  Diff-scoped, warn-only heuristic check that flags a solution or
+  Diff-scoped heuristic check that flags a solution or
   proof that states a general fact ("for any", "for every" or "for all" before a
   kind of mathematical object, with math) and cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result, when the PR
-  edits it. `<!-- lemma-ok: reason -->` exempts a body. Warns by default.
+  edits it. `<!-- lemma-ok: reason -->` exempts a body. Blocks by default; `fail: false` only warns.
 inputs:
   python-version:
     description: Python version to set up.
@@ -32,9 +32,9 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action on a finding. Defaults to 'false' (warning annotations
-      only), because the check is a heuristic.
-    default: 'false'
+      Fail the action on a finding. Defaults to 'true'; 'false' gives warning
+      annotations only (gha#1480).
+    default: 'true'
 runs:
   using: composite
   steps:
