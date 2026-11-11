@@ -140,7 +140,8 @@ never let one finish (gha#1649).
 With `workflows: ["*"]`, a gate run's own completion starts one more run of the
 caller, whose job the `if:` skips.
 Give that run a group of its own, keyed on its run id, as the example stub does:
-in the commit's group it would replace the real gate waiting behind the running one,
+in the commit's group it would replace the real gate
+waiting behind the running one,
 and that gate would never run (gha#1403).
 One commit-wide check-run listing gives each job's annotation count,
 so a job without annotations costs no request.
