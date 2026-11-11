@@ -29,5 +29,5 @@ It labels each open issue that has no priority label, and closes nothing.
 | `github-token` | `github.token` | The token `gh` uses. |
 
 The job needs `issues: write`, or `issues: read` for a dry run.
-The repository must already have the labels `P1`, `P2` and `P3`: the action checks for them before it changes anything.
+The repository must already have the labels `P1`, `P2`, and `P3`: the action checks for them before it changes anything.
 The `triage-backlog-tests` job in `.github/workflows/_selftest.yml` calls the action four times, each as a dry run.
