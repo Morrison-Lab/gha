@@ -751,6 +751,81 @@ def test_uncommon_one_word_link_term_is_still_learned():
     assert "estimator" in ctl.harvest_terms(masked, set())
 
 
+FENCE = "`" * 3
+
+
+def test_a_code_fence_is_not_prose():
+    page = f"{FENCE}\nThe risk is code.\n{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+@pytest.mark.parametrize("prefix", ["> ", ">", "> > ", "  > "])
+def test_a_code_fence_inside_a_blockquote_is_not_prose(prefix):
+    # gha#1905: the quote marker hid the fence, so the code was read as prose.
+    page = f"{prefix}{FENCE}\n{prefix}The risk is code.\n{prefix}{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_lazy_line_stays_inside_a_quoted_fence():
+    # Pandoc carries an unquoted line into a quoted fence as a lazy continuation,
+    # so the fence still closes at the next quoted fence and the prose after it is read.
+    page = f"> {FENCE}\n> code\nlazy\n> {FENCE}\n> The risk is prose.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [5]
+
+
+def test_a_blank_line_ends_a_quoted_fence():
+    # The blank line ends the blockquote and clears the fence, so line 4 is prose,
+    # even though a later unquoted fence pair follows.
+    page = f"> {FENCE}\n> code\n\nThe risk is prose.\n\n{FENCE}\nx\n{FENCE}\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+
+
+def test_a_line_blank_inside_a_shallower_quote_ends_a_quoted_fence():
+    # ">" alone ends the inner ">>" quote and clears its fence, so line 3 is prose.
+    page = f">> {FENCE}\n>\n>> The risk is prose.\n>> {FENCE}\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [3]
+
+
+def test_a_line_blank_at_the_fence_depth_stays_code():
+    # ">" alone inside a ">" fence is a blank code line, not the end of the quote.
+    page = f"> {FENCE}\n>\n> The risk is code.\n> {FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_quote_marker_inside_an_unquoted_fence_does_not_end_it():
+    page = f"{FENCE}\ncode\n\nThe risk is code.\n> quoted code\n{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_quoted_fence_line_inside_an_unquoted_fence_does_not_close_it():
+    # Pandoc keeps `> ```` inside an unquoted block as code.
+    page = f"{FENCE}\ncode\n> {FENCE}\nThe risk is code.\n{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_an_unquoted_fence_closes_a_quoted_one():
+    # Pandoc reads a bare fence as closing a quoted one, so the next line is prose.
+    page = f"> {FENCE}\n> code\n{FENCE}\nThe risk is after.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+
+
+TILDES = "~" * 3
+
+
+@pytest.mark.parametrize("prefix", ["", "> "])
+def test_a_tilde_fence_is_not_prose(prefix):
+    page = f"{prefix}{TILDES}\n{prefix}The risk is code.\n{prefix}{TILDES}\n{prefix}The risk is prose.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+
+
+@pytest.mark.parametrize("prefix", ["", "> "])
+def test_a_backtick_line_does_not_close_a_tilde_fence(prefix):
+    # A closer must use the opener's character, so the backtick line is code.
+    page = (f"{prefix}{TILDES}\n{prefix}{FENCE}\n{prefix}The risk is code.\n"
+            f"{prefix}{TILDES}\n{prefix}The risk is prose.\n")
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [5]
+
+
 def test_a_setext_heading_right_after_a_div_closes_is_a_heading():
     # Flash review of gha#1906: the title after a closing fence is a heading, not prose.
     page = "::: {#exm-a}\nbody\n:::\nThe risk\n---\n\nText.\n"

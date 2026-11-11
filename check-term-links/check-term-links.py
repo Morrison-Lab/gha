@@ -75,7 +75,11 @@ for _stream in (sys.stdout, sys.stderr):
 DEFAULT_GLOBS = "*.qmd"
 DEFAULT_PATHS_IGNORE = ""
 
-FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+# A code fence, also inside a blockquote (`> ```` `), which CommonMark allows (gha#1905).
+# Each quote marker is one ">" and the spaces after it; no two parts can match the same
+# character, so the pattern cannot backtrack exponentially.
+FENCE_RE = re.compile(r"^(?P<quote>[ \t]*(?:>[ \t]*)*)(?P<fence>`{3,}|~{3,})")
+QUOTE_PREFIX_RE = re.compile(r"^[ \t]*(?:>[ \t]*)*")
 DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>\{[^}]*\}|\S.*)?$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
@@ -280,6 +284,7 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
     opted: Set[int] = set()
     in_yaml = False
     fence = ""
+    fence_depth = 0
     in_comment = False
     for idx, raw in enumerate(lines, start=1):
         if idx == 1 and raw.strip() == "---":
@@ -291,13 +296,29 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
             out.append("")
             continue
         m = FENCE_RE.match(raw)
+        depth = m.group("quote").count(">") if m else 0
+        quote = QUOTE_PREFIX_RE.match(raw).group(0)
+        if (fence and fence_depth and not raw[len(quote):].strip()
+                and quote.count(">") < fence_depth):
+            # A line blank inside a shallower quote (a blank line, or ">" under a ">>"
+            # fence) ends the opener's blockquote, and with it the fence, so the lines after
+            # it are prose; a non-blank shallower line is a lazy continuation.
+            # Known limit: Pandoc reads an unclosed quoted fence's lines before that blank
+            # line as a paragraph, but they stay masked here, as malformed input.
+            fence = ""
+            fence_depth = 0
         if fence:
-            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+            # A closing fence may sit at the opener's quote depth or shallower, as Pandoc
+            # reads it, but not deeper: `> ```` inside an unquoted block is code (gha#1905).
+            if (m and m.group("fence")[0] == fence[0] and len(m.group("fence")) >= len(fence)
+                    and depth <= fence_depth):
                 fence = ""
+                fence_depth = 0
             out.append("")
             continue
         if m and not in_comment:
-            fence = m.group(1)
+            fence = m.group("fence")
+            fence_depth = depth
             out.append("")
             continue
         if LINE_OPT_OUT_RE.search(raw):
