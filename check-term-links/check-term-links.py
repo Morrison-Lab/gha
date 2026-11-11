@@ -4,7 +4,8 @@
 
 The rule this enforces (Ezra, 2026-10-16; ai-config#4553, psw#223, psw#227): every
 technical term is hyperlinked to its formal definition the first time it appears
-in each div, or in each prose paragraph outside a div, and a term with no formal
+in each div, or in the prose outside divs between one heading and the next
+(gha#1283), and a term with no formal
 definition gets one (gha#1078).
 
 Which words are terms: the check learns them from the corpus itself.
@@ -79,6 +80,10 @@ DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>\{[^}]*\}|\S.*)?$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
 HEADING_RE = re.compile(r"^#{1,6}\s+(?P<title>.+?)\s*(?:\{[^}]*\})?\s*$")
+# A setext heading's underline (at most three spaces of indentation), and a list item,
+# whose next-line `---` is a thematic break rather than an underline.
+SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 FILE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*ignore-file\s*-->", re.I)
 LINE_OPT_OUT_RE = re.compile(
     r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:(?:(?!-->).)*)?\s*-->", re.I
@@ -168,6 +173,7 @@ class Passage:
     in_div: bool
     lines: List[Tuple[int, str]]  # (1-based line number, masked text)
     attrs: str = ""  # the attributes of every div the passage sits in
+    section: int = 0  # headings outside divs above the passage; prose outside divs shares one scope per section
 
 
 # A div that carries its own argument: an exercise, a solution, a result or a proof reads on its own,
@@ -315,11 +321,17 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
 
 
 def split_passages(masked: Sequence[str]) -> List[Passage]:
-    """Cut a file into passages: one per div (between div fences), one per paragraph outside divs."""
+    """Cut a file into passages: one per div (between div fences), one per paragraph outside divs.
+
+    Each passage records its section (the headings outside divs above it), so the
+    paragraphs outside divs between one heading and the next share one first-use scope
+    (gha#1283), while each div keeps its own.
+    """
     passages: List[Passage] = []
     stack: List[Tuple[int, Optional[str]]] = []  # (fence length, def id or None)
     attrs_stack: List[str] = []
     cur: List[Tuple[int, str]] = []
+    section = 0
 
     def flush() -> None:
         nonlocal cur
@@ -327,6 +339,7 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
             div_id = next((d for _, d in reversed(stack) if d), None) if stack else None
             passages.append(Passage(
                 div_id=div_id, in_div=bool(stack), lines=cur, attrs=" ".join(attrs_stack),
+                section=section,
             ))
         cur = []
 
@@ -347,8 +360,26 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
                 stack.pop()
                 attrs_stack.pop()
             continue
-        if HEADING_RE.match(s):
+        # A setext heading: a `===` or `---` underline straight after a one-line block.
+        # Pandoc reads one only after a blank line (or a fence, or the file start), so the
+        # last line of a longer paragraph is not a title.  Its title line is a heading,
+        # not prose (gha#1283 review).
+        setext = (
+            SETEXT_UNDERLINE_RE.match(line) is not None
+            and bool(cur) and cur[-1][0] == idx - 1
+            and (
+                idx < 3 or not masked[idx - 3].strip()
+                or DIV_OPEN_RE.match(masked[idx - 3].strip()) is not None
+                or HEADING_RE.match(masked[idx - 3].strip()) is not None
+            )
+            and not LIST_ITEM_RE.match(cur[-1][1]) and "|" not in cur[-1][1]
+        )
+        if setext:
+            cur.pop()
+        if setext or HEADING_RE.match(s):
             flush()
+            if not stack:
+                section += 1
             continue
         if not s and not stack:
             flush()
@@ -479,7 +510,9 @@ def scan_passage(
     own_defs: Optional[Set[str]] = None,
     used_optouts: Optional[Set[int]] = None,
     def_words: Optional[Dict[str, Set[str]]] = None,
+    seen: Optional[Set[str]] = None,
 ) -> List[Finding]:
+    """Findings for one passage; `seen` holds the terms already met earlier in the same scope."""
     findings: List[Finding] = []
     line_of: List[int] = []  # offset -> 1-based line number
     chunks: List[str] = []
@@ -534,7 +567,8 @@ def scan_passage(
                     ),
                 ))
 
-    seen: Set[str] = set()
+    if seen is None:
+        seen = set()
     if rx is not None:
         for m in rx.finditer(prose):
             key = lookup(m.group(0), terms)
@@ -568,12 +602,15 @@ def scan_passage(
                 continue
             n = line_at(start)
             if not reportable(n):
+                if n in opted:
+                    # An opted-out use is exempt, not a first use: the next use is (gha#1283 review).
+                    seen.discard(key)
                 continue
             findings.append(Finding(
                 file=path, line=n, rule="unlinked-first-use", term=key,
                 message=(
                     f"'{m.group(0)}' is a defined term; link its first use in this "
-                    f"{'div' if passage.in_div else 'paragraph'} to its definition."
+                    f"{'div' if passage.in_div else 'section'} to its definition."
                 ),
             ))
 
@@ -615,8 +652,14 @@ def scan_file(
     passages = split_passages(masked)
     own_defs = {p.div_id for p in passages if p.div_id}
     used_optouts: Set[int] = set()
+    # Prose outside divs runs heading to heading: a term met in one paragraph is not
+    # a first use again in a later paragraph of the same section (gha#1283).
+    section_seen: Dict[int, Set[str]] = {}
     for passage in passages:
-        findings.extend(scan_passage(path, passage, terms, rx, opted, added, own_defs, used_optouts, def_words))
+        seen = None if passage.in_div else section_seen.setdefault(passage.section, set())
+        findings.extend(scan_passage(
+            path, passage, terms, rx, opted, added, own_defs, used_optouts, def_words, seen,
+        ))
     for n in sorted(opted):
         if (added is None or n in added) and BARE_OPT_OUT_RE.search(lines[n - 1]):
             findings.append(Finding(
