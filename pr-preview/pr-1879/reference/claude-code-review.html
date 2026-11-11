@@ -1567,11 +1567,12 @@ cookieconsent.run({
 <ul>
 <li>Its author is an owner, member or collaborator. The PR author’s own comment counts, because the lab’s agent sessions post under the account holder’s login.</li>
 <li>It carries the agent-authorship marker.</li>
-<li>It names the full head sha on a <code>Reviewed-Commit:</code> line.</li>
+<li>Its last <code>Reviewed-Commit:</code> line names the full sha of the commit this run reviewed. The run’s own head counts, not the live PR head, so re-running an older run does not accept a review of a newer head.</li>
 <li>The marker and that line sit in the comment’s own prose. Text inside a code fence, a blockquote or an indented code block is ignored, so quoting a review does not record one.</li>
 <li>The classifier reads its verdict as clean.</li>
 </ul>
-<p>The newest such comment decides, and a push retires it (<a href="https://github.com/Morrison-Lab/gha/issues/1182">gha#1182</a>).</p>
+<p>The newest such comment decides, and a push retires it (<a href="https://github.com/Morrison-Lab/gha/issues/1182">gha#1182</a>). If the classifier fails on that comment, no fallback is accepted (<a href="https://github.com/Morrison-Lab/gha/issues/1229">gha#1229</a>).</p>
+<p>The author check shows a tie to the repository, not write access: a member or collaborator without push rights also qualifies, and the marker is plain text anyone can type.</p>
 </section>
 <section id="a-newer-clean-review-of-the-same-head" class="level3">
 <h3 class="anchored" data-anchor-id="a-newer-clean-review-of-the-same-head">A newer clean review of the same head</h3>
