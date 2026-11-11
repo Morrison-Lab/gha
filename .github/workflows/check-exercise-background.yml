@@ -23,9 +23,9 @@ on:
         type: string
         default: '*.qmd'
       fail:
-        description: Fail the workflow on a finding (else warnings only).
+        description: Fail the workflow on a finding (false gives warnings only).
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-exercise-background:

@@ -1,9 +1,9 @@
 name: Check exercise background
 description: >-
-  Diff-scoped, warn-only heuristic check that flags an exercise whose title
-  names a defined term (a `#def-` title in the scanned files) that its body
-  never mentions, when the diff adds a line of the exercise (Ezra, 2026-10-29).
-  Warns by default.
+  Diff-scoped check that flags an exercise whose title names a defined term
+  (a `#def-` title in the scanned files) that neither its body nor the divs it
+  cites ever mention, when the diff adds a line of the exercise
+  (Ezra, 2026-10-29). Fails by default (gha#1481).
 inputs:
   python-version:
     description: Python version to set up.
@@ -21,8 +21,8 @@ inputs:
     description: Space-separated git pathspecs of tracked files to check.
     default: '*.qmd'
   fail:
-    description: Fail the action on a finding (else warnings only).
-    default: 'false'
+    description: Fail the action on a finding (false gives warnings only).
+    default: 'true'
 runs:
   using: composite
   steps:
