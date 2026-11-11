@@ -222,3 +222,32 @@ def test_a_cited_exercise_lends_its_text_but_not_its_solution():
              "::: {#sol-one}\nThe kernel.\n:::\n:::")
     second = exercise("The kernel", "Continue @exr-one.", "{#exr-two}")
     assert found_with(first + "\n" + second, d) == [["kernel"]]
+
+
+def test_corpus_returns_the_div_texts_of_every_file(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "a.qmd").write_text("::: {#def-g}\n#### Gamma kernel\nA kernel.\n:::\n")
+    subprocess.run(["git", "add", "a.qmd"], check=True)
+    assert "kernel" in exb.corpus(["*.qmd"])[1]["def-g"]
+
+
+def test_a_definition_cited_from_another_file_supplies_background(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "a.qmd").write_text("::: {#def-k}\n#### Kernel\nA kernel is ...\n:::\n")
+    (tmp_path / "b.qmd").write_text(exercise("The kernel", "Use @def-k."))
+    subprocess.run(["git", "add", "a.qmd", "b.qmd"], check=True)
+    defined, index = exb.corpus(["*.qmd"])
+    lines = (tmp_path / "b.qmd").read_text().split("\n")
+    assert [f.missing for f in exb.exercises(lines, defined, index)] == []
+    assert [f.missing for f in exb.exercises(lines, defined)] == [["kernel"]]
+
+
+def test_a_citation_cycle_terminates():
+    d = defs("Kernel")
+    first = exercise("The kernel", "Continue @exr-two.", "{#exr-one}")
+    second = exercise("Next", "Continue @exr-one.", "{#exr-two}")
+    assert found_with(first + "\n" + second, d) == [["kernel"]]
