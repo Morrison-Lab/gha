@@ -10217,6 +10217,10 @@ jobs:
         shell: bash
         run: bash .github/workflows/scripts/tests/run-run-runner-exclusive-tests.sh
 
+      - name: Run check-preinstalled-apt-packages tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-check-preinstalled-apt-packages-tests.sh
+
       - name: Run install-runner-systemd-unit tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-install-runner-systemd-unit-tests.sh
