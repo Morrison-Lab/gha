@@ -5,12 +5,14 @@
 # Restart=always matters: when the login session ended, run.sh exited 0, which
 # its wrapper treats as a final stop (gha#1411). PATH comes from the runner's
 # .path file, so ~/.local/bin (rsvg-convert) is on it after every restart.
+# run-runner-exclusive.sh refuses to start a second listener for the runner
+# (gha#1370); the install script replaces @GHA_SCRIPTS@ with its own directory.
 [Unit]
 Description=GitHub Actions self-hosted runner %i
 
 [Service]
 WorkingDirectory=%h/actions-runner-private-%i
-ExecStart=/bin/bash -c 'PATH="$(head -n 1 .path)" exec ./run.sh'
+ExecStart=/bin/bash -c 'PATH="$(head -n 1 .path)" RUNNER_DIR=%h/actions-runner-private-%i exec /bin/bash @GHA_SCRIPTS@/run-runner-exclusive.sh'
 Restart=always
 RestartSec=5
 KillMode=mixed

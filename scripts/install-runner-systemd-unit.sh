@@ -6,7 +6,8 @@
 #   instance: the runner directory's suffix, so gate-1 means
 #   ~/actions-runner-private-gate-1.
 #
-# Installs the template unit scripts/gha-runner@.service, turns on lingering so
+# Installs the template unit scripts/gha-runner@.service, pointed at this
+# checkout's scripts/run-runner-exclusive.sh, turns on lingering so
 # the units survive logout, and enables each instance. It does NOT stop a
 # hand-launched listener: do that between jobs (SIGTERM, once the runner is
 # idle), then `systemctl --user start gha-runner@<instance>`. Two listeners for
@@ -26,7 +27,9 @@ for instance in "$@"; do
   fi
 done
 mkdir -p "$UNIT_DIR"
-cp "$SCRIPT_DIR/gha-runner@.service" "$UNIT_DIR/gha-runner@.service"
+# The unit starts the runner through this checkout's run-runner-exclusive.sh.
+sed "s#@GHA_SCRIPTS@#$SCRIPT_DIR#g" "$SCRIPT_DIR/gha-runner@.service" \
+  > "$UNIT_DIR/gha-runner@.service"
 loginctl enable-linger "$USER"
 systemctl --user daemon-reload
 for instance in "$@"; do
