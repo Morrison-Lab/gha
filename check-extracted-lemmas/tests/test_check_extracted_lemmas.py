@@ -69,6 +69,26 @@ def test_a_quantifier_over_a_setting_specific_index_is_not_flagged(sentence):
     assert msgs(div("sol-a", sentence)) == []
 
 
+@pytest.mark.parametrize("sentence", [
+    # lds sol-how-many-units-part6 (gha#1480): a denied universal claim.
+    "The $O(2^n)$ is the cost of the construction, not a floor for any particular function.",
+    "There is no bound for every function $f$.",
+    "It isn't true for all real numbers $x$.",
+])
+def test_a_negated_quantifier_is_not_flagged(sentence):
+    assert msgs(div("sol-a", sentence)) == []
+
+
+@pytest.mark.parametrize("sentence", [
+    # A negation far from the quantifier, or after it, does not cancel it.
+    "Do not forget: the identity holds for any real number $x$ and any $y$.",
+    "For any real number $x$, $x^2 \\ge 0$, so it is not negative.",
+    "The square is never negative, so we also have $x^2 + 1 > 0$ for every real number $x$.",
+])
+def test_a_negation_outside_the_window_does_not_cancel_the_quantifier(sentence):
+    assert len(msgs(div("sol-a", sentence))) == 1
+
+
 def test_a_quantifier_inside_inline_code_is_not_flagged():
     assert msgs(div("sol-a", "Run `for all real number x` and see $x$.")) == []
 
@@ -178,9 +198,44 @@ def test_no_base_skips(repo):
     assert run(base="").skipped
 
 
-def test_warn_only_by_default(repo, monkeypatch, capsys):
+def test_blocks_by_default(repo, monkeypatch, capsys):
+    # gha#1480: the default is fail, and EL_FAIL=false only warns.
     monkeypatch.setenv("EL_WHOLE_TREE", "true")
+    monkeypatch.delenv("EL_FAIL", raising=False)
+    assert el.main() == 1
+    assert "::error" in capsys.readouterr().out
+    monkeypatch.setenv("EL_FAIL", "false")
     assert el.main() == 0
     assert "::warning" in capsys.readouterr().out
     monkeypatch.setenv("EL_FAIL", "true")
     assert el.main() == 1
+    assert "::error" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("sentence", [
+    # Spaced math counts as one word, so the negation stays in the window.
+    "It is not true that $x + y = 0$ for every real number $x$.",
+    # Emphasis, quotes and brackets around the negation do not hide it.
+    "It is **not** a bound for every real number $x$.",
+    'It is "not" a bound for every real number $x$.',
+    "It is 'not' a bound for every real number $x$.",
+    "It is _not_ a bound for every real number $x$.",
+    "It isn't a bound for every real number $x$.",
+    "It is (*not*) a bound for every real number $x$.",
+])
+def test_a_negation_with_markup_or_spaced_math_still_cancels(sentence):
+    assert not el.states_general_fact(sentence)
+
+
+@pytest.mark.parametrize("path, pattern", [
+    ("action.yml", r"\n  fail:\n(?:    .*\n)*?    default: '(\w+)'"),
+    (".github/workflows/check-extracted-lemmas.yml",
+     r"\n      fail:\n(?:        .*\n)*?        default: (\w+)"),
+])
+def test_yaml_fail_defaults_agree_with_the_script(path, pattern):
+    import re
+    root = _DIR if path == "action.yml" else _DIR.parent
+    text = (root / path).read_text()
+    m = re.search(pattern, text)
+    assert m is not None, path
+    assert (m.group(1) == "true") is el._DEFAULT_FAIL
