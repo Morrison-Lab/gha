@@ -25,15 +25,15 @@ is exactly a named function applied to one or two arguments:
 Each argument must be a lowercase Latin or Greek letter,
 with an optional subscript or superscript.
 An uppercase letter names a set, an event, or a random variable.
-Neither such a letter, a vector macro such as `\vx`, a matrix macro such as `\mA`,
-nor an expression is a scalar input,
+Neither such a letter, a vector macro such as `\vx`,
+a matrix macro such as `\mA`, nor an expression is a scalar input,
 so a definition with such an argument is not a candidate.
 
 The check reads only the first display equation outside HTML comments,
 so a definition that states its defining equation second is skipped.
 Any `=` counts as defining,
-so a first equation that states a property of a named function, such as `\log(x) = y`,
-makes the div a candidate.
+so a first equation that states a property of a named function,
+such as `\log(x) = y`, makes the div a candidate.
 
 A candidate passes when its div holds a graph,
 which is anything `check-exm-figures` counts as a figure:
