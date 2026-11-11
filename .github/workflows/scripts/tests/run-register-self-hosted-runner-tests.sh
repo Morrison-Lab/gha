@@ -98,7 +98,7 @@ check "crontab: created when none existed" "$(grep -c '^@reboot' "$work/crontab"
 # The helpers are called after the script cd-s into the runner directory, so their
 # path must be absolute; a relative one fails to find them.
 check "helpers: dirname of BASH_SOURCE appears only in SCRIPT_DIR" "$(grep -c 'dirname "${BASH_SOURCE' "$script")" "1"
-check "helpers: all four are called through SCRIPT_DIR" "$(grep -c '"${SCRIPT_DIR}/' "$script")" "4"
+check "helpers: all five are called through SCRIPT_DIR" "$(grep -c '"${SCRIPT_DIR}/' "$script")" "5"
 
 # pin-runner-path.sh copies .path into .env (gha#1341).
 pin="$repo_root/scripts/pin-runner-path.sh"

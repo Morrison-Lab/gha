@@ -157,7 +157,9 @@ start_runner() {
   # grows until the disk is full (gha#1352).
   RUNNER_DIR="$RUNNER_DIR" bash "${SCRIPT_DIR}/install-runner-cleanup-hook.sh" ||
     echo "warning: no cleanup hook installed; old checkouts will accumulate" >&2
-  nohup ./run.sh > runner.log 2>&1 &
+  # The wrapper refuses a second listener if another start races this one
+  # between the check above and here (gha#1370).
+  RUNNER_DIR="$RUNNER_DIR" nohup bash "${SCRIPT_DIR}/run-runner-exclusive.sh" > runner.log 2>&1 &
   echo "Runner started (log: $RUNNER_DIR/runner.log)."
 }
 
