@@ -1417,13 +1417,13 @@ cookieconsent.run({
 <td><code>cluster-image</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Apptainer image on the cluster home that <code>cluster-render</code> runs in.</td>
+<td>Apptainer image on the cluster home that <code>cluster-render</code> runs in. Empty falls back to the caller’s <code>CI_CLUSTER_IMAGE</code> Actions variable, so an org variable sets it in one place.</td>
 </tr>
 <tr class="odd">
 <td><code>cluster-image-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>The same image on the runner, for heads without the cluster home.</td>
+<td>The same image on the runner, for heads without the cluster home. Empty falls back to the caller’s <code>CI_CLUSTER_IMAGE_FILE</code> Actions variable.</td>
 </tr>
 <tr class="even">
 <td><code>extra-preview-labels</code></td>
