@@ -534,8 +534,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   A check puts the directory on `sys.path` and imports it.
   A composite action runs from a checkout of the whole repository, so `../check-common` is always beside it.
   Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
-  List files with `diffscope.git_paths`, never a plain `ls-files` or `diff --name-only`:
-  git quotes a name holding `"`, a backslash, or a tab even under `core.quotepath=false`, and only `-z` avoids it (gha#1923).
+  List files with `diffscope.git_paths`, which adds `-z` to a listing command such as `ls-files`.
+  Without it git quotes a name holding `"`, a backslash, or a tab even under `core.quotepath=false`, and only `-z` avoids it (gha#1923).
   `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
   It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.
