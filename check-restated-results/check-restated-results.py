@@ -103,31 +103,27 @@ class Div(NamedTuple):
 Stream = List[Tuple[str, int, str]]  # (path, 1-based line, text)
 
 
-def resolve_include(including: str, target: str, top: str,
-                    files: Dict[str, List[str]]) -> Optional[str]:
+def resolve_include(target: str, top: str, files: Dict[str, List[str]]) -> Optional[str]:
     """The tracked path an include names, or None when it names no file read.
 
-    A path is tried against the including file's directory, then against the
-    top-level page's (Quarto resolves a nested include there), and a leading
-    ``/`` against the project root.
-    Each candidate is also tried through the file system, so an include that
-    passes through a symlink, such as sds's ``sds -> .``, reaches the tracked
-    file behind it (gha#1478).
+    Quarto resolves every include, nested ones too, from the top-level page's
+    directory (measured with Quarto 1.10: a nested include relative to the
+    including subfile fails with "could not find file"), and a leading ``/``
+    from the project root.
+    The path is also tried through the file system, so an include that passes
+    through a symlink, such as sds's ``sds -> .``, reaches the tracked file
+    behind it (gha#1478).
     """
     if target.startswith("/"):
-        candidates = [target.lstrip("/")]
+        cand = target.lstrip("/")
     else:
-        candidates = [posixpath.join(posixpath.dirname(including), target),
-                      posixpath.join(posixpath.dirname(top), target)]
-    root = os.path.realpath(".")
-    for cand in candidates:
-        cand = posixpath.normpath(cand)
-        if cand in files:
-            return cand
-        real = os.path.relpath(os.path.realpath(cand), root).replace(os.sep, "/")
-        if real in files:
-            return real
-    return None
+        cand = posixpath.join(posixpath.dirname(top), target)
+    cand = posixpath.normpath(cand)
+    if cand in files:
+        return cand
+    real = os.path.relpath(os.path.realpath(cand), os.path.realpath("."))
+    real = real.replace(os.sep, "/")
+    return real if real in files else None
 
 
 def flatten(path: str, files: Dict[str, List[str]], seen: Tuple[str, ...] = (),
@@ -150,8 +146,8 @@ def flatten(path: str, files: Dict[str, List[str]], seen: Tuple[str, ...] = (),
             continue
         inc = INCLUDE_RE.search(raw) if not raw.lstrip().startswith("<!--") else None
         if inc:
-            target = resolve_include(path, inc.group(1), top, files)
-            if target is not None and target not in seen:
+            target = resolve_include(inc.group(1), top, files)
+            if target is not None and target != path and target not in seen:
                 out.extend(flatten(target, files, seen + (path,), top))
                 continue
         out.append((path, n, raw))
@@ -422,18 +418,24 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         content = _read_lines(rel)
         if content is not None:
             files[rel] = content
-    included: Set[str] = set()
-    for rel, lines in files.items():
-        for raw in lines:
-            for inc in INCLUDE_RE.findall(raw):
-                target = resolve_include(rel, inc, rel, files)
-                if target is not None:
-                    included.add(target)
+    streams = {rel: flatten(rel, files) for rel in files}
+    reach = {rel: {p for p, _, _ in stream} - {rel} for rel, stream in streams.items()}
     findings: Set[Finding] = set()
-    for rel in files:
-        if rel not in included:
-            findings.update(check_page(flatten(rel, files), touched))
+    for rel, stream in streams.items():
+        if not is_included(rel, reach):
+            findings.update(check_page(stream, touched))
     return Report(sorted(findings), False)
+
+
+def is_included(rel: str, reach: Dict[str, Set[str]]) -> bool:
+    """Whether another page reads ``rel`` as part of itself, so it is no page.
+
+    A file is a subfile when some page reaches it through its includes,
+    directly or nested, and it does not reach that page back: two files that
+    include each other (a cycle Quarto cannot render) are both still checked.
+    """
+    return any(rel in seen and other not in reach[rel]
+               for other, seen in reach.items() if other != rel)
 
 
 def main() -> int:

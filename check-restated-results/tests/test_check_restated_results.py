@@ -134,6 +134,61 @@ def test_unrelated_exercise_still_ends_the_group():
     assert len(out) == 1
 
 
+def test_nested_include_is_not_resolved_against_the_subfile():
+    # Quarto reads the top-level page's _q.qmd, never sub/_q.qmd (review of #1912).
+    files = {
+        "a.qmd": "{{< include sub/_p.qmd >}}".split("\n"),
+        "sub/_p.qmd": "{{< include _q.qmd >}}".split("\n"),
+        "_q.qmd": ["top"],
+        "sub/_q.qmd": ["sub"],
+    }
+    assert [raw for _, _, raw in rr.flatten("a.qmd", files)] == ["top"]
+
+
+def _write(root, files):
+    for name, text in files.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text(text)
+
+
+def _paths(findings):
+    return sorted(f.path for f in findings)
+
+
+def _commit(root):
+    # A whole-tree run reads tracked files only, so a fixture must be committed.
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "fixture")
+
+
+def test_a_nested_subfile_is_not_also_checked_as_a_page(repo):
+    (repo / "p.qmd").unlink()
+    _write(repo, {
+        "a.qmd": "{{< include sub/_p.qmd >}}\n",
+        "sub/_p.qmd": "{{< include _x.qmd >}}\n\n" + div("thm-x", "T."),
+        "_x.qmd": div("exr-x", "Derive it.") + div("sol-x", EQ),
+    })
+    _commit(repo)
+    assert run(whole_tree=True).findings == []
+
+
+def test_a_self_include_through_a_symlink_keeps_the_page_checked(repo):
+    (repo / "lnk").symlink_to(".")
+    (repo / "p.qmd").write_text(div("exr-s", "Derive it.") + div("sol-s", EQ)
+                                + "{{< include lnk/p.qmd >}}\n")
+    _commit(repo)
+    assert _paths(run(whole_tree=True).findings) == ["p.qmd"]
+
+
+def test_an_include_cycle_through_a_symlink_keeps_both_pages_checked(repo):
+    (repo / "lnk").symlink_to(".")
+    (repo / "p.qmd").write_text(div("exr-a", "Derive it.") + div("sol-a", EQ)
+                                + "{{< include lnk/b.qmd >}}\n")
+    _write(repo, {"b.qmd": "{{< include lnk/p.qmd >}}\n"})
+    _commit(repo)
+    assert "p.qmd" in _paths(run(whole_tree=True).findings)
+
+
 def test_include_inside_a_code_fence_is_not_expanded():
     files = {"p.qmd": "```\n{{< include q.qmd >}}\n```".split("\n"), "q.qmd": ["x"]}
     assert len(rr.flatten("p.qmd", files)) == 3
