@@ -1,5 +1,5 @@
 - **`triage-backlog/` holds the backlog triage script and its tests** (#1900).
-  The script is copied unchanged from `Morrison-Lab/ai-config`'s `scripts/triage-backlog.py`.
-  It gives each open issue one of `P1`, `P2`, or `P3`.
-  With `--labels-only`, it closes nothing.
+  Both are copied from `Morrison-Lab/ai-config`'s `scripts/`, and `triage-backlog/README.md` lists the three lines that differ.
+  The script gives each open issue a priority (`P1`, `P2`, or `P3`) or proposes closing it.
+  With `--apply --labels-only`, it adds labels and closes nothing.
   The reusable workflow that runs it comes in a later pull request.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Assign a priority to every open issue, and name the ones to close.
 
 The backlog grew from 15 to 410 open issues between 2026-07-20 and
