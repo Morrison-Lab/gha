@@ -1,0 +1,73 @@
+---
+title: "triage-backlog.yml"
+---
+
+Weekly backlog triage that labels and never closes.
+It gives each open issue that has no priority label the label the triage plan proposes: `P1`, `P2`, or `P3`.
+An issue the plan would close, as junk or a duplicate, is left as it is, for a pass that a person reads.
+This implements
+[gha#1900](https://github.com/Morrison-Lab/gha/issues/1900).
+
+The workflow runs the
+[`triage-backlog`](https://github.com/Morrison-Lab/gha/tree/main/triage-backlog)
+composite action, which runs `triage-backlog.py` with `--apply --labels-only`.
+The script reads issues through the `gh` CLI, so the job checks out nothing.
+It copies the script's summary into the job summary.
+
+## Before the first real run
+
+Create the labels `P1`, `P2`, and `P3` in the repository.
+A run that is not a dry run checks for them before it changes anything, and fails when one is missing.
+
+Run it once by hand as a dry run, and read the plan in the log.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| ----- | ---- | ------- | ----------- |
+| `dry-run` | boolean | `true` | Print each label command without running it. A scheduled caller passes `false` to label for real. |
+| `ceiling` | string | `''` | The open-issue count to report against, as a whole number. Empty means no ceiling. A run over the ceiling still passes, with a warning. |
+| `limit` | string | `''` | The most open issues to fetch, as a whole number of 1 or more. Empty means the script's default of 1000. The run fails when the repository has this many open issues or more, because the list may be cut short. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+The workflow triages the repository that calls it.
+To triage another repository, call the composite action directly with its `repo` and `github-token` inputs.
+
+## Permissions
+
+Grant `issues: write` on the calling job.
+The job declares it whatever `dry-run` is, so a dry run needs the grant too.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/triage-backlog.yml in your repo.
+name: Triage backlog
+
+on:
+  schedule:
+    - cron: '17 14 * * 1' # Mondays, 14:17 UTC
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Print each label command without running it.
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  triage:
+    permissions:
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/triage-backlog.yml@v3
+    with:
+      # false on the schedule, the ticked box on a manual run.
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      # ceiling: '400'   # warn when more issues than this are open
+      # limit: '2000'    # raise when the repo has 1000 open issues or more
+```
+
+See
+[`examples/triage-backlog.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/triage-backlog.yml)
+for the full caller stub.

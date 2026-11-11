@@ -267,7 +267,7 @@ the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`,
-while `opposition-research`, `report-main-failure`, `check-dependency-updates`,
+while `opposition-research`, `report-main-failure`, `triage-backlog`, `check-dependency-updates`,
 `check-duplicate-roxygen`, `check-math-definitions`,
 `check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,

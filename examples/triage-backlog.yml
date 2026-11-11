@@ -1,0 +1,30 @@
+# Copy to .github/workflows/triage-backlog.yml in your repo.
+# Weekly backlog triage: gives each open issue that has no priority label the
+# label the triage plan proposes (P1, P2 or P3), and closes nothing.
+# The labels P1, P2 and P3 must already exist in your repo.
+# The weekly run changes labels. A manual run is a dry run unless you untick
+# the box, and prints each label command without running it.
+name: Triage backlog
+
+on:
+  schedule:
+    - cron: '17 14 * * 1' # Mondays, 14:17 UTC
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Print each label command without running it.
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  triage:
+    permissions:
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/triage-backlog.yml@v3
+    with:
+      # false on the schedule, the ticked box on a manual run.
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      # ceiling: '400'   # warn when more issues than this are open
+      # limit: '2000'    # raise when the repo has 1000 open issues or more
