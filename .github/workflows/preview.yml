@@ -140,11 +140,11 @@ on:
         type: string
         default: cse-head.cluster.cs.wwu.edu
       cluster-image:
-        description: Apptainer image on the cluster home that `cluster-render` runs in.
+        description: Apptainer image on the cluster home that `cluster-render` runs in. Empty falls back to the caller's `CI_CLUSTER_IMAGE` variable (gha#1658).
         type: string
         default: ''
       cluster-image-file:
-        description: The same image on the runner, for heads without the cluster home.
+        description: The same image on the runner, for heads without the cluster home. Empty falls back to the caller's `CI_CLUSTER_IMAGE_FILE` variable.
         type: string
         default: ''
       extra-preview-labels:
@@ -347,8 +347,8 @@ jobs:
           incremental: ${{ inputs.incremental }}
           cluster-render: ${{ inputs.cluster-render }}
           cluster-head: ${{ inputs.cluster-head }}
-          cluster-image: ${{ inputs.cluster-image }}
-          cluster-image-file: ${{ inputs.cluster-image-file }}
+          cluster-image: ${{ inputs.cluster-image || vars.CI_CLUSTER_IMAGE }}
+          cluster-image-file: ${{ inputs.cluster-image-file || vars.CI_CLUSTER_IMAGE_FILE }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
