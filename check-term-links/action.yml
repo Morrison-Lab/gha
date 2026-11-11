@@ -1,7 +1,7 @@
 name: Check term links at first use
 description: >-
   Diff-scoped check that flags a defined technical term whose first use in a
-  div (or in a paragraph outside a div) is plain text instead of a link to its
+  div (or in the prose outside divs between two headings) is plain text instead of a link to its
   definition, and a bold term that no definition div covers. Learns the terms
   from the corpus itself: the titles and bold terms of `::: {#def-...}` divs,
   and the text of any link whose target ends in `#def-...`. Skips code, math,

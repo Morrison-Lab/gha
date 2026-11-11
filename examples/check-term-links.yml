@@ -1,6 +1,6 @@
 # Copy to .github/workflows/check-term-links.yml in your repo.
 # Diff-scoped check: flags the first use of a defined technical term that is not
-# linked to its definition, in each div and in each paragraph outside a div, on
+# linked to its definition, in each div and in the prose outside divs between two headings, on
 # lines a PR adds. Terms come from the repo's own `::: {#def-...}` divs and from
 # links to `#def-...` anchors (including on other sites). Blocking by default.
 # Only contents:read is needed (the default), so no permissions block is required.

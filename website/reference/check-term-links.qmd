@@ -3,8 +3,8 @@ title: "check-term-links.yml"
 ---
 
 Diff-scoped, blocking check that every technical term is linked to its
-definition the first time it appears in each div, or in each paragraph outside
-a div.
+definition the first time it appears in each div, or in the prose outside divs
+between one heading and the next.
 This is the lab's linking rule
 ([ai-config#4553](https://github.com/Morrison-Lab/ai-config/pull/4553),
 [psw#223](https://github.com/Morrison-Lab/psw/pull/223),
@@ -43,12 +43,13 @@ a label such as "note" or "example".
 
 - **`unlinked-first-use`.**
   The first occurrence of a known term in a passage is plain text.
-  A passage is one div (between its fences), or one paragraph outside divs.
+  A passage is one div (between its fences), or the prose outside divs between one heading and the next ([gha#1283](https://github.com/Morrison-Lab/gha/issues/1283)).
+  A div inside a section has its own scope and does not split the prose around it.
   An occurrence inside a link, or followed by `(@def-...)`, is linked.
   A term's own definition div is skipped,
   and so is any other div in the file that holds that definition
   (such as a source callout).
-  A paragraph outside divs is still checked.
+  Prose outside divs is still checked.
   The plural of a term counts as the term, and the longest term wins, so
   "test set" is not also a use of "set".
 - **`partial-link`.**
