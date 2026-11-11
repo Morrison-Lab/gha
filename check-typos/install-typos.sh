@@ -55,7 +55,19 @@ sha256_of() {
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
-curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors \
+# --retry-all-errors (curl 7.71+) also retries connection resets, which the
+# plain --retry list (408, 429, 500, 502, 503, 504, timeouts) does not.
+# v2 callers may run older curl on self-hosted runners, where the unknown
+# flag would fail the download outright, so pass it only when supported.
+retry_all_errors=()
+# Capture the help text rather than piping it to grep -q: under pipefail an
+# early grep exit can SIGPIPE curl and read as "unsupported".
+if curl_help="$(curl --help all 2>/dev/null)" \
+  && [[ "$curl_help" == *--retry-all-errors* ]]; then
+  retry_all_errors=(--retry-all-errors)
+fi
+
+curl --fail --silent --show-error --location --retry 8 --retry-delay 10 ${retry_all_errors[@]+"${retry_all_errors[@]}"} \
   --output "$work_dir/$tarball" "$base_url/$tarball"
 
 actual_sha256="$(sha256_of "$work_dir/$tarball")"
