@@ -39,7 +39,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-pr-concerns`,
   `check-pr-size`,
   `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`,
-  `check-static-figures`, `check-axis-titles`,
+  `check-static-figures`, `check-function-graphs`, `check-axis-titles`,
   `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`,
   `check-self-contained-captions`,
   `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`,

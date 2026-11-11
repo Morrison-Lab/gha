@@ -3762,6 +3762,77 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-csf || true
           rm -rf _ci-csf
+  # check-function-graphs is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-function-graphs@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  function-graphs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-function-graphs unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-function-graphs/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-function-graphs
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - name: Stage a function definition with no graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-fng
+          printf '%s\n' '::: {#def-square}' '#### Square' '' '$$' 'f(x) = x^2' '$$' '' ':::' > _ci-fng/page.qmd
+          git add -f _ci-fng/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: fng-expected-failure
+        continue-on-error: true
+        uses: ./check-function-graphs
+        with:
+          whole-tree: 'true'
+          globs: '_ci-fng/*.qmd'
+          fail: 'true'
+      - name: Assert the blocking call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.fng-expected-failure.outcome }}
+        run: test "$OUTCOME" = failure || { echo "::error::expected a failure, got '$OUTCOME'"; exit 1; }
+      # The default is warn-only, so the same finding must pass with no fail input.
+      - name: Check the staged page with the default fail
+        uses: ./check-function-graphs
+        with:
+          whole-tree: 'true'
+          globs: '_ci-fng/*.qmd'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-function-graphs
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-function-graphs
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-fng'
+          globs: '_ci-fng/*.qmd'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-fng || true
+          rm -rf _ci-fng
   # check-search-shortcut is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-search-shortcut@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The

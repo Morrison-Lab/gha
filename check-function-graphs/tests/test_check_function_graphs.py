@@ -196,11 +196,15 @@ def test_paths_ignore_is_honoured(repo):
 
 # -- defaults and exit codes --------------------------------------------------
 
-def test_defaults_agree_across_script_and_action():
+def test_defaults_agree_across_script_action_and_workflow():
     action = (_DIR / "action.yml").read_text(encoding="utf-8")
+    workflow = (_DIR.parent / ".github" / "workflows"
+                / "check-function-graphs.yml").read_text(encoding="utf-8")
     assert fng._DEFAULT_FAIL is False
     assert "default: 'false'" in action.split("  fail:")[1].split("runs:")[0]
+    assert "default: false" in workflow.split("      fail:")[1].split("jobs:")[0]
     assert f"default: '{fng.DEFAULT_GLOBS}'" in action
+    assert f"default: '{fng.DEFAULT_GLOBS}'" in workflow
     for name in ("BASE_REF", "WHOLE_TREE", "GLOBS", "PATHS_IGNORE", "FAIL"):
         assert f"FNG_{name}" in action
 
