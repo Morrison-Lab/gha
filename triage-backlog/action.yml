@@ -160,7 +160,9 @@ runs:
         } >> "$GITHUB_STEP_SUMMARY"
         # A run over the ceiling still passes, so say so where a reader of
         # the run list sees it.
-        over=$(grep -m 1 'over the ceiling of' "$TRIAGE_SUMMARY" || true)
+        # grep exits 1 for no match, which is fine, and 2 for a read error,
+        # which fails the step.
+        over=$(grep -m 1 'over the ceiling of' "$TRIAGE_SUMMARY") || [ "$?" -eq 1 ]
         if [ -n "$over" ]; then
           echo "::warning::$over"
         fi

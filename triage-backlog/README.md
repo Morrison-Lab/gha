@@ -18,7 +18,8 @@ Run the tests with `python3 triage-backlog/tests/test_triage_backlog.py`.
 ## The composite action
 
 `action.yml` runs the script with `--apply --labels-only`.
-It labels each open issue that has no priority label, and closes nothing.
+It adds a priority label to each open issue the script's plan gives one, and closes nothing.
+An issue the plan would close is left as it is, for a pass that a person reads.
 
 | Input | Default | Meaning |
 | --- | --- | --- |
@@ -29,5 +30,5 @@ It labels each open issue that has no priority label, and closes nothing.
 | `github-token` | `github.token` | The token `gh` uses. |
 
 The job needs `issues: write`, or `issues: read` for a dry run.
-The repository must already have the labels `P1`, `P2`, and `P3`: the action checks for them before it changes anything.
+The repository must already have the labels `P1`, `P2`, and `P3`: a run that is not a dry run checks for them before it changes anything.
 The `triage-backlog-tests` job in `.github/workflows/_selftest.yml` calls the action four times, each as a dry run.
