@@ -31,16 +31,24 @@ Findings:
   matches no known term, so it is introduced as technical with no definition
   anywhere in the corpus. Give it a `#def-` div.
 
+- `stale-allow`: a `check-term-links: allow` pragma on an added line that suppresses
+  no finding. Delete it (gha#1771).
+- `bare-allow`: an opt-out pragma on an added line with no reason. Write
+  `<!-- check-term-links: allow: why this line is exempt -->` (gha#1772).
+
 Skipped: code fences and spans, math, HTML comments, YAML front matter, include
 shortcodes, headings, images, and the `(...)` of a link.
 
-Opt-outs: `<!-- check-term-links: allow -->` on a line skips that line;
+Opt-outs: `<!-- check-term-links: allow: reason -->` on a line skips that line
+(a pragma with no reason still skips it but is reported as `bare-allow`);
 `<!-- check-term-links: ignore-file -->` skips a file; `--allow-file` names terms
 that are ordinary English in this corpus.
 
 Scope: only a finding on a line a diff adds is reported (`--base-ref`, `--diff`),
 so adopting the check does not reflag the corpus. An added line whose exact text
-the same diff also deletes is moved, not new, so splitting a file reflags nothing.
+the same diff also deletes is moved, not new, so splitting a file reflags nothing;
+so is a line, ignoring indentation and a list marker, that an unchanged line of
+another file in the same directory holds, for a split that keeps the original.
 `--whole-tree` reports every
 finding, to measure a corpus. With no base and no `--whole-tree`, the check
 skips with a warning rather than widening to the whole tree.
@@ -72,7 +80,11 @@ DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
 HEADING_RE = re.compile(r"^#{1,6}\s+(?P<title>.+?)\s*(?:\{[^}]*\})?\s*$")
 FILE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*ignore-file\s*-->", re.I)
-LINE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)\s*-->", re.I)
+LINE_OPT_OUT_RE = re.compile(
+    r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:(?:(?!-->).)*)?\s*-->", re.I
+)
+# The same pragma with nothing after `allow`: it gives no reason (gha#1772).
+BARE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:)?\s*-->", re.I)
 
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
@@ -122,6 +134,18 @@ FUNCTION_WORDS = frozenset({
     "computed", "computing", "use", "uses", "used", "using", "given", "gives", "give",
 })
 GENERIC_NOUNS = frozenset({"number", "numbers", "value", "values"})
+# Ordinary English words that a link to a `#def-` anchor often wraps inside a sentence
+# ("a [linear](...) map").  As a one-word term learned only from such a link they flag
+# every ordinary use, so they count as terms only when a def-div title or bold term
+# names them (gha#1773).
+LINK_ONLY_COMMON_WORDS = frozenset({
+    "even", "exists", "approximate", "ranges", "labels", "uniform", "sum", "average",
+    "memory", "linear", "random", "negative", "positive", "steps", "length", "function",
+    "term", "terms", "mean", "fit", "fits", "set", "sets", "input", "inputs", "output",
+    "outputs", "direction", "square", "score", "weight", "weights", "class", "cost",
+    "costs", "loss", "filter", "constant", "deep", "diagonal", "identity", "binary",
+    "fraction", "degrees", "gates", "model", "models", "estimate", "feature", "features",
+})
 LEADING_ARTICLE_RE =re.compile(r"^(?:the|a|an)\s+", re.I)
 MIN_TERM_LEN = 3
 MAX_TERM_WORDS = 5
@@ -357,6 +381,8 @@ def harvest_terms(
                 if not usable_term(candidate, allowed_out):
                     continue
                 key = term_key(candidate)
+                if from_link and key in LINK_ONLY_COMMON_WORDS:
+                    continue
                 if " " in key:
                     multiword.setdefault(def_id, set()).update(key.split())
                 elif not (from_link or listed) and key in multiword.get(def_id, ()):
@@ -392,6 +418,43 @@ def harvest_terms(
     return terms
 
 
+def harvest_def_words(masked: Sequence[str]) -> Dict[str, Set[str]]:
+    """Map def id -> the words of that div's title and bold terms (gha#1787).
+
+    A link whose text is part of these words, followed by another of them, links only
+    part of the defined phrase: "[marginal](#def-marginal-density) density".
+    """
+    words: Dict[str, Set[str]] = {}
+
+    def add(text: str, def_id: str) -> None:
+        for w in term_key(re.sub(r"[(),;]", " ", text)).split():
+            words.setdefault(def_id, set()).add(w)
+
+    stack: List[Tuple[int, Optional[str]]] = []
+    for line in masked:
+        s = line.strip()
+        m_close = DIV_CLOSE_RE.match(s)
+        m_open = None if m_close else DIV_OPEN_RE.match(s)
+        if m_open:
+            d = DEF_ID_RE.search(m_open.group("attrs") or "")
+            stack.append((len(m_open.group("fence")), d.group("id") if d else None))
+            continue
+        if m_close:
+            if stack and len(m_close.group("fence")) >= stack[-1][0]:
+                stack.pop()
+            continue
+        def_id = next((d for _, d in reversed(stack) if d), None)
+        if not def_id:
+            continue
+        h = HEADING_RE.match(s)
+        if h:
+            add(mask_inline(h.group("title")), def_id)
+        else:
+            for b in BOLD_RE.finditer(mask_inline(line)):
+                add(b.group("term") or b.group("term2"), def_id)
+    return words
+
+
 def term_regex(keys: Sequence[str]) -> "re.Pattern[str]":
     """One alternation, longest term first, matching a term's inflected last word and flexible spacing."""
     parts = []
@@ -414,6 +477,8 @@ def scan_passage(
     opted: Set[int],
     added: Optional[Set[int]],
     own_defs: Optional[Set[str]] = None,
+    used_optouts: Optional[Set[int]] = None,
+    def_words: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Finding]:
     findings: List[Finding] = []
     line_of: List[int] = []  # offset -> 1-based line number
@@ -439,7 +504,35 @@ def scan_passage(
     prose = "".join(chars)
 
     def reportable(n: int) -> bool:
-        return n not in opted and (added is None or n in added)
+        if n in opted:
+            # The pragma on this line suppressed a finding, so it is not stale.
+            if used_optouts is not None:
+                used_optouts.add(n)
+            return False
+        return added is None or n in added
+
+    # A link over a sub-phrase of its target's title, then the next word of that title (gha#1787).
+    for lm in LINK_RE.finditer(text):
+        frag = re.search(r"#(def-[A-Za-z0-9_-]+)$", lm.group("url") or "")
+        title_words = (def_words or {}).get(frag.group(1), set()) if frag else set()
+        nxt = re.match(r"\s+([A-Za-z][A-Za-z-]*)", text[lm.end():])
+        if not nxt or not title_words:
+            continue
+        link_words = set(term_key(lm.group("text")).split())
+        word = term_key(nxt.group(1))
+        whole = term_key(f"{lm.group('text')} {nxt.group(1)}")
+        if whole in terms:
+            continue  # a defined phrase: the check below reports it
+        if link_words <= title_words and word in title_words and word not in link_words:
+            n = line_at(lm.start())
+            if reportable(n):
+                findings.append(Finding(
+                    file=path, line=n, rule="partial-link", term=term_key(lm.group("text")),
+                    message=(
+                        f"'{lm.group('text')}' links part of a defined phrase; "
+                        f"link the whole phrase '{lm.group('text')} {nxt.group(1)}' to its definition."
+                    ),
+                ))
 
     seen: Set[str] = set()
     if rx is not None:
@@ -513,6 +606,7 @@ def scan_file(
     terms: Dict[str, Set[str]],
     rx: Optional["re.Pattern[str]"],
     added: Optional[Set[int]],
+    def_words: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Finding]:
     if FILE_OPT_OUT_RE.search("\n".join(lines)):
         return []
@@ -520,8 +614,26 @@ def scan_file(
     findings: List[Finding] = []
     passages = split_passages(masked)
     own_defs = {p.div_id for p in passages if p.div_id}
+    used_optouts: Set[int] = set()
     for passage in passages:
-        findings.extend(scan_passage(path, passage, terms, rx, opted, added, own_defs))
+        findings.extend(scan_passage(path, passage, terms, rx, opted, added, own_defs, used_optouts, def_words))
+    for n in sorted(opted):
+        if (added is None or n in added) and BARE_OPT_OUT_RE.search(lines[n - 1]):
+            findings.append(Finding(
+                file=path, line=n, rule="bare-allow", term="",
+                message=(
+                    "This check-term-links opt-out pragma gives no reason; write "
+                    "`<!-- check-term-links: allow: <why this line is exempt> -->`."
+                ),
+            ))
+    # A pragma that suppresses nothing is dead weight, and being line-wide it would hide
+    # the next finding on that line (gha#1771).
+    for n in sorted(opted - used_optouts):
+        if added is None or n in added:
+            findings.append(Finding(
+                file=path, line=n, rule="stale-allow", term="",
+                message="This check-term-links opt-out pragma suppresses no finding on its line; delete it.",
+            ))
     return sorted(findings, key=lambda f: (f.line, f.rule, f.term))
 
 
@@ -577,7 +689,55 @@ def diff_added_lines(
     )
     if diff.returncode != 0:
         return None
-    return parse_added_lines(diff.stdout, repo_root)
+    return drop_sibling_moves(parse_added_lines(diff.stdout, repo_root))
+
+
+LIST_MARKER_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s+")
+
+
+def moved_key(text: str) -> str:
+    """A line's text with surrounding whitespace and a list marker removed."""
+    return LIST_MARKER_RE.sub("", text.strip())
+
+
+def file_lines(path: Path) -> List[str]:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace").split("\n")
+    except OSError:
+        return []
+
+
+def drop_sibling_moves(added: Dict[Path, Set[int]]) -> Dict[Path, Set[int]]:
+    """Drop an added line whose text an unchanged line of a sibling file holds.
+
+    A split that keeps the original file deletes nothing, so the exact-deletion
+    test misses it (gha#1792). A line counts as moved when, with its list
+    marker and indentation removed, it equals a line of another file in the same
+    directory that the diff does not add; lines the deletion test already
+    dropped count as not added here too.
+    """
+    unchanged: Dict[Path, Set[str]] = {}
+    for path in added:
+        for sib in path.parent.glob("*" + path.suffix):
+            if sib not in unchanged:
+                skip = added.get(sib, set())
+                unchanged[sib] = {
+                    moved_key(t) for n, t in enumerate(file_lines(sib), start=1)
+                    if n not in skip and t.strip()
+                }
+    out: Dict[Path, Set[int]] = {}
+    for path, numbers in added.items():
+        lines = file_lines(path)
+        others: Set[str] = set()
+        for sib, keys in unchanged.items():
+            if sib != path and sib.parent == path.parent and sib.suffix == path.suffix:
+                others |= keys
+        out[path] = {
+            n for n in numbers
+            if not (0 < n <= len(lines) and lines[n - 1].strip()
+                    and moved_key(lines[n - 1]) in others)
+        }
+    return out
 
 
 def glob_to_regex(pat: str) -> "re.Pattern[str]":
@@ -704,6 +864,7 @@ def main() -> int:
     allowed_out = read_term_list(args.allow_file)
     contents: Dict[Path, List[str]] = {}
     terms: Dict[str, Set[str]] = {}
+    def_words: Dict[str, Set[str]] = {}
     for f in files:
         try:
             contents[f] = f.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -715,6 +876,8 @@ def main() -> int:
             continue
         for k, ids in harvest_terms(masked, allowed_out).items():
             terms.setdefault(k, set()).update(ids)
+        for did, ws in harvest_def_words(masked).items():
+            def_words.setdefault(did, set()).update(ws)
     for k in read_term_list(args.terms_file):
         if usable_term(k, allowed_out):
             terms.setdefault(k, set())
@@ -727,7 +890,7 @@ def main() -> int:
         added = added_map.get(f) if added_map is not None else None
         if added_map is not None and not added:
             continue
-        findings.extend(scan_file(f, lines, terms, rx, added))
+        findings.extend(scan_file(f, lines, terms, rx, added, def_words))
 
     severity = "error" if should_fail else "warning"
     if findings:

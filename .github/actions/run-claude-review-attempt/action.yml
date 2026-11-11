@@ -925,6 +925,12 @@ runs:
           commits; carry out the review anyway and state a real verdict on the
           diff.
 
+          Write exactly one `### Verdict` section, and keep merge-gate
+          status out of it. Do not quote a `check-pr-fully-clean.py` result
+          (such as `NOT_CLEAN`) under a `### Verdict` heading, and do not
+          open a second `### Verdict` heading: a later heading reads as a
+          retraction and overrides the first verdict (ai-config#5259).
+
           **Commit under review:** ${{ inputs.reviewed-commit != '' && format('`{0}`. That is the PR head SHA. Wherever you name the reviewed commit — the `commit_sha` field of the review-data JSON below in particular — write exactly that value.', inputs.reviewed-commit) || 'the PR head SHA, which you resolve with `gh api repos/<owner>/<repo>/pulls/<number> --jq .head.sha` and write as the `commit_sha` field of the review-data JSON below.' }}
           Never substitute `GITHUB_SHA`, `github.sha`, or `git rev-parse HEAD`
           for it: on an automatic review those name GitHub's ephemeral merge

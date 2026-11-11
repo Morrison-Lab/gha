@@ -1,0 +1,45 @@
+---
+title: "check-def-wiktionary.yml"
+---
+
+Diff-scoped, warn-only check that flags a definition div
+whose first bolded defined term is not linked to its Wiktionary entry.
+The lab's rule (Ezra, 2026-11-06) is that the reader sees
+the ordinary meaning of a word before its technical one.
+This implements
+[gha#1558](https://github.com/Morrison-Lab/gha/issues/1558),
+for the rule in [psw#505](https://github.com/Morrison-Lab/psw/issues/505).
+
+The terms are the comma-separated names in the title of a `#def-` div,
+ignoring math.
+A bolded instance is `**term**`, `**[term](url)**`, or `[**term**](url)`.
+The check reports a definition the pull request edits when
+
+- the first bolded instance of a title name is not a link to `en.wiktionary.org/wiki/`,
+  and Wiktionary has an entry for that name, or
+- the definition links a Wiktionary page that does not exist.
+
+Wiktionary page titles are case-sensitive,
+so the lower-cased name is tried first and then the name as written.
+A multiword technical term or a symbol usually has no entry and is not flagged.
+A network failure skips the definition with a warning and never fails the run.
+`<!-- wiktionary-link: allow -->` in the definition exempts it.
+
+An untouched definition is never reflagged.
+With no base ref the check skips instead of scanning the whole tree;
+`whole-tree` measures a corpus.
+
+## Usage
+
+Copy [`examples/check-def-wiktionary.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-def-wiktionary.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `fail` | `false` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every definition, not only a pull request's additions |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |

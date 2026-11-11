@@ -4,7 +4,11 @@
 # which deadlock identically
 # ([gha#811](https://github.com/Morrison-Lab/gha/pull/811)).
 # Any OTHER group name is fine,
-# and is how you serialize this workflow's own runs.
+# and is how you serialize this workflow's own runs,
+# except one starting `preview-deploy-`:
+# the reusable workflow's own top-level group uses that prefix
+# to cancel a PR's older deploy when a newer head's deploy starts
+# ([gha#1827](https://github.com/Morrison-Lab/gha/issues/1827)).
 # The reusable workflow serializes gh-pages deploys internally
 # on its `deploy` job (`group: gh-pages`).
 # A caller-level block with the same group name deadlocks GitHub Actions

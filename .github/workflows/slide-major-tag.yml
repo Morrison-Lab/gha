@@ -17,6 +17,11 @@ on:
         required: false
         default: false
         type: boolean
+      expected_sha:
+        description: 'Full SHA of the commit you checked; the slide refuses unless it would tag this exact commit'
+        required: false
+        default: ''
+        type: string
 
 # Never let two slides race; the most recent dispatch wins.
 concurrency:
@@ -37,6 +42,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # full history + all tags
+
+      # An agent slides without asking (CLAUDE.md, gha#1834), so it names the
+      # commit it checked; a merge after its checks then fails the slide
+      # instead of shipping an unchecked commit.
+      - name: Require the commit the dispatcher checked
+        if: inputs.expected_sha != ''
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          if [ "$EXPECTED_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::This run would tag $GITHUB_SHA, but the dispatcher checked $EXPECTED_SHA. Re-check main's tip and dispatch again."
+            exit 1
+          fi
+          echo "Tagging the checked commit $GITHUB_SHA."
 
       # Readiness bar from CLAUDE.md: every check run on this commit is green
       # or skipped, none pending. Dependabot updater runs and this job are

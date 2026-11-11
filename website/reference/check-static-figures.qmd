@@ -1,0 +1,112 @@
+---
+title: "check-static-figures.yml"
+---
+
+Diff-scoped check that flags an interactive figure
+with no noninteractive version in static formats.
+The lab's rule (Ezra, 2026-11-10) is that static formats,
+such as PDF, Word, and PowerPoint,
+still render 3D plots and other interactive figures, as noninteractive versions.
+This implements
+[gha#1822](https://github.com/Morrison-Lab/gha/issues/1822);
+the writing rule is in
+[psw#568](https://github.com/Morrison-Lab/psw/pull/568).
+It warns by default while the notes repositories catch up.
+
+It reports two findings:
+
+- **A placeholder note.**
+  A line that says "see the HTML version"
+  (or the web, website, online, or "HTML or slides" version),
+  in prose or in a code chunk that prints it.
+  It is reported per line, even when the file has a static version elsewhere,
+  because the note is still what a reader of that tab sees.
+- **An HTML-only interactive figure.**
+  A code fence that builds a plotly, htmlwidgets, leaflet, or rgl figure
+  and runs only in HTML output,
+  in a file that draws no static version.
+
+A fence runs only in HTML output
+when its `#| eval:` option calls `is_html_output()` without negating it,
+or when it sits in a `.content-visible when-format="html"` (or `"revealjs"`) div
+or a `.content-hidden unless-format="html"` div.
+A file has a static version when another fence runs only outside HTML output
+(a negated `is_html_output()`, `is_latex_output()`,
+or a div shown only in a static format)
+and draws a plot, such as `persp(`, `ggplot(`, `plt.`, `plot(`,
+`plotly::save_image(`, or `webshot`.
+A chunk that only prints a note is not a plot.
+
+A widget that runs in every format is not flagged,
+because knitr screenshots it in static output when webshot2 is installed.
+Neither is a chunk that branches on `knitr::is_html_output()` inside its code,
+returning the widget in HTML and a ggplot otherwise.
+
+A file holding an HTML comment `<!-- static-version: reason -->`
+with a non-empty reason is exempt from both findings,
+for a figure that has no meaningful still image.
+Use `paths-ignore` to exempt whole paths.
+
+## Limits
+
+The check matches call names in the source, not what a render draws,
+so it has two known limits.
+
+- A widget call inside a code comment, such as `# plotly::plot_ly(z = z)`,
+  still counts as an interactive figure.
+  Delete the commented-out call, or add the `static-version` exemption.
+- A static version is judged per file, not per figure.
+  Any plot call in a fence that runs only outside HTML output,
+  including a bare `ax.` method or `include_graphics(`,
+  counts as the static version of every HTML-only figure in the file.
+  So a file with two HTML-only figures and one static plot is not flagged.
+
+## Scope
+
+Only a finding whose fence or line holds a line a pull request adds is reported,
+so untouched figures are not reflagged.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips instead of scanning the whole tree.
+It logs the skip, as a warning annotation when a given `base-ref` cannot be diffed.
+Set `whole-tree: true` to scan every tracked file on purpose,
+which measures how many existing figures lack a static version.
+Every run that does not skip prints how many lines, files,
+and interactive figures it examined.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`       | Fail the workflow on a finding. The default is warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-static-figures.yml in your repo.
+name: Check static figures
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-static-figures.yml@v3
+    # with:
+    #   fail: true         # block on a finding (defaults to false)
+```

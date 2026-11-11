@@ -1,0 +1,1 @@
+- `update-snapshots.yml` now uses the runner's own R on a runner with no passwordless sudo even when R has no `pak`, and installs the package's dependencies with `remotes::install_deps` into a per-job library, as it did before only when `pak` was present (gha#1726).

@@ -96,17 +96,22 @@ website:
           - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
           - reference/check-contour-3d.qmd
+          - reference/check-static-figures.qmd
+          - reference/check-function-graphs.qmd
           - reference/check-axis-titles.qmd
           - reference/check-tree-lists.qmd
           - reference/check-search-shortcut.qmd
           - reference/check-visualization-figures.qmd
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
+          - reference/check-def-wiktionary.qmd
           - reference/check-bare-yes-no.qmd
           - reference/check-code-fold.qmd
           - reference/check-serial-comma.qmd
           - reference/check-exercise-background.qmd
           - reference/check-exercise-question-paragraph.qmd
+          - reference/check-exercise-ends-with-task.qmd
+          - reference/check-removed-content.qmd
           - reference/check-key-equations-displayed.qmd
           - reference/check-multipart-exercises.qmd
           - reference/check-split-solutions.qmd
@@ -146,6 +151,7 @@ website:
           - reference/summary.qmd
           - reference/quarto-publish.qmd
           - reference/report-failure.qmd
+          - reference/report-main-failure.qmd
           - reference/preview.qmd
           - reference/preview-deploy.qmd
           - reference/check-equation-renders.qmd

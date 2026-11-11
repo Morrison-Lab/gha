@@ -412,6 +412,17 @@ jobs:
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py
           python3 .github/workflows/scripts/tests/run-preview-deploy-metadata-tests.py
 
+  update-snapshots-toolchain-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run update-snapshots toolchain tests
+        run: python3 .github/workflows/scripts/tests/run-update-snapshots-toolchain-tests.py
+
   quarto-publish-workflow-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -871,6 +882,9 @@ jobs:
       - name: Check the preinstalled-toolchain package list matches
         shell: bash
         run: bash .github/workflows/scripts/tests/run-check-bibliography-dois-package-list-tests.sh
+      - name: Check that submodule bibliographies are skipped
+        shell: bash
+        run: bash check-bibliography-dois/tests/test-list-bib-files.sh
       - name: Run check-bibliography-dois offline test runner
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-check-bibliography-dois-tests.py
@@ -1742,6 +1756,33 @@ jobs:
         uses: ./check-def-title-synonyms
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-def-wiktionary is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-def-wiktionary@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  def-wiktionary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-def-wiktionary unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-def-wiktionary/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-def-wiktionary
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # check-bare-yes-no is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-bare-yes-no@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
@@ -1876,6 +1917,62 @@ jobs:
       - name: Check this PR's added lines
         uses: ./check-exercise-question-paragraph
         with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-exercise-ends-with-task is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-exercise-ends-with-task@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  exercise-ends-with-task:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-exercise-ends-with-task unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-exercise-ends-with-task/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-exercise-ends-with-task
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+  # check-removed-content is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-removed-content@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly;
+  # warn-only here, since this repo's own PRs rewrite docs freely.
+  removed-content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-removed-content unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-removed-content/tests/ -v
+      - name: Check this PR's removed lines (warn only)
+        uses: ./check-removed-content
+        with:
+          fail: 'false'
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
   # check-key-equations-displayed is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-key-equations-displayed@v3` does not resolve until
@@ -3587,6 +3684,155 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-tls || true
           rm -rf _ci-tls
+  # check-static-figures is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-static-figures@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  static-figures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-static-figures unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-static-figures/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-static-figures
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - name: Stage a page that points readers to the HTML version
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-csf
+          printf '%s\n' '# Page' '' 'See the HTML version for this figure.' > _ci-csf/page.qmd
+          git add -f _ci-csf/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: csf-expected-failure
+        continue-on-error: true
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+          globs: '_ci-csf/*.qmd'
+          fail: 'true'
+      - name: Assert the blocking call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.csf-expected-failure.outcome }}
+        run: test "$OUTCOME" = failure || { echo "::error::expected a failure, got '$OUTCOME'"; exit 1; }
+      # The default is warn-only, so the same finding must pass with no fail input.
+      - name: Check the staged page with the default fail
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-static-figures
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-csf'
+          globs: '_ci-csf/*.qmd'
+      # This call scans the real website/reference pages, so it also
+      # fails if one of them ever quotes the note phrase.
+      - name: Check again with globs excluding the page
+        uses: ./check-static-figures
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-csf || true
+          rm -rf _ci-csf
+  # check-function-graphs is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-function-graphs@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly.
+  function-graphs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-function-graphs unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-function-graphs/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-function-graphs
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - name: Stage a function definition with no graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-fng
+          printf '%s\n' '::: {#def-square}' '#### Square' '' '$$' 'f(x) = x^2' '$$' '' ':::' > _ci-fng/page.qmd
+          git add -f _ci-fng/page.qmd
+      - name: Check the staged page, expecting a failure
+        id: fng-expected-failure
+        continue-on-error: true
+        uses: ./check-function-graphs
+        with:
+          whole-tree: 'true'
+          globs: '_ci-fng/*.qmd'
+          fail: 'true'
+      - name: Assert the blocking call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.fng-expected-failure.outcome }}
+        run: test "$OUTCOME" = failure || { echo "::error::expected a failure, got '$OUTCOME'"; exit 1; }
+      # The default is warn-only, so the same finding must pass with no fail input.
+      - name: Check the staged page with the default fail
+        uses: ./check-function-graphs
+        with:
+          whole-tree: 'true'
+          globs: '_ci-fng/*.qmd'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-function-graphs
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-function-graphs
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-fng'
+          globs: '_ci-fng/*.qmd'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-fng || true
+          rm -rf _ci-fng
   # check-search-shortcut is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-search-shortcut@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
@@ -8586,6 +8832,37 @@ jobs:
             exit 1
           fi
           echo "Empty corpus refused, as expected."
+
+  # Covers the classify step of report-main-failure.yml: which failed jobs
+  # count as infrastructure, and that the verdict spans every page of jobs.
+  report-main-failure-classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the classifier table test
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-report-main-failure-classify-tests.sh
+
+  # Pins the layout modes of sync-shared-fragments.yml's vendoring step
+  # (gha#1796). The workflow itself opens a PR, a write side effect selftest
+  # cannot run, so this runs the step's own script against a stub gh.
+  sync-shared-fragments-vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the vendoring table test
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-sync-shared-fragments-tests.sh
 
   # Covers the open-failure-issue action used by report-failure.yml and
   # check-links.yml.

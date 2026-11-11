@@ -17,14 +17,30 @@ Guidance for Claude Code when working in this repository.
 
 ## Standing tag-slide policy
 
-- **Sliding this repo's major tag needs Ezra's typed "slide v3" in the runner
-  thread, and only the runner thread slides it.**
-  An owner thread whose fix has merged reports the merge to the coordinator
-  and waits; it does not dispatch `slide-major-tag.yml` or schedule a
-  check-in that would (coordinator rule, 2026-11-08, gha#1614).
-  This replaces the earlier standing grant (user directive, 2026-08-27),
-  which let any agent session slide on its own judgment.
-  The readiness bar and audits below still apply to the runner's slide.
+- **The runner thread slides this repo's major tag without asking, once the gates below pass.**
+  Ezra, 2026-11-10, in the project thread:
+  "can we make `slide v3` allowed without needing my permission" (gha#1834).
+  This replaces the rule that the slide waits for Ezra's typed "slide v3"
+  (coordinator rule, 2026-11-08, gha#1614).
+  Only the runner thread dispatches `slide-major-tag.yml`, so two threads never race:
+  an owner thread whose fix has merged reports the merge to the coordinator
+  and does not dispatch the slide or schedule a check-in that would.
+  Like the other grants here, it removes the asking and not the judgment;
+  the readiness bar and audits below still apply.
+
+- **Dispatch with the commit you checked.**
+  Pass that commit as `expected_sha`:
+
+  ```bash
+  gh workflow run slide-major-tag.yml -R Morrison-Lab/gha --ref main -f expected_sha=<sha>
+  ```
+
+  The run refuses unless the commit it would tag is that one,
+  so a merge that lands between your checks and the dispatch fails the slide
+  instead of shipping a commit nobody checked.
+  Where you know a gha PR in the serial queue is about to merge, wait for it,
+  so its merge does not need a second slide straight after;
+  this is advice, not a gate, since `expected_sha` already makes a mid-flight merge fail safe.
 
 - **The readiness bar is the same one `mwc` uses, on the commit being slid.**
   Every check run on that exact commit is green or skipped, with none pending,
@@ -189,7 +205,7 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** (runner thread only, on Ezra's typed "slide v3") slide when the
+- **Do:** (runner thread only, without waiting to be asked) slide when the
   commit is green, the callees' `permissions:` blocks gained no key and
   widened no value since the tagged commit, and consumers need it
   --- then report both SHAs.
@@ -251,7 +267,7 @@ the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`,
-while `opposition-research`, `check-dependency-updates`,
+while `opposition-research`, `report-main-failure`, `check-dependency-updates`,
 `check-duplicate-roxygen`, `check-math-definitions`,
 `check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
@@ -259,9 +275,9 @@ while `opposition-research`, `check-dependency-updates`,
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-heading-levels`, `check-heading-titles`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
-only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, and `update-snapshots`).
+only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, `sync-shared-fragments`, and `update-snapshots`).
 
 ### Adding a new check
 
@@ -513,6 +529,11 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
+- `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
+  It loads `check-one-div-per-subfile`'s git and file helpers (`_run_git`, `_ignored`, `_read_lines`, `_split_list`, `_env_flag`), so keep the two directories together and rename those helpers in both.
+- `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
+  It imports `check-exm-figures`' figure test.
+  That script loads `check-one-div-per-subfile`'s git helpers, so keep the three directories together.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement (psw#426).
   A proof hidden from the slides is deliberate and is never flagged (Ezra, 2026-11-04, gha#1491).
   It loads `check-write-idiom`'s engine like `check-avoided-words`.

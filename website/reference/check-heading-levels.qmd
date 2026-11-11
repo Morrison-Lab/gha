@@ -12,7 +12,7 @@ Each heading is at most one level deeper than the one before it.
 Pages split out of larger pages kept the headings of the page they came from,
 and a shared include opened ten chapters one level too deep.
 
-The check reports three mistakes:
+The check reports four mistakes:
 
 - **Skipped level.**
   A heading more than one level deeper than the heading before it in the same file
@@ -24,6 +24,13 @@ The check reports three mistakes:
   The first heading a page renders, following its `{{< include >}}` shortcodes,
   is deeper than level 1.
   The finding sits on that heading, in the include that holds it.
+- **Section numbered 0.x.**
+  A numbered heading below level 1 that no numbered level-1 heading precedes,
+  such as `## A` after `# Overview {.unnumbered}`
+  (Ezra, 2026-11-10: "so no section number starts with `0.`").
+  Quarto numbers it 0.1, because an unnumbered heading does not count.
+  A page whose front matter sets `number-sections: false`
+  is not checked for 0.x sections.
 - **Title repeated as a heading.**
   The first heading a page renders is a level 1 heading
   that repeats the page's `title:`.

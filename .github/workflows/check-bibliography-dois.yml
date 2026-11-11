@@ -22,6 +22,12 @@ on:
         description: Space/comma-separated BibTeX keys to skip.
         type: string
         default: ''
+      include-submodules:
+        description: >-
+          Also scan .bib files inside git submodules. They are skipped by
+          default, since a submodule's bibliography belongs to its own repository.
+        type: boolean
+        default: false
       preinstalled-toolchain:
         description: >-
           The runner already provides R with pak and has no sudo, as a
@@ -45,4 +51,5 @@ jobs:
           install-quarto: ${{ inputs.install-quarto }}
           no-metadata-check: ${{ inputs.no-metadata-check }}
           exclude-keys: ${{ inputs.exclude-keys }}
+          include-submodules: ${{ inputs.include-submodules }}
           preinstalled-toolchain: ${{ inputs.preinstalled-toolchain }}
