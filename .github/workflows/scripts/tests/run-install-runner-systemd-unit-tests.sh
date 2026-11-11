@@ -28,7 +28,7 @@ for inst in gate-1 gate-2; do
   printf '#!/bin/sh\n' > "$home/actions-runner-private-$inst/run.sh"
   chmod +x "$home/actions-runner-private-$inst/run.sh"
 done
-run() { env HOME="$home" XDG_CONFIG_HOME="$home/.config" PATH="$work/bin:$PATH" "$@" bash "$script" gate-1 gate-2 2>&1; }
+run() { env -u RUNNER_HOST HOME="$home" XDG_CONFIG_HOME="$home/.config" PATH="$work/bin:$PATH" "$@" bash "$script" gate-1 gate-2 2>&1; }
 units="$home/.config/systemd/user"
 
 out=$(run RUNNER_HOST=cf463-02) || fail "an install should succeed: $out"
@@ -47,15 +47,15 @@ case "$out" in *"on cf463-02 only"*) ;; *) fail "the summary should name the hos
 
 # A rerun on another host moves the instances there, without a second line.
 out=$(run RUNNER_HOST=cf463-01) || fail "a rerun should succeed: $out"
-[ "$(grep -c '^ConditionHost=' "$units/gha-runner@gate-1.service.d/host.conf")" = 1 ] ||
+[ "$(grep -c '^ConditionHost=' "$units/gha-runner@gate-1.service.d/host.conf")" = 1 ] ||  # phi-allow: a systemd unit name, not an email
   fail "a rerun should replace the host, not add a second one"
-grep -qx 'ConditionHost=cf463-01' "$units/gha-runner@gate-1.service.d/host.conf" ||
+grep -qx 'ConditionHost=cf463-01' "$units/gha-runner@gate-1.service.d/host.conf" ||  # phi-allow: a systemd unit name, not an email
   fail "a rerun should pin the instance to the new host"
 
 # The default host is this one.
 rm -rf "$units"
 out=$(run) || fail "an install without RUNNER_HOST should succeed: $out"
-grep -qx "ConditionHost=$(uname -n)" "$units/gha-runner@gate-2.service.d/host.conf" ||
+grep -qx "ConditionHost=$(uname -n)" "$units/gha-runner@gate-2.service.d/host.conf" ||  # phi-allow: a systemd unit name, not an email
   fail "the default host should be this host"
 
 # A bad host name refuses before writing anything.
