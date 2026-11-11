@@ -165,7 +165,7 @@ def test_a_list_item_follower_is_judged_with_its_item():
     assert reasons(text) == ["its last paragraph holds no question or instruction"]
 
 
-def test_a_list_item_display_after_lazy_lines_joins_them():
+def test_a_list_item_display_after_indented_paragraphs_joins_them():
     text = exercise("Consider data.\n\n1. Item.\n\n   Show that\n\n   $$ x = 1 $$\n\n   where $x > 0$.")
     assert reasons(text) == []
 
