@@ -11,6 +11,6 @@ It differs in the two lines that locate the script, which now sits one directory
 
 The script's docstring keeps the source's wording.
 Its usage lines say `scripts/triage-backlog.py`; here the path is `triage-backlog/triage-backlog.py`.
-The files it cites, `shared/workflow/triage-backlog.md` and `skills/triage/SKILL.md`, are in `Morrison-Lab/ai-config`.
+It also cites `shared/workflow/triage-backlog.md` and `skills/triage/SKILL.md`, which are files in `Morrison-Lab/ai-config`.
 
 Run the tests with `python3 triage-backlog/tests/test_triage_backlog.py`.
