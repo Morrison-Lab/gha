@@ -10459,12 +10459,15 @@ jobs:
 
   # The triage-backlog script is vendored from Morrison-Lab/ai-config
   # (gha#1900). Its reusable workflow comes in a later PR, so this job runs
-  # only the script's own tests.
+  # the script's own tests and then the composite action from local source.
+  # Every call of the action here is a dry run, so the job changes no label
+  # and needs only issues: read.
   triage-backlog-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
+      issues: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -10477,3 +10480,57 @@ jobs:
         run: |
           set -euo pipefail
           python3 triage-backlog/tests/test_triage_backlog.py
+      - name: Dry run over this repository's open issues
+        id: triage-dry
+        uses: ./triage-backlog
+        with:
+          dry-run: 'true'
+          ceiling: '100000'
+      - name: Assert the dry run wrote a summary
+        shell: bash
+        env:
+          DRY_RUN: ${{ steps.triage-dry.outputs.dry-run }}
+          SUMMARY: ${{ steps.triage-dry.outputs.summary-file }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" != "true" ]; then
+            echo "::error::Expected the dry-run output to be true. It is '$DRY_RUN'."
+            exit 1
+          fi
+          if [ -z "$SUMMARY" ] || [ ! -s "$SUMMARY" ]; then
+            echo "::error::Expected a summary file with content. The path is '$SUMMARY'."
+            exit 1
+          fi
+      # A misspelled dry-run value must not change labels.
+      - name: Run with a misspelled dry-run value
+        id: triage-typo
+        uses: ./triage-backlog
+        with:
+          dry-run: 'flase'
+      - name: Assert the misspelled value was read as a dry run
+        shell: bash
+        env:
+          DRY_RUN: ${{ steps.triage-typo.outputs.dry-run }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" != "true" ]; then
+            echo "::error::A misspelled dry-run value must give a dry run. The output is '$DRY_RUN'."
+            exit 1
+          fi
+      - name: Run with a ceiling that is not a number (expected to fail)
+        id: triage-bad-ceiling
+        continue-on-error: true
+        uses: ./triage-backlog
+        with:
+          dry-run: 'true'
+          ceiling: 'many'
+      - name: Assert the bad ceiling was refused
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.triage-bad-ceiling.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::A ceiling that is not a number must fail the action. The outcome is '$OUTCOME'."
+            exit 1
+          fi
