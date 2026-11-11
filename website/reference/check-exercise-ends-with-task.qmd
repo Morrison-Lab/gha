@@ -24,7 +24,8 @@ continues the sentence the display interrupted,
 so it is judged with the paragraph before the display,
 or, inside a list item, with the item's sentence.
 The join stops at a capitalized paragraph,
-at any block between the paragraph, the display, and the follower (a solution or callout div included),
+at any block between the paragraph, the display, and the follower
+(a solution or callout div included),
 and at the end of a list:
 a paragraph after the list does not continue a sentence inside it.
 `<!-- ends-with-task-ok: reason -->` inside an exercise exempts it.
