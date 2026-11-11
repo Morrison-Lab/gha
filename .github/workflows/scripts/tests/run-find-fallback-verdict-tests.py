@@ -182,6 +182,18 @@ def check_wiring():
         problems.append("find-fallback-verdict job does not use the action")
     if "find-fallback-verdict" not in job.split("steps:")[0]:
         problems.append("require-clean-verdict does not need find-fallback-verdict")
+    head = finder.split("steps:")[0]
+    needs = re.search(r"\n    needs: \[([^\]]*)\]", head)
+    if not needs or {"gather-context", "claude-review"} - {n.strip() for n in needs.group(1).split(",")}:
+        problems.append("find-fallback-verdict must need gather-context and claude-review (gha#1229)")
+    if "fromJSON(needs.claude-review.outputs.quota_exhausted" not in head:
+        problems.append("find-fallback-verdict no longer runs only on a quota skip")
+    sha = re.search(r"\n          head-sha: (.*)\n", finder)
+    expected = "${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}"
+    if not sha or sha.group(1).strip() != expected:
+        problems.append("find-fallback-verdict must match the reviewed commit, not the live head (gha#1229)")
+    if "FALLBACK_FOUND: ${{ needs.find-fallback-verdict.outputs.found }}" not in job:
+        problems.append("FALLBACK_FOUND must come from find-fallback-verdict's job output")
     quota = re.search(r'if \[\[ "\$QUOTA_EXHAUSTED" == "true" \]\]; then(.*?)\n          fi\n', job, re.S)
     if not quota:
         problems.append("quota branch not found")
@@ -195,7 +207,7 @@ def check_wiring():
 
 
 def check_classifier_failure():
-    """A classifier that fails on one comment skips it, and the search goes on (gha#1229)."""
+    """A classifier failure on the newest review is a miss, not a skip to an older one (gha#1229)."""
     problems = []
     with tempfile.TemporaryDirectory() as tmp:
         flaky = Path(tmp) / "flaky-classifier.sh"
@@ -203,8 +215,8 @@ def check_classifier_failure():
         flaky.write_text(f'#!/usr/bin/env bash\nif grep -q CRASH "$1"; then exit 7; fi\nexec bash "{CLASSIFIER}" "$@"\n')
         crashing = comment(review().replace("Summary: fine.", "Summary: CRASH."), created="2026-10-22T21:00:00Z")
         outputs, stderr = run_finder_full([crashing, comment(review())], flaky)
-    if outputs.get("found") != "true":
-        problems.append("a classifier failure on the newer comment hid the older clean review")
+    if outputs.get("found") != "false":
+        problems.append("a classifier failure on the newer comment fell back to the older clean review")
     if "classifier exited 7" not in stderr:
         problems.append("the classifier failure is not logged")
     return problems

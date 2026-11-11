@@ -9,8 +9,10 @@ a separate-agent review posted as a PR comment. This script reports whether
 such a comment exists for the CURRENT head and states a clean verdict.
 
 A comment counts only when all of these hold:
-  - its author_association is OWNER, MEMBER or COLLABORATOR, so it has the
-    standing of someone who can already merge. The PR author's own comment
+  - its author_association is OWNER, MEMBER or COLLABORATOR. That shows a
+    tie to the repository, not write access: an org member or collaborator
+    without push rights also qualifies, and the agent marker below is plain
+    text anyone can type (gha#1229). The PR author's own comment
     counts: the lab's agent sessions post under the account holder's login,
     so excluding the author would reject the real fallback review;
   - it carries the agent-authorship marker, so a human note is not mistaken
@@ -22,9 +24,14 @@ A comment counts only when all of these hold:
   - the marker and the sha line sit in the comment's own prose, not in a
     fenced code block, a blockquote or an indented code block, so quoting
     another review does not count as posting one;
-  - the classifier reads its verdict as clean. A classifier that fails on
-    one comment skips that comment rather than aborting the search
-    (gha#1229).
+  - the classifier reads its verdict as clean. The newest qualifying
+    comment decides, so a classifier that fails on it ends the search with
+    no fallback and a warning. Skipping to an older clean review instead
+    would accept a verdict the newest one may withdraw (gha#1229).
+
+The head sha is the commit the review run was for, which the caller passes,
+not the live PR head, so re-running an older run cannot go green on a
+fallback recorded for a newer head (gha#1229).
 
 Each comment's decision is logged to stderr, with the reason it did or did
 not count, so a miss in CI can be read from the job log (gha#1288).
@@ -130,12 +137,12 @@ def find(comments, head_sha, classifier):
         try:
             clean = is_clean(body, head_sha, classifier)
         except subprocess.CalledProcessError as error:
-            log(comment, f"skipped: the classifier exited {error.returncode}")
+            log(comment, f"decides: the classifier exited {error.returncode}, so no fallback counts")
             print(
-                f"::warning::find-fallback-verdict: the classifier failed on {comment.get('html_url')}; skipping it.",
+                f"::warning::find-fallback-verdict: the classifier failed on {comment.get('html_url')}; no fallback review accepted.",
                 file=sys.stderr,
             )
-            continue
+            return ""
         if clean:
             log(comment, "counts: a clean review of the head")
             return comment.get("html_url") or "unknown"
