@@ -130,7 +130,7 @@ not reference `@main` from consumers.
 | `check-definite-antecedents.yml` | Diff-scoped, failing-by-default heuristic that flags a div whose first sentence opens with an unlinked The/These/Those/This/That (psw#291), and a bare demonstrative pronoun (a `this` or `that` standing alone, gha#1460) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | `check-local-macros.yml` | Diff-scoped, warn-only check that flags LaTeX macros defined outside Morrison-Lab/macros (`\newcommand`, `\def`, `\DeclareMathOperator`), allowing a `macros-override.*` file to redefine only macros the library already has | `globs`, `paths-ignore`, `override-files`, `library`, `submodules`, `fail`, `whole-tree` |
 | `check-paired-file-change.yml` | Fail a PR that changes a file matching `trigger-paths` without also changing a file matching `required-paths`, unless the PR carries the skip label (read live from the API) | `trigger-paths`, `required-paths`, `skip-label`, `message` |
-| `check-term-links.yml` | Diff-scoped, blocking check that flags a defined technical term whose first use in a div or paragraph is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus's own `#def-` divs and links | `globs`, `paths-ignore`, `terms-file`, `terms-from`, `allow-file`, `fail`, `whole-tree` |
+| `check-term-links.yml` | Diff-scoped, blocking check that flags a defined technical term whose first use in a div or section is not linked to its definition, and a bold term no definition div covers; the terms come from the corpus's own `#def-` divs and links | `globs`, `paths-ignore`, `terms-file`, `terms-from`, `allow-file`, `fail`, `whole-tree` |
 | `annotation-gate.yml` | Fail the run when any other job carries a notice, warning or failure annotation not on an allowlist, so an annotation cannot sit on a green job | `levels`, `allow-patterns`, `job-name` |
 | `annotation-gate-run.yml` | Gate a finished run from a `workflow_run` workflow and post the result as an `annotation-gate` check run, for repositories whose checks are spread over many workflow files | `run-id`, `head-sha`, `run-attempt`, `workflow-id`, `all-runs`, `defer-while-running`, `backfill`, `levels`, `allow-patterns` |
 | `check-fform-paren.yml` | Diff-scoped, warn-only check that flags `\name\paren{...}` (or `\sb{`, `\cb{`) where an f form `\namef{...}` is defined in the macros file (default `latex-macros/macros.qmd`) | `macros-file`, `globs`, `paths-ignore`, `submodules`, `fail`, `whole-tree` |
@@ -168,6 +168,7 @@ not reference `@main` from consumers.
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `preinstalled-toolchain`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `per-file-formats`, `freeze-cache`, `incremental-cache`, `freeze-cache-save-on-failure`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `timezone`, `timeout-minutes`, `deploy` |
 | `report-failure.yml` | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
 | `report-main-failure.yml` | Follow up on a default-branch failure: ignore cancels, re-run infrastructure failures once, otherwise file one issue per workflow | `labels` |
+| `triage-backlog.yml` | Backlog triage: give each open issue with no priority label the label the triage plan proposes (`P1`, `P2`, or `P3`), and close nothing | `dry-run`, `ceiling`, `limit` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `setup-julia`, `julia-version`, `preinstalled-toolchain`, `submodules`, `render-profile`, `output-dir`, `formats`, `skip-docx`, `skip-formats`, `incremental`, `extra-preview-labels`, `fail-on-render-warning`, `forbid-log-patterns`, `post-build-command`, `post-build-continue-on-error`, `timezone`, `timeout-minutes`, `detect-changed-chapters`, `changed-chapters-banner`, `highlight-changes`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `max-elements-for-pairwise`, `banner-index`, `docx-tracked-changes`, `docx-tracked-changes-glob` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | `pages-base-url`, `pages-base-path` |
 | `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail`, `max-pages` |
@@ -210,6 +211,8 @@ that need to write must have the **caller** grant it on the calling job:
 - `report-main-failure` (re-runs an infrastructure failure once, otherwise
   files or updates the issue tracking a failing workflow) → grant
   `issues: write` and `actions: write` on the reporting job only.
+- `triage-backlog` (adds priority labels to open issues) → grant
+  `issues: write`, for a dry run too.
 - `summary` (comments on issues, runs Claude through `claude-code-action`) → grant `issues: write`,
   `contents: read`; pass `secrets: inherit` for `CLAUDE_CODE_OAUTH_TOKEN`.
 
@@ -795,7 +798,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`report-main-failure.yml`,
+`report-main-failure.yml`, `triage-backlog.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews.yml`, `summary.yml`,
@@ -939,7 +942,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`report-main-failure.yml`,
+`report-main-failure.yml`, `triage-backlog.yml`,
 `sync-shared-fragments.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at `@v3` -- see the
