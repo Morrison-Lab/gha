@@ -46,6 +46,10 @@ It takes three more inputs for the `workflow_run` mode described at the end:
   request for ..." and the stale-review skip "PR head moved ...; not posting a
   stale review".
   Both describe a run that was meant to stop, and the newer push gets its own review.
+- The failure annotation "The run was canceled by @user.",
+  which GitHub puts on a run someone cancelled by hand,
+  from the UI or with `gh run cancel` (gha#1144).
+  Like the concurrency cancellation, it describes a run that was meant to stop.
 - The notice the review workflow emits on a PR that edits workflow files:
   "PR edits workflow files; restored .github/workflows/ from the default
   branch ...".
@@ -137,6 +141,12 @@ a newer completion then replaces only the gate waiting behind the running one,
 while `true` cancels the running gate too,
 and completions arriving every few seconds on a busy commit
 never let one finish (gha#1649).
+With `workflows: ["*"]`, a gate run's own completion starts one more run of the
+caller, whose job the `if:` skips.
+Give that run a group of its own, keyed on its run id, as the example stub does:
+in the commit's group it would replace the real gate
+waiting behind the running one,
+and that gate would never run (gha#1403).
 One commit-wide check-run listing gives each job's annotation count,
 so a job without annotations costs no request.
 The commit then carries one `annotation-gate` check, not one per workflow.

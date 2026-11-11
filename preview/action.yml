@@ -64,7 +64,9 @@ inputs:
       (apt packages, Chrome, Quarto, R, Julia and its cache), ignore `tinytex`
       for the install, and install `r-packages` with pak into the runner's
       user library. renv, the JuliaCall setup, TinyTeX packages and the
-      freeze cache still run.
+      freeze cache still run. A tool package in `apt-packages` (such as
+      librsvg2-bin) that the runner lacks fails the job at once, naming the
+      runner; any other missing package is a warning.
     default: 'false'
   julia-version:
     description: Julia version to install (setup-julia's `version` syntax). Only used when setup-julia is true.
@@ -332,6 +334,15 @@ runs:
         add_newest julia "$HOME/opt/julia-*/bin" "$HOME/.juliaup/bin" "$HOME/julia-*/bin"
         add_newest pdflatex "$HOME/.TinyTeX/bin/*"
 
+    - name: Check apt packages on the preinstalled toolchain
+      if: github.event.action != 'closed' && inputs.apt-packages != '' && inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.apt-packages }}
+        CLUSTER_RENDER: ${{ inputs.cluster-render }}
+      # Fail now, naming the runner, rather than mid-render (gha#1758).
+      run: bash "${{ github.action_path }}/../scripts/check-preinstalled-apt-packages.sh"
+
     - name: Detect whether the Quarto install can be skipped
       id: quarto-skip
       shell: bash
@@ -580,7 +591,6 @@ runs:
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.head.sha }}-
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.base.ref }}-
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
-          quarto-freezer-${{ runner.os }}-
 
     # With `incremental`, one cache holds the freeze, the rendered site and
     # Quarto's project state, so they always come from the same commit.
@@ -620,7 +630,6 @@ runs:
         restore-keys: |
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.base.ref }}-
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
-          quarto-freezer-${{ runner.os }}-
 
     # `freeze: auto` notices a change to a page's own file only, so a page
     # whose included subfile or data file changed would keep its stale

@@ -17,6 +17,8 @@ Subfiles (names starting with `_`) and `_extensions/**` are skipped.
 A page whose front matter sets `redirect-stub: true` is skipped too:
 it is an html-only redirect stub,
 and the per-format publish does not render it in other formats.
+`html-only: true` does the same for any other page built only as html,
+such as an index page whose other formats would repeat its sub-pages.
 It fails by default; `fail: false` gives warning annotations only.
 
 ## Inputs
