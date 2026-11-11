@@ -1,0 +1,22 @@
+name: Check notes report
+description: >-
+  Internal to check-notes.yml (gha#1367). List each bundled check's outcome in
+  the job summary, and fail when a check step failed. The check steps run with
+  continue-on-error, which leaves a failed step's outcome at failure, so the
+  outcome is what this reads.
+inputs:
+  steps:
+    description: The calling job's `toJSON(steps)`.
+    required: true
+  checks:
+    description: JSON list of the bundled checks, by step id.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Report outcomes
+      shell: bash
+      env:
+        STEPS: ${{ inputs.steps }}
+        CHECKS: ${{ inputs.checks }}
+      run: python3 "$GITHUB_ACTION_PATH/report.py"
