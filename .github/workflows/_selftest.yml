@@ -3762,6 +3762,58 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-csf || true
           rm -rf _ci-csf
+
+  # check-notes-plan is a step of the check-notes bundle (gha#1367).
+  # The unit tests pin its logic; the real calls prove its inputs and
+  # outputs are wired.
+  check-notes-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest .github/actions/check-notes-plan/tests -v
+      - name: Plan with an override and a skip
+        id: plan
+        uses: ./.github/actions/check-notes-plan
+        with:
+          defaults: '{"check-a":true,"check-b":false}'
+          skip: check-b
+          warn-checks: check-a
+      - name: Assert the plan's outputs
+        shell: bash
+        env:
+          SKIP: ${{ steps.plan.outputs.skip }}
+          FAIL: ${{ steps.plan.outputs.fail }}
+        run: |
+          set -euo pipefail
+          [ "$SKIP" = '["check-b"]' ] || { echo "::error::skip=$SKIP"; exit 1; }
+          [ "$(jq -r '."check-a"' <<<"$FAIL")" = false ] || { echo "::error::fail=$FAIL"; exit 1; }
+      - name: Plan with a misspelled check name, which must fail
+        id: typo
+        continue-on-error: true
+        uses: ./.github/actions/check-notes-plan
+        with:
+          defaults: '{"check-a":true}'
+          skip: check-aa
+      - name: Assert the misspelled name was refused
+        shell: bash
+        env:
+          TYPO: ${{ steps.typo.outcome }}
+        run: |
+          [ "$TYPO" = failure ] || { echo "::error::typo plan outcome=$TYPO"; exit 1; }
+
   # check-function-graphs is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-function-graphs@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
