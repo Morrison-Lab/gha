@@ -1,0 +1,1 @@
+- `annotation-gate` allows "The run was canceled by @user.", which GitHub puts on a run cancelled by hand from the UI or with `gh run cancel`, so a manually cancelled superseded run no longer fails the gate (gha#1144).

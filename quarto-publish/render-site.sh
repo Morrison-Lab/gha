@@ -38,7 +38,7 @@ else
   trap 'rm -f "$STUB_PROFILE_FILE"' EXIT
   STUB_COUNT=$(python3 "$REDIRECT_STUBS_SCRIPT" "$PROJECT_PATH" "$STUB_PROFILE" "${RENDER_PROFILE:-}")
   for fmt in "${FORMAT_LIST[@]}"; do
-    # A page with `redirect-stub: true` builds html only (gha#1544):
+    # A page with `redirect-stub: true` or `html-only: true` builds html only (gha#1544):
     # leave it out of every other format's render.
     FMT_PROFILE_ARG=("${PROFILE_ARG[@]}")
     if [ "$fmt" != "html" ] && [ "$STUB_COUNT" != "0" ]; then

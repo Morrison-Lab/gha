@@ -152,3 +152,12 @@ def test_redirect_stub_html_only_passes():
 
 def test_redirect_stub_false_still_fails():
     assert len(check(STUB.replace("true", "false"))) == 3
+
+
+def test_html_only_page_passes():
+    assert check(STUB.replace("redirect-stub", "html-only")) == []
+
+
+def test_html_only_false_still_fails():
+    page = STUB.replace("redirect-stub: true", "html-only: false")
+    assert len(check(page)) == 3
