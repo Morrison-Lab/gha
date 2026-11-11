@@ -152,6 +152,7 @@ website:
           - reference/quarto-publish.qmd
           - reference/report-failure.qmd
           - reference/report-main-failure.qmd
+          - reference/triage-backlog.qmd
           - reference/preview.qmd
           - reference/preview-deploy.qmd
           - reference/check-equation-renders.qmd

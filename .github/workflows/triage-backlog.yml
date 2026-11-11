@@ -1,0 +1,57 @@
+name: Triage backlog (reusable)
+
+# Give each open issue that has no priority label the label the triage plan
+# proposes (`P1`, `P2` or `P3`), and close nothing, through the
+# `triage-backlog` composite (gha#1900). See examples/triage-backlog.yml.
+#
+# Permissions: `issues: write` to add labels. The job declares it whatever
+# `dry-run` is, so the caller must grant it even for a dry run.
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on the runner.
+        type: string
+        default: ''
+      dry-run:
+        description: >-
+          Print each label command without running it. Defaults to true, so
+          a caller that passes nothing changes no labels. A scheduled caller
+          passes `false` to label for real.
+        type: boolean
+        default: true
+      ceiling:
+        description: >-
+          The open-issue count to report against, as a whole number. Empty
+          means no ceiling. A run over the ceiling still passes, with a
+          warning.
+        type: string
+        default: ''
+      limit:
+        description: >-
+          The most open issues to fetch, as a whole number of 1 or more.
+          Empty means the script's default of 1000. The run fails when the
+          repository has this many open issues or more, because the list
+          may be cut short.
+        type: string
+        default: ''
+
+jobs:
+  triage-backlog:
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    permissions:
+      issues: write
+    steps:
+      # No checkout: the composite reads issues through the `gh` CLI and runs
+      # its own copy of the script.
+      - name: Label the open issues the plan gives a priority
+        uses: Morrison-Lab/gha/triage-backlog@v3
+        with:
+          dry-run: ${{ inputs.dry-run }}
+          ceiling: ${{ inputs.ceiling }}
+          limit: ${{ inputs.limit }}
