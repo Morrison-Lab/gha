@@ -63,9 +63,11 @@
 # count: the script then excludes nothing, counts the visible part (at least
 # 1, so the guard can fire) and says the range is incomplete.
 #
-# Stdout: the markdown section, or nothing when the range is not computable
-# (first round, unparseable comments, prior == head). An unreachable prior
-# emits a fail-closed section instead (see the deepening note above).
+# Stdout: the markdown section, or nothing on a first round (no bot verdict
+# comment yet) or when the prior is the head. An unreachable prior emits a
+# fail-closed section instead (see the deepening note above), and so do a
+# missing or unreadable comments file and a PR whose bot verdict comments
+# name no usable boundary (gha#1032): each writes a count of 1.
 # Every not-computable path exits 0: this is an optional enrichment, and it
 # must never redden the review job it feeds (the same rule the guard's
 # denied-tools summary follows).
@@ -90,8 +92,27 @@ write_count() {
 
 write_count 0
 
-if [ ! -f "$COMMENTS_FILE" ]; then
+# No usable review boundary on a PR that may already have had a review
+# round (gha#1032): fail closed, as an unreachable prior does (gha#1010).
+# $1 says why the boundary is unknown. A count of 0 here would let a
+# "no new content" claim pass classify-review-verdict.sh's gha#965 guard
+# over commits no round reviewed.
+fail_closed_no_boundary() {
+  write_count 1
+  printf '%s\n' \
+    '## What changed since the last review round (computed)' \
+    '' \
+    "**No usable review boundary:** $1 The commits since the last review cannot be computed, so treat every commit in this PR as unreviewed." \
+    '' \
+    "**Mandatory review requirement:** review the PR's full diff against its base. Do not state that there is no new content since the prior round."
   exit 0
+}
+
+# The caller always writes the file, and writes it empty when fetching the
+# PR's comments failed, so a missing or unreadable file means the review
+# history is unknown, not that there is none.
+if [ ! -f "$COMMENTS_FILE" ]; then
+  fail_closed_no_boundary "the PR's comments could not be read, so earlier review rounds are unknown."
 fi
 
 # The prior reviewed commit is the last `Reviewed commit: <sha>` line in the
@@ -108,9 +129,11 @@ try:
     with open(comments_file, "r", encoding="utf-8", errors="replace") as f:
         comments = json.load(f)
 except Exception:
+    print("UNREADABLE")
     sys.exit(0)
 
 if not isinstance(comments, list):
+    print("UNREADABLE")
     sys.exit(0)
 
 _FENCE_OPEN_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})')
@@ -221,6 +244,7 @@ _PAYLOAD_RE = re.compile(r'<!--\s*review-data:\s*(\{.*?\})\s*-->', re.DOTALL)
 _REVIEWED_COMMIT_RE = re.compile(r'Reviewed commit:\s*([0-9a-f]{40})')
 
 prior = ""
+saw_verdict_comment = False
 for c in comments:
     if not isinstance(c, dict):
         continue
@@ -231,6 +255,7 @@ for c in comments:
     body = c.get("body") or ""
     if not re.search(r'### (Code Review|Verdict)', body):
         continue
+    saw_verdict_comment = True
 
     # Check structured payload verdict
     pm = _PAYLOAD_RE.search(body)
@@ -255,12 +280,27 @@ for c in comments:
 
 if prior:
     print(prior)
+elif saw_verdict_comment:
+    print("NO_BOUNDARY")
+else:
+    print("NONE")
 EOF
 )
 
 HEAD_NOW="${HEAD_PARAM:-$(git rev-parse HEAD 2>/dev/null || true)}"
 
-if [ -z "$PRIOR" ] || [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
+# NONE is a first round: no bot verdict comment exists yet. An empty PRIOR
+# means the parser itself failed, which says nothing about earlier rounds.
+case "$PRIOR" in
+  NONE)
+    exit 0 ;;
+  UNREADABLE|"")
+    fail_closed_no_boundary "the PR's comments could not be read, so earlier review rounds are unknown." ;;
+  NO_BOUNDARY)
+    fail_closed_no_boundary "this PR already has review comments, but none names a reviewed commit that counts as a boundary (each was skipped, claimed no new content, or carries no \`Reviewed commit:\` line)." ;;
+esac
+
+if [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
   exit 0
 fi
 
