@@ -33,7 +33,7 @@ fi
 LOG_FILE="_quarto_preview_render.log"
 rm -f "$LOG_FILE"
 
-# A page with `redirect-stub: true` builds html only (gha#1544): a
+# A page with `redirect-stub: true` or `html-only: true` builds html only (gha#1544): a
 # profile that leaves such pages out is used for every other format.
 STUB_PROFILE=gha-skip-stubs
 STUB_PROFILE_FILE="$PROJECT_PATH/_quarto-$STUB_PROFILE.yml"

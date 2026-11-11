@@ -15,7 +15,8 @@ For each page with front matter, and each format in ``CFO_FORMATS``
 - give that entry an ``output-file`` (so it cannot reuse the HTML name).
 
 A page with front matter but no ``format:`` key is flagged too.
-A page that sets ``redirect-stub: true`` in its front matter is exempt.
+A page that sets ``redirect-stub: true`` or ``html-only: true`` in its
+front matter is exempt.
 It is an html-only redirect, and the per-format publish skips it for other
 formats. Pages whose
 names start with ``_`` (subfiles) and ``_extensions/**`` are skipped.
@@ -50,8 +51,8 @@ def front_matter(lines: List[str]) -> Optional[List[str]]:
 
 
 def is_redirect_stub(fm: List[str]) -> bool:
-    """True when the front matter sets ``redirect-stub: true``."""
-    return any(re.match(r"^redirect-stub\s*:\s*[\"']?true[\"']?\s*(#.*)?$", raw)
+    """True when the front matter sets ``redirect-stub`` or ``html-only`` true."""
+    return any(re.match(r"^(?:redirect-stub|html-only)\s*:\s*[\"']?true[\"']?\s*(#.*)?$", raw)
                for raw in fm)
 
 

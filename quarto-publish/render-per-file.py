@@ -19,7 +19,8 @@ do) therefore renders but cannot be inspected (Morrison-Lab/gha#1214).  When
 globs and a file's formats from its front matter and then the project config.
 The helpers are in `per_file/`, one function per file.
 
-A page whose front matter sets `redirect-stub: true` renders html only
+A page whose front matter sets `redirect-stub: true` or `html-only: true`
+renders html only
 (gha#1544), so its other formats are skipped here too.
 """
 import importlib.util
