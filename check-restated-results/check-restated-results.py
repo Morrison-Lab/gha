@@ -127,9 +127,15 @@ def resolve_include(target: str, top: str, files: Dict[str, List[str]]) -> Optio
 
 
 def flatten(path: str, files: Dict[str, List[str]], seen: Tuple[str, ...] = (),
-            top: Optional[str] = None) -> Stream:
-    """The lines of ``path`` with each include expanded in place."""
+            top: Optional[str] = None, reached: Optional[Set[str]] = None) -> Stream:
+    """The lines of ``path`` with each include expanded in place.
+
+    ``reached`` collects every file an include names, expanded or not: a wrapper
+    that emits no line of its own, and the target of a commented-out include
+    (an outtake no page renders), are still subfiles rather than pages.
+    """
     top = path if top is None else top
+    reached = set() if reached is None else reached
     out: Stream = []
     fence: Optional[Tuple[str, int]] = None
     for n, raw in enumerate(files.get(path, []), 1):
@@ -144,11 +150,14 @@ def flatten(path: str, files: Dict[str, List[str]], seen: Tuple[str, ...] = (),
             fence = (m.group(1)[0], len(m.group(1)))
             out.append((path, n, raw))
             continue
-        inc = INCLUDE_RE.search(raw) if not raw.lstrip().startswith("<!--") else None
+        inc = INCLUDE_RE.search(raw)
         if inc:
             target = resolve_include(inc.group(1), top, files)
-            if target is not None and target != path and target not in seen:
-                out.extend(flatten(target, files, seen + (path,), top))
+            if target is not None:
+                reached.add(target)
+            if (target is not None and target != path and target not in seen
+                    and not raw.lstrip().startswith("<!--")):
+                out.extend(flatten(target, files, seen + (path,), top, reached))
                 continue
         out.append((path, n, raw))
     return out
@@ -418,8 +427,12 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         content = _read_lines(rel)
         if content is not None:
             files[rel] = content
-    streams = {rel: flatten(rel, files) for rel in files}
-    reach = {rel: {p for p, _, _ in stream} - {rel} for rel, stream in streams.items()}
+    streams: Dict[str, Stream] = {}
+    reach: Dict[str, Set[str]] = {}
+    for rel in files:
+        reached: Set[str] = set()
+        streams[rel] = flatten(rel, files, reached=reached)
+        reach[rel] = reached - {rel}
     findings: Set[Finding] = set()
     for rel, stream in streams.items():
         if not is_included(rel, reach):

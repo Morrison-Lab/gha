@@ -172,6 +172,33 @@ def test_a_nested_subfile_is_not_also_checked_as_a_page(repo):
     assert run(whole_tree=True).findings == []
 
 
+def test_a_wrapper_holding_only_an_include_is_not_a_page(repo):
+    # The wrapper emits no line of its own, so a reach built from the stream's
+    # lines missed it and checked it as a page with no theorem after the solution.
+    (repo / "p.qmd").unlink()
+    _write(repo, {
+        "a.qmd": "{{< include _wrap.qmd >}}\n\n" + div("thm-x", "T."),
+        "_wrap.qmd": "{{< include _x.qmd >}}\n",
+        "_x.qmd": div("exr-x", "Derive it.") + div("sol-x", EQ),
+    })
+    _commit(repo)
+    assert run(whole_tree=True).findings == []
+
+
+def test_a_commented_out_include_keeps_its_target_a_subfile(repo):
+    # An outtake left as a commented-out include is rendered by no page, so it is
+    # not checked as one either; the page itself does not expand it.
+    (repo / "p.qmd").unlink()
+    _write(repo, {
+        "a.qmd": "<!-- {{< include _x.qmd >}} -->\n",
+        "_x.qmd": div("exr-x", "Derive it.") + div("sol-x", EQ),
+    })
+    _commit(repo)
+    assert run(whole_tree=True).findings == []
+    files = {"a.qmd": ["<!-- {{< include _x.qmd >}} -->"], "_x.qmd": ["x"]}
+    assert len(rr.flatten("a.qmd", files)) == 1
+
+
 def test_a_self_include_through_a_symlink_keeps_the_page_checked(repo):
     (repo / "lnk").symlink_to(".")
     (repo / "p.qmd").write_text(div("exr-s", "Derive it.") + div("sol-s", EQ)
