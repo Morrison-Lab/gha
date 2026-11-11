@@ -110,3 +110,17 @@ def test_diff_scoping_and_whole_tree(tmp_path, monkeypatch):
     assert flagged == ["a.qmd", "b.qmd"]
     assert eet.touched(eet.Finding(1, 6, "x"), diff["b.qmd"])
     assert not eet.touched(eet.Finding(1, 6, "x"), set())
+
+
+@pytest.mark.parametrize("display", ["$$x = 1$$ {#eq-a}", "$$x = 1$$  {#eq-a .unnumbered}",
+                                     "$$x = 1$$", "$$x = 1$$ "])
+def test_a_one_line_display_closes_on_its_line(display):
+    # gha#1908: a labelled one-line display used to leave the math open,
+    # so the figure after it was swallowed and never reported.
+    text = exercise(f"Show that\n\n{display}\n\nWhat do you see?\n\n![A](a.png)")
+    assert reasons(text) == ["its last block is a figure, not a task"]
+
+
+def test_a_display_split_over_lines_with_a_label_still_closes():
+    text = exercise("Show that\n\n$$\nx = 1\n$$ {#eq-a}\n\nWhat?\n\n![A](a.png)")
+    assert reasons(text) == ["its last block is a figure, not a task"]

@@ -53,6 +53,9 @@ LABEL_DIV_RE = re.compile(r"#(fig|tbl)-")
 IMAGE_RE = re.compile(r"^\s*!\[")
 TABLE_RE = re.compile(r"^\s*\|")
 SHORTCODE_RE = re.compile(r"^\s*\{\{<")
+# A display opened and closed on one line, with an optional attribute block such as {#eq-a}
+# after it (gha#1908).
+ONE_LINE_DISPLAY_RE = re.compile(r"^\$\$.*\S.*\$\$\s*(?:\{[^{}]*\})?$")
 NEUTRAL_RE = re.compile(r"^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|>)")
 
 
@@ -89,7 +92,7 @@ def blocks_of(body: List[str]) -> List[tuple]:
         stripped = raw.strip()
         if stripped.startswith("$$"):
             close()
-            in_math = not (in_math or (stripped.endswith("$$") and len(stripped) > 2))
+            in_math = not (in_math or ONE_LINE_DISPLAY_RE.match(stripped))
             continue
         if in_math:
             in_math = "$$" not in raw
