@@ -2251,7 +2251,7 @@ jobs:
   # job's stored found=false and so never saw a fallback posted after the
   # skip (gha#1880). The job stays so that a caller listing
   # `review / find-fallback-verdict` as a required check keeps a check of
-  # that name; removing it is tracked separately.
+  # that name; removing it is tracked in gha#1898.
   # It matches the commit this run reviewed (REVIEWED_COMMIT's sources, in
   # the same order), not the live PR head, so re-running an older run cannot
   # go green on a fallback recorded for a newer head (gha#1229).
@@ -2330,7 +2330,7 @@ jobs:
         id: fallback
         if: >-
           needs.claude-review.result == 'success' &&
-          needs.claude-review.outputs.quota_exhausted == 'true'
+          fromJSON(needs.claude-review.outputs.quota_exhausted || 'false')
         uses: Morrison-Lab/gha/.github/actions/find-fallback-verdict@v3
         with:
           repository: ${{ github.repository }}
