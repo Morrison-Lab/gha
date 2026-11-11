@@ -1,0 +1,38 @@
+name: Check notes plan
+description: >-
+  Internal to check-notes.yml (gha#1367). Decide which bundled checks run and
+  which of them block, from each check's own fail default and the caller's
+  skip, fail-checks, and warn-checks lists. A name the bundle does not run is
+  an error, so a typo cannot silently leave a check on or off.
+inputs:
+  defaults:
+    description: JSON object mapping each bundled check to its own fail default.
+    required: true
+  skip:
+    description: Checks to leave out, separated by commas, spaces or newlines.
+    default: ''
+  fail-checks:
+    description: Checks whose findings fail the job; `all` names every check.
+    default: ''
+  warn-checks:
+    description: Checks whose findings only warn; `all` names every check.
+    default: ''
+outputs:
+  skip:
+    description: JSON list of the checks to leave out.
+    value: ${{ steps.plan.outputs.skip }}
+  fail:
+    description: JSON object mapping each check to "true" (blocks) or "false".
+    value: ${{ steps.plan.outputs.fail }}
+runs:
+  using: composite
+  steps:
+    - name: Plan which checks run and which block
+      id: plan
+      shell: bash
+      env:
+        DEFAULTS: ${{ inputs.defaults }}
+        SKIP: ${{ inputs.skip }}
+        FAIL_CHECKS: ${{ inputs.fail-checks }}
+        WARN_CHECKS: ${{ inputs.warn-checks }}
+      run: python3 "$GITHUB_ACTION_PATH/plan.py"

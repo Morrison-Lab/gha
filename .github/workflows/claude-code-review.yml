@@ -2251,13 +2251,13 @@ jobs:
 
   # On a quota skip, the lab's fallback is a separate-agent review posted as a
   # PR comment. This job reports whether a clean one is recorded for the
-  # CURRENT head, from a repository owner, member or collaborator, so
-  # `require-clean-verdict` can accept it (gha#1163). It is a job of its own,
-  # not a step of `require-clean-verdict`, because widening an existing job's
-  # permissions fails callers at parse time (audit_callee_permissions.py),
-  # while a new job within the union callers already grant does not.
-  # It runs only on a quota skip and reads the comments when it runs, so
-  # re-running the workflow after posting the fallback review picks it up.
+  # CURRENT head, from a repository owner, member or collaborator (gha#1163).
+  # `require-clean-verdict` no longer reads its outputs: it runs the same
+  # lookup as a step of its own, because "Re-run failed jobs" reuses this
+  # job's stored found=false and so never saw a fallback posted after the
+  # skip (gha#1880). The job stays so that a caller listing
+  # `review / find-fallback-verdict` as a required check keeps a check of
+  # that name; removing it is tracked in gha#1898.
   # It matches the commit this run reviewed (REVIEWED_COMMIT's sources, in
   # the same order), not the live PR head, so re-running an older run cannot
   # go green on a fallback recorded for a newer head (gha#1229).
@@ -2312,7 +2312,7 @@ jobs:
   # branch protection / ruleset required-checks to enforce server-side merge
   # blocking against unaddressed findings (gha#767).
   require-clean-verdict:
-    needs: [claude-review, post-review, find-fallback-verdict]
+    needs: [gather-context, claude-review, post-review]
     if: >-
       always() &&
       needs.claude-review.result != 'skipped' &&
@@ -2323,13 +2323,26 @@ jobs:
       fromJSON(needs.claude-review.outputs.cancelled || 'false'))
     runs-on: ${{ inputs.gate-runs-on || inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
-    # Reads PR comments to find a newer review of the same head (gha#1365).
-    # The lookup sits in this job, not a separate one, because "Re-run failed
-    # jobs" reuses a successful job's stored outputs. find-fallback-verdict
-    # already requests this key, so every working caller grants it.
+    # Reads PR comments to find a fallback review after a quota skip
+    # (gha#1163) and a newer review of the same head (gha#1365). Both
+    # lookups sit in this job, not a separate one, because "Re-run failed
+    # jobs" reuses a successful job's stored outputs (gha#1880).
+    # find-fallback-verdict already requests this key, so every working
+    # caller grants it.
     permissions:
       pull-requests: read
     steps:
+      - name: Look for a recorded fallback verdict
+        id: fallback
+        if: >-
+          needs.claude-review.result == 'success' &&
+          fromJSON(needs.claude-review.outputs.quota_exhausted || 'false')
+        uses: Morrison-Lab/gha/.github/actions/find-fallback-verdict@v3
+        with:
+          repository: ${{ github.repository }}
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          head-sha: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Look for a newer clean review of this head
         id: newer
         if: >-
@@ -2348,8 +2361,8 @@ jobs:
         env:
           QUOTA_EXHAUSTED: ${{ needs.claude-review.outputs.quota_exhausted }}
           SELF_MOD: ${{ needs.claude-review.outputs.self_mod }}
-          FALLBACK_FOUND: ${{ needs.find-fallback-verdict.outputs.found }}
-          FALLBACK_URL: ${{ needs.find-fallback-verdict.outputs.url }}
+          FALLBACK_FOUND: ${{ steps.fallback.outputs.found }}
+          FALLBACK_URL: ${{ steps.fallback.outputs.url }}
           NEWER_FOUND: ${{ steps.newer.outputs.found }}
           NEWER_URL: ${{ steps.newer.outputs.url }}
         run: |
