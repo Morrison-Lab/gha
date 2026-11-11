@@ -283,3 +283,38 @@ def test_a_citation_cycle_terminates():
     first = exercise("The kernel", "Continue @exr-two.", "{#exr-one}")
     second = exercise("Next", "Continue @exr-one.", "{#exr-two}")
     assert found_with(first + "\n" + second, d) == [["kernel"]]
+
+
+def test_a_title_case_alias_marker_splits_the_phrase():
+    d = defs("Gradient (Also Called Del)")
+    assert {"gradient", "del"} <= d
+
+
+def test_an_adverb_before_an_alias_marker_is_not_a_term():
+    d = defs("Random variable, often called variate")
+    assert "variate" in d
+    assert not any("often" in phrase for phrase in d)
+
+
+@pytest.mark.parametrize("plural, singular", [
+    ("processes", "process"),
+    ("probabilities", "probability"),
+    ("boxes", "box"),
+    ("kernels", "kernel"),
+    ("class", "class"),
+    ("basis", "basis"),
+])
+def test_singular_handles_common_plurals(plural, singular):
+    assert exb._singular(plural) == singular
+
+
+def test_a_possessive_is_read_as_its_noun():
+    d = defs("Student t distribution")
+    assert found_with(exercise("Student's t distribution", "Do it."), d) == [
+        ["student", "distribution"]]
+
+
+def test_a_three_letter_defined_alias_is_judged():
+    d = defs("Gradient (also called the del)")
+    assert found_with(exercise("The del operator", "Do it."), d) == [["del"]]
+    assert found_with(exercise("The del operator", "Use the del here."), d) == []

@@ -25,7 +25,7 @@ exercise lends its text but not its solutions. An exercise that cites an
 ``exr-`` the scanned files do not hold is skipped, since its background is
 elsewhere. A part that builds on an earlier exercise ("Use the setup of
 @exr-...") is skipped too. A math macro says the word its name begins
-(``\grad`` says gradient), short macros say the words ``MACRO_WORDS`` lists
+with (``\grad`` says gradient), short macros say the words ``MACRO_WORDS`` lists
 (``\E`` says expected), and words inside ``\text{}``, ``\operatorname{}`` and
 ``\mathrm{}`` count as body words.
 
@@ -124,9 +124,13 @@ class Finding(NamedTuple):
     end: int
 
 
+POSSESSIVE_RE = re.compile(r"['’]s\b", re.I)
+
+
 def _words(text: str) -> List[str]:
     text = MATH_RE.sub(" ", text)
     text = LINK_RE.sub("]", text)
+    text = POSSESSIVE_RE.sub("", text)
     return WORD_RE.findall(text.lower())
 
 
@@ -135,10 +139,32 @@ def _stems(words: List[str]) -> Set[str]:
 
 
 def _singular(word: str) -> str:
-    return word[:-1] if word.endswith("s") and not word.endswith("ss") else word
+    """The singular of an English plural, or ``word`` unchanged.
+
+    "probabilities" gives "probability", "processes" and "boxes" drop "es",
+    and a word ending in "ss", "us" or "is" ("loss", "radius", "analysis")
+    is left alone.
+    """
+    if len(word) <= 3 or not word.endswith("s"):
+        return word
+    if word.endswith("ies"):
+        return word[:-3] + "y"
+    if word.endswith(("sses", "xes", "ches", "shes", "zzes")):
+        return word[:-2]
+    if word.endswith(("ss", "us", "is")):
+        return word
+    return word[:-1]
 
 
-PHRASE_SPLIT_RE = re.compile(r"[(),;:/]|\bor\b|\balso\b|\bcalled\b|\bknown as\b")
+# An alias marker is matched with the adverb that may lead it ("often
+# called"), so the adverb is not read as a term of its own.
+PHRASE_SPLIT_RE = re.compile(
+    r"[(),;:/]"
+    r"|\b(?:also|often|sometimes|usually|commonly|simply)\s+"
+    r"(?:called|known\s+as|named)\b"
+    r"|\bcalled\b|\bknown\s+as\b|\bor\b|\balso\b",
+    re.I,
+)
 MAX_PHRASE = 6
 ARTICLES = {"a", "an", "the"}
 
@@ -147,8 +173,8 @@ def _phrases(title: str) -> Set[str]:
     """The defined terms a ``#def-`` title names, each as singular words.
 
     A title such as "Gradient (also called del)" names two terms, so it is
-    split at parentheses, commas, "or" and "called", and a leading article
-    is dropped.
+    split at parentheses, commas, "or" and alias markers such as "called" or
+    "often known as", in any letter case, and a leading article is dropped.
     """
     out: Set[str] = set()
     for part in PHRASE_SPLIT_RE.split(title):
@@ -164,8 +190,9 @@ def defined_stems(lines: List[str]) -> Set[str]:
     """The terms the ``#def-`` divs in ``lines`` define, as phrases.
 
     A title word is judged only where the exercise title names a whole defined
-    term (gha#1481): matched word by word, "times" passed as part of "time
-    series", "point" of "critical point" and "weigh" of "weight".
+    term (gha#1481). Matching single words by their first letters had read
+    "times" as part of "time series", "point" as part of "critical point" and
+    "weigh" as part of "weight"; matching whole phrases does not.
     """
     stems: Set[str] = set()
     for idx, raw in enumerate(lines):
@@ -187,7 +214,7 @@ def defined_stems(lines: List[str]) -> Set[str]:
 def macro_words(body: str) -> List[str]:
     """Words that the math macros in ``body`` print, for matching a title.
 
-    A macro counts as the word its name begins: ``\\grad`` says gradient and
+    A macro counts as the word its name begins with:``\\grad`` says gradient and
     ``\\noise`` says noise. Names shorter than three letters only count
     through ``MACRO_WORDS``.
     """
@@ -213,22 +240,25 @@ def missing_words(title: str, body: str,
     present = _stems(_words(body))
     macros = macro_words(body)
     words = _words(title)
+    singulars = [_singular(w) for w in words]
     named = set(range(len(words)))
     if defined is not None:
-        singular = [_singular(w) for w in words]
         named = set()
         for i in range(len(words)):
             for n in range(1, MAX_PHRASE + 1):
-                if i + n <= len(words) and " ".join(singular[i:i + n]) in defined:
+                if i + n <= len(words) and " ".join(singulars[i:i + n]) in defined:
                     named.update(range(i, i + n))
+    # A three-letter word ("del") is judged only as part of a defined term:
+    # without definitions, short title words are mostly noise.
+    min_len = 3 if defined is not None else 4
     out: List[str] = []
     for idx, word in enumerate(words):
-        if len(word) < 4 or word[:STEM] in GENERIC_STEMS:
+        if len(word) < min_len or word[:STEM] in GENERIC_STEMS:
             continue
         if idx not in named:
             continue
-        singular = word[:-1] if word.endswith("s") else word
-        if word[:STEM] in present or singular[:STEM] in present or word in out:
+        if (word[:STEM] in present or singulars[idx][:STEM] in present
+                or word in out):
             continue
         if any(word.startswith(m[:STEM]) for m in macros):
             continue
