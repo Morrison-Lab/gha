@@ -64,6 +64,9 @@ def test_function_definitions_are_candidates(math, arity):
     "\\det(\\mA) = 1",
     "\\Pr(A \\cup B) = \\Pr(A) + \\Pr(B)",
     "\\Pr(\\samplespace) = 1",
+    "\\Pr(A) = 1",
+    "\\E(X) = \\mu",
+    "\\Pr(A, B) = \\Pr(A \\cap B)",
     "\\testset \\eqdef \\set{1, 2}",
     "e \\eqdef \\expf{1}",
     "\\forall x: f(x) = 0",
@@ -86,6 +89,12 @@ def test_only_definition_divs_are_checked():
 
 def test_definition_with_no_display_math_is_not_a_candidate():
     assert missing("::: {#def-a}\nThe sigmoid $\\sigma(z) = 1$.\n:::\n") == []
+
+
+def test_math_inside_an_html_comment_is_not_the_defining_equation():
+    doc = def_with("\\testset \\eqdef \\set{1}").replace(
+        "Text.\n", "Text.\n<!--\n$$\nf(x) = x\n$$\n-->\n")
+    assert missing(doc) == []
 
 
 def test_only_the_first_display_equation_counts():
@@ -183,7 +192,7 @@ def test_no_base_ref_skips_instead_of_scanning_the_tree(repo):
 
 
 def test_whole_tree_counts_candidates(repo):
-    _commit(repo, "old.qmd", NO_GRAPH + "\n" + def_with("\\Pr(A) \\eqdef 1"))
+    _commit(repo, "old.qmd", NO_GRAPH + "\n" + def_with("F_X(x) \\eqdef 1"))
     report = fng.run_check("", [fng.DEFAULT_GLOBS], [], True)
     assert (report.files, report.candidates, len(report.findings)) == (1, 2, 2)
 
