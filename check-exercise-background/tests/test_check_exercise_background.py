@@ -141,9 +141,9 @@ def test_defaults_agree_across_script_action_and_workflow():
 
     action = (_DIR / "action.yml").read_text()
     workflow = (_DIR.parent / ".github/workflows/check-exercise-background.yml").read_text()
-    assert exb._flag("EXB_FAIL", True) is True  # the script's default, with the variable unset
-    assert "default: 'true'" in input_block(action, "fail")
-    assert "default: true" in input_block(workflow, "fail")
+    fail = str(exb.DEFAULT_FAIL).lower()  # what main() uses with EXB_FAIL unset
+    assert f"default: '{fail}'" in input_block(action, "fail")
+    assert f"default: {fail}" in input_block(workflow, "fail")
     assert "default: '*.qmd'" in input_block(action, "globs")
     assert "default: '*.qmd'" in input_block(workflow, "globs")
 

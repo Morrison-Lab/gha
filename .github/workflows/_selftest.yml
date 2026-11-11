@@ -1925,6 +1925,12 @@ jobs:
             echo "::error::check-exercise-background did not fail by default (outcome: $OUTCOME)"
             exit 1
           fi
+      - name: Remove the staged fixture
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -f --cached --ignore-unmatch exb-fixture/page.qmd
+          rm -rf exb-fixture
   # check-exercise-question-paragraph is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-exercise-question-paragraph@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
