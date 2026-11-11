@@ -14,6 +14,7 @@
 set -euo pipefail
 
 RUNNER_DIR="${RUNNER_DIR:?set RUNNER_DIR to the runner directory}"
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$RUNNER_DIR"
 # Two copies of this script on one runner would both relaunch it.
 exec 9> .restart-when-idle.lock
@@ -78,7 +79,10 @@ if kill -0 "$listener" 2> /dev/null; then
 fi
 
 # Close the lock's descriptor in the new runner, or it would hold the lock.
-PATH="$runner_path" setsid nohup ./run.sh >> runner.log 2>&1 < /dev/null 9>&- &
+# The wrapper refuses to start if another session relaunched it meanwhile
+# (gha#1370).
+PATH="$runner_path" RUNNER_DIR="$physical_dir" setsid nohup \
+  bash "$script_dir/run-runner-exclusive.sh" >> runner.log 2>&1 < /dev/null 9>&- &
 # run.sh starts the listener through run-helper.sh, so give it a moment.
 for _ in $(seq 30); do
   if [ -n "$(find_listeners)" ]; then

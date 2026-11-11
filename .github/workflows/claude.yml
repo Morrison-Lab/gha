@@ -117,7 +117,7 @@ on:
         type: boolean
         default: false
       reviewer:
-        description: GitHub user re-requested as reviewer when Claude pushes commits to a PR.
+        description: GitHub user requested as reviewer when Claude pushes commits to a PR, including a PR it opens for an issue. Empty to disable.
         type: string
         default: 'd-morrison'
       review-workflow-file:
@@ -1580,6 +1580,7 @@ jobs:
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           DISPATCH_REVIEW_ON_AGENT_PUSH: ${{ inputs.dispatch-review-on-agent-push }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
+          REVIEWER: ${{ inputs.reviewer }}
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
           COST_USD: ${{ steps.cost.outputs.cost }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
@@ -1670,6 +1671,14 @@ jobs:
             else
               echo "::warning::Could not mark PR #${PR_URL##*/} ready for review."
             fi
+          fi
+          # Request the reviewer on the PR this issue run opened or pushed to,
+          # as the PR-trigger path already re-requests it (rme#844). Same gate
+          # as mark-ready: a failed run's draft is not ready for anyone.
+          if [ -n "$REVIEWER" ] && [ "$CLAUDE_OUTCOME" = "success" ]; then
+            gh api -X POST "repos/${{ github.repository }}/pulls/${PR_URL##*/}/requested_reviewers" \
+              -f "reviewers[]=$REVIEWER" >/dev/null \
+              || echo "::warning::Could not request $REVIEWER as reviewer."
           fi
           # "Extract run cost" (steps.cost, above) already extracted this —
           # empty when report-cost is off or the field was absent (gha#219).

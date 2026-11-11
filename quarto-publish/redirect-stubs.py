@@ -6,6 +6,9 @@ Write a Quarto profile that leaves redirect stubs out of a non-html render.
 A page whose front matter sets ``redirect-stub: true`` is an html-only
 redirect. ``quarto render --to FORMAT`` renders every page in the project,
 so a per-format publish would still build the stub's slides, PDF and Word file.
+A page that sets ``html-only: true`` is left out the same way: an index page
+whose html lists its sub-pages, and whose other formats would only repeat
+them (mds#726).
 
 Usage: ``redirect-stubs.py PROJECT_PATH PROFILE_NAME [ACTIVE_PROFILES]``
 (``ACTIVE_PROFILES`` is the render's comma-joined profile list).
@@ -30,12 +33,12 @@ import re
 import subprocess
 import sys
 
-STUB = re.compile(r"""^redirect-stub\s*:\s*["']?true["']?\s*(#.*)?$""")
+STUB = re.compile(r"""^(?:redirect-stub|html-only)\s*:\s*["']?true["']?\s*(#.*)?$""")
 SKIP_DIRS = {".git", ".quarto", "_site", "_freeze", "_extensions", "node_modules"}
 
 
 def is_stub(path):
-    """True when the page's front matter sets ``redirect-stub: true``."""
+    """True when the front matter sets ``redirect-stub`` or ``html-only`` true."""
     with open(path, encoding="utf-8", errors="replace") as handle:
         lines = handle.read().splitlines()
     if not lines or lines[0].strip() != "---":

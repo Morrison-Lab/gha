@@ -2251,8 +2251,11 @@ jobs:
   # while a new job within the union callers already grant does not.
   # It runs only on a quota skip and reads the comments when it runs, so
   # re-running the workflow after posting the fallback review picks it up.
+  # It matches the commit this run reviewed (REVIEWED_COMMIT's sources, in
+  # the same order), not the live PR head, so re-running an older run cannot
+  # go green on a fallback recorded for a newer head (gha#1229).
   find-fallback-verdict:
-    needs: [claude-review]
+    needs: [gather-context, claude-review]
     if: >-
       always() &&
       needs.claude-review.result == 'success' &&
@@ -2271,6 +2274,7 @@ jobs:
         with:
           repository: ${{ github.repository }}
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          head-sha: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # Gate job: sibling of require-review. Requires that the review completed, was
