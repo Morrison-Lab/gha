@@ -2,7 +2,8 @@
 title: "triage-backlog.yml"
 ---
 
-Weekly backlog triage that labels and never closes.
+Backlog triage that labels and never closes.
+The workflow has no schedule of its own: the example stub runs it weekly.
 It gives each open issue that has no priority label the label the triage plan proposes: `P1`, `P2`, or `P3`.
 An issue the plan would close, as junk or a duplicate, is left as it is, for a pass that a person reads.
 This implements
@@ -62,8 +63,9 @@ jobs:
       issues: write
     uses: Morrison-Lab/gha/.github/workflows/triage-backlog.yml@v3
     with:
-      # false on the schedule, the ticked box on a manual run.
-      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      # false on the schedule, the ticked box on a manual run,
+      # and true on any other trigger you add.
+      dry-run: ${{ github.event_name != 'schedule' && (github.event_name != 'workflow_dispatch' || inputs.dry-run) }}
       # ceiling: '400'   # warn when more issues than this are open
       # limit: '2000'    # raise when the repo has 1000 open issues or more
 ```
