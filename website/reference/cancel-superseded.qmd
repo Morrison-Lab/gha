@@ -28,6 +28,11 @@ The caller grants `actions: write` and `pull-requests: read`.
 - Runs in `waiting` or `requested` status are not cancelled.
 - Fork and Dependabot pull requests get a read-only token,
   which cannot cancel runs.
+- GitHub runs no `pull_request` workflow while a pull request has merge conflicts,
+  so the caller does not fire, and nothing is cancelled, until the conflict is resolved.
+- On a self-hosted runner pool (`CI_RUNNER`), the cancel job queues for a runner
+  like any other job, so it can wait behind the very runs it should cancel.
+  Set `runs-on` to a label with a free runner if that delay matters.
 
 ## Example
 
