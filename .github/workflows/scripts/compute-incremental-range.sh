@@ -36,21 +36,23 @@
 # truthfully reports "no new content", which classify-review-verdict.sh's
 # gha#965 guard reads, with a nonzero count, as a skipped review; such a
 # round stamps no `Reviewed commit:` boundary, so the next round's range
-# grows instead of moving and the PR can never go green. When BASE_REF (arg
-# 4, or the env var) names the PR's base AND equals DEFAULT_BRANCH (arg 5,
-# or the env var), the repository's default branch, the script fetches it
-# and counts only commits NOT reachable from it.
+# grows instead of moving and the PR can never go green. When
+# DEFAULT_BRANCH (arg 5, or the env var) names the repository's default
+# branch, the script fetches it and counts only commits NOT reachable from
+# it, whatever the PR's base is. A PR stacked on another branch gets main's
+# commits by merging its base too, and counting them read as scope creep
+# in the review (gha#1802, Morrison-Lab/lds#2196).
 #
-# Only the default branch qualifies. A PR author can push an unreviewed
-# commit to a branch of their own, retarget the PR at it, push the commit
-# to the PR, and retarget back; retargeting does not re-run the review, so
-# excluding commits reachable from an arbitrary base would let that commit
-# through unreviewed. Moving the default branch takes write access to it.
+# Only the default branch is excluded, never the PR's base (BASE_REF, arg
+# 4, is used only to name it). A PR author can push an unreviewed commit to
+# a branch of their own, retarget the PR at it, push the commit to the PR,
+# and retarget back; retargeting does not re-run the review, so excluding
+# commits reachable from an arbitrary base would let that commit through
+# unreviewed. Moving the default branch takes write access to it.
 #
 # Every other case keeps the full PRIOR..HEAD count (fail closed): an empty
-# or malformed base ref, a base that is not the default branch, a base that
-# cannot be fetched, or a base that never meets HEAD's history within
-# DEEPEN_MAX.
+# or malformed default branch, one that cannot be fetched, or one that
+# never meets HEAD's history within DEEPEN_MAX.
 #
 # Every merge in the range is checked, base or no base: a merge whose
 # result differs from git's automatic re-merge of its parents (a conflict
@@ -304,14 +306,16 @@ if [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
   exit 0
 fi
 
-# Base exclusion is eligible only when the base IS the repository's default
-# branch, and its name is a valid branch name. A PR author can retarget a PR
-# at a branch they pushed an unreviewed commit to, and retargeting does not
-# re-run the review; the default branch takes write access to move.
+# Only the repository's default branch is excluded, and only when its name
+# is a valid branch name. A PR author can retarget a PR at a branch they
+# pushed an unreviewed commit to, and retargeting does not re-run the
+# review; the default branch takes write access to move. It is excluded
+# whatever the PR's base is, since a stacked PR merges main through its
+# base too (gha#1802).
 BASE_TRACK="refs/gha-incremental-range/base"
 BASE_OK=""
-if [ -n "$BASE_REF" ] && [ "$BASE_REF" = "$DEFAULT_BRANCH" ] \
-   && git check-ref-format "refs/heads/$BASE_REF" 2>/dev/null; then
+if [ -n "$DEFAULT_BRANCH" ] \
+   && git check-ref-format "refs/heads/$DEFAULT_BRANCH" 2>/dev/null; then
   # Fetch the base BEFORE the deepen loop, at depth 1 on a shallow checkout,
   # so the loop below deepens it together with HEAD. Fetching it afterwards
   # at a fixed depth placed new shallow boundaries inside history the loop
@@ -322,7 +326,7 @@ if [ -n "$BASE_REF" ] && [ "$BASE_REF" = "$DEFAULT_BRANCH" ] \
     depth_arg=(--depth=1)
   fi
   if git fetch -q --no-tags ${depth_arg[@]+"${depth_arg[@]}"} origin \
-       "+refs/heads/$BASE_REF:$BASE_TRACK" 2>/dev/null; then
+       "+refs/heads/$DEFAULT_BRANCH:$BASE_TRACK" 2>/dev/null; then
     BASE_OK=1
   fi
 fi
@@ -510,8 +514,8 @@ write_count "$COMMIT_COUNT"
 # longer than any run in the name, padded with spaces, keeps them inside.
 longest=0
 run=0
-for (( i = 0; i < ${#BASE_REF}; i++ )); do
-  if [ "${BASE_REF:i:1}" = '`' ]; then
+for (( i = 0; i < ${#DEFAULT_BRANCH}; i++ )); do
+  if [ "${DEFAULT_BRANCH:i:1}" = '`' ]; then
     run=$((run + 1))
     [ "$run" -gt "$longest" ] && longest=$run
   else
@@ -520,9 +524,9 @@ for (( i = 0; i < ${#BASE_REF}; i++ )); do
 done
 if [ "$longest" -gt 0 ]; then
   fence=$(printf '%*s' "$((longest + 1))" '' | tr ' ' '`')
-  BASE_MD="$fence $BASE_REF $fence"
+  BASE_MD="$fence $DEFAULT_BRANCH $fence"
 else
-  BASE_MD="\`$BASE_REF\`"
+  BASE_MD="\`$DEFAULT_BRANCH\`"
 fi
 
 BASE_NOTE=()
@@ -533,7 +537,7 @@ if [ "$BASE_COUNT" -gt 0 ] && [ -n "$BASE_TIP" ]; then
     | git log --oneline --no-walk=sorted --stdin 2>/dev/null | sed 's/^/    /' || true)
   BASE_NOTE=(
     ''
-    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch and this PR's base, at \`${BASE_TIP:0:8}\`), which reached this branch only by merging the base. They are not this PR's own commits and are not counted as unreviewed themselves; the merges that brought them in are checked separately, since a merge can still change what the PR does to their files:"
+    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch, at \`${BASE_TIP:0:8}\`), which reached this branch only through a merge. They are not this PR's own commits, so do not report their files as part of this PR's scope; judge scope from the PR's own diff against its base. They are not counted as unreviewed themselves; the merges that brought them in are checked separately, since a merge can still change what the PR does to their files:"
     ''
     "$BASE_LOG"
   )
@@ -559,7 +563,7 @@ fi
 
 ZERO_BASE_CLAUSE=""
 if [ "$BASE_COUNT" -gt 0 ] && [ -n "$BASE_TIP" ]; then
-  ZERO_BASE_CLAUSE=" Every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the base branch."
+  ZERO_BASE_CLAUSE=" Every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the default branch."
 fi
 
 if [ "$COMMIT_COUNT" = "0" ]; then
