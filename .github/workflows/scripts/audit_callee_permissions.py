@@ -11,14 +11,15 @@ This audit parses reusable workflows (``on: workflow_call``) across two git refs
 (or a base ref and the working tree), compares the effective permissions of
 each callee job and workflow level, and reports violations when:
 1. A callee job or workflow level gains a new permission key that did not exist
-   at the base ref.
+   at the base ref (for a job, one beyond the union in 5).
 2. An existing permission value is widened (e.g. ``read`` -> ``write``, or
-   dict -> ``write-all``).
+   dict -> ``write-all``), for a job beyond the union in 5.
 3. A job gains a ``permissions:`` block where it previously had none (explicitly
    declaring keys that were previously unconstrained or inherited).
 4. A job loses its ``permissions:`` block when the base ref had one (reverting
    to caller/workflow inheritance, which widens permission scope).
-5. A job added since the base ref requests a key or level beyond the union of
+5. A job added since the base ref, or an existing job that had a block,
+   requests a key or level beyond the union of
    what the base ref's jobs requested. Callers already grant that union (a
    job skipped by its ``if:`` still counts), so splitting a job in two needs
    no new caller grant. When some base job has no block at either level, it
@@ -430,12 +431,23 @@ def audit_permissions(
                         )
             else:
                 base_p = base_jobs[job_id]
-                v = compare_target_permissions(
-                    base_p,
-                    head_p,
-                    f"job '{job_id}'",
-                    wf_path,
-                )
+                if base_p is not None and head_p is not None and base_union is not None:
+                    # The same reasoning as for a new job: callers already
+                    # grant the union, so an existing job taking a key another
+                    # base job requests needs no new caller grant (gha#1365).
+                    v = compare_target_permissions(
+                        base_union,
+                        head_p,
+                        f"job '{job_id}' (against the union of base jobs)",
+                        wf_path,
+                    )
+                else:
+                    v = compare_target_permissions(
+                        base_p,
+                        head_p,
+                        f"job '{job_id}'",
+                        wf_path,
+                    )
                 all_violations.extend(v)
 
     return all_violations, examined_workflows, examined_jobs, notes

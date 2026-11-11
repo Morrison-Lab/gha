@@ -36,21 +36,23 @@
 # truthfully reports "no new content", which classify-review-verdict.sh's
 # gha#965 guard reads, with a nonzero count, as a skipped review; such a
 # round stamps no `Reviewed commit:` boundary, so the next round's range
-# grows instead of moving and the PR can never go green. When BASE_REF (arg
-# 4, or the env var) names the PR's base AND equals DEFAULT_BRANCH (arg 5,
-# or the env var), the repository's default branch, the script fetches it
-# and counts only commits NOT reachable from it.
+# grows instead of moving and the PR can never go green. When
+# DEFAULT_BRANCH (arg 5, or the env var) names the repository's default
+# branch, the script fetches it and counts only commits NOT reachable from
+# it, whatever the PR's base is. A PR stacked on another branch gets main's
+# commits by merging its base too, and counting them read as scope creep
+# in the review (gha#1802, Morrison-Lab/lds#2196).
 #
-# Only the default branch qualifies. A PR author can push an unreviewed
-# commit to a branch of their own, retarget the PR at it, push the commit
-# to the PR, and retarget back; retargeting does not re-run the review, so
-# excluding commits reachable from an arbitrary base would let that commit
-# through unreviewed. Moving the default branch takes write access to it.
+# Only the default branch is excluded, never the PR's base (BASE_REF, arg
+# 4, is used only to name it). A PR author can push an unreviewed commit to
+# a branch of their own, retarget the PR at it, push the commit to the PR,
+# and retarget back; retargeting does not re-run the review, so excluding
+# commits reachable from an arbitrary base would let that commit through
+# unreviewed. Moving the default branch takes write access to it.
 #
 # Every other case keeps the full PRIOR..HEAD count (fail closed): an empty
-# or malformed base ref, a base that is not the default branch, a base that
-# cannot be fetched, or a base that never meets HEAD's history within
-# DEEPEN_MAX.
+# or malformed default branch, one that cannot be fetched, or one that
+# never meets HEAD's history within DEEPEN_MAX.
 #
 # Every merge in the range is checked, base or no base: a merge whose
 # result differs from git's automatic re-merge of its parents (a conflict
@@ -63,9 +65,11 @@
 # count: the script then excludes nothing, counts the visible part (at least
 # 1, so the guard can fire) and says the range is incomplete.
 #
-# Stdout: the markdown section, or nothing when the range is not computable
-# (first round, unparseable comments, prior == head). An unreachable prior
-# emits a fail-closed section instead (see the deepening note above).
+# Stdout: the markdown section, or nothing on a first round (no bot verdict
+# comment yet) or when the prior is the head. An unreachable prior emits a
+# fail-closed section instead (see the deepening note above), and so do a
+# missing or unreadable comments file and a PR whose bot verdict comments
+# name no usable boundary (gha#1032): each writes a count of 1.
 # Every not-computable path exits 0: this is an optional enrichment, and it
 # must never redden the review job it feeds (the same rule the guard's
 # denied-tools summary follows).
@@ -90,8 +94,27 @@ write_count() {
 
 write_count 0
 
-if [ ! -f "$COMMENTS_FILE" ]; then
+# No usable review boundary on a PR that may already have had a review
+# round (gha#1032): fail closed, as an unreachable prior does (gha#1010).
+# $1 says why the boundary is unknown. A count of 0 here would let a
+# "no new content" claim pass classify-review-verdict.sh's gha#965 guard
+# over commits no round reviewed.
+fail_closed_no_boundary() {
+  write_count 1
+  printf '%s\n' \
+    '## What changed since the last review round (computed)' \
+    '' \
+    "**No usable review boundary:** $1 The commits since the last review cannot be computed, so treat every commit in this PR as unreviewed." \
+    '' \
+    "**Mandatory review requirement:** review the PR's full diff against its base. Do not state that there is no new content since the prior round."
   exit 0
+}
+
+# The caller always writes the file, and writes it empty when fetching the
+# PR's comments failed, so a missing or unreadable file means the review
+# history is unknown, not that there is none.
+if [ ! -f "$COMMENTS_FILE" ]; then
+  fail_closed_no_boundary "the PR's comments could not be read, so earlier review rounds are unknown."
 fi
 
 # The prior reviewed commit is the last `Reviewed commit: <sha>` line in the
@@ -108,9 +131,11 @@ try:
     with open(comments_file, "r", encoding="utf-8", errors="replace") as f:
         comments = json.load(f)
 except Exception:
+    print("UNREADABLE")
     sys.exit(0)
 
 if not isinstance(comments, list):
+    print("UNREADABLE")
     sys.exit(0)
 
 _FENCE_OPEN_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})')
@@ -221,6 +246,7 @@ _PAYLOAD_RE = re.compile(r'<!--\s*review-data:\s*(\{.*?\})\s*-->', re.DOTALL)
 _REVIEWED_COMMIT_RE = re.compile(r'Reviewed commit:\s*([0-9a-f]{40})')
 
 prior = ""
+saw_verdict_comment = False
 for c in comments:
     if not isinstance(c, dict):
         continue
@@ -231,6 +257,7 @@ for c in comments:
     body = c.get("body") or ""
     if not re.search(r'### (Code Review|Verdict)', body):
         continue
+    saw_verdict_comment = True
 
     # Check structured payload verdict
     pm = _PAYLOAD_RE.search(body)
@@ -255,23 +282,40 @@ for c in comments:
 
 if prior:
     print(prior)
+elif saw_verdict_comment:
+    print("NO_BOUNDARY")
+else:
+    print("NONE")
 EOF
 )
 
 HEAD_NOW="${HEAD_PARAM:-$(git rev-parse HEAD 2>/dev/null || true)}"
 
-if [ -z "$PRIOR" ] || [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
+# NONE is a first round: no bot verdict comment exists yet. An empty PRIOR
+# means the parser itself failed, which says nothing about earlier rounds.
+case "$PRIOR" in
+  NONE)
+    exit 0 ;;
+  UNREADABLE|"")
+    fail_closed_no_boundary "the PR's comments could not be read, so earlier review rounds are unknown." ;;
+  NO_BOUNDARY)
+    fail_closed_no_boundary "this PR already has review comments, but none names a reviewed commit that counts as a boundary (each was skipped, claimed no new content, or carries no \`Reviewed commit:\` line)." ;;
+esac
+
+if [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
   exit 0
 fi
 
-# Base exclusion is eligible only when the base IS the repository's default
-# branch, and its name is a valid branch name. A PR author can retarget a PR
-# at a branch they pushed an unreviewed commit to, and retargeting does not
-# re-run the review; the default branch takes write access to move.
+# Only the repository's default branch is excluded, and only when its name
+# is a valid branch name. A PR author can retarget a PR at a branch they
+# pushed an unreviewed commit to, and retargeting does not re-run the
+# review; the default branch takes write access to move. It is excluded
+# whatever the PR's base is, since a stacked PR merges main through its
+# base too (gha#1802).
 BASE_TRACK="refs/gha-incremental-range/base"
 BASE_OK=""
-if [ -n "$BASE_REF" ] && [ "$BASE_REF" = "$DEFAULT_BRANCH" ] \
-   && git check-ref-format "refs/heads/$BASE_REF" 2>/dev/null; then
+if [ -n "$DEFAULT_BRANCH" ] \
+   && git check-ref-format "refs/heads/$DEFAULT_BRANCH" 2>/dev/null; then
   # Fetch the base BEFORE the deepen loop, at depth 1 on a shallow checkout,
   # so the loop below deepens it together with HEAD. Fetching it afterwards
   # at a fixed depth placed new shallow boundaries inside history the loop
@@ -282,7 +326,7 @@ if [ -n "$BASE_REF" ] && [ "$BASE_REF" = "$DEFAULT_BRANCH" ] \
     depth_arg=(--depth=1)
   fi
   if git fetch -q --no-tags ${depth_arg[@]+"${depth_arg[@]}"} origin \
-       "+refs/heads/$BASE_REF:$BASE_TRACK" 2>/dev/null; then
+       "+refs/heads/$DEFAULT_BRANCH:$BASE_TRACK" 2>/dev/null; then
     BASE_OK=1
   fi
 fi
@@ -470,8 +514,8 @@ write_count "$COMMIT_COUNT"
 # longer than any run in the name, padded with spaces, keeps them inside.
 longest=0
 run=0
-for (( i = 0; i < ${#BASE_REF}; i++ )); do
-  if [ "${BASE_REF:i:1}" = '`' ]; then
+for (( i = 0; i < ${#DEFAULT_BRANCH}; i++ )); do
+  if [ "${DEFAULT_BRANCH:i:1}" = '`' ]; then
     run=$((run + 1))
     [ "$run" -gt "$longest" ] && longest=$run
   else
@@ -480,9 +524,9 @@ for (( i = 0; i < ${#BASE_REF}; i++ )); do
 done
 if [ "$longest" -gt 0 ]; then
   fence=$(printf '%*s' "$((longest + 1))" '' | tr ' ' '`')
-  BASE_MD="$fence $BASE_REF $fence"
+  BASE_MD="$fence $DEFAULT_BRANCH $fence"
 else
-  BASE_MD="\`$BASE_REF\`"
+  BASE_MD="\`$DEFAULT_BRANCH\`"
 fi
 
 BASE_NOTE=()
@@ -493,7 +537,7 @@ if [ "$BASE_COUNT" -gt 0 ] && [ -n "$BASE_TIP" ]; then
     | git log --oneline --no-walk=sorted --stdin 2>/dev/null | sed 's/^/    /' || true)
   BASE_NOTE=(
     ''
-    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch and this PR's base, at \`${BASE_TIP:0:8}\`), which reached this branch only by merging the base. They are not this PR's own commits and are not counted as unreviewed themselves; the merges that brought them in are checked separately, since a merge can still change what the PR does to their files:"
+    "The range also holds $BASE_COUNT commit(s) already on $BASE_MD (the repository's default branch, at \`${BASE_TIP:0:8}\`), which reached this branch only through a merge. They are not this PR's own commits, so do not report their files as part of this PR's scope; judge scope from the PR's own diff against its base. They are not counted as unreviewed themselves; the merges that brought them in are checked separately, since a merge can still change what the PR does to their files:"
     ''
     "$BASE_LOG"
   )
@@ -519,7 +563,7 @@ fi
 
 ZERO_BASE_CLAUSE=""
 if [ "$BASE_COUNT" -gt 0 ] && [ -n "$BASE_TIP" ]; then
-  ZERO_BASE_CLAUSE=" Every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the base branch."
+  ZERO_BASE_CLAUSE=" Every non-merge commit in ${PRIOR:0:8}..${HEAD_NOW:0:8} is already on the default branch."
 fi
 
 if [ "$COMMIT_COUNT" = "0" ]; then
