@@ -24,8 +24,9 @@ is exactly a named function applied to one or two arguments:
 `f(x)`, `f(x, y)`, `\sigma\paren{z}`, or an f-form macro such as `\logitf{p}`.
 Each argument must be a lowercase Latin or Greek letter,
 with an optional subscript or superscript.
-An uppercase letter names a set, an event, or a random variable,
-and a vector or matrix macro (`\vx`, `\mA`) or an expression is not a scalar input either,
+An uppercase letter names a set, an event, or a random variable.
+Neither such a letter, a vector macro such as `\vx`, a matrix macro such as `\mA`,
+nor an expression is a scalar input,
 so a definition with such an argument is not a candidate.
 
 The check reads only the first display equation outside HTML comments,
