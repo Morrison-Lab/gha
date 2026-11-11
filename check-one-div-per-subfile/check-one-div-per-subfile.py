@@ -300,7 +300,7 @@ _INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 
 def _names(path: str, target: str) -> bool:
     """Whether an include ``target`` can name the repository file ``path``."""
-    target = target.lstrip("./")
+    target = target.removeprefix("./")
     return path == target or path.endswith("/" + target)
 
 

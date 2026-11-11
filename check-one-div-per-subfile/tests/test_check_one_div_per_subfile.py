@@ -269,6 +269,16 @@ def test_split_into_one_div_files_is_clean(repo):
 PARENT = "Text.\n\n{{< include frag.qmd >}}\n\n" + TWO
 
 
+@pytest.mark.parametrize("path,target,expected", [
+    ("chapters/frag.qmd", "frag.qmd", True),
+    ("chapters/frag.qmd", "./frag.qmd", True),
+    ("chapters/frag.qmd", "../frag.qmd", False),
+    ("chapters/xfrag.qmd", "frag.qmd", False),
+])
+def test_include_target_names_a_path(path, target, expected):
+    assert ods._names(path, target) is expected
+
+
 def test_moving_an_included_file_into_subfiles_is_clean(repo):
     _write(repo, "chapters/frag.qmd", TWO)
     _commit(repo, "_subfiles/_p.qmd", PARENT)
