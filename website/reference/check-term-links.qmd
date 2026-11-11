@@ -113,7 +113,7 @@ jobs:
 | `globs` | `*.qmd` | Space-separated git pathspecs of files to learn from and check |
 | `paths-ignore` | `''` | Comma/newline-separated globs to skip (`*`, `?`, `**`) |
 | `terms-file` | `''` | File of extra terms, one per line |
-| `terms-from` | `''` | Space-separated `owner/repo` prerequisite sites (such as mds, pds, sds), cloned shallowly; their definitions make their terms known. A private one needs the optional `WORKFLOW_TOKEN` secret. Empty means the repository's predecessors in the course sequence (mds, pds, sds, lds; dds and mlg get all four), and a defaulted site that cannot be cloned only warns. `none` turns the default off |
+| `terms-from` | `''` | Space-separated `owner/repo` prerequisite sites (such as mds, pds, sds), cloned shallowly; their definitions make their terms known. A private one needs the optional `WORKFLOW_TOKEN` secret. Empty means the repository's predecessors in the course sequence (mds, pds, sds, and lds; dds and mlg each default to all four), and a defaulted site that cannot be cloned only warns. `none` turns the default off |
 | `allow-file` | `''` | File of terms to leave alone, one per line |
 | `whole-tree` | `false` | Report every finding, not only those on added lines |
 | `fail` | `true` | Fail the job on a finding (`false`: warning annotations only) |
