@@ -46,7 +46,10 @@ Design notes, in the model of ``check-wikipedia-further-reading``:
   ``ODS_BASE_REF`` is reported. The whole file is parsed (a div opens far
   above the line that changed). An added line whose exact text was also
   deleted in the same diff is treated as moved, not new, and a blank added
-  line is not content.
+  line is not content. Deletions are read from the whole diff with rename
+  detection, so a file moved into a subfile directory from outside the globs
+  is a rename, and an ``include`` line that only follows a file the diff
+  renames counts as moved too.
 - **Skip, not fall back.** With no base ref, or when the diff cannot be
   computed (a shallow clone), the check skips with a warning.
   ``ODS_WHOLE_TREE=true`` asks for the whole tree explicitly, which measures
@@ -282,6 +285,47 @@ def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
     return added, deleted
 
 
+def parse_renames(status: str) -> List[Tuple[str, str]]:
+    """``(old, new)`` pairs from ``git diff --name-status -M`` output."""
+    pairs: List[Tuple[str, str]] = []
+    for line in status.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[0].startswith("R"):
+            pairs.append((parts[1], parts[2]))
+    return pairs
+
+
+_INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
+
+
+def _names(path: str, target: str) -> bool:
+    """Whether an include ``target`` can name the repository file ``path``."""
+    target = target.lstrip("./")
+    return path == target or path.endswith("/" + target)
+
+
+def is_repointed_include(text: str, deleted: Set[str],
+                         renames: List[Tuple[str, str]]) -> bool:
+    """An added include line that only follows a renamed file is moved.
+
+    It counts when a deleted line reads the same with the old target, and the
+    diff renames a file the old target names to one the new target names.
+    """
+    m = _INCLUDE_RE.search(text)
+    if not m:
+        return False
+    new_target = m.group(1)
+    for old, new in renames:
+        if not _names(new, new_target):
+            continue
+        for line in deleted:
+            o = _INCLUDE_RE.search(line)
+            if (o and _names(old, o.group(1))
+                    and line[:o.start(1)] + new_target + line[o.end(1):] == text):
+                return True
+    return False
+
+
 def _glob_to_regex(pat: str) -> "re.Pattern[str]":
     """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
     i, n, out = 0, len(pat), []
@@ -369,16 +413,25 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         base = _run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, 0, 0, True)
-        diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
-                         base.strip(), "--", *globs])
-        if diff is None:
+        # The whole diff, with rename detection, so a file moved into a
+        # subfile directory from outside the globs reads as a rename (no
+        # added lines) and text deleted anywhere counts as moved.
+        diff = _run_git(["diff", "-U0", "-M", "--no-color", "--no-ext-diff",
+                         base.strip()])
+        names = _run_git(["diff", "--name-only", "-M", base.strip(),
+                          "--", *globs])
+        status = _run_git(["diff", "--name-status", "-M", base.strip()])
+        if diff is None or names is None or status is None:
             return Report([], 0, 0, 0, True)
+        in_globs = set(names.splitlines())
+        renames = parse_renames(status)
         added, deleted = parse_diff(diff)
         for rel, numbered in added.items():
-            if _ignored(rel, ignores):
+            if rel not in in_globs or _ignored(rel, ignores):
                 continue
             wanted[rel] = {n for n, text in numbered.items()
-                           if text.strip() and text not in deleted}
+                           if text.strip() and text not in deleted
+                           and not is_repointed_include(text, deleted, renames)}
 
     findings: List[Tuple[str, int, int]] = []
     unbalanced: List[str] = []

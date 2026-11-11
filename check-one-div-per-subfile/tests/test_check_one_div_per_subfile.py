@@ -266,6 +266,44 @@ def test_split_into_one_div_files_is_clean(repo):
     assert report.findings == [] and report.files == 2
 
 
+PARENT = "Text.\n\n{{< include frag.qmd >}}\n\n" + TWO
+
+
+def test_moving_an_included_file_into_subfiles_is_clean(repo):
+    _write(repo, "chapters/frag.qmd", TWO)
+    _commit(repo, "_subfiles/_p.qmd", PARENT)
+    _git(repo, "mv", "chapters/frag.qmd", "_subfiles/_frag.qmd")
+    _write(repo, "_subfiles/_p.qmd",
+           PARENT.replace("frag.qmd", "_subfiles/_frag.qmd"))
+    assert _run("HEAD").findings == []
+
+
+def test_repointing_an_include_without_a_rename_flags(repo):
+    _write(repo, "chapters/frag.qmd", TWO)
+    _commit(repo, "_subfiles/_p.qmd", PARENT)
+    _write(repo, "_subfiles/_other.qmd", "::: {#exr-o}\nAsk.\n:::\n")
+    _write(repo, "_subfiles/_p.qmd",
+           PARENT.replace("frag.qmd", "_subfiles/_other.qmd"))
+    assert [f for f, _, _ in _run("HEAD").findings] == ["_subfiles/_p.qmd"]
+
+
+def test_a_new_include_in_a_multi_div_subfile_flags(repo):
+    _write(repo, "chapters/frag.qmd", TWO)
+    _commit(repo, "_subfiles/_p.qmd", PARENT)
+    _git(repo, "mv", "chapters/frag.qmd", "_subfiles/_frag.qmd")
+    _write(repo, "_subfiles/_p.qmd",
+           PARENT + "\n{{< include _subfiles/_frag.qmd >}}\n")
+    assert [f for f, _, _ in _run("HEAD").findings] == ["_subfiles/_p.qmd"]
+
+
+def test_a_renamed_multi_div_file_with_an_edit_flags(repo):
+    _commit(repo, "chapters/frag.qmd", TWO)
+    (repo / "_subfiles").mkdir()
+    _git(repo, "mv", "chapters/frag.qmd", "_subfiles/_frag.qmd")
+    _write(repo, "_subfiles/_frag.qmd", TWO.replace("Ask.", "Ask again."))
+    assert [f for f, _, _ in _run("HEAD").findings] == ["_subfiles/_frag.qmd"]
+
+
 def test_no_base_ref_skips_instead_of_scanning_the_tree(repo):
     _commit(repo, "_subfiles/_old.qmd", TWO)
     report = _run("")
