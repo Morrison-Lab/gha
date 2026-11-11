@@ -295,6 +295,7 @@ def test_main_fails_by_default_and_warns_when_fail_is_off(tmp_path, monkeypatch,
     assert cps.main() == 0
     out = capsys.readouterr().out
     assert "::warning file=thm.qmd,line=8::" in out
+    assert "::warning file=thm.qmd,line=10::" in out
     assert "::warning file=thm.qmd,line=18::Show every proof on slides" in out
 
 
