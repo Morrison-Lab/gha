@@ -11,10 +11,17 @@ A definition div (``#def-``) is a candidate when its first display equation
 defines a function application with one or two arguments: the left-hand side,
 up to the first ``=``, ``:=``, ``\eqdef``, ``\coloneqq``, ``\triangleq`` or
 ``\equiv``, is exactly ``name(a)``, ``name(a, b)``, ``name\paren{a}`` or
-``\namef{a, b}``, and each argument is a Latin or Greek letter with an optional
-subscript or superscript. A vector or matrix macro (``\vx``, ``\mX``), a set,
-an event or an expression is not a scalar input, so a definition with such an
-argument is not a candidate. This is a heuristic, so the check warns by default.
+``\namef{a, b}``, and each argument is a lowercase Latin or Greek letter with an
+optional subscript or superscript. Uppercase letters name sets, events and
+random variables, and a vector or matrix macro (``\vx``, ``\mX``) or an
+expression is not a scalar input, so a definition with such an argument is not
+a candidate.
+
+This is a heuristic, so the check warns by default. Known limits: only the
+first display equation outside HTML comments is read, so a definition that
+states its defining equation second is skipped; and any ``=`` counts as
+defining, so a first equation that states a property of a named function, such
+as ``\log(x) = y``, makes the div a candidate.
 
 What counts as a graph inside the div is what ``check-exm-figures`` counts as
 a figure (an image, a ``fig-`` chunk or div, an ``@fig-`` reference or a
@@ -81,7 +88,8 @@ _GREEK = (r"alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|"
 # One scalar argument: a Latin or Greek letter, with an optional subscript or
 # superscript. A vector or matrix macro, a set, an event or an expression is
 # not a scalar input, so a definition whose argument is one is not a candidate.
-SCALAR_ARG_RE = re.compile(r"(?:[A-Za-z]|\\(?:" + _GREEK + r"))" + _SUB + r"'*")
+SCALAR_ARG_RE = re.compile(r"(?:[a-z]|\\(?:" + _GREEK + r"))" + _SUB + r"'*")
+COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 APPLICATION_RES = [re.compile(p) for p in (
     r"^" + _NAME + r"\s*(?:\\left)?\(\s*(?P<args>[^()]*?)\s*(?:\\right)?\)$",
     r"^" + _NAME + r"\s*\\paren\{(?P<args>[^{}]*)\}$",
@@ -97,8 +105,8 @@ class Definition(NamedTuple):
 
 
 def first_display_math(body: List[str]) -> Optional[str]:
-    """Text of the first ``$$ ... $$`` block in a div body, or None."""
-    text = "\n".join(body)
+    """Text of the first ``$$ ... $$`` block outside HTML comments, or None."""
+    text = COMMENT_RE.sub("", "\n".join(body))
     m = re.search(r"\$\$(.*?)\$\$", text, re.S)
     return m.group(1) if m else None
 
