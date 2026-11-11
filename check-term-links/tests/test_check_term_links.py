@@ -809,6 +809,23 @@ def test_an_unquoted_fence_closes_a_quoted_one():
     assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
 
 
+TILDES = "~" * 3
+
+
+@pytest.mark.parametrize("prefix", ["", "> "])
+def test_a_tilde_fence_is_not_prose(prefix):
+    page = f"{prefix}{TILDES}\n{prefix}The risk is code.\n{prefix}{TILDES}\n{prefix}The risk is prose.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+
+
+@pytest.mark.parametrize("prefix", ["", "> "])
+def test_a_backtick_line_does_not_close_a_tilde_fence(prefix):
+    # A closer must use the opener's character, so the backtick line is code.
+    page = (f"{prefix}{TILDES}\n{prefix}{FENCE}\n{prefix}The risk is code.\n"
+            f"{prefix}{TILDES}\n{prefix}The risk is prose.\n")
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [5]
+
+
 def test_a_setext_heading_right_after_a_div_closes_is_a_heading():
     # Flash review of gha#1906: the title after a closing fence is a heading, not prose.
     page = "::: {#exm-a}\nbody\n:::\nThe risk\n---\n\nText.\n"

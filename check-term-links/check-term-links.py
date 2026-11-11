@@ -306,12 +306,14 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
             # Known limit: Pandoc reads an unclosed quoted fence's lines before that blank
             # line as a paragraph, but they stay masked here, as malformed input.
             fence = ""
+            fence_depth = 0
         if fence:
             # A closing fence may sit at the opener's quote depth or shallower, as Pandoc
             # reads it, but not deeper: `> ```` inside an unquoted block is code (gha#1905).
             if (m and m.group("fence")[0] == fence[0] and len(m.group("fence")) >= len(fence)
                     and depth <= fence_depth):
                 fence = ""
+                fence_depth = 0
             out.append("")
             continue
         if m and not in_comment:
