@@ -636,6 +636,19 @@ runs:
           working directory. You do NOT need to (and must not) run
           `gh pr checkout` or `git checkout` — the working tree already
           contains the exact files and commits under review.
+          EXCEPTION (Morrison-Lab/rme#891): before you started, the action
+          replaced `CLAUDE.md`, `CLAUDE.local.md`, `.claude/`, `.mcp.json`,
+          `.claude.json`, `.gitmodules`, `.ripgreprc` and `.husky` with the
+          base branch's copies, unstaged, because the PR head is untrusted.
+          So `git status` can show those paths modified or deleted in this
+          job only. That is not a finding about the PR, and the PR's branch
+          does not carry it. The PR's own versions of those paths are in
+          `.claude-pr/` (a snapshot, never executed); read them, with the
+          saved PR diff, when the PR changes any of those paths. The house
+          rules you were given come from the base branch, so when the PR
+          itself changes a rule in `CLAUDE.md`, review that change as part
+          of the diff, and do not flag the PR's other edits for following
+          the rule as the PR writes it.
           ${{ inputs.workflow-fallback == 'true' && 'EXCEPTION (gha#598, gha#765): the entire `.github/workflows/` tree on disk (YAML and `scripts/`) is the default-branch copy, not the PR. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not git checkout PR-head files under `.github/workflows/` back into this tree. Tests and audits that parse workflow YAML directly will detect the restore and skip rather than measure the default-branch copy.' || '' }}
 
           WebFetch, WebSearch, and curl are available. Use WebFetch and
