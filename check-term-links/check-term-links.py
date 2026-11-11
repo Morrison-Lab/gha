@@ -288,6 +288,10 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
             continue
         m = FENCE_RE.match(raw)
         depth = m.group("quote").count(">") if m else 0
+        if fence and fence_depth and not raw.strip():
+            # A blank line ends the blockquote, and with it a quoted fence, which Pandoc
+            # then never reads as code; a non-blank unquoted line is a lazy continuation.
+            fence = ""
         if fence:
             # A closing fence may sit at the opener's quote depth or shallower, as Pandoc
             # reads it, but not deeper: `> ```` inside an unquoted block is code (gha#1905).

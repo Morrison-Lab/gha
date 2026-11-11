@@ -672,6 +672,13 @@ def test_a_lazy_line_stays_inside_a_quoted_fence():
     assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [5]
 
 
+def test_a_blank_line_ends_a_quoted_fence():
+    # The blank line ends the blockquote, so the fence never closes and line 4 is prose,
+    # even though a later unquoted fence pair follows.
+    page = f"> {FENCE}\n> code\n\nThe risk is prose.\n\n{FENCE}\nx\n{FENCE}\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+
+
 def test_a_quote_marker_inside_an_unquoted_fence_does_not_end_it():
     page = f"{FENCE}\ncode\n\nThe risk is code.\n> quoted code\n{FENCE}\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
