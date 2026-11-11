@@ -1971,6 +1971,24 @@ jobs:
           # structured field and the trailing "Reviewed commit:" line agree.
           # Only hex is touched: SKIPPED reviews write "unknown", left as is.
           REVIEW="$(printf '%s' "$REVIEW" | sed -E "s/(\"commit_sha\"[[:space:]]*:[[:space:]]*\")[0-9a-fA-F]{7,40}(\")/\1${COMMIT_SHA}\2/g")"
+          # placeholder-link rewrite begin
+          # A confirming review links the prior verdict, and the model still
+          # invents an ID such as `#issuecomment-placeholder` despite the
+          # prompt and the URLs in its context (gha#1039, gha#1766; seen on
+          # Morrison-Lab/ai-config#5141 on 2026-11-09). A real comment ID is
+          # digits, so rewrite any link whose ID starts with a letter to the
+          # newest earlier verdict comment, or to the PR when there is none.
+          PLACEHOLDER_RE='(https://github\.com/[^[:space:])>]*)?#issuecomment-[A-Za-z][A-Za-z0-9_-]*'
+          if printf '%s' "$REVIEW" | grep -Eq "$PLACEHOLDER_RE"; then
+            PRIOR_URL="$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments?per_page=100" \
+              --jq '.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]") and (.body | test("### (Code Review|Verdict)"))) | .html_url' \
+              | tail -n 1)" || PRIOR_URL=""
+            PRIOR_URL="${PRIOR_URL:-https://github.com/${REPO}/pull/${PR_NUMBER}}"
+            REVIEW="$(printf '%s' "$REVIEW" | sed -E "s|${PLACEHOLDER_RE}|${PRIOR_URL}|g")"
+            # A plain log line, not ::notice::, which the annotation gate would fail on.
+            echo "Rewrote a made-up prior-verdict link to ${PRIOR_URL} (gha#1766)."
+          fi
+          # placeholder-link rewrite end
           BODY_FILE="$(mktemp)"
           if [[ "$VERDICT" == "skipped" || "$VERDICT" == "unreviewed-commits-skipped" ]]; then
             printf '%s\n\n---\n\n%s' \
