@@ -53,6 +53,14 @@ gha#1568):
   link whose text is "score" or whose line holds `#def-score` pass (Ezra,
   2026-11-07; gha#1568).
 
+- **unconditional optional steps**: a sentence that opens "In another
+  language", "In other languages" or "Optionally,", or a bare "(optional)".
+  Put the condition first, as "If you use a language other than R, ...",
+  and say what a reader who skips the step loses (psw#490, psw#493).
+  "Otherwise," is not flagged: in the notes repos it opens the second case
+  of a proof (5 of 5 whole-tree hits in mds, 2026-11-11). Warn-only while
+  the rule is new.
+
 - **Gaussian, not normal**: "normal distribution", "standard normal",
   "multivariate normal", "bivariate normal", "normally distributed" and
   "normal random variable" and "normal random vector". Not "normal equations", normal vectors or normal
@@ -129,6 +137,15 @@ GAUSSIAN_RE = re.compile(
     r"(?!\s+(?:equations?|vectors?|subgroups?|forms?)\b)"
     r"|normally\s+distributed\b)"
 )
+# A sentence start: the line start (after any blockquote or list marker), or
+# terminal punctuation and its closers followed by whitespace.
+_SENTENCE_START = r"(?:^[\s>]*(?:(?:[-*+]|\d+[.)])\s+)?|[.!?][\"')*_\]]*\s+)"
+OPTIONAL_RE = re.compile(
+    r"(?:" + _SENTENCE_START
+    + r"(?=In\s|Optionally)|(?=\((?i:optional)\)))"
+    r"(?P<phrase>In\s+(?:another|other)\s+languages?\b|Optionally,"
+    r"|\((?i:optional)\))"
+)
 THING_RE = re.compile(r"(?i)\bthings?\b")
 VAGUE_RE = re.compile(
     r"(?i)\b(?:(?:some|many|several)\s+(?:\w+\s+)?(?:authors|researchers|"
@@ -160,7 +177,7 @@ LINPRED_SCORE_RE = re.compile(
 ALWAYS_FAIL = frozenset({"parenref", "thing", "vague"})
 # Rules in their trial period: a finding is a warning and never fails the run
 # (gha#1570: warn-only first; promote after several PRs with no false positive).
-WARN_ONLY = frozenset({"gaussian"})
+WARN_ONLY = frozenset({"gaussian", "optional"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -199,6 +216,11 @@ RULES = (
      "means perpendicular and usual (psw#510; gha#1570). A deliberate use, "
      "such as quoting the old term, takes the check-avoided-words allow "
      "comment."),
+    ("optional", OPTIONAL_RE,
+     "Phrase an optional step as a condition: state who it applies to first, "
+     'as "If you use a language other than R, ...", and say what a reader '
+     "who skips it loses or does instead (psw#490, psw#493). A deliberate "
+     "use takes the check-avoided-words allow comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '

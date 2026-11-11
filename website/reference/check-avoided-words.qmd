@@ -71,6 +71,15 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   "Normal equations", normal vectors, and normal subgroups pass.
   Source: psw's rule to write "Gaussian" (psw#510, gha#1570).
   This rule only warns, even with `fail` on, while it is new.
+- **Optional steps phrased as orders.**
+  A sentence that opens "In another language", "In other languages",
+  or "Optionally,", or a bare "(optional)".
+  Put the condition first, as "If you use a language other than R, ...",
+  and say what a reader who skips the step loses or does instead.
+  "Otherwise," is not flagged, because in the notes repositories
+  it opens the second case of a proof.
+  Source: psw's "Phrase optional steps as conditions" (psw#490, psw#493).
+  This rule only warns, even with `fail` on, while it is new.
 
 The other rules fail by default; set `fail` to false to make them warn.
 
@@ -100,7 +109,7 @@ Every run prints how many lines and files it examined.
 | ---------------- | ------- | ------- | ----------- |
 | `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail, and the Gaussian rule only warns. |
+| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail, and the Gaussian and optional-step rules only warn. |
 | `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string  | `'3.x'` | Python version to set up. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |

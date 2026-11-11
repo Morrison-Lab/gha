@@ -105,6 +105,37 @@ def test_gaussian_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys)
     assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("text, phrase", [
+    ("In another language, use a port of the package.", "in another language"),
+    ("- In other languages, draw your own data.", "in other languages"),
+    ("> In other languages, skip it.", "in other languages"),
+    ("1. Optionally, add a legend.", "optionally,"),
+    ("Fit the model. Optionally, plot the residuals.", "optionally,"),
+    ("Plot the residuals (optional).", "(optional)"),
+    ("## Bonus exercise (Optional)", "(optional)"),
+])
+def test_optional_step_forms(text, phrase):
+    assert found(text) == {1: ("optional", phrase)}
+
+
+def test_optional_step_passes_conditions_and_mid_sentence_uses():
+    assert found("If you use another language, use a port.") == {}
+    assert found("In another sense, the bound is tight.") == {}
+    assert found("The step is optionally weighted.") == {}
+    assert found("Otherwise, the second case holds.") == {}
+    assert found("Use `(optional)` in code.") == {}
+    assert found("A <!-- check-avoided-words: allow --> step (optional).") == {}
+
+
+def test_optional_step_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nOptionally, plot the fit.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CAW_FAIL="true")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
+
+
 def test_thing_passes_compounds_code_and_allow_comment():
     assert found("Something, anything and nothing are fine.") == {}
     assert found("Use `things` in code.") == {}
