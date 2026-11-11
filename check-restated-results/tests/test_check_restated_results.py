@@ -119,7 +119,27 @@ def test_nested_include_resolves_against_the_top_level_page():
     assert len(rr.check_page(rr.flatten("page.qmd", files), None)) == 1
 
 
-@pytest.mark.parametrize("follow_up", ["exr-a-part2b", "exr-a-deviation"])
+def test_nested_include_from_a_page_in_a_subdirectory():
+    # The top-level page sits in chapters/, so both its include and the nested
+    # one resolve from chapters/, not from the repository root.
+    files = {
+        "chapters/page.qmd": "{{< include _s/_unit.qmd >}}".split("\n"),
+        "chapters/_s/_unit.qmd": ("{{< include _s/_exr.qmd >}}\n"
+                                  "{{< include _s/_sol.qmd >}}\n"
+                                  "{{< include _s/_thm.qmd >}}").split("\n"),
+        "chapters/_s/_exr.qmd": div("exr-a", "Derive it.").split("\n"),
+        "chapters/_s/_sol.qmd": div("sol-a", EQ).split("\n"),
+        "chapters/_s/_thm.qmd": div("thm-a", "T.").split("\n"),
+        # Decoys at the root: reading these would hide the missing theorem.
+        "_s/_thm.qmd": div("thm-a", "T.").split("\n"),
+    }
+    assert rr.check_page(rr.flatten("chapters/page.qmd", files), None) == []
+    files["chapters/_s/_unit.qmd"] = files["chapters/_s/_unit.qmd"][:-1]
+    assert len(rr.check_page(rr.flatten("chapters/page.qmd", files), None)) == 1
+
+
+@pytest.mark.parametrize("follow_up",
+                         ["exr-a-part2b", "exr-a-deviation"])
 def test_follow_up_exercise_continues_the_group(follow_up):
     # gha#1478: a lettered part, or a slug that extends the exercise's own,
     # does not end the search for the restating theorem.
