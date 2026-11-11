@@ -65,7 +65,7 @@ def test_only_defined_terms_are_reported():
 
 
 def test_defined_stems_reads_a_title_attribute():
-    assert "gamma" in exb.defined_stems(['::: {#def-g title="Gamma family"}'])
+    assert exb.defined_stems(['::: {#def-g title="Gamma family"}']) == {"gamma family"}
 
 
 def test_a_plural_title_word_matches_its_singular_in_the_body():
@@ -155,7 +155,7 @@ def test_corpus_reads_tracked_files_and_is_empty_without_defs(tmp_path, monkeypa
     (tmp_path / "a.qmd").write_text("::: {#def-g}\n#### Gamma kernel\n:::\n")
     (tmp_path / "b.qmd").write_text("Nothing defined here.\n")
     subprocess.run(["git", "add", "a.qmd", "b.qmd"], check=True)
-    assert exb.corpus(["*.qmd"])[0] == {"gamma", "kerne"}
+    assert exb.corpus(["*.qmd"])[0] == {"gamma kernel"}
     assert exb.corpus(["b.qmd"])[0] == set()
 
 
@@ -173,7 +173,6 @@ def test_main_notes_when_no_definitions_exist(tmp_path, monkeypatch, capsys):
 # False-positive classes found by the whole-tree runs on lds, mds, pds, sds
 # and psw (gha#1481). Each case passes only through the rule named.
 
-
 def defs(*titles):
     lines = []
     for i, t in enumerate(titles):
@@ -184,6 +183,23 @@ def defs(*titles):
 def found_with(text, defined):
     lines = text.split("\n")
     return [f.missing for f in exb.exercises(lines, defined, exb.div_texts(lines))]
+
+
+def test_a_macro_says_the_title_word():
+    d = defs("Gradient")
+    assert found_with(exercise("The gradient", "Find $\\grad f$."), d) == []
+    assert found_with(exercise("The gradient", "Find $f'$."), d) == [["gradient"]]
+
+
+def test_a_short_macro_says_its_listed_word():
+    d = defs("Expectation")
+    assert found_with(exercise("An expectation", "Find $\\E{X}$."), d) == []
+
+
+def test_text_inside_math_counts_as_body_text():
+    d = defs("Softmax")
+    body = "Find $\\operatorname{softmax}(z)$."
+    assert found_with(exercise("The softmax", body), d) == []
 
 
 def test_a_cited_exercise_supplies_background_transitively():
@@ -214,6 +230,22 @@ def test_a_solution_counts_only_when_cited():
     cited = exercise("The kernel", "Use @sol-k.") + "\n" + sol
     assert found_with(uncited, d) == [["kernel"]]
     assert found_with(cited, d) == []
+
+
+def test_only_a_whole_defined_phrase_is_judged():
+    d = defs("Kernel trick")
+    assert found_with(exercise("A tricky kernel", "Do it."), d) == []
+    assert found_with(exercise("The kernel trick", "Do it."), d) == [["kernel", "trick"]]
+
+
+def test_a_title_naming_aliases_defines_each():
+    d = defs("Gradient (also called the del)")
+    assert {"gradient", "del"} <= d
+
+
+def test_expand_is_a_task_verb():
+    d = defs("Expand")
+    assert found_with(exercise("Expand it", "Do it."), d) == []
 
 
 def test_a_cited_exercise_lends_its_text_but_not_its_solution():

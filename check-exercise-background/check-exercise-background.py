@@ -11,22 +11,32 @@ only the first step, naming the object: it cannot tell whether the body
 links or explains it, so a pass does not mean the background is adequate.
 
 What is flagged: an exercise div (id ``exr-...``) with a heading title or a
-``title="..."`` attribute in which some content word does not occur in the
-body. The body excludes nested solution divs (``#sol-``, ``.sol``,
-``.solution``, ``.answer``), so a solution cannot hide a missing word. The
-body also takes in the text of every div it cites or links (``@exr-``,
-``@def-``, ``@thm-``, ``@sol-``, ``#def-...`` and the rest), followed
-transitively, since citing is how a body gives background (gha#1481); a cited
+``title="..."`` attribute that names a defined term (a phrase from some
+``#def-`` title in the scanned files) whose words the body never uses. Only a
+run of title words that matches a whole defined phrase is judged, so "times"
+is not read as part of "time series". A title naming aliases ("Gradient (also
+called del)") defines each one.
+
+What counts as the body (gha#1481): the exercise's own text without nested
+solution divs (``#sol-``, ``.sol``, ``.solution``, ``.answer``), plus the
+text of every div it cites or links (``@exr-``, ``@def-``, ``@thm-``,
+``@sol-``, ``#def-...`` and the rest), followed transitively. A cited
 exercise lends its text but not its solutions. An exercise that cites an
-``exr-`` the scanned files do not hold is skipped. A word counts as present
-when another word in the body shares its first five letters, so "Maximizing"
-matches "maximum". Generic task verbs (find, compute, check, classify, ...)
-and ordinary connecting words are never reported. Math in the title, code
+``exr-`` the scanned files do not hold is skipped, since its background is
+elsewhere. A part that builds on an earlier exercise ("Use the setup of
+@exr-...") is skipped too. A math macro says the word its name begins
+(``\grad`` says gradient), short macros say the words ``MACRO_WORDS`` lists
+(``\E`` says expected), and words inside ``\text{}``, ``\operatorname{}`` and
+``\mathrm{}`` count as body words.
+
+A word counts as present when another word in the body shares its first
+five letters, so "Maximizing" matches "maximum". Generic task verbs (find,
+compute, expand, classify, ...) are never reported. Math in the title, code
 fences and HTML comments are ignored.
 
-This is a heuristic. A title word that the body expresses with a synonym is
-reported too, which is why the check warns by default. Say the word in the
-body, with its link, or reword the title.
+This is a heuristic. A title word that the body expresses only with a
+synonym or with notation is reported too, which is why the check warns by
+default. Say the word in the body, with its link, or reword the title.
 
 Diff-scoped like check-bare-yes-no: a finding is reported only when the diff
 adds a line of the exercise, an untouched exercise keeps its form, and with no
@@ -63,6 +73,18 @@ CONTINUATION_RE = re.compile(r"\b(?:setup|set-up|situation|model|data) of @exr-|
 # body gives the background a title names.
 REF_RE = re.compile(r"(?:@|#)(exr-[\w-]*\w)|(?:@|#)((?:thm|lem|prp|cor|exm|def|sol)-[\w-]*\w)")
 ID_RE = re.compile(r"#((?:exr|thm|lem|prp|cor|exm|def|sol)-[\w-]*\w)")
+MACRO_RE = re.compile(r"\\([A-Za-z]+)")
+# Short macros whose name is not a prefix of the word they print (gha#1481).
+MACRO_WORDS = {
+    "e": "expected expectation", "ep": "expected expectation",
+    "pr": "probability", "prf": "probability", "hpr": "probability",
+    "p": "probability", "sqf": "squared square", "ndist": "normal gaussian",
+    "dprod": "dot product", "tprod": "product", "deriv": "derivative",
+    "derivf": "derivative partial", "dif": "derivative", "difs": "derivative",
+    "sigmoid": "logistic",
+}
+# Words a math span prints as text, such as \operatorname{softmax}.
+TEXT_ARG_RE = re.compile(r"\\(?:text|textrm|textit|operatorname|mathrm)\{([^{}]*)\}")
 SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
 ATTR_TITLE_RE = re.compile(r'title="([^"]*)"')
 TITLE_RE = re.compile(r"^#{1,6}\s+(.*?)\s*(?:\{[^}]*\})?\s*$")
@@ -79,7 +101,7 @@ GENERIC = frozenset("""
     ask assess based before below between both calculate change check choose
     classify compare compute conclude confirm connect consider construct
     count decide define demonstrate derive describe determine differentiate
-    does each estimate evaluate every example exercise explain express
+    does each estimate evaluate every example exercise expand explain express
     extend find first from give given having how identify implement
     include interpret into justify list make many match more most name
     need other over part plot predict prove read recognize relate rewrite
@@ -112,8 +134,39 @@ def _stems(words: List[str]) -> Set[str]:
     return {w[:STEM] for w in words if len(w) >= 3}
 
 
+def _singular(word: str) -> str:
+    return word[:-1] if word.endswith("s") and not word.endswith("ss") else word
+
+
+PHRASE_SPLIT_RE = re.compile(r"[(),;:/]|\bor\b|\balso\b|\bcalled\b|\bknown as\b")
+MAX_PHRASE = 6
+ARTICLES = {"a", "an", "the"}
+
+
+def _phrases(title: str) -> Set[str]:
+    """The defined terms a ``#def-`` title names, each as singular words.
+
+    A title such as "Gradient (also called del)" names two terms, so it is
+    split at parentheses, commas, "or" and "called", and a leading article
+    is dropped.
+    """
+    out: Set[str] = set()
+    for part in PHRASE_SPLIT_RE.split(title):
+        words = [_singular(w) for w in _words(part)]
+        while words and words[0] in ARTICLES:
+            words = words[1:]
+        if 0 < len(words) <= MAX_PHRASE:
+            out.add(" ".join(words))
+    return out
+
+
 def defined_stems(lines: List[str]) -> Set[str]:
-    """Stems of the words in the titles of the ``#def-`` divs in ``lines``."""
+    """The terms the ``#def-`` divs in ``lines`` define, as phrases.
+
+    A title word is judged only where the exercise title names a whole defined
+    term (gha#1481): matched word by word, "times" passed as part of "time
+    series", "point" of "critical point" and "weigh" of "weight".
+    """
     stems: Set[str] = set()
     for idx, raw in enumerate(lines):
         dm = DIV_RE.match(raw)
@@ -121,14 +174,32 @@ def defined_stems(lines: List[str]) -> Set[str]:
             continue
         attr_title = ATTR_TITLE_RE.search(dm.group(2))
         if attr_title:
-            stems |= _stems(_words(attr_title.group(1)))
+            stems |= _phrases(attr_title.group(1))
             continue
         for follow in lines[idx + 1:idx + 4]:
             tm = TITLE_RE.match(follow)
             if tm:
-                stems |= _stems(_words(tm.group(1)))
+                stems |= _phrases(tm.group(1))
                 break
     return stems
+
+
+def macro_words(body: str) -> List[str]:
+    """Words that the math macros in ``body`` print, for matching a title.
+
+    A macro counts as the word its name begins: ``\\grad`` says gradient and
+    ``\\noise`` says noise. Names shorter than three letters only count
+    through ``MACRO_WORDS``.
+    """
+    out: List[str] = []
+    for arg in TEXT_ARG_RE.findall(body):
+        out.extend(w.lower() for w in WORD_RE.findall(arg.lower()))
+    for name in MACRO_RE.findall(body):
+        low = name.lower()
+        out.extend(MACRO_WORDS.get(low, "").split())
+        if len(low) >= 3:
+            out.append(low)
+    return out
 
 
 def missing_words(title: str, body: str,
@@ -140,14 +211,26 @@ def missing_words(title: str, body: str,
     of technical terms, and an ordinary word needs none.
     """
     present = _stems(_words(body))
+    macros = macro_words(body)
+    words = _words(title)
+    named = set(range(len(words)))
+    if defined is not None:
+        singular = [_singular(w) for w in words]
+        named = set()
+        for i in range(len(words)):
+            for n in range(1, MAX_PHRASE + 1):
+                if i + n <= len(words) and " ".join(singular[i:i + n]) in defined:
+                    named.update(range(i, i + n))
     out: List[str] = []
-    for word in _words(title):
+    for idx, word in enumerate(words):
         if len(word) < 4 or word[:STEM] in GENERIC_STEMS:
             continue
-        if defined is not None and word[:STEM] not in defined:
+        if idx not in named:
             continue
         singular = word[:-1] if word.endswith("s") else word
         if word[:STEM] in present or singular[:STEM] in present or word in out:
+            continue
+        if any(word.startswith(m[:STEM]) for m in macros):
             continue
         out.append(word)
     return out
