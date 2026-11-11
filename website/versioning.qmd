@@ -83,7 +83,7 @@ only ever shipped at
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`report-main-failure.yml`,
+`report-main-failure.yml`, `triage-backlog.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml`
 only ever shipped at
@@ -267,7 +267,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-typed-output.yml`,
 `cleanup-pr-previews.yml`,
 `opposition-research.yml`,
-`report-main-failure.yml`,
+`report-main-failure.yml`, `triage-backlog.yml`,
 `sync-shared-fragments.yml`,
 `student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
 `update-snapshots.yml` at

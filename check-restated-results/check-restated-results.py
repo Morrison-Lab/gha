@@ -18,7 +18,8 @@ A ``#sol-`` div is *a derivation* when
 The check follows ``{{< include ... >}}`` lines, so a page is read in the order a
 reader sees it. After a derivation solution, a theorem-type div has to appear
 before the next exercise of a different group (a group is the exercise slug
-with a trailing ``-partK`` removed). The check is a heuristic: it is
+with a trailing ``-partK`` or ``-partKb`` removed, and an exercise whose slug
+extends the group's continues it). The check is a heuristic: it is
 warn-only by default, and ``<!-- restated-ok: reason -->`` in the solution
 exempts it.
 
@@ -75,7 +76,7 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ID_RE = re.compile(r"#((?:exr|sol|thm|lem|cor|prp)-[A-Za-z0-9_-]+)")
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
-PART_RE = re.compile(r"-part\d+$")
+PART_RE = re.compile(r"-part\d+[a-z]?$", re.IGNORECASE)
 HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s")
 ALLOW_RE = re.compile(r"<!--\s*restated-ok\b", re.IGNORECASE)
 COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
@@ -102,8 +103,39 @@ class Div(NamedTuple):
 Stream = List[Tuple[str, int, str]]  # (path, 1-based line, text)
 
 
-def flatten(path: str, files: Dict[str, List[str]], seen: Tuple[str, ...] = ()) -> Stream:
-    """The lines of ``path`` with each include expanded in place."""
+def resolve_include(target: str, top: str, files: Dict[str, List[str]]) -> Optional[str]:
+    """The tracked path an include names, or None when it names no file read.
+
+    Quarto resolves every include, nested ones too, from the top-level page's
+    directory (measured with Quarto 1.10: a nested include relative to the
+    including subfile fails with "could not find file"), and a leading ``/``
+    from the project root.
+    The path is also tried through the file system, so an include that passes
+    through a symlink, such as sds's ``sds -> .``, reaches the tracked file
+    behind it (gha#1478).
+    """
+    if target.startswith("/"):
+        cand = target.lstrip("/")
+    else:
+        cand = posixpath.join(posixpath.dirname(top), target)
+    cand = posixpath.normpath(cand)
+    if cand in files:
+        return cand
+    real = os.path.relpath(os.path.realpath(cand), os.path.realpath("."))
+    real = real.replace(os.sep, "/")
+    return real if real in files else None
+
+
+def flatten(path: str, files: Dict[str, List[str]], seen: Tuple[str, ...] = (),
+            top: Optional[str] = None, reached: Optional[Set[str]] = None) -> Stream:
+    """The lines of ``path`` with each include expanded in place.
+
+    ``reached`` collects every file an include names, expanded or not: a wrapper
+    that emits no line of its own, and the target of a commented-out include
+    (an outtake no page renders), are still subfiles rather than pages.
+    """
+    top = path if top is None else top
+    reached = set() if reached is None else reached
     out: Stream = []
     fence: Optional[Tuple[str, int]] = None
     for n, raw in enumerate(files.get(path, []), 1):
@@ -118,11 +150,14 @@ def flatten(path: str, files: Dict[str, List[str]], seen: Tuple[str, ...] = ()) 
             fence = (m.group(1)[0], len(m.group(1)))
             out.append((path, n, raw))
             continue
-        inc = INCLUDE_RE.search(raw) if not raw.lstrip().startswith("<!--") else None
+        inc = INCLUDE_RE.search(raw)
         if inc:
-            target = posixpath.normpath(posixpath.join(posixpath.dirname(path), inc.group(1)))
-            if target in files and target not in seen:
-                out.extend(flatten(target, files, seen + (path,)))
+            target = resolve_include(inc.group(1), top, files)
+            if target is not None:
+                reached.add(target)
+            if (target is not None and target != path and target not in seen
+                    and not raw.lstrip().startswith("<!--")):
+                out.extend(flatten(target, files, seen + (path,), top, reached))
                 continue
         out.append((path, n, raw))
     return out
@@ -185,6 +220,15 @@ def slug(ident: str) -> str:
 
 def group_of(ident: str) -> str:
     return PART_RE.sub("", slug(ident))
+
+
+def same_group(other: str, group: str) -> bool:
+    """Whether an exercise continues a group, as ``a-deviation`` continues ``a``.
+
+    A follow-up exercise often extends the slug it builds on, and the theorem
+    that restates the result may follow the follow-up (gha#1478).
+    """
+    return other == group or other.startswith(group + "-")
 
 
 def is_derivation(sol: Div, exr: Div) -> bool:
@@ -274,7 +318,7 @@ def check_page(stream: Stream, touched: Optional[Dict[str, Set[int]]]) -> List[F
                 restated = True
                 findings.extend(check_proof(stream, nxt, touched))
                 break
-            if kind == "exr" and group_of(nxt.ident) != group:
+            if kind == "exr" and not same_group(group_of(nxt.ident), group):
                 break
         if not restated and hit(d, exr):
             path, line, _ = stream[d.start]
@@ -383,16 +427,28 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         content = _read_lines(rel)
         if content is not None:
             files[rel] = content
-    included: Set[str] = set()
-    for rel, lines in files.items():
-        for raw in lines:
-            for inc in INCLUDE_RE.findall(raw):
-                included.add(posixpath.normpath(posixpath.join(posixpath.dirname(rel), inc)))
-    findings: Set[Finding] = set()
+    streams: Dict[str, Stream] = {}
+    reach: Dict[str, Set[str]] = {}
     for rel in files:
-        if rel not in included:
-            findings.update(check_page(flatten(rel, files), touched))
+        reached: Set[str] = set()
+        streams[rel] = flatten(rel, files, reached=reached)
+        reach[rel] = reached - {rel}
+    findings: Set[Finding] = set()
+    for rel, stream in streams.items():
+        if not is_included(rel, reach):
+            findings.update(check_page(stream, touched))
     return Report(sorted(findings), False)
+
+
+def is_included(rel: str, reach: Dict[str, Set[str]]) -> bool:
+    """Whether another page reads ``rel`` as part of itself, so it is no page.
+
+    A file is a subfile when some page reaches it through its includes,
+    directly or nested, and it does not reach that page back: two files that
+    include each other (a cycle Quarto cannot render) are both still checked.
+    """
+    return any(rel in seen and other not in reach[rel]
+               for other, seen in reach.items() if other != rel)
 
 
 def main() -> int:

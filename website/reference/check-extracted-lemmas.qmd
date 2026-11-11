@@ -2,7 +2,7 @@
 title: "check-extracted-lemmas.yml"
 ---
 
-Diff-scoped, warn-only heuristic check for the lab's rule (Ezra, 2026-10-29)
+Diff-scoped heuristic check for the lab's rule (Ezra, 2026-10-29)
 to extract a lemma wherever feasible:
 a general fact that does not depend on its setting
 goes in its own `#lem-` div, on the site that owns the topic,
@@ -31,7 +31,7 @@ A body is checked when the pull request adds a line inside it.
 With no base to diff against,
 the check skips instead of scanning the whole tree,
 so existing content is fixed when someone edits it anyway.
-It warns by default; `fail: true` blocks.
+It blocks by default; `fail: false` only warns.
 
 ## Inputs
 
@@ -39,7 +39,7 @@ It warns by default; `fail: true` blocks.
 | --- | --- | --- |
 | `globs` | `*.qmd` | Git pathspecs of tracked files to check (recursive) |
 | `paths-ignore` | none | Comma or newline separated globs to skip |
-| `fail` | `false` | Fail on a finding; `false` warns |
+| `fail` | `true` | Fail on a finding; `false` warns |
 | `whole-tree` | `false` | Check every body, to measure a corpus |
 | `python-version` | `3.x` | Python version |
 | `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; a self-hosted label only for a private repository |

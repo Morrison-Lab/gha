@@ -109,6 +109,10 @@ already include the right `permissions:` blocks; copy them as-is.
 - `report-main-failure` re-runs an infrastructure failure once and otherwise
   files or updates the issue tracking a failing workflow, so grant
   `issues: write` and `actions: write` on the reporting job -- and nothing else.
+- `triage-backlog` adds priority labels to open issues, so grant
+  `issues: write`.
+  A dry run needs the grant too, because the job declares it.
+  It performs no checkout, so it needs no `contents` grant.
 - `claude` pushes branches, opens PRs, and dispatches the review workflow, so
   grant `contents: write`, `pull-requests: write`, `issues: write`,
   `id-token: write`, `actions: write`, and add either the

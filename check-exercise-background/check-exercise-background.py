@@ -276,13 +276,14 @@ def div_texts(lines: List[str]) -> Dict[str, str]:
     return texts
 
 
-def background(body: str, index: Dict[str, str]) -> Optional[str]:
+def background(body: str, index: Dict[str, str],
+               own: Optional[str] = None) -> Optional[str]:
     """The text of the divs ``body`` builds on, followed transitively.
 
     Returns None when ``body`` cites an exercise ``index`` does not hold:
     its background is elsewhere, so no title word can be judged missing.
     """
-    seen: Set[str] = set()
+    seen: Set[str] = {own} if own else set()
     parts: List[str] = []
     todo = [body]
     while todo:
@@ -332,9 +333,11 @@ def exercises(lines: List[str], defined: Optional[Set[str]] = None,
                 attrs = dm.group(2)
                 if cur is None and EXR_RE.search(attrs):
                     attr_title = ATTR_TITLE_RE.search(attrs)
+                    own_id = re.search(r"#(exr-[\w-]+)", attrs)
                     cur = {"depth": depth, "start": lineno, "skip": None,
                            "title": attr_title.group(1) if attr_title else None,
-                           "title_line": lineno, "body": []}
+                           "title_line": lineno, "body": [],
+                           "id": own_id.group(1) if own_id else None}
                 elif cur is not None:
                     if cur["skip"] is None and SOL_RE.search(attrs):
                         cur["skip"] = depth
@@ -346,7 +349,7 @@ def exercises(lines: List[str], defined: Optional[Set[str]] = None,
                 if cur is not None and depth == cur["depth"]:
                     missing = []
                     body = "\n".join(cur["body"])
-                    extra = background(body, index)
+                    extra = background(body, index, cur["id"])
                     if (cur["title"] and extra is not None
                             and not CONTINUATION_RE.search(body)):
                         missing = missing_words(cur["title"], body + "\n" + extra,
