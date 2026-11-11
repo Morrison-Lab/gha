@@ -22,11 +22,15 @@ from typing import Dict, List, Optional, Set, Tuple
 # Settings a caller's git config could hold that change what ``parse_diff``
 # reads: ``diff.mnemonicPrefix`` prints ``w/`` for ``b/``, so every touched file
 # reads as missing (gha#1355), and ``diff.noprefix`` drops the prefix, so a top
-# directory named ``b`` would be stripped.  Pinned here, they hold for every
-# ``git diff`` a check runs through ``run_git``.
+# directory named ``b`` would be stripped.  ``diff.srcPrefix`` and
+# ``diff.dstPrefix`` (git 2.45) set the prefixes outright; an older git ignores
+# them.  Pinned here, they hold for every ``git diff`` a check runs through
+# ``run_git``.
 _GIT_CONFIG = ["-c", "core.quotepath=false",
                "-c", "diff.mnemonicPrefix=false",
-               "-c", "diff.noprefix=false"]
+               "-c", "diff.noprefix=false",
+               "-c", "diff.srcPrefix=a/",
+               "-c", "diff.dstPrefix=b/"]
 
 
 def run_git(args: List[str]) -> Optional[str]:
@@ -122,7 +126,8 @@ def parse_renames(status: str) -> List[Tuple[str, str]]:
     for line in status.splitlines():
         parts = line.split("\t")
         if len(parts) == 3 and parts[0].startswith("R"):
-            pairs.append((parts[1], parts[2]))
+            pairs.append((unquote_git_path(parts[1]),
+                          unquote_git_path(parts[2])))
     return pairs
 
 

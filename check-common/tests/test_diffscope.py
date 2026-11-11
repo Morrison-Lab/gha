@@ -119,3 +119,11 @@ def test_run_git_ignores_prefix_settings(tmp_path, monkeypatch):
         monkeypatch.setenv("GIT_CONFIG_PARAMETERS", setting)
         added, _ = diffscope.parse_diff(diffscope.run_git(["diff", "-U0", "HEAD~1"]))
         assert sorted(added) == ["b/plain.qmd", 'b/q"u.qmd'], setting
+
+
+def test_parse_renames_reads_quoted_paths_from_git(tmp_path, monkeypatch):
+    _two_file_commit(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "mv", 'b/q"u.qmd', 'b/r"e.qmd'], check=True)
+    status = diffscope.run_git(["diff", "--name-status", "-M", "--cached", "HEAD"])
+    assert diffscope.parse_renames(status) == [('b/q"u.qmd', 'b/r"e.qmd')]
