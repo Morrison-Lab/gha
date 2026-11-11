@@ -183,6 +183,27 @@ def test_non_prose_is_skipped(body):
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        "Here $risk = `r 0.5`$ holds.\n",
+        "Here $`r 0.5` = risk$ holds.\n",
+    ],
+)
+def test_inline_r_next_to_a_math_delimiter_keeps_the_math_masked(body):
+    # gha#1143: blanking the code span with spaces left whitespace at the
+    # `$`, so the math span no longer matched and its contents read as prose.
+    page = "::: {#exm-a}\n\n" + body + "\n:::\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_inline_code_outside_math_is_still_blank():
+    masked = ctl.mask_inline("A `risk` and $x$ here.")
+    assert "risk" not in masked
+    assert "\0" not in masked
+    assert len(masked) == len("A `risk` and $x$ here.")
+
+
 def test_bare_allow_is_flagged_but_still_suppresses():
     page = "::: {#exm-a}\n\nThe risk is large. <!-- check-term-links: allow -->\n\n:::\n"
     assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("bare-allow", "")]

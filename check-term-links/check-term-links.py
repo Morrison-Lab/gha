@@ -261,9 +261,18 @@ def mask_inline(text: str) -> str:
     def blank(m: "re.Match[str]") -> str:
         return re.sub(r"[^\n]", " ", m.group(0))
 
-    for rx in (COMMENT_RE, DISPLAY_MATH_RE, INLINE_CODE_RE, INLINE_MATH_RE,
-               SHORTCODE_RE, IMAGE_RE, URL_RE):
+    def hold(m: "re.Match[str]") -> str:
+        return re.sub(r"[^\n]", "\0", m.group(0))
+
+    for rx in (COMMENT_RE, DISPLAY_MATH_RE):
         text = rx.sub(blank, text)
+    # Inline code is held as NUL, not spaces, until the math is masked:
+    # `$x = `r 1`$` would otherwise leave a space before the closing `$`,
+    # which `INLINE_MATH_RE` refuses, so the math would read as prose (gha#1143).
+    text = INLINE_CODE_RE.sub(hold, text)
+    for rx in (INLINE_MATH_RE, SHORTCODE_RE, IMAGE_RE, URL_RE):
+        text = rx.sub(blank, text)
+    text = text.replace("\0", " ")
     # `ATTR_RE` last: `{...}` after a link or a header is markup, never prose.
     return ATTR_RE.sub(blank, text)
 
