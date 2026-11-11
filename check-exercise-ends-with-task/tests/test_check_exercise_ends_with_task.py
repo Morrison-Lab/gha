@@ -132,6 +132,11 @@ def test_a_sentence_continued_past_a_display_is_judged_whole(body):
     "Show that\n\n$$\nx = 1,\n$$\n\n- a list item\n\nwhere $x$ is a number.",
     # So does a block between the paragraph and the display.
     "Show that $x = 1$.\n\n- a list item\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # A solution or callout div is not judged, but it still splits the sentence.
+    "Show that\n\n$$\nx = 1,\n$$\n\n::: {.sol}\nAns.\n:::\n\nwhere $x$ is a number.",
+    "Show that\n\n::: {.callout-tip}\nA hint.\n:::\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # An indented line under a list item belongs to the list, not to a paragraph.
+    "Some text.\n\n- an item\n  Show that\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
 ])
 def test_a_new_sentence_after_a_display_is_judged_alone(body):
     assert reasons(exercise(body)) == ["its last paragraph holds no question or instruction"]

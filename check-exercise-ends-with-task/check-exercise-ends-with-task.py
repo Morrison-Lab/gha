@@ -55,6 +55,10 @@ TABLE_RE = re.compile(r"^\s*\|")
 SHORTCODE_RE = re.compile(r"^\s*\{\{<")
 # A paragraph that opens with a lowercase word continues the sentence a display interrupted.
 CONTINUATION_RE = re.compile(r"^[*_]*[a-z]")
+# Marks a skipped block (a solution or callout div): it adds no block but ends the paragraph
+# before it, so the paragraph after it cannot continue that one's sentence.
+BREAK = "\0\0"
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 NEUTRAL_RE = re.compile(r"^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|>)")
 
 
@@ -99,8 +103,22 @@ def blocks_of(body: List[str]) -> List[tuple]:
             adjacent = True
 
     in_math = False
+    in_list = False  # inside a list item, whose indented lines are part of the list
     for raw in body:
         stripped = raw.strip()
+        if raw == BREAK:
+            close()
+            continues = adjacent = False
+            continue
+        if stripped and not in_math:
+            if LIST_ITEM_RE.match(raw):
+                in_list = True
+            elif in_list and raw[:1] in (" ", "\t"):
+                close()
+                continues = adjacent = False
+                continue
+            elif not stripped.startswith("$$"):
+                in_list = False
         if stripped.startswith("$$"):
             if not in_math:
                 joinable = bool(para) or adjacent
@@ -173,6 +191,7 @@ def exercises(lines: List[str]) -> List[Finding]:
                 elif cur is not None and cur["skip"] is None:
                     if eqp.SKIP_DIV_RE.search(attrs):
                         cur["skip"] = depth
+                        cur["body"].append(BREAK)  # not judged, but it still splits a sentence
                     elif LABEL_DIV_RE.search(attrs):
                         cur["skip"] = depth
                         kind = "figure" if "#fig-" in attrs else "table"
