@@ -72,7 +72,7 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   Source: psw's rule to write "Gaussian" (psw#510, gha#1570).
   This rule only warns, even with `fail` on, while it is new.
 - **Optional steps phrased as orders.**
-  A sentence that opens "In another language", "In other languages"
+  A sentence that opens "In another language", "In other languages",
   or "Optionally,", or a bare "(optional)".
   Put the condition first, as "If you use a language other than R, ...",
   and say what a reader who skips the step loses or does instead.
