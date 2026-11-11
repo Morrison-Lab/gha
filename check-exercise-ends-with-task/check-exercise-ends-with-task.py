@@ -92,7 +92,8 @@ def blocks_of(body: List[str]) -> List[tuple]:
     # A display inside a list item: a lowercase paragraph after it in the same item
     # continues the item's sentence and is judged with it. "join" appends it to the
     # paragraph before the display; "item" judges it with the text of the item's marker
-    # line, which is otherwise neutral and adds no block.
+    # line, which forms no block of its own (a list is skipped when finding the last
+    # block) but whose text is kept for this join.
     item_carry = ""
     item_text = ""  # the text of the current list item's marker line, until a paragraph closes
     item_para = False  # like adjacent, for a paragraph inside a list item

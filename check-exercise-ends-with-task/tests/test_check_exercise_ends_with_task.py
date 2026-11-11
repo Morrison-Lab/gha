@@ -176,6 +176,7 @@ def test_a_single_line_display_carries_its_follower():
     assert reasons(text) == []
 
 
-def test_a_single_line_display_follower_alone_holds_no_task():
+def test_a_follower_joined_to_a_taskless_paragraph_is_still_flagged():
+    # The follower joins "Consider $x$.", which holds no task, so the joined paragraph fails.
     text = exercise("Consider $x$.\n\n$$x = 1$$\n\nwhere $x$ is a number.")
     assert reasons(text) == ["its last paragraph holds no question or instruction"]
