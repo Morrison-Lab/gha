@@ -26,7 +26,8 @@ After a derivation solution, a theorem-type div has to appear
 before the next exercise of a different group.
 A group is the exercise slug with a trailing `-partK` or `-partKb` removed,
 and an exercise whose slug extends the group's,
-such as the slug `a-deviation` of `exr-a-deviation` after `exr-a`, continues it.
+such as `exr-a-deviation` (slug `a-deviation`) after `exr-a` (group `a`),
+continues it.
 A solution that holds `<!-- restated-ok: reason -->` is exempt.
 
 The restating theorem is also flagged
