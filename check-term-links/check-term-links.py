@@ -367,7 +367,11 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
         setext = (
             SETEXT_UNDERLINE_RE.match(line) is not None
             and bool(cur) and cur[-1][0] == idx - 1
-            and (idx < 3 or not masked[idx - 3].strip() or DIV_OPEN_RE.match(masked[idx - 3].strip()) is not None)
+            and (
+                idx < 3 or not masked[idx - 3].strip()
+                or DIV_OPEN_RE.match(masked[idx - 3].strip()) is not None
+                or HEADING_RE.match(masked[idx - 3].strip()) is not None
+            )
             and not LIST_ITEM_RE.match(cur[-1][1]) and "|" not in cur[-1][1]
         )
         if setext:

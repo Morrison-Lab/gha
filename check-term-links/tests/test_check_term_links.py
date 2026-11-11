@@ -168,6 +168,11 @@ def test_a_setext_heading_right_after_a_div_opens_is_a_heading():
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
+def test_a_setext_heading_right_after_an_atx_heading_is_a_heading():
+    page = "# One\nThe risk\n===\n\nThe [risk](#def-risk) is large.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
 def test_a_rule_after_a_blank_line_in_a_div_keeps_the_paragraph_above_it():
     page = "::: {#exm-a}\n\nThe risk is large.\n\n---\n\nText.\n\n:::\n"
     assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [3]
