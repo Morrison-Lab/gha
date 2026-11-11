@@ -204,7 +204,7 @@ A comment counts when all of these hold:
 - It carries the agent-authorship marker.
 - Its last `Reviewed-Commit:` line names the full sha of the commit
   this run reviewed.
-  That is the run's own head, not the live PR head,
+  The run's own head counts, not the live PR head,
   so re-running an older run does not accept a review of a newer head.
 - The marker and that line sit in the comment's own prose.
   Text inside a code fence, a blockquote or an indented code block
