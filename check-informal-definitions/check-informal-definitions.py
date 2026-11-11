@@ -81,12 +81,15 @@ DEFINITIONS_HEADING_TITLE_RE = re.compile(
 )
 
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
-DIV_FENCE_START = re.compile(r"^(?P<fence>:{3,})\s*(?:\{(?P<attrs>[^}]+)\})?\s*$")
+# Pandoc also accepts a bare class word after the fence ("::: proof").
+DIV_FENCE_START = re.compile(
+    r"^(?P<fence>:{3,})\s*(?:\{(?P<attrs>[^}]+)\}|(?P<bare>[A-Za-z][\w-]*))?\s*:*\s*$"
+)
 DIV_FENCE_END = re.compile(r"^(?P<fence>:{3,})\s*$")
 
 # Definition or theorem crossref prefixes: def, thm, lem, cor, prp, cnj, exr, exm, rem, sol, clm
 THEOREM_DIV_RE = re.compile(
-    r"(?:^|\s)(?:#(?:def|thm|lem|cor|prp|cnj|exr|exm|rem|sol|clm)-|\.(?:definition|theorem|lemma|corollary|proposition))\b"
+    r"(?:^|\s)(?:#(?:def|thm|lem|cor|prp|cnj|exr|exm|rem|sol|clm|prf)-|\.(?:definition|theorem|lemma|corollary|proposition|proof|sol|solution))\b"
 )
 
 # Directives
@@ -113,7 +116,22 @@ BOLD_COLON_DEF_RE = re.compile(
 )
 
 EQDEF_RE = re.compile(r"\\(?:eqdef|triangleq)\b")
+# A local abbreviation ("Let $S_n \eqdef ...$", "write $m \eqdef ...$") names a
+# quantity for one argument; it defines no term.
+LOCAL_ABBREV_RE = re.compile(
+    r"(?i)\b(?:let|write|set|put|denote|abbreviate)\s+\$[^$]*\\(?:eqdef|triangleq)\b"
+)
 IS_BEFORE_MATH_RE = re.compile(r"(?i)\b(?:is|are):\s*$")
+# "X is:" before display math names a term only when the sentence says so: a
+# bold term, or a naming verb. "The inner derivative is:" computes a value.
+NAMING_CUE_RE = re.compile(
+    r"(?i)\*\*[^*]+\*\*|\b(?:called|defined|known\s+as|termed|we\s+define)\b"
+)
+# A bold label that opens a line or list item ("- **Improvement**: ...") is a
+# label, not a term being defined.
+LEADING_LABEL_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])?\s*\*\*[^*\n]+\*\*\s*[:.]")
+# Notation, not a definition: "**Expectation** is denoted $\E{}$".
+NOTATION_VERB_RE = re.compile(r"(?i)^(?:is|are)\s+(?:denoted|written|set\s+to)\b")
 
 
 @dataclass(frozen=True)
@@ -217,9 +235,9 @@ def scan_file_lines(
         # 5. Div tracking (::: {#def-...} or :::: {#def-...})
         stripped = line.strip()
         m_div_open = DIV_FENCE_START.match(stripped)
-        if m_div_open and m_div_open.group("attrs"):
+        if m_div_open and (m_div_open.group("attrs") or m_div_open.group("bare")):
             fence = m_div_open.group("fence")
-            attrs = m_div_open.group("attrs")
+            attrs = m_div_open.group("attrs") or "." + m_div_open.group("bare")
             is_def = bool(THEOREM_DIV_RE.search(attrs))
             div_stack.append((fence, is_def))
             continue
@@ -265,6 +283,8 @@ def scan_file_lines(
 
         # Pattern 1: Bold term followed by defining language
         m_bold = BOLD_DEF_RE.search(prose_line)
+        if m_bold and NOTATION_VERB_RE.match(m_bold.group("defining")):
+            m_bold = None
         if m_bold:
             term = m_bold.group("term")
             if not is_label_or_meta(term):
@@ -282,6 +302,8 @@ def scan_file_lines(
                 continue
 
         m_colon = BOLD_COLON_DEF_RE.search(prose_line)
+        if m_colon and LEADING_LABEL_RE.match(prose_line):
+            m_colon = None
         if m_colon:
             term = m_colon.group("term")
             if not is_label_or_meta(term):
@@ -300,7 +322,7 @@ def scan_file_lines(
 
         # Pattern 2: \eqdef or \triangleq outside a def div
         if EQDEF_RE.search(prose_line):
-            if is_targeted_line:
+            if is_targeted_line and not LOCAL_ABBREV_RE.search(prose_line):
                 findings.append(
                     Finding(
                         file=path,
@@ -331,7 +353,7 @@ def scan_file_lines(
                     continue
 
         # Pattern 4: Naming sentence ending with is: or are: before display math
-        if IS_BEFORE_MATH_RE.search(prose_line):
+        if IS_BEFORE_MATH_RE.search(prose_line) and NAMING_CUE_RE.search(prose_line):
             # Look ahead for next non-blank line
             next_idx = idx
             while next_idx < len(lines):
@@ -464,6 +486,23 @@ def _is_countable_term(term: str, before: str) -> bool:
     ):
         return False
     return True
+
+
+def _term_stems(term: str) -> Set[str]:
+    """Five-letter stems of a term's words, ignoring a parenthesized gloss."""
+    words = re.findall(r"[a-z]+", re.sub(r"\([^)]*\)", " ", term.lower()))
+    return {w[:STEM_LEN] for w in words}
+
+
+def _is_variant(term: str, terms: List[str]) -> bool:
+    """Whether every word of ``term`` repeats a counted term's words.
+
+    "convergent" after "converges", "residuals" after "residual vector" and
+    "mean squared error" after "population mean squared error" are variants of
+    a term already counted, not second terms.
+    """
+    stems = _term_stems(term)
+    return bool(stems) and any(stems <= _term_stems(t) for t in terms)
 
 
 def _is_alias(context: str, terms: List[str]) -> bool:
@@ -606,6 +645,19 @@ def scan_def_div_terms(
         for m in BOLD_SPAN_RE.finditer(prose):
             term = m.group("term").strip()
             before = prose[: m.start()]
+            after = prose[m.end() :].lstrip()
+            # A paragraph or list label ("**Discrete case.**", "1. **Positivity**:")
+            # and a table cell name no term.
+            if (
+                term.endswith(".")
+                or stripped.startswith("|")
+                or (LEADING_LABEL_RE.match(prose) and m.start() == prose.find("**"))
+                or (after.startswith(":") and not before.strip())
+            ):
+                continue
+            if _is_variant(term, terms):
+                seen.add(_term_key(term))
+                continue
             if re.fullmatch(r"\s*(?:(?:the|a|an)\s*)?", before, re.I):
                 context = prev_prose.rstrip() + " " + before
             else:

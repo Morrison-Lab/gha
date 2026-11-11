@@ -71,7 +71,7 @@ def test_bold_colon_definition_flagged():
     content = [
         "## Variables",
         "",
-        "**Random variable**: a measurable function from sample space to real numbers.",
+        "We call it a **Random variable**: a measurable function from sample space to real numbers.",
     ]
     findings = scan_file_lines(Path("test.qmd"), content)
     assert len(findings) == 1
@@ -106,7 +106,7 @@ def test_naming_sentence_before_display_math_flagged():
     content = [
         "## Variance",
         "",
-        "The variance of a discrete random variable is:",
+        "The **variance** of a discrete random variable is:",
         "$$",
         "\\mathrm{Var}(X) = \\sum (x - \\mu)^2 p(x)",
         "$$",
@@ -414,3 +414,40 @@ def test_compile_ignores_and_matching():
     assert check_defs._ignored("_site/index.qmd", ignores)
     assert not check_defs._ignored("content/test-page.qmd", ignores)
     assert not check_defs._ignored("scratch-notes.qmd", ignores)
+
+
+# gha#1482: shapes that are not informal definitions.
+@pytest.mark.parametrize("content", [
+    # A bold label opening a line or list item.
+    ["**Improvement**: The citation is to a current survey."],
+    ["- **A shared axis**: the panels must line up on one scale."],
+    # A local abbreviation inside an argument.
+    ["Let $S_n \\eqdef \\sum_i X_i$ be the partial sum."],
+    # Notation, not a definition.
+    ["**Expectation** is denoted $\\E{X}$ here."],
+    # "X is:" before display math with no naming cue computes a value.
+    ["The inner derivative is:", "$$", "f'(x) = 2x", "$$"],
+])
+def test_gha1482_non_definitions_pass(content):
+    assert scan_file_lines(Path("test.qmd"), ["## S", ""] + content) == []
+
+
+def test_eqdef_inside_proof_div_passes():
+    content = ["::: {.proof}", "Then $m \\eqdef 2$ and so on.", ":::"]
+    assert scan_file_lines(Path("test.qmd"), content) == []
+
+
+def test_eqdef_outside_proof_still_flagged():
+    content = ["## S", "", "The rate $m \\eqdef 2$ is fixed."]
+    assert [f.rule for f in scan_file_lines(Path("test.qmd"), content)] == ["eqdef-outside-div"]
+
+
+def test_bare_class_proof_div_is_tracked():
+    # "::: proof" (no braces) opens a div; its closer must not pop the theorem.
+    content = [
+        "::: {#thm-a}", "Statement.", ":::", "",
+        "::: proof", "Let $k \\eqdef 2$.", ":::", "",
+        "## After", "", "The rate $m \\eqdef 2$ is fixed.",
+    ]
+    findings = scan_file_lines(Path("test.qmd"), content)
+    assert [(f.rule, f.line) for f in findings] == [("eqdef-outside-div", 11)]

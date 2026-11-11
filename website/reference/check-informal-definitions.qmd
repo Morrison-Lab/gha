@@ -20,20 +20,29 @@ The check flags:
   A bolded term followed by "is", "are", "means", "refers to",
   "is defined as", `\eqdef`, or `\triangleq`
   outside a formal `::: {#def-...}` (or sibling theorem) div.
+  A bold label that opens a line or list item ("- **Label**: ...")
+  and notation (`**X** is denoted $x$`) are not definitions.
 - **Mathematical definition operators outside def divs.**
   `\eqdef` or `\triangleq` used in inline or display math outside a def div.
+  A local abbreviation (`Let $S_n \eqdef ...$`) is not a definition,
+  and a proof or solution div (`::: proof`, `.sol`) is skipped like a theorem div.
 - **Prose paragraphs under Definitions headings.**
   Prose paragraphs or bolded terms directly under a heading titled "Definitions"
   that are not wrapped in formal def divs.
 - **Naming sentences before display math.**
   Sentences ending in "is:" or "are:"
   immediately preceding display math (`$$...$$`)
-  outside a def div.
+  outside a def div,
+  when the sentence names a term (a bold term, "called", "defined", "known as").
+  "The inner derivative is:" computes a value and is not flagged.
 - **More than one term in one def div.**
   A `::: {#def-...}` div whose body bolds more than one distinct term
   that is not introduced as an alias ("also called **x**", "or **x**").
   A repeated term, a bare abbreviation, a symbol, a gloss in parentheses
   or quotes, and bold inside a nested div are not counted.
+  Nor is a bold label (a term ending in a period, opening a list item,
+  or in a table row), or a variant of a counted term
+  ("convergent" after "converges").
   One definition per div, so each term gets its own cross-reference ID.
 
 Sections titled "Notation", "Typographic Conventions", or "Symbols" are
