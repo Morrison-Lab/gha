@@ -541,22 +541,59 @@ jobs:
           fi
 
       # Quoted-mention filtering now lives in the mention-filter job (gha#554),
-      # so this step only has to honour the dedup marker above. Keeping a
-      # single `steps.gate.outputs.skip` is what lets each of the ~27
-      # downstream steps keep one condition. An empty DEDUP_SKIP (the dedup
-      # step did not run, or failed open) must proceed.
+      # so this step honours the dedup marker above, and refuses a fork PR on
+      # a self-hosted runner (gha#1217). Keeping a single
+      # `steps.gate.outputs.skip` is what lets each of the ~27 downstream
+      # steps keep one condition. An empty DEDUP_SKIP (the dedup step did not
+      # run, or failed open) must proceed.
+      #
+      # The fork refusal: the agent job holds a write token and checks out the
+      # PR head, so on a self-hosted runner a fork PR would run fork-controlled
+      # content on a machine the lab owns. Only a trusted commenter can start
+      # this job, but the content is the fork author's. A PR whose head repo
+      # cannot be read (deleted fork) is refused too, and an API failure fails
+      # the step rather than proceeding. GitHub-hosted runners are unaffected.
       - name: Decide whether this run should proceed
         id: gate
         env:
           DEDUP_SKIP: ${{ steps.dedup.outputs.skip }}
+          RUNNER_ENVIRONMENT: ${{ runner.environment }}
+          PR_NUMBER: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number) || '' }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # fork-gate begin
           set -euo pipefail
           if [ "$DEDUP_SKIP" = "true" ]; then
             echo "Standing down: this comment was already handled by an active run."
             echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          if [ "$RUNNER_ENVIRONMENT" = "self-hosted" ] && [ -n "$PR_NUMBER" ]; then
+            if ! HEAD_REPO=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.repo.full_name // ""'); then
+              echo "::error::Could not read the head repository of PR #$PR_NUMBER, so this run cannot tell whether it is a fork PR; refusing to check it out on a self-hosted runner."
+              exit 1
+            fi
+            if [ "$HEAD_REPO" != "$REPO" ]; then
+              echo "Standing down: PR #$PR_NUMBER comes from '${HEAD_REPO:-a deleted fork}', and this job runs on a self-hosted runner (gha#1217)."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "fork_refused=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          # fork-gate end
+
+      # Say why a fork PR got no answer, since every later step is skipped.
+      - name: Explain the fork refusal
+        if: steps.gate.outputs.fork_refused == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "Claude did not run: this PR comes from a fork, and this repository runs \`claude.yml\` on a self-hosted runner, where fork content must not be checked out (Morrison-Lab/gha#1217). To have Claude work on it, push the branch to this repository and open the PR from there, or run the agent on a GitHub-hosted runner (\`runs-on: ubuntu-latest\`)."
 
       # Post a visible acknowledgment BEFORE any multi-minute setup begins, so
       # the user knows the @claude mention was received. `continue-on-error`
