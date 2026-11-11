@@ -118,6 +118,11 @@ def test_diff_scoping_and_whole_tree(tmp_path, monkeypatch):
     "where $\\bar{x}$ is the sample mean (@def-sample-mean).",
     "Show that\n$$\nx = 1,\n$$\nwhere $x$ is a number.",
     "Show that\n\n$$\na = b,\n$$\n\nand\n\n$$\nb = c,\n$$\n\nwhere $a$ is a number.",
+    # A paragraph after a list has ended can still run on past a display.
+    "Intro.\n\n- an item\n\nShow that\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # Unchanged by gha#1843: an indented paragraph inside a list item is still judged.
+    "Consider data.\n\n1. Item a.\n2. Item b.\n\n   Explain why.",
+    "Consider data.\n\n- item\n\n    Find the mean.",
 ])
 def test_a_sentence_continued_past_a_display_is_judged_whole(body):
     assert reasons(exercise(body)) == []
@@ -135,8 +140,11 @@ def test_a_sentence_continued_past_a_display_is_judged_whole(body):
     # A solution or callout div is not judged, but it still splits the sentence.
     "Show that\n\n$$\nx = 1,\n$$\n\n::: {.sol}\nAns.\n:::\n\nwhere $x$ is a number.",
     "Show that\n\n::: {.callout-tip}\nA hint.\n:::\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
-    # An indented line under a list item belongs to the list, not to a paragraph.
+    # A sentence inside a list item does not run on past a display to a later paragraph,
+    # whether its line is indented or lazy.
     "Some text.\n\n- an item\n  Show that\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    "Some text.\n\n- an item\nShow that\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    "Some text.\n\n- an item\n  Show that\n  $$\n  x = 1,\n  $$\n\nwhere $x$ is a number.",
 ])
 def test_a_new_sentence_after_a_display_is_judged_alone(body):
     assert reasons(exercise(body)) == ["its last paragraph holds no question or instruction"]

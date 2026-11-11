@@ -100,10 +100,13 @@ def blocks_of(body: List[str]) -> List[tuple]:
                 out.append(("prose", text))
             para.clear()
             continues = False
-            adjacent = True
+            adjacent = not in_list  # a list paragraph's sentence ends with its list item
 
     in_math = False
-    in_list = False  # inside a list item, whose indented lines are part of the list
+    # Inside a list item: its indented and lazy lines are judged as before, but a display
+    # there cannot carry a list paragraph's sentence on to a paragraph after the list.
+    in_list = False
+    prev_blank = True
     for raw in body:
         stripped = raw.strip()
         if raw == BREAK:
@@ -113,15 +116,12 @@ def blocks_of(body: List[str]) -> List[tuple]:
         if stripped and not in_math:
             if LIST_ITEM_RE.match(raw):
                 in_list = True
-            elif in_list and raw[:1] in (" ", "\t"):
-                close()
-                continues = adjacent = False
-                continue
-            elif not stripped.startswith("$$"):
+            elif prev_blank and raw[:1] not in (" ", "\t"):
                 in_list = False
+        prev_blank = not stripped
         if stripped.startswith("$$"):
             if not in_math:
-                joinable = bool(para) or adjacent
+                joinable = (bool(para) or adjacent) and not in_list
                 close()
                 continues = joinable
             in_math = not (in_math or (stripped.endswith("$$") and len(stripped) > 2))
