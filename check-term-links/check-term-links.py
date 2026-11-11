@@ -75,8 +75,7 @@ DEFAULT_GLOBS = "*.qmd"
 DEFAULT_PATHS_IGNORE = ""
 
 # A code fence, also inside a blockquote (`> ```` `), which CommonMark allows (gha#1905).
-FENCE_RE = re.compile(r"^\s*(?:>[ \t]?\s*)*(?P<fence>`{3,}|~{3,})")
-QUOTE_RE = re.compile(r"^\s*>")
+FENCE_RE = re.compile(r"^(?P<quote>\s*(?:>[ \t]?\s*)*)(?P<fence>`{3,}|~{3,})")
 DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>\{[^}]*\}|\S.*)?$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
@@ -276,7 +275,7 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
     opted: Set[int] = set()
     in_yaml = False
     fence = ""
-    fence_quoted = False
+    fence_depth = 0
     in_comment = False
     for idx, raw in enumerate(lines, start=1):
         if idx == 1 and raw.strip() == "---":
@@ -288,18 +287,18 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
             out.append("")
             continue
         m = FENCE_RE.match(raw)
-        quoted = QUOTE_RE.match(raw) is not None
-        if fence and fence_quoted and not quoted:
-            # A fence inside a blockquote ends with the blockquote (gha#1905).
-            fence = ""
+        depth = m.group("quote").count(">") if m else 0
         if fence:
-            if m and m.group("fence")[0] == fence[0] and len(m.group("fence")) >= len(fence):
+            # A closing fence may sit at the opener's quote depth or shallower, as Pandoc
+            # reads it, but not deeper: `> ```` inside an unquoted block is code (gha#1905).
+            if (m and m.group("fence")[0] == fence[0] and len(m.group("fence")) >= len(fence)
+                    and depth <= fence_depth):
                 fence = ""
             out.append("")
             continue
         if m and not in_comment:
             fence = m.group("fence")
-            fence_quoted = quoted
+            fence_depth = depth
             out.append("")
             continue
         if LINE_OPT_OUT_RE.search(raw):

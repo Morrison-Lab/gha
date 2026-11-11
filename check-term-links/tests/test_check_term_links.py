@@ -665,13 +665,25 @@ def test_a_code_fence_inside_a_blockquote_is_not_prose(prefix):
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
-def test_a_quoted_fence_ends_with_its_blockquote():
-    # An unclosed fence inside a blockquote ends where the blockquote does,
-    # so the prose after it is still checked.
-    page = f"> {FENCE}\n> code\n\nThe risk is large.\n"
-    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+def test_a_lazy_line_stays_inside_a_quoted_fence():
+    # Pandoc carries an unquoted line into a quoted fence as a lazy continuation,
+    # so the fence still closes at the next quoted fence and the prose after it is read.
+    page = f"> {FENCE}\n> code\nlazy\n> {FENCE}\n> The risk is prose.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [5]
 
 
 def test_a_quote_marker_inside_an_unquoted_fence_does_not_end_it():
     page = f"{FENCE}\ncode\n\nThe risk is code.\n> quoted code\n{FENCE}\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_quoted_fence_line_inside_an_unquoted_fence_does_not_close_it():
+    # Pandoc keeps `> ```` inside an unquoted block as code.
+    page = f"{FENCE}\ncode\n> {FENCE}\nThe risk is code.\n{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_an_unquoted_fence_closes_a_quoted_one():
+    # Pandoc reads a bare fence as closing a quoted one, so the next line is prose.
+    page = f"> {FENCE}\n> code\n{FENCE}\nThe risk is after.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
