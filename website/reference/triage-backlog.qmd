@@ -29,7 +29,7 @@ Run it once by hand as a dry run, and read the plan in the log.
 | `dry-run` | boolean | `true` | Print each label command without running it. A scheduled caller passes `false` to label for real. |
 | `ceiling` | string | `''` | The open-issue count to report against, as a whole number. Empty means no ceiling. A run over the ceiling still passes, with a warning. |
 | `limit` | string | `''` | The most open issues to fetch, as a whole number of 1 or more. Empty means the script's default of 1000. The run fails when the repository has this many open issues or more, because the list may be cut short. |
-| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+| `runs-on` | string | empty (`vars.CI_RUNNER` in a private repository that sets it; otherwise `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
 The workflow triages the repository that calls it.
 To triage another repository, call the composite action directly with its `repo` and `github-token` inputs.
