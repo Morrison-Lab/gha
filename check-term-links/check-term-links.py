@@ -295,8 +295,10 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
         if (fence and fence_depth and not raw[len(quote):].strip()
                 and quote.count(">") < fence_depth):
             # A line blank inside a shallower quote (a blank line, or ">" under a ">>"
-            # fence) ends the opener's blockquote, and with it the fence, which Pandoc then
-            # never reads as code; a non-blank shallower line is a lazy continuation.
+            # fence) ends the opener's blockquote, and with it the fence, so the lines after
+            # it are prose; a non-blank shallower line is a lazy continuation.
+            # Known limit: Pandoc reads an unclosed quoted fence's lines before that blank
+            # line as a paragraph, but they stay masked here, as malformed input.
             fence = ""
         if fence:
             # A closing fence may sit at the opener's quote depth or shallower, as Pandoc
