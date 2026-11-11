@@ -530,9 +530,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
-- `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
-  It imports `check-exm-figures`' figure test.
   It loads `check-one-div-per-subfile`'s git and file helpers (`_run_git`, `_ignored`, `_read_lines`, `_split_list`, `_env_flag`), so keep the two directories together and rename those helpers in both.
+- `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
+  It imports `check-exm-figures`' figure test and, through it, `check-one-div-per-subfile`'s git and file helpers, so keep the three directories together.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement (psw#426).
   A proof hidden from the slides is deliberate and is never flagged (Ezra, 2026-11-04, gha#1491).
   It loads `check-write-idiom`'s engine like `check-avoided-words`.
