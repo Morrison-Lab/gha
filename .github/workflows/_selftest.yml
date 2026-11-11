@@ -10456,3 +10456,24 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-qmd-chunks || true
           rm -rf _ci-qmd-chunks
+
+  # The triage-backlog script is vendored from Morrison-Lab/ai-config
+  # (gha#1900). Its reusable workflow comes in a later PR, so this job runs
+  # only the script's own tests.
+  triage-backlog-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run the triage-backlog tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 triage-backlog/tests/test_triage_backlog.py
