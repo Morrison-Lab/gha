@@ -2016,7 +2016,7 @@
     "href": "reference/check-proof-statements.html",
     "title": "check-proof-statements.yml",
     "section": "",
-    "text": "Diff-scoped, failing-by-default check for one of the lab’s proof rules (psw#426, gha#1351).",
+    "text": "Diff-scoped, failing-by-default check for two of the lab’s proof rules (psw#426, gha#1351).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2028,7 +2028,7 @@
     "href": "reference/check-proof-statements.html#rules",
     "title": "check-proof-statements.yml",
     "section": "Rules",
-    "text": "Rules\n\nReasoning in a theorem statement. “so”, “because”, “hence”, “therefore”, “thus” or “since”, or an aside such as “without loss of generality”, “moreover” or “furthermore”, on an added line inside a #thm-, #lem-, #cor- or #prp- div, outside the proof the div holds. A statement gives the result and its hypotheses; the proof gives the reasoning. Heuristic: “so that” and “so-called” pass, and words inside math are not read.\n\nThe check does not read a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, &lt;!-- check-proof-statements: allow --&gt;.",
+    "text": "Rules\n\nProof hidden from slides. A proof div inside ::: {.content-hidden when-format=\"revealjs\"} (or .content-visible unless-format=\"revealjs\") is flagged on the proof’s opening line. An include of a _prf- or _proof- subfile there is flagged on the include line. Every proof is shown on slides. The finding is reported when the pull request adds any line to the file, not only the proof’s own lines.\nReasoning in a theorem statement. “so”, “because”, “hence”, “therefore”, “thus” or “since”, or an aside such as “without loss of generality”, “moreover” or “furthermore”, on an added line inside a #thm-, #lem-, #cor- or #prp- div, outside the proof the div holds. A statement gives the result and its hypotheses; the proof gives the reasoning. Heuristic: “so that” and “so-called” pass, and words inside math are not read.\n\nThe check does not read a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, &lt;!-- check-proof-statements: allow --&gt;.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2052,7 +2052,7 @@
     "href": "reference/check-proof-statements.html#inputs",
     "title": "check-proof-statements.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when reasoning is found in a theorem statement. Set false for warnings only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when a hidden proof or statement reasoning is found. Set false for warnings only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
       "Reference",
