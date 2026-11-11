@@ -5726,6 +5726,9 @@ jobs:
       - name: Run mention-filter job-split tests
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-mention-filter-tests.py
+      - name: Run claude.yml fork-gate tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-fork-gate-tests.sh
       - name: Run find-fallback-verdict tests
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-find-fallback-verdict-tests.py
