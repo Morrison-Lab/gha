@@ -543,7 +543,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It imports `check-exm-figures`' figure test.
   That script loads `check-common` and `check-one-div-per-subfile`, so keep the four directories together.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426):
-  a proof inside a `content-hidden` wrapper for `revealjs`, in any file a PR touches,
+  a proof inside a `content-hidden` wrapper for `revealjs`, in any file a PR adds a line to,
   and reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement.
   gha#1491 removed the hidden-proof rule on a paraphrase that Ezra did not confirm (2026-11-11), and psw says to show every proof on the slides.
   It loads `check-write-idiom`'s engine like `check-avoided-words`.
