@@ -3,8 +3,8 @@ title: "check-term-links.yml"
 ---
 
 Diff-scoped, blocking check that every technical term is linked to its
-definition the first time it appears in each div, or in each paragraph outside
-a div.
+definition the first time it appears in each div, or in the prose outside divs
+between one heading and the next.
 This is the lab's linking rule
 ([ai-config#4553](https://github.com/Morrison-Lab/ai-config/pull/4553),
 [psw#223](https://github.com/Morrison-Lab/psw/pull/223),
@@ -43,12 +43,16 @@ a label such as "note" or "example".
 
 - **`unlinked-first-use`.**
   The first occurrence of a known term in a passage is plain text.
-  A passage is one div (between its fences), or one paragraph outside divs.
+  A passage is one div (between its fences),
+  or the prose outside divs between one heading and the next
+  ([gha#1283](https://github.com/Morrison-Lab/gha/issues/1283)).
+  A div inside a section has its own scope,
+  and does not split the prose around it.
   An occurrence inside a link, or followed by `(@def-...)`, is linked.
   A term's own definition div is skipped,
   and so is any other div in the file that holds that definition
   (such as a source callout).
-  A paragraph outside divs is still checked.
+  Prose outside divs is still checked.
   The plural of a term counts as the term, and the longest term wins, so
   "test set" is not also a use of "set".
 - **`partial-link`.**
@@ -113,7 +117,7 @@ jobs:
 | `globs` | `*.qmd` | Space-separated git pathspecs of files to learn from and check |
 | `paths-ignore` | `''` | Comma/newline-separated globs to skip (`*`, `?`, `**`) |
 | `terms-file` | `''` | File of extra terms, one per line |
-| `terms-from` | `''` | Space-separated `owner/repo` prerequisite sites (such as mds, pds, sds), cloned shallowly; their definitions make their terms known. A private one needs the optional `WORKFLOW_TOKEN` secret. Empty means the repository's predecessors in the course sequence (mds, pds, sds, lds), and a defaulted site that cannot be cloned only warns. `none` turns the default off |
+| `terms-from` | `''` | Space-separated `owner/repo` prerequisite sites (such as mds, pds, and sds), cloned shallowly; their definitions make their terms known. A private one needs the optional `WORKFLOW_TOKEN` secret. Empty means the repository's predecessors in the course sequence (mds, pds, sds, and lds; dds and mlg each default to all four), and a defaulted site that cannot be cloned only warns. `none` turns the default off |
 | `allow-file` | `''` | File of terms to leave alone, one per line |
 | `whole-tree` | `false` | Report every finding, not only those on added lines |
 | `fail` | `true` | Fail the job on a finding (`false`: warning annotations only) |
