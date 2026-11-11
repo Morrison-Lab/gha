@@ -648,3 +648,30 @@ def test_common_word_from_def_title_is_still_a_term():
 def test_uncommon_one_word_link_term_is_still_learned():
     masked, _ = ctl.preprocess("See the [estimator](https://x.io/m.html#def-estimator).\n".splitlines())
     assert "estimator" in ctl.harvest_terms(masked, set())
+
+
+FENCE = "`" * 3
+
+
+def test_a_code_fence_is_not_prose():
+    page = f"{FENCE}\nThe risk is code.\n{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+@pytest.mark.parametrize("prefix", ["> ", ">", "> > ", "  > "])
+def test_a_code_fence_inside_a_blockquote_is_not_prose(prefix):
+    # gha#1905: the quote marker hid the fence, so the code was read as prose.
+    page = f"{prefix}{FENCE}\n{prefix}The risk is code.\n{prefix}{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_quoted_fence_ends_with_its_blockquote():
+    # An unclosed fence inside a blockquote ends where the blockquote does,
+    # so the prose after it is still checked.
+    page = f"> {FENCE}\n> code\n\nThe risk is large.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
+
+
+def test_a_quote_marker_inside_an_unquoted_fence_does_not_end_it():
+    page = f"{FENCE}\ncode\n\nThe risk is code.\n> quoted code\n{FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
