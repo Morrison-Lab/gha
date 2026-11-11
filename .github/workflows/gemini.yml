@@ -443,11 +443,11 @@ jobs:
 
       - name: Set up Quarto
         if: steps.gate.outputs.skip != 'true' && inputs.install-quarto
-        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Release cache first, setup action as fallback (gha#1678, gha#1846).
+        uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
         with:
-          tinytex: true
+          tinytex: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore renv
         if: steps.gate.outputs.skip != 'true' && inputs.setup-r && inputs.use-renv
