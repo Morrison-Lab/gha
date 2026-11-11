@@ -33,10 +33,10 @@ on:
         default: ''
       fail:
         description: >-
-          Fail the workflow on a finding. Defaults to false (warning annotations
-          only), because the check is a heuristic.
+          Fail the workflow on a finding. Defaults to true; false gives warning
+          annotations only (gha#1480).
         type: boolean
-        default: false
+        default: true
 
 jobs:
   check-extracted-lemmas:

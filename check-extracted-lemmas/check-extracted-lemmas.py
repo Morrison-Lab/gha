@@ -24,7 +24,7 @@ when the body cites no result
 theorem is meant to be general.
 
 The check follows ``{{< include ... >}}`` lines, so a page is read in the order a
-reader sees it. It is a heuristic: it is warn-only by default, and
+reader sees it. It is a heuristic that blocks by default (gha#1480), and
 ``<!-- lemma-ok: reason -->`` in the body exempts it.
 
 A body is checked when the diff adds a line inside it, or always with
@@ -34,7 +34,7 @@ Configuration (environment variables, set by the composite action):
   EL_BASE_REF      Git ref/SHA to diff against; empty and not whole-tree => skip.
   EL_GLOBS         Space-separated git pathspecs (default: '*.qmd').
   EL_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  EL_FAIL          "true" => blocking; default "false" (warning annotations).
+  EL_FAIL          "true" (default) => blocking; "false" => warning annotations.
   EL_WHOLE_TREE    "true" => check every body in the tree.
 """
 
@@ -53,7 +53,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 DEFAULT_GLOBS = "*.qmd"
-_DEFAULT_FAIL = False
+_DEFAULT_FAIL = True
 RESULT_KINDS = ("thm", "lem", "cor", "prp")
 
 ADVICE = (
@@ -78,6 +78,8 @@ GENERAL_RE = re.compile(
     + "|".join(OBJECTS) + r")(?:s|es)?\b",
     re.IGNORECASE,
 )
+NEGATION_RE = re.compile(r"(?:not|no|never|cannot|\w+n['’]t)", re.IGNORECASE)
+NEGATION_WINDOW = 4
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
 CITES_RESULT_RE = re.compile(r"(?:@|#)(?:thm|lem|cor|prp)-")
 PROOF_OPEN_RE = re.compile(r"^ {0,3}:{3,}\s*\{[^}]*\.proof\b")
@@ -173,10 +175,22 @@ def prose(body: Tuple[str, ...]) -> str:
     return " ".join(out)
 
 
+def _negated(sentence: str, start: int) -> bool:
+    """Whether a negation sits in the few words before a quantifier.
+
+    "not a floor for any particular function" denies a universal claim rather
+    than making one, so it states no fact a lemma could hold (gha#1480).
+    """
+    before = sentence[:start].split()[-NEGATION_WINDOW:]
+    return any(NEGATION_RE.fullmatch(word.strip(",;:()")) for word in before)
+
+
 def states_general_fact(text: str) -> bool:
     """A sentence with 'for any/every/all' that also holds inline math."""
     for sentence in SENTENCE_END_RE.split(INLINE_CODE_RE.sub(" ", text)):
-        if GENERAL_RE.search(sentence) and "$" in sentence:
+        if "$" not in sentence:
+            continue
+        if any(not _negated(sentence, m.start()) for m in GENERAL_RE.finditer(sentence)):
             return True
     return False
 
