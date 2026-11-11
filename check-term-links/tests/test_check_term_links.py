@@ -679,6 +679,18 @@ def test_a_blank_line_ends_a_quoted_fence():
     assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [4]
 
 
+def test_a_line_blank_inside_a_shallower_quote_ends_a_quoted_fence():
+    # ">" alone ends the inner ">>" quote, so its fence never closes and line 3 is prose.
+    page = f">> {FENCE}\n>\n>> The risk is prose.\n>> {FENCE}\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [3]
+
+
+def test_a_line_blank_at_the_fence_depth_stays_code():
+    # ">" alone inside a ">" fence is a blank code line, not the end of the quote.
+    page = f"> {FENCE}\n>\n> The risk is code.\n> {FENCE}\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
 def test_a_quote_marker_inside_an_unquoted_fence_does_not_end_it():
     page = f"{FENCE}\ncode\n\nThe risk is code.\n> quoted code\n{FENCE}\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []

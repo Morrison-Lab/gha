@@ -76,6 +76,7 @@ DEFAULT_PATHS_IGNORE = ""
 
 # A code fence, also inside a blockquote (`> ```` `), which CommonMark allows (gha#1905).
 FENCE_RE = re.compile(r"^(?P<quote>\s*(?:>[ \t]?\s*)*)(?P<fence>`{3,}|~{3,})")
+QUOTE_PREFIX_RE = re.compile(r"^\s*(?:>[ \t]?\s*)*")
 DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>\{[^}]*\}|\S.*)?$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
@@ -288,9 +289,12 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
             continue
         m = FENCE_RE.match(raw)
         depth = m.group("quote").count(">") if m else 0
-        if fence and fence_depth and not raw.strip():
-            # A blank line ends the blockquote, and with it a quoted fence, which Pandoc
-            # then never reads as code; a non-blank unquoted line is a lazy continuation.
+        quote = QUOTE_PREFIX_RE.match(raw).group(0)
+        if (fence and fence_depth and not raw[len(quote):].strip()
+                and quote.count(">") < fence_depth):
+            # A line blank inside a shallower quote (a blank line, or ">" under a ">>"
+            # fence) ends the opener's blockquote, and with it the fence, which Pandoc then
+            # never reads as code; a non-blank shallower line is a lazy continuation.
             fence = ""
         if fence:
             # A closing fence may sit at the opener's quote depth or shallower, as Pandoc
