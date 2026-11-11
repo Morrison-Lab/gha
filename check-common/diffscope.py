@@ -1,3 +1,4 @@
+# check-one-function-per-file: allow-multiple
 """Shared diff scoping for the diff-scoped checks (gha#1856).
 
 Most checks here report only lines a pull request adds, exempt a line that was
