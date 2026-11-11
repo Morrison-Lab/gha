@@ -44,6 +44,13 @@ def test_finds_only_stubs(tmp_path):
     assert rs.find_stubs(str(tmp_path)) == ["a.qmd", "sub/d.qmd"]
 
 
+def test_html_only_counts_as_a_stub(tmp_path):
+    write(tmp_path, "a.qmd", "---\ntitle: A\nhtml-only: true\n---\n")
+    write(tmp_path, "b.qmd", "---\ntitle: B\nhtml-only: false\n---\n")
+    write(tmp_path, "c.qmd", "---\ntitle: C\nhtml: true\n---\n")
+    assert rs.find_stubs(str(tmp_path)) == ["a.qmd"]
+
+
 def test_exclusions_only_when_project_lists_pages(tmp_path, monkeypatch):
     write(tmp_path, "s.qmd", STUB_PAGE)
     monkeypatch.setattr(rs, "inspect_project", fake_inspect(["*.qmd"], ["s.qmd"]))
