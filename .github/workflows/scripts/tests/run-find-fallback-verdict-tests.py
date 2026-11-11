@@ -50,17 +50,23 @@ def comment(body, association="MEMBER", created="2026-10-22T20:00:00Z"):
     }
 
 
-def run_finder(comments):
+def run_finder_full(comments, classifier=CLASSIFIER):
+    """Run the finder and return (outputs, stderr)."""
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "comments.json"
         path.write_text(json.dumps(comments))
         result = subprocess.run(
-            [sys.executable, str(FINDER), str(path), HEAD, str(CLASSIFIER)],
+            [sys.executable, str(FINDER), str(path), HEAD, str(classifier)],
             capture_output=True,
             text=True,
             check=True,
         )
-    return dict(line.split("=", 1) for line in result.stdout.splitlines())
+    outputs = dict(line.split("=", 1) for line in result.stdout.splitlines())
+    return outputs, result.stderr
+
+
+def run_finder(comments):
+    return run_finder_full(comments)[0]
 
 
 CASES = [
@@ -140,6 +146,21 @@ CASES = [
         True,
     ),
     (
+        "several Reviewed-Commit lines: the last one names the head (gha#1229)",
+        [comment(f"Summary.\n\n{CLEAN}\n\nReviewed-Commit: {OLD}\n\nReviewed-Commit: {HEAD}\n\n{MARKER}")],
+        True,
+    ),
+    (
+        "several Reviewed-Commit lines: an earlier one naming the head does not count (gha#1229)",
+        [comment(f"Summary.\n\n{CLEAN}\n\nReviewed-Commit: {HEAD}\n\nReviewed-Commit: {OLD}\n\n{MARKER}")],
+        False,
+    ),
+    (
+        "the lds#1521 fallback comment shape counts (gha#1288)",
+        [comment(f"Separate-agent review.\n\nReviewed-Commit: {HEAD}\n\nVerdict: Clean. No findings.\n\n{MARKER}")],
+        True,
+    ),
+    (
         "a shorter closing run does not end a longer fence",
         [comment(f"````\n```\nReviewed-Commit: {HEAD}\n````\n\n{CLEAN}\n\n{MARKER}")],
         False,
@@ -161,6 +182,18 @@ def check_wiring():
         problems.append("find-fallback-verdict job does not use the action")
     if "find-fallback-verdict" not in job.split("steps:")[0]:
         problems.append("require-clean-verdict does not need find-fallback-verdict")
+    head = finder.split("steps:")[0]
+    needs = re.search(r"\n    needs: \[([^\]]*)\]", head)
+    if not needs or {"gather-context", "claude-review"} - {n.strip() for n in needs.group(1).split(",")}:
+        problems.append("find-fallback-verdict must need gather-context and claude-review (gha#1229)")
+    if "fromJSON(needs.claude-review.outputs.quota_exhausted" not in head:
+        problems.append("find-fallback-verdict no longer runs only on a quota skip")
+    sha = re.search(r"\n          head-sha: (.*)\n", finder)
+    expected = "${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}"
+    if not sha or sha.group(1).strip() != expected:
+        problems.append("find-fallback-verdict must match the reviewed commit, not the live head (gha#1229)")
+    if "FALLBACK_FOUND: ${{ needs.find-fallback-verdict.outputs.found }}" not in job:
+        problems.append("FALLBACK_FOUND must come from find-fallback-verdict's job output")
     quota = re.search(r'if \[\[ "\$QUOTA_EXHAUSTED" == "true" \]\]; then(.*?)\n          fi\n', job, re.S)
     if not quota:
         problems.append("quota branch not found")
@@ -173,6 +206,40 @@ def check_wiring():
     return problems
 
 
+def check_classifier_failure():
+    """A classifier failure on the newest review is a miss, not a skip to an older one (gha#1229)."""
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        flaky = Path(tmp) / "flaky-classifier.sh"
+        # Fails on a comment containing CRASH, and delegates to the real classifier otherwise.
+        flaky.write_text(f'#!/usr/bin/env bash\nif grep -q CRASH "$1"; then exit 7; fi\nexec bash "{CLASSIFIER}" "$@"\n')
+        crashing = comment(review().replace("Summary: fine.", "Summary: CRASH."), created="2026-10-22T21:00:00Z")
+        outputs, stderr = run_finder_full([crashing, comment(review())], flaky)
+    if outputs.get("found") != "false":
+        problems.append("a classifier failure on the newer comment fell back to the older clean review")
+    if "classifier exited 7" not in stderr:
+        problems.append("the classifier failure is not logged")
+    return problems
+
+
+def check_decision_log():
+    """Each comment's decision reaches stderr with its reason (gha#1288)."""
+    comments = [
+        comment(review(), "NONE", created="2026-10-22T23:00:00Z"),
+        comment(review(marker=False), created="2026-10-22T22:00:00Z"),
+        comment(review(sha=OLD), created="2026-10-22T21:00:00Z"),
+        comment(review()),
+    ]
+    _, stderr = run_finder_full(comments)
+    wanted = [
+        "author_association NONE is not",
+        "has no agent marker",
+        f"names {OLD}, not the head",
+        "counts: a clean review of the head",
+    ]
+    return [f"decision log lacks {text!r}" for text in wanted if text not in stderr]
+
+
 def main():
     failures = 0
     for name, comments, expected in CASES:
@@ -181,6 +248,9 @@ def main():
         if found != expected:
             failures += 1
         print(f"{status}: {name} (found={found}, expected={expected})")
+    for problem in check_classifier_failure() + check_decision_log():
+        failures += 1
+        print(f"FAIL: {problem}")
     for problem in check_wiring():
         failures += 1
         print(f"FAIL: wiring: {problem}")
