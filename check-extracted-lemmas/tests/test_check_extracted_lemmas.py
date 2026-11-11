@@ -83,7 +83,7 @@ def test_a_negated_quantifier_is_not_flagged(sentence):
     # A negation far from the quantifier, or after it, does not cancel it.
     "Do not forget: the identity holds for any real number $x$ and any $y$.",
     "For any real number $x$, $x^2 \\ge 0$, so it is not negative.",
-    "The square is never negative, and $x^2 + 1 > 0$ for every real number $x$.",
+    "The square is never negative, so we also have $x^2 + 1 > 0$ for every real number $x$.",
 ])
 def test_a_negation_outside_the_window_does_not_cancel_the_quantifier(sentence):
     assert len(msgs(div("sol-a", sentence))) == 1
@@ -207,6 +207,21 @@ def test_blocks_by_default(repo, monkeypatch, capsys):
     monkeypatch.setenv("EL_FAIL", "false")
     assert el.main() == 0
     assert "::warning" in capsys.readouterr().out
+    monkeypatch.setenv("EL_FAIL", "true")
+    assert el.main() == 1
+    assert "::error" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("sentence", [
+    # Spaced math counts as one word, so the negation stays in the window.
+    "It is not true that $x + y = 0$ for every real number $x$.",
+    # Emphasis, quotes and brackets around the negation do not hide it.
+    "It is **not** a bound for every real number $x$.",
+    'It is "not" a bound for every real number $x$.',
+    "It is (*not*) a bound for every real number $x$.",
+])
+def test_a_negation_with_markup_or_spaced_math_still_cancels(sentence):
+    assert not el.states_general_fact(sentence)
 
 
 @pytest.mark.parametrize("path, pattern", [

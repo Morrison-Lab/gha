@@ -80,6 +80,8 @@ GENERAL_RE = re.compile(
 )
 NEGATION_RE = re.compile(r"(?:not|no|never|cannot|\w+n['’]t)", re.IGNORECASE)
 NEGATION_WINDOW = 4
+INLINE_MATH_TOKEN_RE = re.compile(r"\$[^$]*\$")
+EDGE_PUNCT_RE = re.compile(r"^[^\w']+|[^\w']+$")
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
 CITES_RESULT_RE = re.compile(r"(?:@|#)(?:thm|lem|cor|prp)-")
 PROOF_OPEN_RE = re.compile(r"^ {0,3}:{3,}\s*\{[^}]*\.proof\b")
@@ -181,8 +183,12 @@ def _negated(sentence: str, start: int) -> bool:
     "not a floor for any particular function" denies a universal claim rather
     than making one, so it states no fact a lemma could hold (gha#1480).
     """
-    before = sentence[:start].split()[-NEGATION_WINDOW:]
-    return any(NEGATION_RE.fullmatch(word.strip(",;:()")) for word in before)
+    # Inline math counts as one word, however it is spaced, and a word keeps
+    # no surrounding punctuation, quotes or emphasis ("**not**").
+    head = INLINE_MATH_TOKEN_RE.sub(" MATH ", sentence[:start])
+    before = head.split()[-NEGATION_WINDOW:]
+    return any(NEGATION_RE.fullmatch(EDGE_PUNCT_RE.sub("", word))
+               for word in before)
 
 
 def states_general_fact(text: str) -> bool:
