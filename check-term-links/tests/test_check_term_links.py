@@ -149,6 +149,25 @@ def test_a_rule_that_is_not_an_underline_does_not_start_a_section(before):
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
+def test_an_underline_after_a_longer_paragraph_is_not_a_heading():
+    # Pandoc reads `one\ntwo\n---` as one paragraph, so no new section starts
+    # and the last line is still prose.
+    page = "The [risk](#def-risk) is large.\nMore text\n---\n\nThe risk is small.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+    page = "Some text.\nThe risk is small.\n---\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [2]
+
+
+def test_an_underline_after_a_list_continuation_is_not_a_heading():
+    page = "- The [risk](#def-risk) is large.\n  more\n---\n\nThe risk is small.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_setext_heading_right_after_a_div_opens_is_a_heading():
+    page = "::: {.callout-note}\nThe risk\n---\n\nText.\n\n:::\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
 def test_a_rule_after_a_blank_line_in_a_div_keeps_the_paragraph_above_it():
     page = "::: {#exm-a}\n\nThe risk is large.\n\n---\n\nText.\n\n:::\n"
     assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [3]

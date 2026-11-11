@@ -360,11 +360,14 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
                 stack.pop()
                 attrs_stack.pop()
             continue
-        # A setext heading: a `===` or `---` underline straight after a paragraph line.
-        # Its title line is a heading, not prose (gha#1283 review).
+        # A setext heading: a `===` or `---` underline straight after a one-line block.
+        # Pandoc reads one only after a blank line (or a fence, or the file start), so the
+        # last line of a longer paragraph is not a title.  Its title line is a heading,
+        # not prose (gha#1283 review).
         setext = (
             SETEXT_UNDERLINE_RE.match(line) is not None
             and bool(cur) and cur[-1][0] == idx - 1
+            and (idx < 3 or not masked[idx - 3].strip() or DIV_OPEN_RE.match(masked[idx - 3].strip()) is not None)
             and not LIST_ITEM_RE.match(cur[-1][1]) and "|" not in cur[-1][1]
         )
         if setext:
