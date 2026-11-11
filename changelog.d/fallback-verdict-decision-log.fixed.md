@@ -1,0 +1,3 @@
+- `find-fallback-verdict` logs each PR comment's decision to the job log, with the reason it did or did not count: its author association, the agent marker, the `Reviewed-Commit:` line, or the classifier's verdict ([gha#1288](https://github.com/Morrison-Lab/gha/issues/1288)).
+  A miss like the one on lds#1521 can now be read from the log instead of reproduced by hand.
+- A comment with several `Reviewed-Commit:` lines counts only for the last one, and a classifier that fails on one comment skips that comment with a warning instead of aborting the search ([gha#1229](https://github.com/Morrison-Lab/gha/issues/1229)).
