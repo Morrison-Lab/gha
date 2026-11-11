@@ -75,8 +75,10 @@ DEFAULT_GLOBS = "*.qmd"
 DEFAULT_PATHS_IGNORE = ""
 
 # A code fence, also inside a blockquote (`> ```` `), which CommonMark allows (gha#1905).
-FENCE_RE = re.compile(r"^(?P<quote>\s*(?:>[ \t]?\s*)*)(?P<fence>`{3,}|~{3,})")
-QUOTE_PREFIX_RE = re.compile(r"^\s*(?:>[ \t]?\s*)*")
+# Each quote marker is one ">" and the spaces after it; no two parts can match the same
+# character, so the pattern cannot backtrack exponentially.
+FENCE_RE = re.compile(r"^(?P<quote>[ \t]*(?:>[ \t]*)*)(?P<fence>`{3,}|~{3,})")
+QUOTE_PREFIX_RE = re.compile(r"^[ \t]*(?:>[ \t]*)*")
 DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>\{[^}]*\}|\S.*)?$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
