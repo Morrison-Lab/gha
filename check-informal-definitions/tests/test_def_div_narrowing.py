@@ -70,3 +70,17 @@ def test_a_list_of_aliases_after_a_cue_is_one_term(cue):
 def test_two_new_terms_without_a_cue_are_still_flagged():
     lines = ["::: {#def-a}", "#### Pair", "A **slope** and an **intercept** [x](y.qmd#def-z).", ":::"]
     assert "multiple-terms-in-definition" in rules(lines)
+
+
+def test_a_variant_of_a_counted_term_is_not_a_second_term():
+    lines = ["::: {#def-a}", "#### Convergence",
+             "A sequence **converges** to $L$ if [its terms](x.qmd#def-t) approach $L$.",
+             "Such a sequence is **convergent**.", ":::"]
+    assert "multiple-terms-in-definition" not in rules(lines)
+
+
+def test_a_term_that_adds_a_word_is_not_a_variant():
+    lines = ["::: {#def-a}", "#### Descent",
+             "**Gradient descent** follows [the gradient](x.qmd#def-g).",
+             "**Stochastic gradient descent** samples [a batch](x.qmd#def-b).", ":::"]
+    assert "multiple-terms-in-definition" in rules(lines)
