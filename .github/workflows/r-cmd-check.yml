@@ -424,7 +424,10 @@ jobs:
 
       - name: Set up Quarto
         if: inputs.install-quarto
-        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+        # Release cache first, setup action as fallback (gha#1678, gha#1846).
+        # The matrix job above keeps the setup action: it also runs on macOS and Windows,
+        # where the cache path does not apply.
+        uses: Morrison-Lab/gha/.github/actions/install-quarto@v3
 
       - name: Set up R
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
