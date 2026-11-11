@@ -218,6 +218,9 @@ def test_blocks_by_default(repo, monkeypatch, capsys):
     # Emphasis, quotes and brackets around the negation do not hide it.
     "It is **not** a bound for every real number $x$.",
     'It is "not" a bound for every real number $x$.',
+    "It is 'not' a bound for every real number $x$.",
+    "It is _not_ a bound for every real number $x$.",
+    "It isn't a bound for every real number $x$.",
     "It is (*not*) a bound for every real number $x$.",
 ])
 def test_a_negation_with_markup_or_spaced_math_still_cancels(sentence):
