@@ -1,9 +1,11 @@
 # Copy to .github/workflows/triage-backlog.yml in your repo.
-# Backlog triage, run weekly by this stub: gives each open issue that has no priority label the
-# label the triage plan proposes (P1, P2 or P3), and closes nothing.
+# Backlog triage, run weekly by this stub.
+# It gives each open issue that has no priority label the label the triage
+# plan proposes (P1, P2 or P3), and closes nothing.
 # The labels P1, P2 and P3 must already exist in your repo.
-# The weekly run changes labels. A manual run is a dry run unless you untick
-# the box, and prints each label command without running it.
+# The weekly run changes labels.
+# A manual run is a dry run unless you untick the box, and prints each label
+# command without running it.
 name: Triage backlog
 
 on:

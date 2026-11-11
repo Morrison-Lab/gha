@@ -4,7 +4,7 @@ title: "triage-backlog.yml"
 
 Backlog triage that labels and never closes.
 The workflow has no schedule of its own: the example stub runs it weekly.
-It gives each open issue that has no priority label the label the triage plan proposes: `P1`, `P2`, or `P3`.
+The workflow gives each open issue that has no priority label the label the triage plan proposes: `P1`, `P2`, or `P3`.
 An issue the plan would close, as junk or a duplicate, is left as it is, for a pass that a person reads.
 This implements
 [gha#1900](https://github.com/Morrison-Lab/gha/issues/1900).
@@ -13,7 +13,7 @@ The workflow runs the
 [`triage-backlog`](https://github.com/Morrison-Lab/gha/tree/main/triage-backlog)
 composite action, which runs `triage-backlog.py` with `--apply --labels-only`.
 The script reads issues through the `gh` CLI, so the job checks out nothing.
-It copies the script's summary into the job summary.
+The action copies the script's summary into the job summary.
 
 ## Before the first real run
 
