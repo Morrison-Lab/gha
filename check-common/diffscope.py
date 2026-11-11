@@ -19,10 +19,24 @@ import subprocess
 from typing import Dict, List, Optional, Set, Tuple
 
 
+# Settings a caller's git config could hold that change what ``parse_diff``
+# reads: ``diff.mnemonicPrefix`` prints ``w/`` for ``b/``, so every touched file
+# reads as missing (gha#1355), and ``diff.noprefix`` drops the prefix, so a top
+# directory named ``b`` would be stripped.  ``diff.srcPrefix`` and
+# ``diff.dstPrefix`` (git 2.45) set the prefixes outright; an older git ignores
+# them.  Pinned here, they hold for every ``git diff`` a check runs through
+# ``run_git``.
+_GIT_CONFIG = ["-c", "core.quotepath=false",
+               "-c", "diff.mnemonicPrefix=false",
+               "-c", "diff.noprefix=false",
+               "-c", "diff.srcPrefix=a/",
+               "-c", "diff.dstPrefix=b/"]
+
+
 def run_git(args: List[str]) -> Optional[str]:
     """The stdout of ``git args``, or None when git exits non-zero."""
     res = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
+        ["git", *_GIT_CONFIG, *args],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         encoding="utf-8", errors="replace",
     )
@@ -30,6 +44,44 @@ def run_git(args: List[str]) -> Optional[str]:
 
 
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+_C_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13,
+              '"': 34, "\\": 92}
+
+
+def unquote_git_path(target: str) -> str:
+    """Undo git's C-style quoting of a path holding ``"``, a backslash or a
+    control character (``"b/ch/q\\"u.qmd"``); any other target is returned as is.
+
+    ``core.quotepath=false`` stops git quoting non-ASCII bytes, not these.
+    """
+    if len(target) < 2 or not (target.startswith('"') and target.endswith('"')):
+        return target
+    body = target[1:-1]
+    out = bytearray()
+    i = 0
+    while i < len(body):
+        char = body[i]
+        if char != "\\" or i + 1 >= len(body):
+            out += char.encode("utf-8")
+            i += 1
+            continue
+        nxt = body[i + 1]
+        if nxt in _C_ESCAPES:
+            out.append(_C_ESCAPES[nxt])
+            i += 2
+        elif nxt in "01234567":
+            octal = ""
+            for d in body[i + 1:i + 4]:
+                if d not in "01234567":
+                    break
+                octal += d
+            out.append(int(octal, 8) & 0xFF)
+            i += 1 + len(octal)
+        else:
+            out += body[i:i + 2].encode("utf-8")
+            i += 2
+    return out.decode("utf-8", errors="replace")
 
 
 def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
@@ -55,7 +107,7 @@ def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
                 old_left -= 1
             continue
         if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
+            target = unquote_git_path(line[4:].rstrip("\t"))
             path = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
             if path is not None:
                 added.setdefault(path, {})
@@ -74,7 +126,8 @@ def parse_renames(status: str) -> List[Tuple[str, str]]:
     for line in status.splitlines():
         parts = line.split("\t")
         if len(parts) == 3 and parts[0].startswith("R"):
-            pairs.append((parts[1], parts[2]))
+            pairs.append((unquote_git_path(parts[1]),
+                          unquote_git_path(parts[2])))
     return pairs
 
 

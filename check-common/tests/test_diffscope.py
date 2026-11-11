@@ -83,3 +83,47 @@ def test_run_git_returns_none_on_failure(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert diffscope.run_git(["rev-parse", "--is-inside-work-tree"]) == "true\n"
     assert diffscope.run_git(["rev-parse", "no-such-ref"]) is None
+
+
+def test_unquote_git_path():
+    assert diffscope.unquote_git_path('"b/ch/q\\"u.qmd"') == 'b/ch/q"u.qmd'
+    assert diffscope.unquote_git_path('"b/a\\\\b\\tc.qmd"') == "b/a\\b\tc.qmd"
+    assert diffscope.unquote_git_path('"b/\\303\\251.qmd"') == "b/\u00e9.qmd"
+    assert diffscope.unquote_git_path("b/plain.qmd") == "b/plain.qmd"
+
+
+def _two_file_commit(root):
+    def git(*args):
+        subprocess.run(["git", "-C", str(root), "-c", "user.email=t@example.invalid",  # phi-allow
+                        "-c", "user.name=t", *args], check=True)
+    git("init", "-q")
+    git("commit", "-q", "--allow-empty", "-m", "init")
+    (root / "b").mkdir()
+    (root / "b" / 'q"u.qmd').write_text("x\n")
+    (root / "b" / "plain.qmd").write_text("y\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "add")
+
+
+def test_parse_diff_reads_quoted_paths_from_git(tmp_path, monkeypatch):
+    _two_file_commit(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    added, _ = diffscope.parse_diff(diffscope.run_git(["diff", "-U0", "HEAD~1"]))
+    assert sorted(added) == ["b/plain.qmd", 'b/q"u.qmd']
+
+
+def test_run_git_ignores_prefix_settings(tmp_path, monkeypatch):
+    _two_file_commit(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    for setting in ("'diff.mnemonicPrefix=true'", "'diff.noprefix=true'"):
+        monkeypatch.setenv("GIT_CONFIG_PARAMETERS", setting)
+        added, _ = diffscope.parse_diff(diffscope.run_git(["diff", "-U0", "HEAD~1"]))
+        assert sorted(added) == ["b/plain.qmd", 'b/q"u.qmd'], setting
+
+
+def test_parse_renames_reads_quoted_paths_from_git(tmp_path, monkeypatch):
+    _two_file_commit(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "mv", 'b/q"u.qmd', 'b/r"e.qmd'], check=True)
+    status = diffscope.run_git(["diff", "--name-status", "-M", "--cached", "HEAD"])
+    assert diffscope.parse_renames(status) == [('b/q"u.qmd', 'b/r"e.qmd')]
