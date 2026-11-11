@@ -749,3 +749,9 @@ def test_common_word_from_def_title_is_still_a_term():
 def test_uncommon_one_word_link_term_is_still_learned():
     masked, _ = ctl.preprocess("See the [estimator](https://x.io/m.html#def-estimator).\n".splitlines())
     assert "estimator" in ctl.harvest_terms(masked, set())
+
+
+def test_a_setext_heading_right_after_a_div_closes_is_a_heading():
+    # Flash review of gha#1906: the title after a closing fence is a heading, not prose.
+    page = "::: {#exm-a}\nbody\n:::\nThe risk\n---\n\nText.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []

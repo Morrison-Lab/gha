@@ -511,7 +511,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   any `_*.qmd` under a `_subfiles` directory is a subfile (the name form is not checked),
   and a touched subfile with an unclosed div, code fence or HTML comment is reported too (an error under `fail`);
   `check-term-links/` (Python, stdlib only, gha#1078) bundles the composite action, script, and pytest suite
-  for flagging a defined term whose first use in a div, or in the prose outside divs between two headings, is not linked to its definition,
+  for flagging a defined term whose first use in a div, or in each section, outside divs, is not linked to its definition,
   and a bold term no definition div covers.
   It learns its terms from the scanned files (`#def-` div titles and bold terms, and the text of links to `#def-` anchors),
   reports only added lines,
