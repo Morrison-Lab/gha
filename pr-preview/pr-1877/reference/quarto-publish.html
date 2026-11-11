@@ -1350,7 +1350,7 @@ cookieconsent.run({
 <td><code>preinstalled-toolchain</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs <code>r-packages</code> with pak into the runner’s user library. With an empty <code>r-packages</code> nothing is installed. The runner must already have R with the pak and tinytex packages, Quarto, TinyTeX, Julia and (if needed) Chrome; <code>tinytex</code> is then ignored for the install. renv, the JuliaCall setup and the freeze cache still run.</td>
+<td>The runner already provides R, Quarto, TinyTeX and Julia and has no sudo, as a self-hosted runner does. Skips the steps that install them (apt packages, Chrome, Quarto, R, Julia and its cache) and installs <code>r-packages</code> with pak into the runner’s user library. With an empty <code>r-packages</code> nothing is installed. The runner must already have R with the pak and tinytex packages, Quarto, TinyTeX, Julia and (if needed) Chrome; <code>tinytex</code> is then ignored for the install. renv, the JuliaCall setup and the freeze cache still run. A tool package in <code>apt-packages</code> (such as <code>librsvg2-bin</code>) that the runner lacks fails the job at once, naming the runner; any other missing package is a warning.</td>
 </tr>
 <tr class="even">
 <td><code>apt-packages</code></td>
@@ -1440,13 +1440,13 @@ cookieconsent.run({
 <td><code>cluster-image</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Apptainer image on the cluster home that <code>cluster-render</code> runs in. Required with <code>cluster-render</code>.</td>
+<td>Apptainer image on the cluster home that <code>cluster-render</code> runs in. Empty falls back to the caller’s <code>CI_CLUSTER_IMAGE</code> Actions variable, so an org variable sets it in one place. Required with <code>cluster-render</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>cluster-image-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>The same image on the runner, for heads without the cluster home.</td>
+<td>The same image on the runner, for heads without the cluster home. Empty falls back to the caller’s <code>CI_CLUSTER_IMAGE_FILE</code> Actions variable.</td>
 </tr>
 <tr class="even">
 <td><code>timeout-minutes</code></td>
