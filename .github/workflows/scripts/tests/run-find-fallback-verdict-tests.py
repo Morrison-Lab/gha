@@ -174,8 +174,8 @@ def check_wiring():
     job = text[text.index("\n  require-clean-verdict:"):]
     finder = text[text.index("\n  find-fallback-verdict:"):text.index("\n  require-clean-verdict:")]
     problems = []
-    if "permissions: {}" not in job.split("steps:")[0]:
-        problems.append("require-clean-verdict must keep `permissions: {}` (widening breaks callers)")
+    # gha#1365 gave the gate `pull-requests: read`, which find-fallback-verdict
+    # already requests; run-find-newer-review-verdict-tests.py pins that block.
     if "pull-requests: read" not in finder.split("steps:")[0]:
         problems.append("find-fallback-verdict lacks `pull-requests: read`")
     if "find-fallback-verdict@" not in finder:

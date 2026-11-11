@@ -1663,6 +1663,7 @@ jobs:
       stale: ${{ steps.target.outputs.stale }}
       clean_verdict: ${{ steps.classify-verdict.outputs.clean }}
       verdict: ${{ steps.classify-verdict.outputs.verdict }}
+      reviewed_sha: ${{ steps.target.outputs.reviewed_sha }}
 
     steps:
       # Trusted identity for every write. The model job has unrestricted
@@ -2296,6 +2297,11 @@ jobs:
   # paths none does. require-review keeps its gray skip: it attests delivery,
   # and the skip notice was delivered.
   #
+  # A not-clean verdict defers to a newer run's clean review of the same head
+  # (gha#1365): two runs can review one head, and without this the older run's
+  # red check stayed attached to it, since re-running its failed jobs replays
+  # the same stored verdict.
+  #
   # Consumers can use this job's name (e.g. `review / require-clean-verdict`) in
   # branch protection / ruleset required-checks to enforce server-side merge
   # blocking against unaddressed findings (gha#767).
@@ -2311,14 +2317,35 @@ jobs:
       fromJSON(needs.claude-review.outputs.cancelled || 'false'))
     runs-on: ${{ inputs.gate-runs-on || inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
-    permissions: {}
+    # Reads PR comments to find a newer review of the same head (gha#1365).
+    # The lookup sits in this job, not a separate one, because "Re-run failed
+    # jobs" reuses a successful job's stored outputs. find-fallback-verdict
+    # already requests this key, so every working caller grants it.
+    permissions:
+      pull-requests: read
     steps:
+      - name: Look for a newer clean review of this head
+        id: newer
+        if: >-
+          needs.claude-review.result == 'success' &&
+          needs.post-review.result == 'success' &&
+          needs.post-review.outputs.clean_verdict != 'true' &&
+          needs.post-review.outputs.reviewed_sha != ''
+        uses: Morrison-Lab/gha/.github/actions/find-newer-review-verdict@v3
+        with:
+          repository: ${{ github.repository }}
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          head-sha: ${{ needs.post-review.outputs.reviewed_sha }}
+          run-id: ${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Assert clean review verdict
         env:
           QUOTA_EXHAUSTED: ${{ needs.claude-review.outputs.quota_exhausted }}
           SELF_MOD: ${{ needs.claude-review.outputs.self_mod }}
           FALLBACK_FOUND: ${{ needs.find-fallback-verdict.outputs.found }}
           FALLBACK_URL: ${{ needs.find-fallback-verdict.outputs.url }}
+          NEWER_FOUND: ${{ steps.newer.outputs.found }}
+          NEWER_URL: ${{ steps.newer.outputs.url }}
         run: |
           if [[ "${{ needs.claude-review.result }}" != "success" ]]; then
             echo "::error::Claude review job did not succeed (result: ${{ needs.claude-review.result }})."
@@ -2341,6 +2368,10 @@ jobs:
             exit 1
           fi
           if [[ "${{ needs.post-review.outputs.clean_verdict }}" != "true" ]]; then
+            if [[ "$NEWER_FOUND" == "true" ]]; then
+              echo "This run's verdict is not clean (${{ needs.post-review.outputs.verdict || 'unknown' }}), but a newer run posted a clean review of the same head at ${NEWER_URL} (gha#1365)."
+              exit 0
+            fi
             echo "::error::Claude review verdict is not clean (verdict: ${{ needs.post-review.outputs.verdict || 'unknown' }})."
             exit 1
           fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pin find-newer-review-verdict.py (gha#1365).
+"""Pin find-newer-review-verdict.py and its require-clean-verdict wiring (gha#1365).
 
 An older review run whose verdict was not clean may defer to a newer run's
 clean review of the same head, and to nothing else. Each case below is a way
@@ -19,8 +19,10 @@ import tempfile
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent.parent
+REPO = SCRIPTS.parent.parent.parent
 FINDER = SCRIPTS / "find-newer-review-verdict.py"
 CLASSIFIER = SCRIPTS / "classify-review-verdict.sh"
+WORKFLOW = REPO / ".github" / "workflows" / "claude-code-review.yml"
 
 HEAD = "a" * 40
 OLD = "b" * 40
@@ -107,6 +109,33 @@ def check_classifier_failure():
     return problems
 
 
+def check_wiring():
+    """The gate looks the newer review up itself, and fails without one."""
+    text = WORKFLOW.read_text()
+    job = text[text.index("\n  require-clean-verdict:"):]
+    head, steps = job.split("steps:", 1)
+    post = text[text.index("\n  post-review:"):text.index("\n  require-review:")]
+    problems = []
+    if "pull-requests: read" not in head:
+        problems.append("require-clean-verdict lacks `pull-requests: read`")
+    for key in ("write", "issues:", "contents:", "actions:", "checks:"):
+        if key in head.split("permissions:", 1)[1]:
+            problems.append(f"require-clean-verdict requests more than pull-requests: read ({key})")
+    if "find-newer-review-verdict@" not in steps:
+        problems.append("require-clean-verdict does not use find-newer-review-verdict")
+    if "run-id: ${{ github.run_id }}" not in steps:
+        problems.append("the lookup is not bounded by this run's id")
+    if "head-sha: ${{ needs.post-review.outputs.reviewed_sha }}" not in steps:
+        problems.append("the lookup does not use the head this run reviewed")
+    if "reviewed_sha: ${{ steps.target.outputs.reviewed_sha }}" not in post:
+        problems.append("post-review does not expose reviewed_sha")
+    branch_start = steps.index('outputs.clean_verdict }}" != "true" ]]; then')
+    branch = steps[branch_start:]
+    if 'NEWER_FOUND" == "true"' not in branch or "exit 1" not in branch:
+        problems.append("the not-clean branch does not consult NEWER_FOUND and still fail without it")
+    return problems
+
+
 def main():
     failures = 0
     for name, comments, expected in CASES:
@@ -117,6 +146,9 @@ def main():
     for problem in check_ordering_is_numeric() + check_classifier_failure():
         failures += 1
         print(f"FAIL: {problem}")
+    for problem in check_wiring():
+        failures += 1
+        print(f"FAIL: wiring: {problem}")
     print(f"{len(CASES)} finder cases, {failures} failures")
     return 1 if failures else 0
 

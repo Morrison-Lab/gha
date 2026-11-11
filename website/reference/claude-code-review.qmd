@@ -220,6 +220,24 @@ The author check shows a tie to the repository, not write access:
 a member or collaborator without push rights also qualifies,
 and the marker is plain text anyone can type.
 
+### A newer clean review of the same head
+
+Two review runs can review the same head,
+for example a push followed by a `/review` comment.
+When the older run's verdict is not clean and the newer run's is,
+the older run's `require-clean-verdict` used to stay red,
+and re-running its failed jobs replayed the same verdict
+([gha#1365](https://github.com/Morrison-Lab/gha/issues/1365)).
+Now the gate looks up the reviews posted on the PR before it fails.
+It goes green when the newest review of the head it reviewed
+comes from a newer run and reads as clean.
+So re-running the older run's failed jobs clears its check without a new review.
+A review counts only when `github-actions[bot]` posted it,
+its first line is the "Claude finished review" header with its run link,
+and its last line is the `Reviewed commit:` stamp naming that head.
+The gate needs `pull-requests: read` for this lookup,
+which callers already grant for `find-fallback-verdict`.
+
 ## Concurrency
 
 Do not declare a top-level `concurrency:` block in your caller workflow.
