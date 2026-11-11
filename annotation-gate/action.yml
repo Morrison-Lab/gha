@@ -18,7 +18,8 @@ inputs:
   default-allow:
     description: >-
       Newline-separated regexes allowed for every caller: messages GitHub or a
-      third-party action emits that no repository can silence, and the four
+      third-party action emits that no repository can silence (a run cancelled
+      by hand among them, gha#1144), and the four
       the review workflow emits by design (a newer push supersedes a review,
       a PR edits workflow files, and `require-clean-verdict` fails on a
       non-clean verdict), and the two notices the runner job-started hook
@@ -31,6 +32,7 @@ inputs:
       ^Process completed with exit code \d+
       ^Canceling since a higher priority waiting request for
       ^The operation was canceled\.$
+      ^The run was canceled by @[A-Za-z0-9-]+(\[bot\])?\.$
       not posting a stale review
       ^PR edits workflow files; restored
       ^Claude review verdict is not clean \(verdict: .+\)\.$
