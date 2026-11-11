@@ -10480,13 +10480,15 @@ jobs:
         run: |
           set -euo pipefail
           python3 triage-backlog/tests/test_triage_backlog.py
-      - name: Dry run over this repository's open issues
+      # No dry-run input: the default must be a dry run.
+      - name: Run with no dry-run input, over this repository's open issues
         id: triage-dry
         uses: ./triage-backlog
         with:
-          dry-run: 'true'
           ceiling: '100000'
-      - name: Assert the dry run wrote a summary
+      # The script prints "planned N gh operations" only when --dry-run
+      # reached it, and "performed N gh operations" otherwise.
+      - name: Assert the default was a dry run that reached the script
         shell: bash
         env:
           DRY_RUN: ${{ steps.triage-dry.outputs.dry-run }}
@@ -10497,24 +10499,37 @@ jobs:
             echo "::error::Expected the dry-run output to be true. It is '$DRY_RUN'."
             exit 1
           fi
-          if [ -z "$SUMMARY" ] || [ ! -s "$SUMMARY" ]; then
-            echo "::error::Expected a summary file with content. The path is '$SUMMARY'."
+          if [ -z "$SUMMARY" ] || ! grep -q '^planned [0-9][0-9]* gh operations' "$SUMMARY"; then
+            echo "::error::Expected a 'planned N gh operations' line in the summary file '$SUMMARY'."
             exit 1
           fi
-      # A misspelled dry-run value must not change labels.
-      - name: Run with a misspelled dry-run value
+      # A misspelled dry-run value must not change labels. The space inside
+      # this one also shows that only the ends of the value are trimmed.
+      # Ceiling 0 puts the run over its ceiling, which must give the warning
+      # line the action looks for.
+      - name: Run with a misspelled dry-run value and a ceiling of zero
         id: triage-typo
         uses: ./triage-backlog
         with:
-          dry-run: 'flase'
-      - name: Assert the misspelled value was read as a dry run
+          dry-run: 'fa lse'
+          ceiling: '0'
+      - name: Assert the misspelled value gave a dry run over the ceiling
         shell: bash
         env:
           DRY_RUN: ${{ steps.triage-typo.outputs.dry-run }}
+          SUMMARY: ${{ steps.triage-typo.outputs.summary-file }}
         run: |
           set -euo pipefail
           if [ "$DRY_RUN" != "true" ]; then
             echo "::error::A misspelled dry-run value must give a dry run. The output is '$DRY_RUN'."
+            exit 1
+          fi
+          if [ -z "$SUMMARY" ] || ! grep -q '^planned [0-9][0-9]* gh operations' "$SUMMARY"; then
+            echo "::error::Expected a 'planned N gh operations' line in the summary file '$SUMMARY'."
+            exit 1
+          fi
+          if ! grep -q 'over the ceiling of 0' "$SUMMARY"; then
+            echo "::error::Expected an 'over the ceiling of 0' line in the summary file '$SUMMARY'."
             exit 1
           fi
       - name: Run with a ceiling that is not a number (expected to fail)
@@ -10528,9 +10543,33 @@ jobs:
         shell: bash
         env:
           OUTCOME: ${{ steps.triage-bad-ceiling.outcome }}
+          SUMMARY: ${{ steps.triage-bad-ceiling.outputs.summary-file }}
         run: |
           set -euo pipefail
           if [ "$OUTCOME" != "failure" ]; then
             echo "::error::A ceiling that is not a number must fail the action. The outcome is '$OUTCOME'."
+            exit 1
+          fi
+          # An empty summary-file shows the action's own check refused the
+          # value, before the script ran and refused it a second time.
+          if [ -n "$SUMMARY" ]; then
+            echo "::error::The action must refuse the ceiling before the script runs. summary-file is '$SUMMARY'."
+            exit 1
+          fi
+      - name: Run with a limit of zero (expected to fail)
+        id: triage-bad-limit
+        continue-on-error: true
+        uses: ./triage-backlog
+        with:
+          limit: '0'
+      - name: Assert the bad limit was refused before the script ran
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.triage-bad-limit.outcome }}
+          SUMMARY: ${{ steps.triage-bad-limit.outputs.summary-file }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ] || [ -n "$SUMMARY" ]; then
+            echo "::error::A limit of zero must fail the action before the script runs. The outcome is '$OUTCOME' and summary-file is '$SUMMARY'."
             exit 1
           fi

@@ -23,10 +23,11 @@ It labels each open issue that has no priority label, and closes nothing.
 | Input | Default | Meaning |
 | --- | --- | --- |
 | `repo` | the calling repository | The repository to triage, as `owner/name`. |
-| `dry-run` | `false` | Print each label command without running it. Only an explicit `false` changes labels. |
+| `dry-run` | `true` | Print each label command without running it. Only an explicit `false` changes labels. |
 | `ceiling` | empty | The open-issue count to report against. A run over it passes with a warning. |
+| `limit` | empty (the script's 1000) | The most open issues to fetch. The run fails when the repository has this many or more. |
 | `github-token` | `github.token` | The token `gh` uses. |
 
 The job needs `issues: write`, or `issues: read` for a dry run.
 The repository must already have the labels `P1`, `P2` and `P3`: the action checks for them before it changes anything.
-The `triage-backlog-tests` job in `.github/workflows/_selftest.yml` calls the action three times, each as a dry run.
+The `triage-backlog-tests` job in `.github/workflows/_selftest.yml` calls the action four times, each as a dry run.

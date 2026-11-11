@@ -16,13 +16,19 @@ inputs:
   dry-run:
     description: >-
       Print each label command without running it. Read fail-closed: only an
-      explicit `false` (trimmed, case-insensitive) changes labels, so a typo
-      cannot turn a dry run into a real one.
-    default: 'false'
+      explicit `false` (case-insensitive, with spaces at either end removed)
+      changes labels, so neither a typo nor a missing input gives a real run.
+    default: 'true'
   ceiling:
     description: >-
       The open-issue count to report against, as a whole number. Empty means
       no ceiling. A run over the ceiling still passes, with a warning.
+    default: ''
+  limit:
+    description: >-
+      The most open issues to fetch, as a whole number of 1 or more. Empty
+      means the script's default of 1000. The run fails when the repository
+      has this many open issues or more, because the list may be cut short.
     default: ''
   github-token:
     description: >-
@@ -32,8 +38,9 @@ inputs:
 outputs:
   summary-file:
     description: >-
-      Path of the file holding the script's summary (its stderr). Empty when
-      the run stopped before the script wrote one.
+      Path of the file holding the script's stderr: its summary, or its error
+      when it failed. Empty when the labelling step did not run, because an
+      input was refused or a label was missing.
     value: ${{ steps.triage.outputs.summary-file }}
   dry-run:
     description: Whether the run was a dry run (`true` or `false`), as resolved.
@@ -47,9 +54,12 @@ runs:
       env:
         TRIAGE_DRY_RUN: ${{ inputs.dry-run }}
         TRIAGE_CEILING: ${{ inputs.ceiling }}
+        TRIAGE_LIMIT: ${{ inputs.limit }}
       run: |
         set -euo pipefail
-        mode=$(printf '%s' "$TRIAGE_DRY_RUN" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+        # Trim the ends only: a space inside the value is a typo, not `false`.
+        mode=$(printf '%s' "$TRIAGE_DRY_RUN" | tr '[:upper:]' '[:lower:]' \
+          | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         if [ "$mode" = "false" ]; then
           echo "dry-run=false" >> "$GITHUB_OUTPUT"
         else
@@ -64,6 +74,13 @@ runs:
               echo "::error::ceiling must be a whole number or empty. It is '$TRIAGE_CEILING'."
               exit 1
             fi
+            ;;
+        esac
+        case "$TRIAGE_LIMIT" in
+          '') ;;
+          *[!0-9]* | 0*)
+            echo "::error::limit must be a whole number of 1 or more, with no leading zero, or empty. It is '$TRIAGE_LIMIT'."
+            exit 1
             ;;
         esac
 
@@ -92,6 +109,7 @@ runs:
         TRIAGE_REPO: ${{ inputs.repo }}
         TRIAGE_CEILING: ${{ inputs.ceiling }}
         TRIAGE_IS_DRY_RUN: ${{ steps.mode.outputs.dry-run }}
+        TRIAGE_LIMIT: ${{ inputs.limit }}
       run: |
         set -euo pipefail
         # --dry-run only has an effect together with --apply: the script then
@@ -103,10 +121,14 @@ runs:
         if [ -n "$TRIAGE_CEILING" ]; then
           args+=(--ceiling "$TRIAGE_CEILING")
         fi
+        if [ -n "$TRIAGE_LIMIT" ]; then
+          args+=(--limit "$TRIAGE_LIMIT")
+        fi
         # The plan (stdout) goes to the log. The summary (stderr) goes to a
         # file first, so the next step can copy it into the job summary
-        # whether this step passed or failed.
-        summary="$RUNNER_TEMP/triage-summary.txt"
+        # whether this step passed or failed. Each call gets its own file, so
+        # a second call in one job does not overwrite the first call's summary.
+        summary=$(mktemp "$RUNNER_TEMP/triage-summary.XXXXXX")
         rc=0
         python3 "$GITHUB_ACTION_PATH/triage-backlog.py" "${args[@]}" 2> "$summary" || rc=$?
         cat "$summary" >&2
