@@ -15,12 +15,19 @@ A comment counts only when all of these hold:
     so excluding the author would reject the real fallback review;
   - it carries the agent-authorship marker, so a human note is not mistaken
     for a review;
-  - it names the full 40-character head sha in a "Reviewed-Commit:" (or
-    "Reviewed commit:") line, so a push retires it with no extra logic;
+  - the LAST "Reviewed-Commit:" (or "Reviewed commit:") line of its own
+    prose names the full 40-character head sha, so a push retires it with no
+    extra logic, and a comment listing several commits counts only for the
+    one it ends on (gha#1229);
   - the marker and the sha line sit in the comment's own prose, not in a
     fenced code block, a blockquote or an indented code block, so quoting
     another review does not count as posting one;
-  - the classifier reads its verdict as clean.
+  - the classifier reads its verdict as clean. A classifier that fails on
+    one comment skips that comment rather than aborting the search
+    (gha#1229).
+
+Each comment's decision is logged to stderr, with the reason it did or did
+not count, so a miss in CI can be read from the job log (gha#1288).
 
 Prints found=true|false and url=<comment html_url> to stdout, and to
 $GITHUB_OUTPUT when set. Exits 0 either way: the caller decides what a miss
@@ -106,16 +113,42 @@ def find(comments, head_sha, classifier):
     """
     for comment in sorted(comments, key=lambda c: c.get("created_at", ""), reverse=True):
         body = comment.get("body") or ""
-        if comment.get("author_association") not in TRUSTED_ASSOCIATIONS:
+        association = comment.get("author_association")
+        if association not in TRUSTED_ASSOCIATIONS:
+            log(comment, f"skipped: author_association {association} is not OWNER, MEMBER or COLLABORATOR")
             continue
         if MARKER not in own_prose(body).lower():
+            log(comment, f"skipped: {association} comment has no agent marker in its own prose")
             continue
-        if head_sha not in reviewed_commits(body):
+        commits = reviewed_commits(body)
+        if not commits:
+            log(comment, "skipped: no Reviewed-Commit line in its own prose")
             continue
-        if is_clean(body, head_sha, classifier):
+        if commits[-1] != head_sha:
+            log(comment, f"skipped: its last Reviewed-Commit line names {commits[-1]}, not the head")
+            continue
+        try:
+            clean = is_clean(body, head_sha, classifier)
+        except subprocess.CalledProcessError as error:
+            log(comment, f"skipped: the classifier exited {error.returncode}")
+            print(
+                f"::warning::find-fallback-verdict: the classifier failed on {comment.get('html_url')}; skipping it.",
+                file=sys.stderr,
+            )
+            continue
+        if clean:
+            log(comment, "counts: a clean review of the head")
             return comment.get("html_url") or "unknown"
+        log(comment, "decides: a not-clean review of the head, which withdraws any older clean one")
         return ""
+    print("find-fallback-verdict: no trusted, marked review of the head counts", file=sys.stderr)
     return ""
+
+
+def log(comment, decision):
+    """Write one comment's decision to stderr, for the job log (gha#1288)."""
+    where = comment.get("html_url") or "a comment without a URL"
+    print(f"find-fallback-verdict: {where}: {decision}", file=sys.stderr)
 
 
 def main(argv):

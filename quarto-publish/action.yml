@@ -115,7 +115,9 @@ inputs:
       (apt packages, Chrome, Quarto, R, Julia and its cache), ignore `tinytex`
       for the install, and install `r-packages` with pak into the runner's
       user library. renv, the JuliaCall setup, TinyTeX packages and the
-      freeze cache still run.
+      freeze cache still run. A tool package in `apt-packages` (such as
+      librsvg2-bin) that the runner lacks fails the job at once, naming the
+      runner; any other missing package is a warning.
     default: 'false'
   deno-v8-options:
     description: >-
@@ -191,6 +193,15 @@ runs:
         add_newest quarto "$HOME/opt/quarto-*/bin"
         add_newest julia "$HOME/opt/julia-*/bin" "$HOME/.juliaup/bin" "$HOME/julia-*/bin"
         add_newest pdflatex "$HOME/.TinyTeX/bin/*"
+
+    - name: Check apt packages on the preinstalled toolchain
+      if: inputs.apt-packages != '' && inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.apt-packages }}
+        CLUSTER_RENDER: ${{ inputs.cluster-render }}
+      # Fail now, naming the runner, rather than mid-render (gha#1758).
+      run: bash "${{ github.action_path }}/../scripts/check-preinstalled-apt-packages.sh"
 
     - name: Install apt packages
       if: inputs.apt-packages != '' && inputs.preinstalled-toolchain != 'true'
