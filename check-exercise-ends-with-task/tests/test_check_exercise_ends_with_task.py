@@ -148,3 +148,28 @@ def test_a_sentence_continued_past_a_display_is_judged_whole(body):
 ])
 def test_a_new_sentence_after_a_display_is_judged_alone(body):
     assert reasons(exercise(body)) == ["its last paragraph holds no question or instruction"]
+
+
+def test_a_list_item_display_carries_its_lowercase_follower():
+    text = exercise("1. Show that\n\n   $$ x = 1 $$\n\n   where $x > 0$.")
+    assert reasons(text) == []
+
+
+def test_a_list_item_display_does_not_carry_a_paragraph_after_the_list():
+    text = exercise("1. Show that\n\n   $$ x = 1 $$\n\nwhere $x > 0$.")
+    assert reasons(text) == ["its last paragraph holds no question or instruction"]
+
+
+def test_a_list_item_follower_is_judged_with_its_item():
+    text = exercise("1. Note that\n\n   $$ x = 1 $$\n\n   where $x > 0$.")
+    assert reasons(text) == ["its last paragraph holds no question or instruction"]
+
+
+def test_a_list_item_display_after_lazy_lines_joins_them():
+    text = exercise("Consider data.\n\n1. Item.\n\n   Show that\n\n   $$ x = 1 $$\n\n   where $x > 0$.")
+    assert reasons(text) == []
+
+
+def test_a_single_line_display_carries_its_follower():
+    text = exercise("Show that\n\n$$x = 1$$\n\nwhere $x$ is a number. What is x?")
+    assert reasons(text) == []
