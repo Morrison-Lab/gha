@@ -78,6 +78,12 @@ def _load_sibling(name: str):
 
 ods = _load_sibling("check-one-div-per-subfile")
 
+# The git and file helpers come from check-common (gha#1856);
+# the div and fence parsing still comes from check-one-div-per-subfile.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
+
 DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = True
 ALLOW_MARKER = "check-heading-levels: allow"
@@ -351,23 +357,23 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
               whole_tree: bool) -> Report:
     """Report findings whose heading line was added since ``base_ref``."""
     root = os.getcwd()
-    listing = ods._run_git(["ls-files", "--", *globs])
+    listing = diffscope.run_git(["ls-files", "--", *globs])
     if listing is None:
         return Report([], 0, True)
     files = [f for f in listing.splitlines()
-             if f and not ods._ignored(f, ignores)]
+             if f and not diffscope.ignored(f, ignores)]
     keep: Dict[str, Set[int]] = {}
     if not whole_tree:
         if not base_ref:
             return Report([], 0, True)
-        base = ods._run_git(["merge-base", base_ref, "HEAD"])
+        base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, True)
-        diff = ods._run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+        diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
                              base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, True)
-        added, _deleted = ods.parse_diff(diff)
+        added, _deleted = diffscope.parse_diff(diff)
         for rel, numbered in added.items():
             keep[rel] = {n for n, text in numbered.items() if text.strip()}
     found: List[Finding] = []
@@ -381,7 +387,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     for f in found:
         rel = os.path.relpath(f.path, root)
         key = (rel, f.line, f.kind)
-        if key in seen or ods._ignored(rel, ignores):
+        if key in seen or diffscope.ignored(rel, ignores):
             continue
         if not whole_tree and f.line not in keep.get(rel, set()):
             continue
@@ -393,9 +399,10 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
 def main() -> int:
     base_ref = os.environ.get("HLV_BASE_REF", "").strip()
     globs = os.environ.get("HLV_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    ignores = ods.compile_ignores(ods._split_list(os.environ.get("HLV_PATHS_IGNORE", "")))
-    fail = ods._env_flag("HLV_FAIL", _DEFAULT_FAIL)
-    whole_tree = ods._env_flag("HLV_WHOLE_TREE", False)
+    ignores = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("HLV_PATHS_IGNORE", "")))
+    fail = diffscope.env_flag("HLV_FAIL", _DEFAULT_FAIL)
+    whole_tree = diffscope.env_flag("HLV_WHOLE_TREE", False)
 
     report = run_check(base_ref, globs, ignores, whole_tree)
 

@@ -536,10 +536,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
   `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
-  It loads `check-one-div-per-subfile`'s git and file helpers (`_run_git`, `_ignored`, `_read_lines`, `_split_list`, `_env_flag`), so keep the two directories together and rename those helpers in both.
+  It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
   It imports `check-exm-figures`' figure test.
-  That script loads `check-one-div-per-subfile`'s git helpers, so keep the three directories together.
+  That script loads `check-common` and `check-one-div-per-subfile`, so keep the four directories together.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement (psw#426).
   A proof hidden from the slides is deliberate and is never flagged (Ezra, 2026-11-04, gha#1491).
   It loads `check-write-idiom`'s engine like `check-avoided-words`.

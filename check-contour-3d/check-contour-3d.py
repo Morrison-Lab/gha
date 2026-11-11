@@ -77,6 +77,12 @@ def _load_sibling(name: str):
 
 ods = _load_sibling("check-one-div-per-subfile")
 
+# The git and file helpers come from check-common (gha#1856);
+# the div and fence parsing still comes from check-one-div-per-subfile.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
+
 DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = False
 
@@ -179,25 +185,25 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
               whole_tree: bool) -> Report:
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = ods._run_git(["ls-files", "--", *globs])
+        out = diffscope.run_git(["ls-files", "--", *globs])
         if out is None:
             return Report([], 0, 0, 0, True)
         for rel in out.splitlines():
-            if rel and not ods._ignored(rel, ignores):
+            if rel and not diffscope.ignored(rel, ignores):
                 wanted[rel] = None
     else:
         if not base_ref:
             return Report([], 0, 0, 0, True)
-        base = ods._run_git(["merge-base", base_ref, "HEAD"])
+        base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, 0, 0, True)
-        diff = ods._run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+        diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
                              base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, 0, 0, True)
-        added, deleted = ods.parse_diff(diff)
+        added, deleted = diffscope.parse_diff(diff)
         for rel, numbered in added.items():
-            if ods._ignored(rel, ignores):
+            if diffscope.ignored(rel, ignores):
                 continue
             wanted[rel] = {n for n, text in numbered.items()
                            if text.strip() and text not in deleted}
@@ -205,7 +211,7 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
     findings: List[Tuple[str, int]] = []
     files = lines = figures = 0
     for rel in sorted(wanted):
-        content = ods._read_lines(rel)
+        content = diffscope.read_lines(rel)
         if content is None:
             continue
         files += 1
@@ -220,9 +226,10 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
 def main() -> int:
     base_ref = os.environ.get("C3D_BASE_REF", "").strip()
     globs = os.environ.get("C3D_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    ignores = ods.compile_ignores(ods._split_list(os.environ.get("C3D_PATHS_IGNORE", "")))
-    fail = ods._env_flag("C3D_FAIL", _DEFAULT_FAIL)
-    whole_tree = ods._env_flag("C3D_WHOLE_TREE", False)
+    ignores = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("C3D_PATHS_IGNORE", "")))
+    fail = diffscope.env_flag("C3D_FAIL", _DEFAULT_FAIL)
+    whole_tree = diffscope.env_flag("C3D_WHOLE_TREE", False)
 
     report = run_check(base_ref, globs, ignores, whole_tree)
 
