@@ -1,9 +1,11 @@
 name: Check notes report
 description: >-
   Internal to check-notes.yml (gha#1367). List each bundled check's outcome in
-  the job summary, and fail when a check step failed. The check steps run with
+  the job summary, and fail when a check step failed or when a named check has
+  no step outcome at all (a miswired step id). The check steps run with
   continue-on-error, which leaves a failed step's outcome at failure, so the
-  outcome is what this reads.
+  outcome is what this reads. The `result` output says which: `passed`,
+  `failed` or `missing`.
 inputs:
   steps:
     description: The calling job's `toJSON(steps)`.
@@ -11,10 +13,15 @@ inputs:
   checks:
     description: JSON list of the bundled checks, by step id.
     required: true
+outputs:
+  result:
+    description: "`passed`, `failed` (a check step failed) or `missing` (a named check has no step outcome)."
+    value: ${{ steps.report.outputs.result }}
 runs:
   using: composite
   steps:
     - name: Report outcomes
+      id: report
       shell: bash
       env:
         STEPS: ${{ inputs.steps }}

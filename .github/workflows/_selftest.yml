@@ -3852,16 +3852,34 @@ jobs:
           steps: ${{ toJSON(steps) }}
           checks: '["check-a","check-b"]'
       - name: Report on the passing step alone, which must pass
+        id: report-pass
         uses: ./.github/actions/check-notes-report
         with:
           steps: ${{ toJSON(steps) }}
           checks: '["check-b"]'
-      - name: Assert the failed step was caught
+      - name: Report on a step id that does not exist, which must fail as missing
+        id: report-missing
+        continue-on-error: true
+        uses: ./.github/actions/check-notes-report
+        with:
+          steps: ${{ toJSON(steps) }}
+          checks: '["check-b","no-such-step"]'
+      # The outcome alone cannot tell a failed check from a miswired step id,
+      # since both fail the report, so each call's `result` is asserted too.
+      - name: Assert each report took the path it should
         shell: bash
         env:
           REPORT: ${{ steps.report.outcome }}
+          RESULT: ${{ steps.report.outputs.result }}
+          PASS_RESULT: ${{ steps.report-pass.outputs.result }}
+          MISSING: ${{ steps.report-missing.outcome }}
+          MISSING_RESULT: ${{ steps.report-missing.outputs.result }}
         run: |
           [ "$REPORT" = failure ] || { echo "::error::report outcome=$REPORT"; exit 1; }
+          [ "$RESULT" = failed ] || { echo "::error::report result=$RESULT, want failed"; exit 1; }
+          [ "$PASS_RESULT" = passed ] || { echo "::error::report-pass result=$PASS_RESULT"; exit 1; }
+          [ "$MISSING" = failure ] || { echo "::error::report-missing outcome=$MISSING"; exit 1; }
+          [ "$MISSING_RESULT" = missing ] || { echo "::error::report-missing result=$MISSING_RESULT"; exit 1; }
 
   # check-function-graphs is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-function-graphs@v3` does not resolve until
