@@ -1268,6 +1268,8 @@ cookieconsent.run({
 <li>GitHub lists no pull request for a run from a fork, so fork pull requests are never matched.</li>
 <li>Runs in <code>waiting</code> or <code>requested</code> status are not cancelled.</li>
 <li>Fork and Dependabot pull requests get a read-only token, which cannot cancel runs.</li>
+<li>GitHub runs no <code>pull_request</code> workflow while a pull request has merge conflicts, so the caller does not fire, and nothing is cancelled, until the conflict is resolved.</li>
+<li>On a self-hosted runner pool (<code>CI_RUNNER</code>), the cancel job queues for a runner like any other job, so it can wait behind the very runs it should cancel. Set <code>runs-on</code> to a label with a free runner if that delay matters.</li>
 </ul>
 </section>
 <section id="example" class="level2">
