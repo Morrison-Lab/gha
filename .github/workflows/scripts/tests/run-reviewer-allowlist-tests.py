@@ -228,6 +228,21 @@ def main() -> int:
         + (f" (found: {', '.join(param_allows)})" if param_allows else ""),
     )
 
+    # 6. The prompt sends the reviewer to the PR's comments for a quoted page
+    #    it cannot open (gha#1375), so the command it names must stay usable.
+    #    A deny rule matching `gh pr view` would leave the rule unfollowable.
+    prompt_text = path.read_text(encoding="utf-8")
+    check(
+        "gh pr view --json body,comments" in prompt_text,
+        "the prompt names the command that reads a quoted citation (gha#1375)",
+    )
+    blocking = [t for t in denied if t.startswith("Bash(gh pr view")]
+    check(
+        not blocking,
+        "`gh pr view` is not denied, so the quoted-citation rule can be followed"
+        + (f" (found: {', '.join(blocking)})" if blocking else ""),
+    )
+
     print()
     if FAILURES:
         print(f"::error::{len(FAILURES)} reviewer-allowlist assertion(s) failed", file=sys.stderr)
