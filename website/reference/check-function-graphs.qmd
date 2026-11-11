@@ -1,0 +1,97 @@
+---
+title: "check-function-graphs.yml"
+---
+
+Diff-scoped check that flags a definition of a function of one or two inputs
+with no graph of that function.
+The lab's rule (Ezra, 2026-11-10) is that
+every definition for a function of one or two inputs
+includes a graph of that function,
+in 2D for one input and in 3D for two inputs.
+This implements
+[gha#1838](https://github.com/Morrison-Lab/gha/issues/1838);
+the writing rule is in
+[psw#575](https://github.com/Morrison-Lab/psw/pull/575).
+It warns by default,
+because spotting a function definition from its source is a heuristic.
+
+## What it flags
+
+A definition div (`#def-`) is a candidate
+when the left-hand side of its first display equation,
+up to the first `=`, `:=`, `\eqdef`, `\coloneqq`, `\triangleq`, or `\equiv`,
+is exactly a named function applied to one or two arguments:
+`f(x)`, `f(x, y)`, `\sigma\paren{z}`, or an f-form macro such as `\logitf{p}`.
+Each argument must be a lowercase Latin or Greek letter,
+with an optional subscript or superscript.
+An uppercase letter names a set, an event, or a random variable.
+Neither such a letter, a vector macro such as `\vx`,
+a matrix macro such as `\mA`, nor an expression is a scalar input,
+so a definition with such an argument is not a candidate.
+
+The check reads only the first display equation outside HTML comments,
+so a definition that states its defining equation second is skipped.
+Any `=` counts as defining,
+so a first equation that states a property of a named function,
+such as `\log(x) = y`, makes the div a candidate.
+
+A candidate passes when its div holds a graph,
+which is anything `check-exm-figures` counts as a figure:
+an image, a `fig-` labelled chunk, a `fig-` labelled div, an `@fig-` reference,
+or an include of a `_fig` subfile.
+A figure after the div does not count;
+the graph goes inside the definition, after the defining equation.
+
+A div holding an HTML comment `<!-- no-graph: reason -->`
+with a non-empty reason is exempt,
+for a function with no meaningful graph, such as one defined on a finite set.
+Use `paths-ignore` to exempt whole paths.
+
+## Scope
+
+Only a definition that holds a line a pull request adds is reported,
+so untouched definitions are not reflagged.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose,
+which measures how many existing function definitions lack a graph.
+Every run that does not skip prints how many lines, files,
+and candidate definitions it examined.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `false`       | Fail the workflow on a finding. The default is warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-function-graphs.yml in your repo.
+name: Check function graphs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-function-graphs.yml@v3
+    # with:
+    #   fail: true         # block on a finding (defaults to false)
+```

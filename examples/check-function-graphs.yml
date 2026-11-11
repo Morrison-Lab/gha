@@ -1,0 +1,24 @@
+# Copy to .github/workflows/check-function-graphs.yml in your repo.
+# Diff-scoped check: flags a definition div (#def-) of a function of one or
+# two inputs with no graph inside it, when a PR adds a line to the div.
+# Add a 2D graph (one input) or 3D graph (two inputs) inside the div, after
+# the defining equation, or <!-- no-graph: reason --> in the div.
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check function graphs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-function-graphs.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block on a finding (defaults to false)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
