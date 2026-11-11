@@ -1245,6 +1245,7 @@ cookieconsent.run({
   <li><a href="#the-require-clean-verdict-gate" id="toc-the-require-clean-verdict-gate" class="nav-link" data-scroll-target="#the-require-clean-verdict-gate">The <code>require-clean-verdict</code> gate</a>
   <ul class="collapse">
   <li><a href="#fallback-review-on-a-quota-skip" id="toc-fallback-review-on-a-quota-skip" class="nav-link" data-scroll-target="#fallback-review-on-a-quota-skip">Fallback review on a quota skip</a></li>
+  <li><a href="#a-newer-clean-review-of-the-same-head" id="toc-a-newer-clean-review-of-the-same-head" class="nav-link" data-scroll-target="#a-newer-clean-review-of-the-same-head">A newer clean review of the same head</a></li>
   </ul></li>
   <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
@@ -1572,6 +1573,10 @@ cookieconsent.run({
 </ul>
 <p>The newest such comment decides, and a push retires it (<a href="https://github.com/Morrison-Lab/gha/issues/1182">gha#1182</a>). If the classifier fails on that comment, no fallback is accepted (<a href="https://github.com/Morrison-Lab/gha/issues/1229">gha#1229</a>).</p>
 <p>The author check shows a tie to the repository, not write access: a member or collaborator without push rights also qualifies, and the marker is plain text anyone can type.</p>
+</section>
+<section id="a-newer-clean-review-of-the-same-head" class="level3">
+<h3 class="anchored" data-anchor-id="a-newer-clean-review-of-the-same-head">A newer clean review of the same head</h3>
+<p>Two review runs can review the same head, for example a push followed by a <code>/review</code> comment. When the older run’s verdict is not clean and the newer run’s is, the older run’s <code>require-clean-verdict</code> used to stay red, and re-running its failed jobs replayed the same verdict (<a href="https://github.com/Morrison-Lab/gha/issues/1365">gha#1365</a>). Now the gate looks up the reviews posted on the PR before it fails. It goes green when the newest review of the head it reviewed comes from a newer run and reads as clean. So re-running the older run’s failed jobs clears its check without a new review. A review counts only when <code>github-actions[bot]</code> posted it, its first line is the “Claude finished review” header with its run link, and its last line is the <code>Reviewed commit:</code> stamp naming that head. The gate needs <code>pull-requests: read</code> for this lookup, which callers already grant for <code>find-fallback-verdict</code>.</p>
 </section>
 </section>
 <section id="concurrency" class="level2">
