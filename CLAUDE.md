@@ -529,6 +529,11 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
+- `check-common/` (Python, stdlib only, gha#1856) is not a check: it holds `diffscope.py`, the one copy of the diff-scoping helpers.
+  Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
+  A check puts the directory on `sys.path` and imports it.
+  A composite action runs from a checkout of the whole repository, so `../check-common` is always beside it.
+  Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
   It loads `check-one-div-per-subfile`'s git and file helpers (`_run_git`, `_ignored`, `_read_lines`, `_split_list`, `_env_flag`), so keep the two directories together and rename those helpers in both.
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
