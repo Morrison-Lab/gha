@@ -112,8 +112,12 @@ def test_diff_scoping_and_whole_tree(tmp_path, monkeypatch):
     assert not eet.touched(eet.Finding(1, 6, "x"), set())
 
 
-@pytest.mark.parametrize("display", ["$$x = 1$$ {#eq-a}", "$$x = 1$$  {#eq-a .unnumbered}",
-                                     "$$x = 1$$", "$$x = 1$$ "])
+@pytest.mark.parametrize("display", [
+    "$$x = 1$$ {#eq-a}", "$$x = 1$$  {#eq-a .unnumbered}", '$$x$$ {#eq-a key="{v}"}',
+    "$$x$$ {#eq-a} {.b}", "$$x$$ {#eq-a} trailing text",
+    # Closed on their line before gha#1908 too; kept so the fix cannot reopen them.
+    "$$x = 1$$", "$$x = 1$$ ", "$$$$", "$$ $$", "$$$",
+])
 def test_a_one_line_display_closes_on_its_line(display):
     # gha#1908: a labelled one-line display used to leave the math open,
     # so the figure after it was swallowed and never reported.
