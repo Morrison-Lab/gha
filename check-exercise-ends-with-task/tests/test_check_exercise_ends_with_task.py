@@ -171,5 +171,11 @@ def test_a_list_item_display_after_indented_paragraphs_joins_them():
 
 
 def test_a_single_line_display_carries_its_follower():
-    text = exercise("Show that\n\n$$x = 1$$\n\nwhere $x$ is a number. What is x?")
+    # The follower holds no task of its own, so only the join with "Show that" passes it.
+    text = exercise("Show that\n\n$$x = 1$$\n\nwhere $x$ is a number.")
     assert reasons(text) == []
+
+
+def test_a_single_line_display_follower_alone_holds_no_task():
+    text = exercise("Consider $x$.\n\n$$x = 1$$\n\nwhere $x$ is a number.")
+    assert reasons(text) == ["its last paragraph holds no question or instruction"]
