@@ -53,6 +53,8 @@ LABEL_DIV_RE = re.compile(r"#(fig|tbl)-")
 IMAGE_RE = re.compile(r"^\s*!\[")
 TABLE_RE = re.compile(r"^\s*\|")
 SHORTCODE_RE = re.compile(r"^\s*\{\{<")
+# A paragraph that opens with a lowercase word continues the sentence a display interrupted.
+CONTINUATION_RE = re.compile(r"^[*_]*[a-z]")
 NEUTRAL_RE = re.compile(r"^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|>)")
 
 
@@ -78,22 +80,41 @@ def blocks_of(body: List[str]) -> List[tuple]:
     """(kind, text) blocks of an exercise body, in order."""
     out: List[tuple] = []
     para: List[str] = []
+    # True while the last block is a paragraph that a display equation interrupted,
+    # so a paragraph after the display that opens in lowercase ("where ...") continues
+    # its sentence and is judged with it (gha#1843).
+    continues = False
+    adjacent = False  # the last block is a paragraph, with only blank lines after it
 
     def close() -> None:
+        nonlocal continues, adjacent
         if para:
-            out.append(("prose", " ".join(para)))
+            text = " ".join(para)
+            if continues and out and out[-1][0] == "prose" and CONTINUATION_RE.match(text):
+                out[-1] = ("prose", out[-1][1] + " " + text)
+            else:
+                out.append(("prose", text))
             para.clear()
+            continues = False
+            adjacent = True
 
     in_math = False
     for raw in body:
         stripped = raw.strip()
         if stripped.startswith("$$"):
-            close()
+            if not in_math:
+                joinable = bool(para) or adjacent
+                close()
+                continues = joinable
             in_math = not (in_math or (stripped.endswith("$$") and len(stripped) > 2))
             continue
         if in_math:
             in_math = "$$" not in raw
             continue
+        if stripped and (raw.startswith("\0") or SHORTCODE_RE.match(raw) or TABLE_RE.match(raw)
+                         or NEUTRAL_RE.match(raw) or (IMAGE_RE.match(raw) and not para)):
+            close()
+            continues = adjacent = False  # another block sits between the paragraph and what follows
         if not stripped:
             close()
         elif raw.startswith("\0"):

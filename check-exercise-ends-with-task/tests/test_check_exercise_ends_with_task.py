@@ -110,3 +110,28 @@ def test_diff_scoping_and_whole_tree(tmp_path, monkeypatch):
     assert flagged == ["a.qmd", "b.qmd"]
     assert eet.touched(eet.Finding(1, 6, "x"), diff["b.qmd"])
     assert not eet.touched(eet.Finding(1, 6, "x"), set())
+
+
+@pytest.mark.parametrize("body", [
+    # psw's #exr-sum-deviations (gha#1843): one sentence split by a display.
+    "Show that\n\n$$\n\\sum_{i=1}^n (x_i - \\bar{x}) = 0,\n$$\n\n"
+    "where $\\bar{x}$ is the sample mean (@def-sample-mean).",
+    "Show that\n$$\nx = 1,\n$$\nwhere $x$ is a number.",
+    "Show that\n\n$$\na = b,\n$$\n\nand\n\n$$\nb = c,\n$$\n\nwhere $a$ is a number.",
+])
+def test_a_sentence_continued_past_a_display_is_judged_whole(body):
+    assert reasons(exercise(body)) == []
+
+
+@pytest.mark.parametrize("body", [
+    # A capitalized paragraph after the display starts a new sentence.
+    "Show that\n\n$$\nx = 1.\n$$\n\nThe data are in Table 1.",
+    # A display that opens the exercise has no sentence before it to continue.
+    "$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # Another block between the display and the lowercase paragraph breaks the link.
+    "Show that\n\n$$\nx = 1,\n$$\n\n- a list item\n\nwhere $x$ is a number.",
+    # So does a block between the paragraph and the display.
+    "Show that $x = 1$.\n\n- a list item\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+])
+def test_a_new_sentence_after_a_display_is_judged_alone(body):
+    assert reasons(exercise(body)) == ["its last paragraph holds no question or instruction"]
