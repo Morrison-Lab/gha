@@ -56,6 +56,12 @@ is reported.
 An untouched subfile keeps its layout.
 An added line whose exact text was also deleted in the same diff
 counts as moved rather than new, and a blank added line is not content.
+The deleted text is read from the whole diff, not only the subfiles,
+so a file moved into a `_subfiles` directory from elsewhere
+is a rename, not new content.
+An `include` line that changes only its path,
+to follow a file the same diff renames,
+also counts as moved.
 
 With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.
