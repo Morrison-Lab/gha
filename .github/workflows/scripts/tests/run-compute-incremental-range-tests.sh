@@ -462,15 +462,31 @@ cf="$tmp/bcount-nodefault.txt"
 brun "$bfull" "$B_MERGED" "$cf" main >/dev/null
 check "default branch unknown: fails closed to the full count" "2" "$(cat "$cf")"
 
-# 25. MAJOR: a base that is not the default branch never excludes. The PR
-#     author pushes unreviewed work to `stage`, retargets the PR at it,
-#     pushes the same commit to the PR, and retargets back; with `stage` as
-#     the base the commit would be reachable from the base and vanish from
-#     the count.
+# 25. A stacked PR (base `stage`, not the default branch) still excludes
+#     the default branch's commits: it merges main through its base too, and
+#     counting main's commits read as scope creep in the review (gha#1802,
+#     Morrison-Lab/lds#2196). Its own commit still counts.
 cf="$tmp/bcount-stage.txt"
 out=$(brun "$bfull" "$B_OWN2" "$cf" stage main)
-check "non-default base (stage): full count kept" "3" "$(cat "$cf")"
-check "non-default base (stage): unreviewed commit still listed" "yes" "$(has 'subject-pr-own-2' "$out")"
+check "stacked base (stage): main's commits excluded, own commit counted" "1" "$(cat "$cf")"
+check "stacked base (stage): unreviewed commit still listed" "yes" "$(has 'subject-pr-own-2' "$out")"
+check "stacked base (stage): names main's commits as already on main" "yes" "$(has "already on \`main\`" "$out")"
+check "stacked base (stage): tells the reviewer to judge scope from the PR's own diff" "yes" "$(has 'judge scope from the PR' "$out")"
+
+# 25b. MAJOR: the PR's base itself is never excluded. The PR author pushes
+#     unreviewed work to a branch of their own, retargets the PR at it,
+#     pushes the same commit to the PR, and retargets back; with that
+#     branch as the base the commit is reachable from the base, and it must
+#     still count.
+( cd "$borigin" && $GIT branch stage3 feature )
+( cd "$bfull" && $GIT fetch -q origin )
+cf="$tmp/bcount-stage3.txt"
+out=$(brun "$bfull" "$B_OWN2" "$cf" stage3 main)
+check "base holding the unreviewed commit (stage3): commit still counted" "1" "$(cat "$cf")"
+check "base holding the unreviewed commit (stage3): commit still listed" "yes" "$(has 'subject-pr-own-2' "$out")"
+cf="$tmp/bcount-stage3-nodefault.txt"
+brun "$bfull" "$B_OWN2" "$cf" stage3 >/dev/null
+check "base holding the unreviewed commit, default unknown: full count" "3" "$(cat "$cf")"
 
 # 26. SHALLOW checkout of the PR head with actions/checkout's narrow
 #     refspec, main moved past the merged point. The script fetches and
