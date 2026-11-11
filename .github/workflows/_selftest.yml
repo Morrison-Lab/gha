@@ -5824,6 +5824,49 @@ jobs:
           [[ "$FOUND" == "true" ]] || { echo "::error::expected found=true, got '$FOUND'"; exit 1; }
           [[ "$FOUND_URL" == "https://example.test/c/1" ]] || { echo "::error::wrong url '$FOUND_URL'"; exit 1; }
           [[ "$STALE" == "false" ]] || { echo "::error::expected found=false for a stale sha, got '$STALE'"; exit 1; }
+      - name: Run find-newer-review-verdict tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-find-newer-review-verdict-tests.py
+      # Two real `uses: ./` calls, as for find-fallback-verdict above: the same
+      # posted review is newer than run 100 and older than run 300 (gha#1365).
+      - name: Write find-newer-review-verdict fixture
+        id: fnr-fixture
+        shell: bash
+        run: |
+          head=$(printf 'e%.0s' $(seq 40))
+          body="**Claude finished review** -- [View run](https://github.com/o/r/actions/runs/200)\n\n---\n\n### Verdict\n\n**Ready for merge.**\n\nReviewed commit: ${head}"
+          jq -n --arg b "$(printf "$body")" \
+            '[{body: $b, user: {login: "github-actions[bot]"}, html_url: "https://example.test/c/200"}]' \
+            > "$RUNNER_TEMP/fnr-comments.json"
+          echo "head=${head}" >> "$GITHUB_OUTPUT"
+      - name: find-newer-review-verdict finds a newer clean review
+        id: fnr-found
+        uses: ./.github/actions/find-newer-review-verdict
+        with:
+          repository: example/repo
+          pr-number: '1'
+          comments-file: ${{ runner.temp }}/fnr-comments.json
+          head-sha: ${{ steps.fnr-fixture.outputs.head }}
+          run-id: '100'
+      - name: find-newer-review-verdict ignores an older review
+        id: fnr-older
+        uses: ./.github/actions/find-newer-review-verdict
+        with:
+          repository: example/repo
+          pr-number: '1'
+          comments-file: ${{ runner.temp }}/fnr-comments.json
+          head-sha: ${{ steps.fnr-fixture.outputs.head }}
+          run-id: '300'
+      - name: Assert find-newer-review-verdict outputs
+        shell: bash
+        env:
+          FOUND: ${{ steps.fnr-found.outputs.found }}
+          FOUND_URL: ${{ steps.fnr-found.outputs.url }}
+          OLDER: ${{ steps.fnr-older.outputs.found }}
+        run: |
+          [[ "$FOUND" == "true" ]] || { echo "::error::expected found=true, got '$FOUND'"; exit 1; }
+          [[ "$FOUND_URL" == "https://example.test/c/200" ]] || { echo "::error::wrong url '$FOUND_URL'"; exit 1; }
+          [[ "$OLDER" == "false" ]] || { echo "::error::expected found=false for an older review, got '$OLDER'"; exit 1; }
       - name: Run classify-push-failure tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh
@@ -10268,6 +10311,14 @@ jobs:
       - name: Run run-runner-exclusive tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-run-runner-exclusive-tests.sh
+
+      - name: Run check-preinstalled-apt-packages tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-check-preinstalled-apt-packages-tests.sh
+
+      - name: Run install-runner-systemd-unit tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-install-runner-systemd-unit-tests.sh
 
       - name: Run runner-group-is-private tests
         shell: bash

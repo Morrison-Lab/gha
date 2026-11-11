@@ -1,0 +1,65 @@
+name: Find newer review verdict
+description: >-
+  Reports whether a newer run of claude-code-review.yml posted a clean review
+  of the same head. Used by `require-clean-verdict` when its own run's verdict
+  is not clean, so an older run's red check clears once a newer run of the same
+  head is clean (gha#1365). A composite action rather than a checked-out script
+  because the reusable workflow runs in the consumer's checkout, which does not
+  contain this repository's script tree (gha#812).
+
+inputs:
+  repository:
+    description: owner/name of the repository holding the PR.
+    required: true
+  pr-number:
+    description: Pull request number.
+    required: true
+  head-sha:
+    description: Full sha of the head the asking run reviewed.
+    required: true
+  run-id:
+    description: Run id of the asking run. Only reviews from a higher run id count.
+    required: true
+  github-token:
+    description: "Token with `pull-requests: read`. Unused when `comments-file` is set."
+    required: false
+    default: ''
+  comments-file:
+    description: >-
+      Path to a JSON array of PR comments, read instead of the API. For
+      selftests only, so the composite can run for real with no network.
+    required: false
+    default: ''
+
+outputs:
+  found:
+    description: "\"true\" when a newer run posted a clean review of the head."
+    value: ${{ steps.find.outputs.found }}
+  url:
+    description: Link to that review comment, empty when none.
+    value: ${{ steps.find.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Find
+      id: find
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        COMMENTS_FILE: ${{ inputs.comments-file }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        RUN_ID: ${{ inputs.run-id }}
+      run: |
+        set -euo pipefail
+        comments_file="$COMMENTS_FILE"
+        if [[ -z "$comments_file" ]]; then
+          comments_file="${RUNNER_TEMP}/newer-review-comments.json"
+          gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments?per_page=100" \
+            | jq -s 'add // []' > "$comments_file"
+        fi
+        python3 "$GITHUB_ACTION_PATH/../../workflows/scripts/find-newer-review-verdict.py" \
+          "$comments_file" "$HEAD_SHA" "$RUN_ID" \
+          "$GITHUB_ACTION_PATH/../../workflows/scripts/classify-review-verdict.sh"
