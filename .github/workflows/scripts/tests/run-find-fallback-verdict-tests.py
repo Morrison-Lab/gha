@@ -180,8 +180,28 @@ def check_wiring():
         problems.append("find-fallback-verdict lacks `pull-requests: read`")
     if "find-fallback-verdict@" not in finder:
         problems.append("find-fallback-verdict job does not use the action")
-    if "find-fallback-verdict" not in job.split("steps:")[0]:
-        problems.append("require-clean-verdict does not need find-fallback-verdict")
+    # The gate runs the lookup itself: "Re-run failed jobs" reuses a
+    # successful job's stored outputs, so reading find-fallback-verdict's
+    # found=false hid a fallback posted after the skip (gha#1880).
+    gate_head = job.split("steps:")[0]
+    gate_needs = re.search(r"\n    needs: \[([^\]]*)\]", gate_head)
+    gate_needs = {n.strip() for n in gate_needs.group(1).split(",")} if gate_needs else set()
+    if "find-fallback-verdict" in gate_needs:
+        problems.append("require-clean-verdict must not read find-fallback-verdict's stored outputs (gha#1880)")
+    if "gather-context" not in gate_needs:
+        problems.append("require-clean-verdict must need gather-context for the reviewed commit (gha#1229)")
+    step = re.search(r"\n      - name: Look for a recorded fallback verdict\n        id: fallback\n(.*?)\n      - ", job, re.S)
+    if not step:
+        problems.append("require-clean-verdict has no `fallback` lookup step")
+    else:
+        body = step.group(1)
+        if "find-fallback-verdict@" not in body:
+            problems.append("the gate's fallback step does not use the action")
+        if "fromJSON(needs.claude-review.outputs.quota_exhausted" not in body:
+            problems.append("the gate's fallback step no longer runs only on a quota skip")
+        gate_sha = re.search(r"\n          head-sha: (.*)\n", body)
+        if not gate_sha or gate_sha.group(1).strip() != "${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}":
+            problems.append("the gate's fallback step must match the reviewed commit (gha#1229)")
     head = finder.split("steps:")[0]
     needs = re.search(r"\n    needs: \[([^\]]*)\]", head)
     if not needs or {"gather-context", "claude-review"} - {n.strip() for n in needs.group(1).split(",")}:
@@ -192,8 +212,8 @@ def check_wiring():
     expected = "${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}"
     if not sha or sha.group(1).strip() != expected:
         problems.append("find-fallback-verdict must match the reviewed commit, not the live head (gha#1229)")
-    if "FALLBACK_FOUND: ${{ needs.find-fallback-verdict.outputs.found }}" not in job:
-        problems.append("FALLBACK_FOUND must come from find-fallback-verdict's job output")
+    if "FALLBACK_FOUND: ${{ steps.fallback.outputs.found }}" not in job:
+        problems.append("FALLBACK_FOUND must come from the gate's own fallback step (gha#1880)")
     quota = re.search(r'if \[\[ "\$QUOTA_EXHAUSTED" == "true" \]\]; then(.*?)\n          fi\n', job, re.S)
     if not quota:
         problems.append("quota branch not found")
