@@ -6211,7 +6211,7 @@
     "href": "reference/cancel-superseded.html#limits",
     "title": "cancel-superseded.yml",
     "section": "Limits",
-    "text": "Limits\n\nGitHub lists no pull request for a run from a fork, so fork pull requests are never matched.\nRuns in waiting or requested status are not cancelled.\nFork and Dependabot pull requests get a read-only token, which cannot cancel runs.\nGitHub runs no pull_request workflow while a pull request has merge conflicts, so the caller does not fire, and nothing is cancelled, until the conflict is resolved.\nOn a self-hosted runner pool (CI_RUNNER), the cancel job queues for a runner like any other job, so it can wait behind the very runs it should cancel. Set runs-on to a label with a free runner if that delay matters.",
+    "text": "Limits\n\nGitHub lists no pull request for a run from a fork, so fork pull requests are never matched.\nRuns in waiting or requested status are not cancelled.\nFork and Dependabot pull requests get a read-only token, which cannot cancel runs.",
     "crumbs": [
       "Overview",
       "Reference",
