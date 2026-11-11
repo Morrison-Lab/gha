@@ -80,6 +80,10 @@ DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>\{[^}]*\}|\S.*)?$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
 HEADING_RE = re.compile(r"^#{1,6}\s+(?P<title>.+?)\s*(?:\{[^}]*\})?\s*$")
+# A setext heading's underline (at most three spaces of indentation), and a list item,
+# whose next-line `---` is a thematic break rather than an underline.
+SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 FILE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*ignore-file\s*-->", re.I)
 LINE_OPT_OUT_RE = re.compile(
     r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:(?:(?!-->).)*)?\s*-->", re.I
@@ -356,7 +360,16 @@ def split_passages(masked: Sequence[str]) -> List[Passage]:
                 stack.pop()
                 attrs_stack.pop()
             continue
-        if HEADING_RE.match(s):
+        # A setext heading: a `===` or `---` underline straight after a paragraph line.
+        # Its title line is a heading, not prose (gha#1283 review).
+        setext = (
+            SETEXT_UNDERLINE_RE.match(line) is not None
+            and bool(cur) and cur[-1][0] == idx - 1
+            and not LIST_ITEM_RE.match(cur[-1][1]) and "|" not in cur[-1][1]
+        )
+        if setext:
+            cur.pop()
+        if setext or HEADING_RE.match(s):
             flush()
             if not stack:
                 section += 1
@@ -582,6 +595,9 @@ def scan_passage(
                 continue
             n = line_at(start)
             if not reportable(n):
+                if n in opted:
+                    # An opted-out use is exempt, not a first use: the next use is (gha#1283 review).
+                    seen.discard(key)
                 continue
             findings.append(Finding(
                 file=path, line=n, rule="unlinked-first-use", term=key,

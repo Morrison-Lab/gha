@@ -132,6 +132,36 @@ def test_a_heading_inside_a_div_does_not_start_a_new_section():
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
+@pytest.mark.parametrize("underline", ["===", "---", "-"])
+def test_a_setext_heading_starts_a_new_scope_outside_divs(underline):
+    page = f"One\n{underline}\n\nThe [risk](#def-risk) is large.\n\nTwo\n{underline}\n\nThe risk is small.\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [9]
+
+
+def test_a_setext_title_is_not_prose():
+    page = "The risk\n===\n\nText.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+@pytest.mark.parametrize("before", ["\n", "- an item\n", "| a | b |\n"])
+def test_a_rule_that_is_not_an_underline_does_not_start_a_section(before):
+    page = f"The [risk](#def-risk) is large.\n\n{before}---\n\nThe risk is small.\n"
+    assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+def test_a_rule_after_a_blank_line_in_a_div_keeps_the_paragraph_above_it():
+    page = "::: {#exm-a}\n\nThe risk is large.\n\n---\n\nText.\n\n:::\n"
+    assert [f.line for f in run_text(page, {"d.qmd": RISK_DEF})] == [3]
+
+
+def test_an_opted_out_use_does_not_count_as_the_first_use():
+    page = (
+        "The risk table label. <!-- check-term-links: allow: table label -->\n\n"
+        "The risk is small.\n"
+    )
+    assert [(f.line, f.rule) for f in run_text(page, {"d.qmd": RISK_DEF})] == [(3, "unlinked-first-use")]
+
+
 def test_a_plural_link_covers_the_singular_in_later_paragraphs():
     term_def = "::: {#def-term}\n\n#### Term\n\nA **term** is a word.\n\n:::\n"
     page = "The [terms](#def-term) matter.\n\nEach term counts.\n"
