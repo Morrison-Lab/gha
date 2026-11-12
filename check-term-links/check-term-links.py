@@ -56,14 +56,16 @@ skips with a warning rather than widening to the whole tree.
 """
 
 import argparse
-import fnmatch
 import os
 import re
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -708,32 +710,14 @@ def parse_added_lines(diff_text: str, repo_root: Path) -> Dict[Path, Set[int]]:
     diff also deletes is moved, not new, and is left out, so splitting a file
     does not reflag the first uses it already carried.
     """
-    added: Dict[Path, Dict[int, str]] = {}
-    deleted: Set[str] = set()
-    current: Optional[Path] = None
-    new_n = old_left = new_left = 0
-    for line in diff_text.splitlines():
-        # Hunk counts say how many body lines follow, so a body line that
-        # starts with "++" or "--" is never read as a file header.
-        if line.startswith("+") and new_left > 0 and current is not None:
-            added[current][new_n] = line[1:].strip()
-            new_n += 1
-            new_left -= 1
-        elif line.startswith("-") and old_left > 0:
-            deleted.add(line[1:].strip())
-            old_left -= 1
-        elif line.startswith("+++ b/"):
-            current = repo_root / line[6:].strip()
-            added.setdefault(current, {})
-        elif line.startswith("@@ ") and current is not None:
-            m = re.match(r"@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
-            if m:
-                old_left = int(m.group(1)) if m.group(1) is not None else 1
-                new_n = int(m.group(2))
-                new_left = int(m.group(3)) if m.group(3) is not None else 1
+    added, deleted_raw = diffscope.parse_diff(diff_text)
+    deleted = {text.strip() for text in deleted_raw}
     return {
-        f: {n for n, text in lines.items() if not text or text not in deleted}
-        for f, lines in added.items()
+        repo_root / path: {
+            n for n, text in lines.items()
+            if not text.strip() or text.strip() not in deleted
+        }
+        for path, lines in added.items()
     }
 
 
@@ -741,19 +725,13 @@ def diff_added_lines(
     base_ref: str, repo_root: Path, globs: Sequence[str]
 ) -> Optional[Dict[Path, Set[int]]]:
     """Lines added between the merge base with `base_ref` and the working tree, or None if git cannot say."""
-    mb = subprocess.run(
-        ["git", "merge-base", base_ref, "HEAD"], cwd=repo_root,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-    )
-    if mb.returncode != 0 or not mb.stdout.strip():
+    mb = diffscope.run_git(["-C", str(repo_root), "merge-base", base_ref, "HEAD"])
+    if mb is None or not mb.strip():
         return None
-    diff = subprocess.run(
-        ["git", "diff", "-U0", mb.stdout.strip(), "--", *globs], cwd=repo_root,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-    )
-    if diff.returncode != 0:
+    diff = diffscope.run_git(["-C", str(repo_root), "diff", "-U0", mb.strip(), "--", *globs])
+    if diff is None:
         return None
-    return drop_sibling_moves(parse_added_lines(diff.stdout, repo_root))
+    return drop_sibling_moves(parse_added_lines(diff, repo_root))
 
 
 LIST_MARKER_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s+")
@@ -804,27 +782,17 @@ def drop_sibling_moves(added: Dict[Path, Set[int]]) -> Dict[Path, Set[int]]:
     return out
 
 
-def glob_to_regex(pat: str) -> "re.Pattern[str]":
-    pat = pat.strip().strip("/")
-    out = ""
-    i = 0
-    while i < len(pat):
-        if pat.startswith("**/", i):
-            out += "(?:.*/)?"
-            i += 3
-        elif pat.startswith("**", i):
-            out += ".*"
-            i += 2
-        elif pat[i] == "*":
-            out += "[^/]*"
-            i += 1
-        elif pat[i] == "?":
-            out += "[^/]"
-            i += 1
-        else:
-            out += re.escape(pat[i])
-            i += 1
-    return re.compile(r"^" + out + r"(?:/.*)?$")
+def ignore_regexes(value: str) -> List["re.Pattern[str]"]:
+    """Regexes for ``paths-ignore``; every pattern also ignores what is under it.
+
+    That reach is wider than ``diffscope.compile_ignores``, which extends only a
+    bare directory: here ``docs/*`` ignores ``docs/a/b.qmd`` too, as it always has.
+    """
+    out: List["re.Pattern[str]"] = []
+    for pat in diffscope.split_list(value):
+        pat = pat.strip("/")
+        out += [diffscope.glob_to_regex(pat), diffscope.glob_to_regex(pat + "/**")]
+    return out
 
 
 def read_term_list(path: str) -> Set[str]:
@@ -868,15 +836,10 @@ def harvest_dirs(dirs: Sequence[str], allowed_out: Set[str]) -> Dict[str, Set[st
 
 
 def tracked_files(root: Path, globs: Sequence[str]) -> List[Path]:
-    res = subprocess.run(
-        ["git", "ls-files", "-z", "--", *globs], cwd=root,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
-    if res.returncode == 0:
-        return [
-            (root / raw.decode("utf-8", "replace")).resolve()
-            for raw in res.stdout.split(b"\0") if raw
-        ]
+    # ``main`` passes the working directory as ``root``, where git runs.
+    listed = diffscope.git_paths(["ls-files", "--", *globs])
+    if listed is not None:
+        return [(root / p).resolve() for p in listed]
     return [p.resolve() for g in globs for p in root.rglob(g) if p.is_file()]
 
 
@@ -900,7 +863,7 @@ def main() -> int:
 
     root = Path.cwd()
     globs = args.globs.split()
-    ignores = [glob_to_regex(p) for p in re.split(r"[,\n]+", args.paths_ignore) if p.strip()]
+    ignores = ignore_regexes(args.paths_ignore)
     should_fail = truthy(args.fail)
 
     files = [
