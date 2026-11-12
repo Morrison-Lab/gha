@@ -235,7 +235,7 @@ def test_paths_ignore(repo):
     (repo / "old.qmd").write_text(OLD + "\n")
     git(repo, "add", ".")
     git(repo, "commit", "-qm", "base")
-    ignores = mpe.compile_ignores(["old.qmd"])
+    ignores = mpe.diffscope.compile_ignores(["old.qmd"])
     assert mpe.run_check("", ["*.qmd"], ignores, True).findings == []
 
 
