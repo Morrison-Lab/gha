@@ -56,3 +56,9 @@ def test_code_span_closes_only_on_an_equal_run():
     assert mdmask.mask_code_spans("x ``a`b`` y") == "x " + " " * 7 + " y"
     # A lone unclosed run masks nothing.
     assert mdmask.mask_code_spans("x `a y") == "x `a y"
+
+
+def test_paragraph_code_span_crosses_a_line_break():
+    text = "x `a\nb` y"
+    assert mdmask.PARAGRAPH_CODE_SPAN_RE.sub("C", text) == "x C y"
+    assert mdmask.CODE_SPAN_RE.sub("C", text) == text

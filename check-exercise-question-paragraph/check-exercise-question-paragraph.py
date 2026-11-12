@@ -49,6 +49,7 @@ from typing import Dict, List, NamedTuple, Optional, Set
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd"
 ADVICE = ("put the instruction or question in its own paragraph, "
@@ -62,7 +63,6 @@ OK_RE = re.compile(r"<!--\s*question-paragraph-ok:")
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 BREAK_RE = re.compile(r"^\s*(?:[-*+]\s|\d+[.)]\s|\||#{1,6}\s|\{\{<|\$\$|>)")
 MATH_RE = re.compile(r"\$[^$]*\$")
-CODE_RE = re.compile(r"`[^`]*`")
 LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 ABBREV_RE = re.compile(r"\b(?:e\.g|i\.e|vs|etc|cf|Fig|No)\.")
 SPLIT_RE = re.compile(r"(?<=[.?!])[\"')\]]*\s+")
@@ -92,7 +92,7 @@ class Finding(NamedTuple):
 def sentences(paragraph: str) -> List[str]:
     """Sentences of a paragraph, with math, code and links flattened."""
     text = COMMENT_RE.sub(" ", paragraph)
-    text = CODE_RE.sub("C", text)
+    text = mdmask.PARAGRAPH_CODE_SPAN_RE.sub("C", text)
     text = MATH_RE.sub("M", text)
     text = LINK_RE.sub(r"\1", text)
     text = ABBREV_RE.sub("abbr", text)

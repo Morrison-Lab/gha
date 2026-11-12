@@ -66,6 +66,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -97,8 +98,6 @@ LINE_OPT_OUT_RE = re.compile(
 # The same pragma with nothing after `allow`: it gives no reason (gha#1772).
 BARE_OPT_OUT_RE = re.compile(r"<!--\s*check-term-links:\s*(?:allow|ignore)(?:\s*:)?\s*-->", re.I)
 
-COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
-INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 DISPLAY_MATH_RE = re.compile(r"\$\$.*?\$\$", re.S)
 INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?!\s)(?:[^$\\\n]|\\.)+?(?<!\s)\$(?![\d$])")
 SHORTCODE_RE = re.compile(r"\{\{<.*?>\}\}", re.S)
@@ -273,7 +272,8 @@ def mask_inline(text: str) -> str:
     def blank(m: "re.Match[str]") -> str:
         return re.sub(r"[^\n]", " ", m.group(0))
 
-    for rx in (COMMENT_RE, DISPLAY_MATH_RE, INLINE_CODE_RE, INLINE_MATH_RE,
+    # Comments and code spans are already blank: `preprocess` masks them.
+    for rx in (DISPLAY_MATH_RE, INLINE_MATH_RE,
                SHORTCODE_RE, IMAGE_RE, URL_RE):
         text = rx.sub(blank, text)
     # `ATTR_RE` last: `{...}` after a link or a header is markup, never prose.
@@ -325,20 +325,8 @@ def preprocess(lines: Sequence[str]) -> Tuple[List[str], Set[int]]:
             continue
         if LINE_OPT_OUT_RE.search(raw):
             opted.add(idx)
-        line = raw
-        if in_comment:
-            end = line.find("-->")
-            if end == -1:
-                out.append("")
-                continue
-            line = " " * (end + 3) + line[end + 3:]
-            in_comment = False
-        # Drop closed comments, then an unterminated one that runs to the end of the line.
-        line = COMMENT_RE.sub(lambda mm: " " * len(mm.group(0)), line)
-        start = line.find("<!--")
-        if start != -1:
-            line = line[:start]
-            in_comment = True
+        # Blank comments and code spans; a comment left open runs on to later lines.
+        line, in_comment = mdmask.mask_markdown_line(raw, in_comment)
         out.append(line)
     return out, opted
 

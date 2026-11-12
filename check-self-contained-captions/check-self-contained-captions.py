@@ -77,6 +77,7 @@ ods = _load_sibling("check-one-div-per-subfile")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = True
@@ -100,7 +101,6 @@ PIPE_CAPTION_RE = re.compile(r"^\s*:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
 
 BLOCK_SCALAR_RE = re.compile(r"^[>|][+-]?\d*$")
 BLOCK_LINE_RE = re.compile(r"^\s*#\|\s{2,}(\S.*)$")
-INLINE_CODE_RE = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")
 LINK_RE = re.compile(
     r"\[((?:[^\[\]]|\[[^\]]*\])*)\]\((?:[^()]|\([^)]*\))*\)")
 # Only a reference to a div or section counts; a bare citation key does not.
@@ -156,7 +156,7 @@ def _block_scalar_text(lines: List[str], idx: int) -> str:
 def first_sentence_problem(text: str, table: bool = False) -> Optional[str]:
     """Why the caption's first sentence only points elsewhere, else None."""
     flat = " ".join(text.split())
-    flat = INLINE_CODE_RE.sub(" ", flat)
+    flat = mdmask.CODE_SPAN_RE.sub(" ", flat)
     flat = REF_SHORTCODE_RE.sub("@ref", flat)
     flat = SHORTCODE_RE.sub(" shortcode ", flat)
     flat = LINK_RE.sub(r"\1", flat)
