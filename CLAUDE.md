@@ -587,6 +587,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
   A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.
   It copies `check-fform-paren`'s diff model and Markdown masking, adds math-span detection, and its env vars use the `CME_` prefix.
+  It takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside `check-write-idiom`.
   Measure a repository with `whole-tree: true` before turning `fail` on, and fix or mark the existing hits (`<!-- check-macro-expansions: allow -->`) first.
   `Write $...$ for ...` (notation) and `Write down` pass, as do fences, spans, comments and front matter;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
