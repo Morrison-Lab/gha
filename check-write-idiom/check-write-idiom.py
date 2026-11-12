@@ -267,7 +267,7 @@ def main(scan=None, prefix: str = "CWI_", name: str = "write-idiom",
     globs = os.environ.get(prefix + "GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
     ignores = diffscope.compile_ignores(diffscope.split_list(os.environ.get(prefix + "PATHS_IGNORE", "")))
     fail = diffscope.env_flag(prefix + "FAIL",
-                     _DEFAULT_FAIL if default_fail is None else default_fail)
+                              _DEFAULT_FAIL if default_fail is None else default_fail)
     whole_tree = diffscope.env_flag(prefix + "WHOLE_TREE", False)
     describe = format_finding or format_message
 
