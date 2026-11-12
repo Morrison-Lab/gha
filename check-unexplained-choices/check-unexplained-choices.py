@@ -55,6 +55,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -90,7 +91,6 @@ REASON_RE = re.compile(
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 HEADING_RE = re.compile(r"^#{1,6}\s")
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 
 class Finding(NamedTuple):
@@ -177,7 +177,7 @@ def scan_choices(lines: List[str]) -> List[Finding]:
         if depth == 0 and HEADING_RE.match(raw):
             findings.extend(section.flush())
             continue
-        if REASON_RE.search(CODE_SPAN_RE.sub(" ", raw)):
+        if REASON_RE.search(mdmask.CODE_SPAN_RE.sub(" ", raw)):
             unit.explained = True
     findings.extend(outer.flush())
     findings.extend(section.flush())

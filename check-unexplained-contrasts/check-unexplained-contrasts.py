@@ -57,6 +57,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -88,7 +89,6 @@ CONTRAST_ID_RE = re.compile(r"#(?:def|rem|note)-")
 
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 
 class Finding(NamedTuple):
@@ -163,7 +163,7 @@ def scan_contrasts(lines: List[str]) -> List[Finding]:
             stack[-1].cited = True
         if ALLOW_MARKER in original:
             continue
-        prose = CODE_SPAN_RE.sub(" ", raw)
+        prose = mdmask.CODE_SPAN_RE.sub(" ", raw)
         hit = CONTRAST_RE.search(prose)
         if hit:
             stack[-1].hits.append(Finding(idx + 1, hit.group(1).strip(", ")))

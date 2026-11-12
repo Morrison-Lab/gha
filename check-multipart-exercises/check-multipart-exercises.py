@@ -57,6 +57,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -79,7 +80,6 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 EXR_ID_RE = re.compile(r"#exr-")
 ALLOW_RE = re.compile(r"<!--\s*multipart-ok\b", re.IGNORECASE)
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 INLINE_MATH_RE = re.compile(r"(?<!\\)\$[^$\n]+?(?<!\\)\$")
 
 _EMPH = r"(?:\*\*|__|\*|_)?"
@@ -116,7 +116,7 @@ def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
             return "", True
         raw = raw[end + 3:]
     spans: List[str] = []
-    raw = CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
+    raw = mdmask.CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
     while True:
         start = raw.find("<!--")
         end = raw.find("-->", start + 4) if start >= 0 else -1
@@ -205,7 +205,7 @@ def body_text(lines: List[str]) -> List[Tuple[int, str]]:
             continue
         if in_math or "$$" in raw:
             continue
-        text = INLINE_MATH_RE.sub(" ", CODE_SPAN_RE.sub(" ", raw))
+        text = INLINE_MATH_RE.sub(" ", mdmask.CODE_SPAN_RE.sub(" ", raw))
         out.append((idx + 1, text))
     return out
 

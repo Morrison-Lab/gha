@@ -53,6 +53,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -84,7 +85,6 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 SCOPE_RE = re.compile(r"(?:^|[\s{.])(?:proof|#(?:thm|lem|cor|prp)-[A-Za-z0-9_-]*)(?=[\s}.#]|$)")
 PROOF_RE = re.compile(r"(?:^|[\s{.])proof(?=[\s}.#]|$)")
 QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 
 class Finding(NamedTuple):
@@ -136,7 +136,7 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
             if stack:
                 stack[-1][3] = True
             continue
-        dollars = CODE_SPAN_RE.sub(" ", raw).count("$$")
+        dollars = mdmask.CODE_SPAN_RE.sub(" ", raw).count("$$")
         if dollars and stack:
             stack[-1][3] = True
         if dollars % 2 == 1:
@@ -162,7 +162,7 @@ def scan_proofs(lines: List[str]) -> List[Finding]:
             stack[-1][2].append(idx)
         if not any(entry[0] for entry in stack) or ALLOW_MARKER in original:
             continue
-        prose = CODE_SPAN_RE.sub(" ", raw)
+        prose = mdmask.CODE_SPAN_RE.sub(" ", raw)
         excused = {m.group(1) for m in EXCEPTION_RE.finditer(prose)}
         if len(set(SOL_REF_RE.findall(prose))) > 1:
             several.add(idx)
