@@ -36,9 +36,12 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -311,102 +314,14 @@ def check_groups(divs: List[Div]) -> Dict[str, List[Finding]]:
 
 # -- Git plumbing ------------------------------------------------------------
 
-def _run_git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        encoding="utf-8", errors="replace",
-    )
-    return res.stdout if res.returncode == 0 else None
-
-
-_HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-
+# The git, file, and path-ignore helpers live in check-common/diffscope.py
+# (gha#1856).
 
 def parse_diff(diff: str) -> Tuple[Dict[str, Set[int]], Set[str]]:
     """Added line numbers per path, and the set of deleted texts."""
-    added: Dict[str, Dict[int, str]] = {}
-    deleted: Set[str] = set()
-    path: Optional[str] = None
-    old_left = new_left = new_line = 0
-    for line in diff.splitlines():
-        if old_left > 0 or new_left > 0:
-            if line.startswith("+"):
-                if path is not None:
-                    added[path][new_line] = line[1:]
-                new_line += 1
-                new_left -= 1
-            elif line.startswith("-"):
-                deleted.add(line[1:])
-                old_left -= 1
-            continue
-        if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
-            path = None if target == "/dev/null" else (
-                target[2:] if target.startswith("b/") else target)
-            if path is not None:
-                added.setdefault(path, {})
-            continue
-        m = _HUNK_RE.match(line)
-        if m:
-            old_left = int(m.group(1)) if m.group(1) is not None else 1
-            new_line = int(m.group(2))
-            new_left = int(m.group(3)) if m.group(3) is not None else 1
+    added, deleted = diffscope.parse_diff(diff)
     return ({p: {n for n, t in d.items() if t.strip() and t not in deleted}
              for p, d in added.items()}, deleted)
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _split_list(value: str) -> List[str]:
-    return [p.strip() for p in re.split(r"[,\n]", value) if p.strip()]
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return default if not value else value in ("1", "true", "yes", "on")
-
-
-def _read_lines(path: str) -> Optional[List[str]]:
-    try:
-        with open(path, encoding="utf-8", errors="replace") as handle:
-            lines = handle.read().split("\n")
-    except OSError:
-        return None
-    if lines and lines[-1] == "":
-        lines.pop()
-    return lines
 
 
 class Report(NamedTuple):
@@ -417,26 +332,25 @@ class Report(NamedTuple):
 
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
               whole_tree: bool) -> Report:
-    out = _run_git(["ls-files", "--", *globs])
-    if out is None:
+    paths = diffscope.git_paths(["ls-files", "--", *globs])
+    if paths is None:
         return Report([], 0, True)
-    files = [r for r in out.splitlines()
-             if r and not any(g.match(r) for g in ignores)]
+    files = [r for r in paths if r and not diffscope.ignored(r, ignores)]
     touched: Optional[Dict[str, Set[int]]] = None
     if not whole_tree:
         if not base_ref:
             return Report([], 0, True)
-        base = _run_git(["merge-base", base_ref, "HEAD"])
+        base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, True)
-        diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
-                         base.strip(), "--", *globs])
+        diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                                  base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, True)
         touched = parse_diff(diff)[0]
     divs: List[Div] = []
     for rel in files:
-        content = _read_lines(rel)
+        content = diffscope.read_lines(rel)
         if content is not None:
             divs.extend(find_divs(rel, content))
     by_group: Dict[str, List[Div]] = {}
@@ -456,9 +370,10 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
 def main() -> int:
     base_ref = os.environ.get("SSP_BASE_REF", "").strip()
     globs = os.environ.get("SSP_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    ignores = compile_ignores(_split_list(os.environ.get("SSP_PATHS_IGNORE", "")))
-    fail = _env_flag("SSP_FAIL", _DEFAULT_FAIL)
-    whole_tree = _env_flag("SSP_WHOLE_TREE", False)
+    ignore_list = diffscope.split_list(os.environ.get("SSP_PATHS_IGNORE", ""))
+    ignores = diffscope.compile_ignores(ignore_list)
+    fail = diffscope.env_flag("SSP_FAIL", _DEFAULT_FAIL)
+    whole_tree = diffscope.env_flag("SSP_WHOLE_TREE", False)
     report = run_check(base_ref, globs, ignores, whole_tree)
     if report.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
