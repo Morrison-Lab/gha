@@ -161,3 +161,25 @@ def test_html_only_page_passes():
 def test_html_only_false_still_fails():
     page = STUB.replace("redirect-stub: true", "html-only: false")
     assert len(check(page)) == 3
+
+
+def test_page_name_with_a_quote_is_listed(tmp_path, monkeypatch):
+    # git quotes such a name in a plain ls-files listing (gha#1923).
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / 'say"hi.qmd').write_text(BAD)
+    subprocess.run(["git", "add", "--", 'say"hi.qmd'], check=True)
+    found = cfo.run(["*.qmd"], [], ["revealjs"])
+    assert {f.path for f in found} == {'say"hi.qmd'}
+
+
+def test_bare_directory_ignore_skips_its_contents(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "page.qmd").write_text(BAD)
+    subprocess.run(["git", "add", "docs/page.qmd"], check=True)
+    assert cfo.run(["*.qmd"], ["docs"], ["revealjs"]) == []
+    assert cfo.run(["*.qmd"], [], ["revealjs"]) != []

@@ -23,12 +23,14 @@ names start with ``_`` (subfiles) and ``_extensions/**`` are skipped.
 ``action.yml`` sets the ``CFO_*`` environment variables the script reads.
 """
 
-import fnmatch
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, NamedTuple, Optional
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_FORMATS = "revealjs pdf docx"
 DEFAULT_IGNORE = "_extensions/**"
@@ -121,25 +123,18 @@ def check_page(path: str, lines: List[str], required: List[str]) -> List[Finding
     return findings
 
 
-def _ignored(path: str, patterns: List[str]) -> bool:
-    for pat in patterns:
-        regex = re.escape(pat).replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
-        regex = regex.replace(r"\?", "[^/]")
-        if re.fullmatch(regex, path) or fnmatch.fnmatch(path, pat):
-            return True
-    return False
-
-
 def tracked_files(globs: List[str]) -> List[str]:
-    out = subprocess.run(["git", "ls-files", "--"] + globs, check=True,
-                         capture_output=True, text=True).stdout
-    return [p for p in out.splitlines() if p]
+    paths = diffscope.git_paths(["ls-files", "--"] + globs)
+    if paths is None:
+        raise SystemExit("check-format-output-files: git ls-files failed; run it inside a git checkout")
+    return paths
 
 
 def run(globs: List[str], patterns: List[str], required: List[str]) -> List[Finding]:
+    ignores = diffscope.compile_ignores(patterns)
     findings = []
     for path in tracked_files(globs):
-        if os.path.basename(path).startswith("_") or _ignored(path, patterns):
+        if os.path.basename(path).startswith("_") or diffscope.ignored(path, ignores):
             continue
         if not path.endswith(".qmd") or not os.path.isfile(path):
             continue
@@ -152,8 +147,7 @@ def main() -> int:
     globs = os.environ.get("CFO_GLOBS", "").split() or ["*.qmd"]
     required = os.environ.get("CFO_FORMATS", "").split() or DEFAULT_FORMATS.split()
     ignore = os.environ.get("CFO_PATHS_IGNORE", "")
-    patterns = [p.strip() for p in re.split(r"[,\n]", ignore) if p.strip()]
-    patterns += DEFAULT_IGNORE.split()
+    patterns = diffscope.split_list(ignore) + DEFAULT_IGNORE.split()
     fail = os.environ.get("CFO_FAIL", "true").lower() != "false"
     findings = run(globs, patterns, required)
     level = "error" if fail else "warning"
