@@ -106,8 +106,6 @@ LINE_OPT_OUT_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Inline code span regex (`...`) to strip before running prose detection patterns
-
 # Detection Patterns: optionally allow inline math or symbol parenthetical between term and verb
 # (e.g. `A **random variable** $X$ is a...` or `The **estimator** $\hat{\theta}$ is defined as...`)
 BOLD_DEF_RE = re.compile(
