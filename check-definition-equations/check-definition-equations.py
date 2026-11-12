@@ -51,6 +51,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 _ENGINE_PATH = Path(__file__).resolve().parent.parent / "check-write-idiom" / "check-write-idiom.py"
 _spec = importlib.util.spec_from_file_location("check_write_idiom_engine", _ENGINE_PATH)
@@ -79,7 +80,6 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ID_RE = re.compile(r"#(def-[A-Za-z0-9_-]+)")
 ALLOW_RE = re.compile(r"<!--\s*def-equiv-ok\b", re.IGNORECASE)
-COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
 DISPLAY_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
 ALIGN_RE = re.compile(r"\\begin\{(align\*?|aligned|eqnarray\*?)\}(.+?)\\end\{\1\}",
                       re.DOTALL)
@@ -149,7 +149,7 @@ def strip_fences(body: Tuple[str, ...]) -> str:
             continue
         if not fence:
             out.append(raw)
-    return COMMENT_RE.sub("", "\n".join(out))
+    return mdmask.replace_comments("\n".join(out), bang=True)
 
 
 def displays(text: str) -> List[str]:

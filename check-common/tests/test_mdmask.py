@@ -62,3 +62,31 @@ def test_paragraph_code_span_crosses_a_line_break():
     text = "x `a\nb` y"
     assert mdmask.PARAGRAPH_CODE_SPAN_RE.sub("C", text) == "x C y"
     assert mdmask.CODE_SPAN_RE.sub("C", text) == text
+
+
+def test_replace_comments_string_and_function():
+    text = "a <!-- x --> b <!-- y\nz --> c <!-- open"
+    assert mdmask.replace_comments(text) == "a  b  c <!-- open"
+    assert mdmask.replace_comments(text, " ") == "a   b   c <!-- open"
+    blanked = mdmask.replace_comments(text, lambda c: "#" * len(c))
+    assert len(blanked) == len(text) and blanked.endswith(" c <!-- open")
+
+
+def test_replace_comments_bang_closer_only_with_bang():
+    text = "a <!-- x --!> b --> c"
+    assert mdmask.replace_comments(text) == "a  c"
+    assert mdmask.replace_comments(text, bang=True) == "a  b --> c"
+
+
+def test_replace_comments_matches_the_regexes_it_replaces():
+    import re
+
+    plain = re.compile("<!--.*?-->", re.S)
+    banged = re.compile("<!--.*?--!?>", re.S)
+    cases = [
+        "", "<!---->", "<!--->", "<!-->", "<!-- a -->x<!-- b",
+        "<!-- a --!> b -->", "x <!-- <!-- y --> z -->", "<!--\n-->\n<!--!-->",
+    ]
+    for text in cases:
+        assert mdmask.replace_comments(text, " ") == plain.sub(" ", text), text
+        assert mdmask.replace_comments(text, bang=True) == banged.sub("", text), text

@@ -18,7 +18,7 @@ the source line.  Stdlib only.
 """
 
 import re
-from typing import Tuple
+from typing import Callable, Tuple, Union
 
 
 # A code fence: three or more backticks or tildes, then the info string's
@@ -42,24 +42,49 @@ def mask_code_spans(line: str) -> str:
     return CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
 
 
+def replace_comments(
+    text: str,
+    repl: Union[str, Callable[[str], str]] = "",
+    bang: bool = False,
+) -> str:
+    """Replace each closed ``<!-- ... -->`` in ``text`` with ``repl``.
+
+    ``repl`` is a string, or a function given the comment's text that returns
+    its replacement.  With ``bang``, ``--!>`` also closes a comment, as an HTML
+    parser reads it.  An unclosed ``<!--`` and the text after it stay.
+
+    A scan with ``find`` rather than a regex such as ``<!--.*?-->``, which
+    CodeQL flags as bad HTML filtering; the scan closes each comment at the
+    same place that regex does (gha#1856).
+    """
+    out = []
+    pos = 0
+    while True:
+        start = text.find("<!--", pos)
+        if start < 0:
+            break
+        end, width = text.find("-->", start + 4), 3
+        if bang:
+            alt = text.find("--!>", start + 4)
+            if alt >= 0 and (end < 0 or alt < end):
+                end, width = alt, 4
+        if end < 0:
+            break
+        comment = text[start:end + width]
+        out.append(text[pos:start])
+        out.append(repl(comment) if callable(repl) else repl)
+        pos = end + width
+    out.append(text[pos:])
+    return "".join(out)
+
+
 def blank_closed_comments(line: str) -> str:
     """Blank each ``<!-- ... -->`` that opens and closes on this line.
 
-    A scan with ``find`` rather than a regex: the comment-open state is
-    carried across lines by the caller, so a one-line pattern is the wrong
-    tool for an HTML comment, and CodeQL flags it as such.
+    The comment-open state is carried across lines by the caller, so only
+    comments closed on this line are blanked.
     """
-    out = line
-    pos = 0
-    while True:
-        start = out.find("<!--", pos)
-        if start < 0:
-            return out
-        end = out.find("-->", start + 4)
-        if end < 0:
-            return out
-        out = out[:start] + " " * (end + 3 - start) + out[end + 3:]
-        pos = end + 3
+    return replace_comments(line, lambda c: " " * len(c))
 
 
 def mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:

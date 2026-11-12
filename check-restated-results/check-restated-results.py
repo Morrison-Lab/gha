@@ -52,6 +52,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 _ENGINE_PATH = Path(__file__).resolve().parent.parent / "check-write-idiom" / "check-write-idiom.py"
 _spec = importlib.util.spec_from_file_location("check_write_idiom_engine", _ENGINE_PATH)
@@ -82,7 +83,6 @@ INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 PART_RE = re.compile(r"-part\d+[a-z]?$", re.IGNORECASE)
 HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s")
 ALLOW_RE = re.compile(r"<!--\s*restated-ok\b", re.IGNORECASE)
-COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
 DERIVE_RE = re.compile(
     r"\b(?:derive|derivation|prove|show\s+that|show\s+how|solve\s+for|simplify|"
     r"express|closed\s+form|(?:find|obtain|give|write\s+down)\s+(?:an?\s+|the\s+)?"
@@ -203,7 +203,7 @@ def prose(body: Tuple[str, ...]) -> str:
     out: List[str] = []
     fence = False
     for raw in body:
-        raw = COMMENT_RE.sub("", raw)
+        raw = mdmask.replace_comments(raw, bang=True)
         if FENCE_RE.match(raw):
             fence = not fence
             continue

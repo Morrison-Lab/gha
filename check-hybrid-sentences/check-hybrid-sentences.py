@@ -43,6 +43,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -61,7 +62,6 @@ ADVICE = (
 
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}:{3,}")
-COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
 ALLOW_RE = re.compile(r"<!--\s*hybrid-ok\b", re.IGNORECASE)
 DISPLAY_RE = re.compile(r"\$\$.+?\$\$", re.DOTALL)
 INLINE_RE = re.compile(r"(?<![\\$])\$(?!\$)((?:\\.|[^$\\])+?)\$")
@@ -233,7 +233,7 @@ def check_file(path: str, lines: List[str],
             continue
         if ALLOW_RE.search(text) or "\u274c" in text:
             continue
-        prose = COMMENT_RE.sub(" ", DISPLAY_RE.sub(" ", text))
+        prose = mdmask.replace_comments(DISPLAY_RE.sub(" ", text), " ", bang=True)
         for sentence in SENTENCE_RE.split(prose):
             if hybrid(sentence):
                 shown = " ".join(sentence.split())
