@@ -87,7 +87,7 @@ def find_divs(lines: List[str]):
 
 def has_definition_link(div) -> bool:
     """Whether the div links a definition outside comments and code fences."""
-    text = base.COMMENT_RE.sub(" ", base.strip_fences(div.body))
+    text = base.mdmask.replace_comments(base.strip_fences(div.body), " ", bang=True)
     return bool(DEF_REF_RE.search(text) or DEF_LINK_RE.search(text))
 
 

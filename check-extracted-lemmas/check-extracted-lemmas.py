@@ -70,7 +70,6 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ID_RE = re.compile(r"#((?:sol|exm|thm|lem|cor|prp)-[A-Za-z0-9_-]+)")
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 ALLOW_RE = re.compile(r"<!--\s*lemma-ok\b", re.IGNORECASE)
-COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
 OBJECTS = (
     "random variable", "random vector", "real number", "natural number", "integer",
     "scalar", "vector", "matrix", "matrices", "function", "set", "subset", "distribution",
@@ -166,7 +165,7 @@ def prose(body: Tuple[str, ...]) -> str:
     fence = False
     display = False
     for raw in body:
-        raw = COMMENT_RE.sub("", raw)
+        raw = mdmask.replace_comments(raw, bang=True)
         if FENCE_RE.match(raw):
             fence = not fence
             continue

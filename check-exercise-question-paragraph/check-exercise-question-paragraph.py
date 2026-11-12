@@ -60,7 +60,6 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 EXR_RE = re.compile(r"#exr-")
 SKIP_DIV_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])|\.callout")
 OK_RE = re.compile(r"<!--\s*question-paragraph-ok:")
-COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 BREAK_RE = re.compile(r"^\s*(?:[-*+]\s|\d+[.)]\s|\||#{1,6}\s|\{\{<|\$\$|>)")
 MATH_RE = re.compile(r"\$[^$]*\$")
 LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
@@ -91,7 +90,7 @@ class Finding(NamedTuple):
 
 def sentences(paragraph: str) -> List[str]:
     """Sentences of a paragraph, with math, code and links flattened."""
-    text = COMMENT_RE.sub(" ", paragraph)
+    text = mdmask.replace_comments(paragraph, " ")
     text = mdmask.PARAGRAPH_CODE_SPAN_RE.sub("C", text)
     text = MATH_RE.sub("M", text)
     text = LINK_RE.sub(r"\1", text)

@@ -42,6 +42,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -63,7 +64,6 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ID_RE = re.compile(r"#((?:exr|sol)-[A-Za-z0-9_-]+)")
 PART_RE = re.compile(r"-part\d+$")
 ALLOW_RE = re.compile(r"<!--\s*split-solutions-ok\b", re.IGNORECASE)
-COMMENT_RE = re.compile(r"<!--.*?--!?>", re.DOTALL)
 MARKER_RE = re.compile(
     r"^[ \t]*(?:>\s*)*(?:\*\*|__)?"
     r"(?:\((?P<paren>[A-Za-z]|[ivx]{2,}|\d{1,2})\)|(?P<dot>[a-z]|\d{1,2})(?P<end>[.)]))"
@@ -153,7 +153,7 @@ def prose_lines(body: Tuple[str, ...]) -> List[str]:
     fence: Optional[Tuple[str, int]] = None
     in_math = False
     for raw in body:
-        raw = COMMENT_RE.sub("", raw)
+        raw = mdmask.replace_comments(raw, bang=True)
         m = FENCE_RE.match(raw)
         if fence is not None:
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
