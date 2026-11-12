@@ -75,7 +75,6 @@ ALLOW_MARKER = "check-page-length: allow"
 
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
-COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 DISPLAY_RE = re.compile(r"\$\$.+?\$\$", re.DOTALL)
 INLINE_RE = re.compile(r"(?<![\\$])\$(?!\$)[^$\n]+?(?<!\\)\$")
 TITLE_RE = re.compile(r"^title:", re.MULTILINE)
@@ -151,7 +150,7 @@ def strip_code(text: str) -> str:
             fence = (m.group(1)[0], len(m.group(1)))
             continue
         kept.append(line)
-    return COMMENT_RE.sub("", "\n".join(kept))
+    return mdmask.replace_comments("\n".join(kept))
 
 
 def count_math(text: str) -> int:

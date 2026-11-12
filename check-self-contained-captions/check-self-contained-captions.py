@@ -95,7 +95,6 @@ ADVICE = (
 
 FLOAT_RE = re.compile(r"#(?:fig|tbl)-")
 EXEMPT_RE = re.compile(r"<!--\s*caption-ref:\s*(?:(?!-->)\W)*\w")
-INLINE_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 CAPTION_OPTION_RE = re.compile(r"^\s*#\|\s*(fig|tbl)-cap:\s*(.*)$")
 PIPE_CAPTION_RE = re.compile(r"^\s*:\s+(.*?)\s*\{[^}]*#tbl-[^}]*\}\s*$")
 
@@ -201,7 +200,7 @@ def scan_floats(lines: List[str]) -> List[Tuple[int, int, str, Optional[Caption]
             else:
                 om = CAPTION_OPTION_RE.match(raw)
                 if om:
-                    text = INLINE_COMMENT_RE.sub("", om.group(2)).strip().strip("\"'")
+                    text = mdmask.replace_comments(om.group(2)).strip().strip("\"'")
                     if BLOCK_SCALAR_RE.match(text):
                         text = _block_scalar_text(lines, idx + 1)
                     found.append((idx + 1, idx + 1, om.group(1) + "-cap chunk option",
@@ -238,7 +237,7 @@ def _last_paragraph(lines: List[str], start: int, end: int) -> Optional[Caption]
     """The paragraph just above the closing fence of lines[start-1:end]."""
     # A comment closed on its own line is not prose, so a trailing note
     # neither hides the caption above it nor becomes part of it.
-    clean = [INLINE_COMMENT_RE.sub("", s) for s in lines[:end]]
+    clean = [mdmask.replace_comments(s) for s in lines[:end]]
     i = end - 2  # 0-based index of the line above the closing fence
     while i >= start and not clean[i].strip():
         i -= 1

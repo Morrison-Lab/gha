@@ -551,6 +551,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `check-term-links` masks comments and code spans with `mask_markdown_line`.
   `PARAGRAPH_CODE_SPAN_RE` is the same pattern over one paragraph or body, where a span may cross a line break;
   `check-extracted-lemmas` and `check-exercise-question-paragraph` use it.
+  `replace_comments` removes or replaces each closed HTML comment, and with `bang=True` closes one on `--!>` too.
+  It scans with `find`, because CodeQL flags a `<!--.*?-->` regex as bad HTML filtering.
+  A check that strips comments uses it rather than a pattern of its own.
   A check puts the directory on `sys.path` and imports it.
   A composite action runs from a checkout of the whole repository, so `../check-common` is always beside it.
   Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
@@ -599,7 +602,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It imports `check-exm-figures`' figure test.
   That script loads `check-common` and `check-one-div-per-subfile`, so keep the four directories together.
 - `check-key-equations-displayed/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` and its code-span masking from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
-- `check-serial-comma/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-serial-comma/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` and its comment stripping from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
 - `check-unexplained-contrasts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-restated-results/` (Python, stdlib only) takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856) and its diff arguments and parser from `check-write-idiom`'s engine, so keep both directories beside it.
 - `check-page-length/` (Python, stdlib only) takes its git, diff, and path-ignore helpers from `check-common/diffscope.py` and its code-span pattern from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
