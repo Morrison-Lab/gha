@@ -495,12 +495,24 @@ def test_punctuation_inside_link_target_does_not_split(text):
         ("[a]][b](u. B)", ["](u. B)"]),
         # A `[` inside a code span does not block a wrapped link target.
         ("the `a[0]` value continued](u. Then y) ok.", ["](u. Then y)"]),
+        # Only a well-formed note label makes a footnote reference.
+        ("See [^1](u. C) ok.", []),
+        ("See [^x-y](u. C) ok.", []),
+        ("See [^a b](u. C) ok.", ["](u. C)"]),
+        ("See [^](u. C) ok.", ["](u. C)"]),
+        ("See [^x^](u. C) ok.", ["](u. C)"]),
+        # An unclosed `<` is ordinary destination text.
+        ("See [x](<a b. C) ok.", ["](<a b. C)"]),
+        ('See [x](<a b. C "t") ok.', ['](<a b. C "t")']),
     ],
 )
 def test_link_target_spans_match_pandoc(text, spans):
     """Each expected span is what `quarto pandoc -t json` (Pandoc 3.10)
-    reads as a link. An unclosed `](`, an unclosed title, and a title
-    followed by more text are not links, so their text stays prose."""
+    reads as a link, except the rows marked as wrapped links.
+    Those record the one-line heuristic for link text wrapped from the
+    line before, where Pandoc, given the line alone, reads no link.
+    An unclosed `](`, an unclosed title, and a title followed by more
+    text are not links, so their text stays prose."""
     skip = nlb._LINK_SKIP
     assert [text[a:b] for a, b in nlb.link_target_spans(text, skip)] == spans
 
@@ -512,9 +524,8 @@ def test_link_target_spans_match_pandoc(text, spans):
         ('See [x](u "a" b) c. D ok.', 'See [x](u "a" b) c.'),
         ("Read [it](x.html). Then go.", "Read [it](x.html)."),
         ("See [x](<a b>c) ok. Then go.", "See [x](<a b>c) ok."),
-        # A `](` inside a code span, an HTML tag or comment, or math opens no
-        # link, so it
-        # cannot hide the sentence end after it.
+        # A `](` inside a code span, an HTML tag or comment, or math
+        # opens no link, so it cannot hide the sentence end after it.
         ("See `[x](y` now. Then z) more.", "See `[x](y` now."),
         ('Use <a href="[x](y">here</a> now. Then z) more.',
          'Use <a href="[x](y">here</a> now.'),

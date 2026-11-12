@@ -522,6 +522,35 @@ def _close_after_title(text: str, j: int, titles: dict, nns) -> int:
     return k if k < n and text[k] == ")" else -1
 
 
+def _angle_target_end(text: str, j: int, nxt, titles, nns) -> int:
+    """Return the ``)`` ending an angle destination at ``j``, or -1."""
+    n = len(text)
+    gt = nxt[">"][j + 1]
+    if gt >= n:
+        return -1
+    k = nns[gt + 1]
+    if k < n and text[k] == ")":
+        return k
+    if k < n and text[k] in "\"'":
+        return _close_after_title(text, k, titles, nns)
+    return -1
+
+
+def _is_note_ref(text: str, o: int) -> bool:
+    """Whether the ``[`` at ``o`` opens a footnote reference.
+
+    Pandoc reads ``[^label]`` as a note when the label, up to the first
+    ``]``, is not empty and holds no whitespace and no ``^``;
+    so ``[^1]`` is a note, while ``[^a b]`` and ``[^x^]`` are link text.
+    """
+    if text[o + 1:o + 2] != "^":
+        return False
+    close = text.find("]", o + 2)
+    label = text[o + 2:close]
+    return (close != -1 and label != ""
+            and not any(c.isspace() or c == "^" for c in label))
+
+
 def _target_end(text: str, i: int, escaped, match, nxt, titles, nns) -> int:
     """Return the index of the ``)`` ending the target at ``i``, or -1."""
     n = len(text)
@@ -529,15 +558,10 @@ def _target_end(text: str, i: int, escaped, match, nxt, titles, nns) -> int:
     if j < n and text[j] == "<":
         # An angle-bracket destination runs to the first unescaped `>`
         # and may hold spaces and parentheses.
-        gt = nxt[">"][j + 1]
-        if gt >= n:
-            return -1
-        j = nns[gt + 1]
-        if j < n and text[j] == ")":
-            return j
-        if j < n and text[j] in "\"'":
-            return _close_after_title(text, j, titles, nns)
-        return -1
+        # With no unescaped `>` to close it, Pandoc reads the `<` as
+        # ordinary destination text, so fall back to the plain walk.
+        if nxt[">"][j + 1] < n:
+            return _angle_target_end(text, j, nxt, titles, nns)
     while j < n:
         if escaped[j]:
             j += 1
@@ -585,9 +609,10 @@ def link_target_spans(
     whose ``[`` follows a ``]`` that closes a ``[`` of its own.
     A ``]`` that closes no ``[`` is read as the end of link text wrapped
     from the line before, as in ``continued](u. C)``, unless a ``[`` comes
-    earlier on the line outside a skip span (an escaped one counts,
-    since Pandoc shows it as a bracket); so ``(a, b](c. D)`` at a line's start is read as a
-    link, an accepted cost, since this check reads one line at a time.
+    earlier on the line outside a skip span
+    (an escaped one counts, since Pandoc shows it as a bracket).
+    So ``(a, b](c. D)`` at a line's start is read as a link,
+    an accepted cost, since this check reads one line at a time.
 
     Parentheses, brackets, quotes, and whitespace runs are each indexed once,
     up front, and each start walks only its own destination's top level,
@@ -620,7 +645,7 @@ def link_target_spans(
         o = opens[i]
         if (escaped[i] or inside[i]
                 or (o == -1 and -1 < first_open < i)
-                or (o != -1 and text[o + 1] == "^")
+                or (o != -1 and _is_note_ref(text, o))
                 or (o > 0 and opens[o - 1] != -1)):
             i = text.find("](", i + 1)
             continue
