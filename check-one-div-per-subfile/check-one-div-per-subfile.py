@@ -126,12 +126,7 @@ def is_subfile(path: str) -> bool:
 
 def drop_closed_comments(text: str) -> str:
     """Remove each ``<!-- ... -->`` pair from one line, leaving an open one."""
-    while True:
-        start = text.find("<!--")
-        end = text.find("-->", start + 4) if start >= 0 else -1
-        if end < 0:
-            return text
-        text = text[:start] + text[end + 3:]
+    return mdmask.replace_comments(text)
 
 
 def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:

@@ -68,6 +68,8 @@ def _load_sibling(name: str):
 
 exf = _load_sibling("check-exm-figures")
 ods = exf.ods
+# check-exm-figures put check-common on sys.path (gha#1856).
+import mdmask  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = False
@@ -89,7 +91,6 @@ _GREEK = (r"alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|"
 # superscript. A vector or matrix macro, a set, an event or an expression is
 # not a scalar input, so a definition whose argument is one is not a candidate.
 SCALAR_ARG_RE = re.compile(r"(?:[a-z]|\\(?:" + _GREEK + r"))" + _SUB + r"'*")
-COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 APPLICATION_RES = [re.compile(p) for p in (
     r"^" + _NAME + r"\s*(?:\\left)?\(\s*(?P<args>[^()]*?)\s*(?:\\right)?\)$",
     r"^" + _NAME + r"\s*\\paren\{(?P<args>[^{}]*)\}$",
@@ -106,7 +107,7 @@ class Definition(NamedTuple):
 
 def first_display_math(body: List[str]) -> Optional[str]:
     """Text of the first ``$$ ... $$`` block outside HTML comments, or None."""
-    text = COMMENT_RE.sub("", "\n".join(body))
+    text = mdmask.replace_comments("\n".join(body))
     m = re.search(r"\$\$(.*?)\$\$", text, re.S)
     return m.group(1) if m else None
 

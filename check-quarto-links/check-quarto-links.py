@@ -91,7 +91,6 @@ _SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
 _QUOTE_RE = re.compile(r"^(?:[ ]{0,3}>[ ]?)+")
 _LIST_ITEM_RE = re.compile(r"^\s{0,3}(?:[-*+]|[0-9]+[.)])(?:\s|$)")
 _FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
-_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 
 
 class Finding(NamedTuple):
@@ -141,10 +140,13 @@ def blank_non_prose(text: str) -> str:
     Newlines are kept, so an offset into the result maps to the same line
     number as in the original.
     """
-    def _blank(m: "re.Match[str]") -> str:
-        return re.sub(r"[^\n]", " ", m.group(0))
+    def _blank_text(s: str) -> str:
+        return re.sub(r"[^\n]", " ", s)
 
-    text = _COMMENT_RE.sub(_blank, text)
+    def _blank(m: "re.Match[str]") -> str:
+        return _blank_text(m.group(0))
+
+    text = mdmask.replace_comments(text, _blank_text)
     lines = text.split("\n")
     fence: Optional[str] = None
     in_indented = False

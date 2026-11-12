@@ -40,6 +40,7 @@ from typing import Dict, List, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd *.md"
 ALLOW = "check-serial-comma: allow"
@@ -95,7 +96,7 @@ def clean(line: str) -> str:
     """Reduce one source line to plain words; math, code and the like become X."""
     line = re.sub(r"^[ \t]*(?:>[ \t]*)+", "", line)
     line = re.sub(r"[❌✅]", "", line)
-    line = re.sub(r"<!--[\s\S]*?-->", "", line)
+    line = mdmask.replace_comments(line)
     line = re.sub(r"\{\{<.*?>\}\}", "", line)
     line = re.sub(r"\\\$", "", line)
     line = re.sub(r"\$\$.*?\$\$|\$[^$]*\$", "X", line)
