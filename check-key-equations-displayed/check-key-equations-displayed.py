@@ -45,6 +45,7 @@ from typing import Dict, List, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd"
 OK_MARK = "inline-ok"
@@ -55,7 +56,6 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 PROOF_RE = re.compile(r"(?:^|[\s{])proof(?![\w-])|\.proof(?![\w-])|#prf-")
 INLINE_RE = re.compile(r"(?<![\\$])\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)")
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 RELATION_RE = re.compile(r"(?<![<>!:\\])=|\\le(?![a-zA-Z])|\\ge(?![a-zA-Z])|\\neq|\\approx|[<>]")
 CUE_BEFORE_RE = re.compile(
     r"\b(?:yields?|gives?|giving|implies|so|thus|hence|therefore|forces|obtain(?:ing)?)[ ,:]*$",
@@ -72,10 +72,6 @@ def normalize(math: str) -> str:
     text = re.sub(r"\\(?:left|right|big|Big|bigg|Bigg)(?![a-zA-Z])", "", text)
     text = re.sub(r"\s+", "", text)
     return text.rstrip(".,;")
-
-
-def _mask_code(line: str) -> str:
-    return CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
 
 
 def display_equations(lines: List[str]) -> Set[str]:
@@ -138,7 +134,7 @@ def inline_key_equations(lines: List[str]) -> List[Tuple[int, str, str]]:
             continue
         if proof_depth is None or OK_MARK in raw:
             continue
-        line = _mask_code(raw)
+        line = mdmask.mask_code_spans(raw)
         following = lines[idx + 1] if idx + 1 < len(lines) else ""
         for m in INLINE_RE.finditer(line):
             math = m.group(1).strip()

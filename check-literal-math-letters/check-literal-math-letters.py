@@ -85,6 +85,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -276,40 +277,6 @@ class Finding(NamedTuple):
 class Div(NamedTuple):
     length: int
     notation: bool
-
-
-def _mask_code_spans(line: str) -> str:
-    """Blank inline code spans, closed by a backtick run of equal length."""
-    out = list(line)
-    i, n = 0, len(line)
-    while i < n:
-        if line[i] != "`":
-            i += 1
-            continue
-        j = i
-        while j < n and line[j] == "`":
-            j += 1
-        run = j - i
-        k = j
-        close = -1
-        while k < n:
-            if line[k] == "`":
-                m = k
-                while m < n and line[m] == "`":
-                    m += 1
-                if m - k == run:
-                    close = k
-                    break
-                k = m
-            else:
-                k += 1
-        if close < 0:
-            i = j
-            continue
-        for p in range(i, close + run):
-            out[p] = " "
-        i = close + run
-    return "".join(out)
 
 
 def _mask_html_comments(line: str, in_comment: bool) -> Tuple[str, bool]:
@@ -645,7 +612,7 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
                     divs.pop()  # Pandoc: any fence line closes the innermost div
                 continue
 
-        line = _mask_code_spans(line).replace("\\$", "  ")
+        line = mdmask.mask_code_spans(line).replace("\\$", "  ")
         math: List[str] = []
 
         if env is not None:

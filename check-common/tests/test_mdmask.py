@@ -47,3 +47,12 @@ def test_fence_re_reads_marker_and_language():
     m = mdmask.FENCE_RE.match("~~~~ tex")
     assert m and m.group(1) == "~~~~" and m.group(2) == "tex"
     assert mdmask.FENCE_RE.match("`` not a fence") is None
+
+
+def test_code_span_closes_only_on_an_equal_run():
+    # `a``b` is one span: the inner double run does not close a single one.
+    assert mdmask.mask_code_spans("x `a``b` y") == "x " + " " * 6 + " y"
+    # ``a`b`` is one span; the plain (`+).+?\1 pattern closed it on `b`.
+    assert mdmask.mask_code_spans("x ``a`b`` y") == "x " + " " * 7 + " y"
+    # A lone unclosed run masks nothing.
+    assert mdmask.mask_code_spans("x `a y") == "x `a y"

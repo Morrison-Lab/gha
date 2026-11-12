@@ -61,6 +61,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -91,8 +92,6 @@ class Hit(NamedTuple):
     phrase: str
     kind: str = "opener"
 
-
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 DEMO_RE = re.compile(r"(?<![\w'’-])(this|these|those|that)(?![\w'’-])", re.I)
 VERBS = frozenset(
@@ -126,7 +125,7 @@ XREF_RE = re.compile(r"@[A-Za-z][\w-]*")
 
 def mask_prose(raw: str) -> str:
     """One prose line with code, math, link targets, tags and emphasis removed."""
-    text = CODE_SPAN_RE.sub(" CODE ", raw)
+    text = mdmask.CODE_SPAN_RE.sub(" CODE ", raw)
     text = MATH_RE.sub(" MATH ", text)
     text = TAG_RE.sub(" ", text)
     text = LINK_RE.sub(r"\1", text)
@@ -194,7 +193,7 @@ def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
             return "", True
         raw = raw[end + 3:]
     spans: List[str] = []
-    raw = CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
+    raw = mdmask.CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
     raw = drop_closed_comments(raw)
     start = raw.find("<!--")
     opened = start >= 0

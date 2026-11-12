@@ -351,7 +351,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It is warn-only by default (`fail: false`), and it diffs the merge base
   against the working tree in one `git diff`, so a staged edit is examined
   without the three-way `NLB_SCOPE` machinery.
-  It takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856),
+  It takes its git, diff, and file helpers from `check-common/diffscope.py`
+  and its code-span masking from `check-common/mdmask.py` (gha#1856),
   so keep `check-common` beside it.
   The whole file is parsed and only findings on added lines are kept, because
   a display block opens on one line and its letters sit on a later one.
@@ -544,6 +545,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
   `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
   Each of those keeps its own fence state.
+  Its code-span pattern, which closes a span only on a backtick run of the same length, is also the one `check-key-equations-displayed`, `check-definite-antecedents`, `check-quarto-prose`, and `check-literal-math-letters` use.
   A check puts the directory on `sys.path` and imports it.
   A composite action runs from a checkout of the whole repository, so `../check-common` is always beside it.
   Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
@@ -562,7 +564,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-def-title-synonyms/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-def-wiktionary/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-def-commentary/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
-- `check-definite-antecedents/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-definite-antecedents/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` and its code-span pattern from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
 - `check-definition-equations/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856) and its diff arguments from `check-write-idiom`'s engine, so keep both directories beside it.
   It re-exports `_run_git`, `_read_lines`, `_split_list`, and `_env_flag` for `check-definition-expectation`, `check-results-in-remarks`, and `check-result-definition-links`, which load it as their base, until each moves onto the module directly.
 - `check-div-ids/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
@@ -591,7 +593,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
   It imports `check-exm-figures`' figure test.
   That script loads `check-common` and `check-one-div-per-subfile`, so keep the four directories together.
-- `check-key-equations-displayed/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-key-equations-displayed/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` and its code-span masking from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
 - `check-serial-comma/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-unexplained-contrasts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-restated-results/` (Python, stdlib only) takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856) and its diff arguments and parser from `check-write-idiom`'s engine, so keep both directories beside it.
@@ -599,7 +601,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-split-solutions/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-orphaned-images/` (Python) takes its git and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-quarto-links/` (Python) takes its git and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
-- `check-quarto-prose/` (Python, stdlib only) takes its path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-quarto-prose/` (Python, stdlib only) takes its path-ignore helpers from `check-common/diffscope.py` and its code-span pattern from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
   It keeps its own git and diff helpers, because they run in a target directory, raise on a git error, and split git's output on newlines alone so a lone carriage return does not shift line numbers.
 - `check-unexplained-choices/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-solution-citations/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.

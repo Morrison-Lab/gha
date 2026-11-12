@@ -60,6 +60,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 _DEFAULT_FAIL = True
 _DEFAULT_GLOBS = "*.qmd *.md"
@@ -94,7 +95,6 @@ _FIRST_LINE_RE = re.compile(
 )
 _DIV_FENCE_RE = re.compile(r"^\s*(:{3,})\s*(.*?)\s*$")
 _CODE_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
-_CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 _ALLOW_RE = re.compile(r"<!--\s*prose-allow:\s*(.*?)\s*-->", re.IGNORECASE | re.DOTALL)
 _COMMENT_ONLY_RE = re.compile(r"^\s*<!--.*-->\s*$", re.DOTALL)
 _ENDS_MATH_RE = re.compile(r"^\s*$|^ {0,3}#{1,6}(?:\s|$)")
@@ -355,7 +355,7 @@ def _split_comment(line: str, in_comment: bool) -> Tuple[str, bool, Set[str]]:
         out.append(_MASK * (end + 3))
         line = line[end + 3 :]
         in_comment = False
-    line = _CODE_SPAN_RE.sub(_mask_span, line)
+    line = mdmask.CODE_SPAN_RE.sub(_mask_span, line)
     allowed: Set[str] = set()
     for m in _ALLOW_RE.finditer(line):
         for phrase in m.group(1).split(","):
