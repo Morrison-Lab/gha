@@ -51,11 +51,14 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 from typing import Iterable, List, NamedTuple, Optional, Set
 from urllib.parse import unquote
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_EXTENSIONS = ".png, .jpg, .jpeg, .gif, .svg, .webp, .avif"
 DEFAULT_SOURCE_EXTENSIONS = (
@@ -76,50 +79,6 @@ class Result(NamedTuple):
     examined: int
     sources: int
     orphans: List[str]
-
-
-def _run_git(args: List[str]) -> Optional[str]:
-    try:
-        return subprocess.run(
-            ["git", *args], capture_output=True, check=True,
-            encoding="utf-8", errors="replace",
-        ).stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: Iterable[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
 
 
 def parse_extensions(value: str) -> Set[str]:
@@ -181,21 +140,21 @@ def find_orphans(
 
 def added_files(base_ref: str) -> Optional[Set[str]]:
     """Files added between the merge base with ``base_ref`` and HEAD."""
-    mb = _run_git(["merge-base", base_ref, "HEAD"])
+    mb = diffscope.run_git(["merge-base", base_ref, "HEAD"])
     if not mb or not mb.strip():
         return None
-    out = _run_git(["diff", "--name-only", "-z", "--diff-filter=A", "--no-renames",
-                    mb.strip(), "HEAD"])
+    out = diffscope.git_paths(["diff", "--name-only", "--diff-filter=A", "--no-renames",
+                               mb.strip(), "HEAD"])
     if out is None:
         return None
-    return {f for f in out.split("\0") if f}
+    return set(out)
 
 
 def tracked(pathspecs: List[str]) -> Optional[List[str]]:
-    out = _run_git(["ls-files", "-z", "--", *pathspecs])
+    out = diffscope.git_paths(["ls-files", "--", *pathspecs])
     if out is None:
         return None
-    return sorted(f for f in out.split("\0") if f)
+    return sorted(out)
 
 
 def run(
@@ -213,7 +172,7 @@ def run(
     images = [
         f for f in candidates
         if PurePosixPath(f).suffix.lower() in extensions
-        and not any(r.match(f) for r in ignores)
+        and not diffscope.ignored(f, ignores)
         and (only is None or f in only)
     ]
     sources = [f for f in everything if PurePosixPath(f).suffix.lower() in source_extensions]
@@ -226,8 +185,8 @@ def main() -> int:
     src_exts = parse_extensions(
         os.environ.get("OI_SOURCE_EXTENSIONS") or DEFAULT_SOURCE_EXTENSIONS
     )
-    ignores = compile_ignores(
-        t.strip() for t in re.split(r"[,\n]", os.environ.get("OI_PATHS_IGNORE", "")) if t.strip()
+    ignores = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("OI_PATHS_IGNORE", ""))
     )
     fail = os.environ.get("OI_FAIL", "false").strip().lower() == "true"
     base_ref = os.environ.get("OI_BASE_REF", "").strip()
