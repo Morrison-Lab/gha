@@ -295,7 +295,7 @@ def split_sentences(text: str) -> List[str]:
 # Order matters: link targets go before bare URLs, so `[text](url)` has
 # already become `[text]` and leaves no URL behind.
 #
-# The code-span pattern backreferences its opening run, so an N-backtick span
+# Code spans are removed by `_drop_code_spans`, so an N-backtick span
 # (CommonMark's form for a span that itself contains a backtick) closes on a
 # run of the same length rather than on the next backtick. A plain
 # `` `[^`]*` `` matches the empty span between the two opening backticks of a
@@ -305,7 +305,6 @@ def split_sentences(text: str) -> List[str]:
 # The bare-URL pattern stops before trailing sentence punctuation, so a `;`
 # that ends the clause a URL sits in survives the strip. `\S+` would eat it
 # along with the URL and silence a genuine rule 5 break.
-_CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1)[\s\S])*?\1")
 
 
 _AUTOLINK_RE = re.compile(r"<https?://[^>\s]*>")
@@ -362,8 +361,8 @@ def _code_spans(text: str) -> List[Tuple[int, int]]:
 
     A run with no later run of its length is literal text, and the scan moves
     on to the next run. Runs of each length are listed once, so each lookup is
-    a binary search, and a line of thousands of backticks stays fast where the
-    backtracking `_CODE_SPAN_RE` does not.
+    a binary search, so a line of thousands of backticks stays fast, where a
+    backreferencing regex backtracks.
     """
     runs = [(m.start(), m.end()) for m in re.finditer(r"`+", text)]
     by_len = {}
@@ -382,6 +381,17 @@ def _code_spans(text: str) -> List[Tuple[int, int]]:
         spans.append((a, runs[close][1]))
         idx = close + 1
     return spans
+
+
+def _drop_code_spans(text: str) -> str:
+    """Return ``text`` with every code span from `_code_spans` removed."""
+    kept = []
+    last = 0
+    for a, b in _code_spans(text):
+        kept.append(text[last:a])
+        last = b
+    kept.append(text[last:])
+    return "".join(kept)
 
 
 def _comment_spans(text: str) -> List[Tuple[int, int]]:
@@ -700,7 +710,7 @@ def strip_inline_markup(text: str) -> str:
     ``\\S+`` would have swallowed along with the URL.
     """
     # `]` keeps a bracketed link's visible text attached to its own sentence.
-    text = _CODE_SPAN_RE.sub("", text)
+    text = _drop_code_spans(text)
     text = _sub_link_targets(
         text, lambda target: "]", _LINK_SKIP[1:]
     )

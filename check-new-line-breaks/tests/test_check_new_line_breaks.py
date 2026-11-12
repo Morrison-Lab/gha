@@ -1809,6 +1809,20 @@ def test_a_backtick_inside_a_multi_backtick_span_does_not_end_it():
     assert nlb.strip_inline_markup("use ``a `b` c`` here") == "use  here"
 
 
+def test_code_span_removal_is_linear():
+    """A line of thousands of backticks is stripped quickly; the old
+    backreferencing regex took over ten seconds on 8000 (gha#1944 review)."""
+    start = time.perf_counter()
+    nlb.strip_inline_markup("`" * 8000)
+    assert time.perf_counter() - start < 1.0
+
+
+def test_an_unclosed_backtick_run_is_literal_text():
+    # CommonMark: a run with no later run of its own length opens nothing,
+    # so no span starts partway through it.
+    assert nlb.strip_inline_markup("``a` b") == "``a` b"
+
+
 def test_a_leading_semicolon_does_not_mask_a_later_interior_one():
     # Self-caught while reviewing the fix above: rejecting index 0 after a
     # plain find(';') threw away the whole line, so a leading semicolon hid a

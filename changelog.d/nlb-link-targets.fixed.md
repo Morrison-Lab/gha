@@ -14,3 +14,5 @@
   That covers a `](` with no closing `)`, a title followed by more text,
   a footnote reference such as `[^1]`, and a reference link such as `[x][r]` followed by `(...)`.
   It also covers a `](` inside a code span, an HTML tag, an HTML comment, or math.
+- Code spans are now removed in one linear pass, so a line of thousands of backticks no longer stalls the check.
+  A backtick run with no closing run of its own length stays literal text, as in CommonMark.
