@@ -52,9 +52,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-aca88aec1926ad0d7f3d1f1ec88d9a49.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-d37a87698651e10d08ed7b33fb80c293.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-aca88aec1926ad0d7f3d1f1ec88d9a49.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-945588bf4328f6c01d6f5e5ac920d29d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-ee3f3a7b85b359b5385e9816f77b69c9.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-945588bf4328f6c01d6f5e5ac920d29d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1240,7 +1240,7 @@ cookieconsent.run({
 
 <p>Diff-scoped, blocking check that fails a pull request changing more than 10 files or 300 lines. Every PR should be as small and focused as it can be while completely solving its stated task. A sweep goes out as minimal batches, one PR per batch of one concern. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1188">gha#1188</a>.</p>
 <p>The check counts the files a PR changes and the lines it adds plus deletes, measured from the merge base to <code>HEAD</code>. A rename counts as one file. A binary file counts as one file and no lines.</p>
-<p>These paths are not counted, since nobody writes them by hand: lockfiles, <code>renv.lock</code>, <code>_freeze/</code>, <code>docs/</code>, images, PDFs, CSV and R data files, and minified scripts. Add more with <code>paths-ignore</code>.</p>
+<p>These paths are not counted, since nobody writes them by hand: lockfiles, <code>renv.lock</code>, <code>_freeze/</code>, <code>docs/</code>, images, PDFs, CSV and R data files, and minified scripts. Add more with <code>paths-ignore</code>. A path that the repository’s <code>.gitattributes</code> marks <code>linguist-generated</code> is not counted either, so a repository marks its committed generator outputs once, and GitHub folds them in review as well (<a href="https://github.com/Morrison-Lab/gha/issues/1959">gha#1959</a>).</p>
 <p>The lines of a newly added <code>_fig-*</code> subfile are not counted either, since figure code in several languages is long but mechanical (<a href="https://github.com/Morrison-Lab/ai-config/issues/4928">ai-config#4928</a>). Each such file still counts as a file, and editing an existing <code>_fig-*</code> file still counts its lines.</p>
 <section id="exemptions" class="level2">
 <h2 class="anchored" data-anchor-id="exemptions">Exemptions</h2>
