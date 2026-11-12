@@ -36,9 +36,12 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd *.md"
 ADVICE = ("move the content (to a subfile, another page, or an outtakes file) "
@@ -93,7 +96,8 @@ def parse_diff(diff: str) -> Tuple[List[Removed], List[str], Dict[str, bool]]:
             new_left -= 1
             added.append(line[1:])
         elif line.startswith("--- "):
-            target = line[4:].rstrip("\t")
+            # git quotes a name holding '"', a backslash or a tab (gha#1923).
+            target = diffscope.unquote_git_path(line[4:].rstrip("\t"))
             old_path = None if target == "/dev/null" else target.removeprefix("a/")
         elif line.startswith("+++ "):
             if line[4:].rstrip("\t") == "/dev/null" and old_path:
@@ -181,18 +185,6 @@ def exempt_deleted(path: str, body: str) -> bool:
                for n in names)
 
 
-def _git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(["git", "-c", "core.quotepath=false", *args],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         text=True, encoding="utf-8", errors="replace")
-    return res.stdout if res.returncode == 0 else None
-
-
-def _flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return default if not value else value in ("1", "true", "yes", "on")
-
-
 def _number(name: str, default: float) -> float:
     try:
         return float(os.environ.get(name, "").strip() or default)
@@ -202,13 +194,13 @@ def _number(name: str, default: float) -> float:
 
 def merge_base(base_ref: str) -> Optional[str]:
     """The merge base of ``base_ref`` and HEAD, or None when it cannot be found."""
-    out = _git(["merge-base", base_ref, "HEAD"]) if base_ref else None
+    out = diffscope.run_git(["merge-base", base_ref, "HEAD"]) if base_ref else None
     return out.strip() if out and out.strip() else None
 
 
 def diff_since(base: str, globs: List[str]) -> Optional[str]:
     """``git diff -U0`` of the PR's changes since ``base``."""
-    return _git(["diff", "-U0", "--no-color", "--no-ext-diff", "-M",
+    return diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff", "-M",
                  base, "HEAD", "--", *globs])
 
 
@@ -216,7 +208,7 @@ def prose_only(removed: List[Removed], base: str) -> List[Removed]:
     """Drop removed lines that sat inside fenced code or YAML front matter."""
     skips: Dict[str, Set[int]] = {}
     for path in {r.path for r in removed}:
-        old = _git(["show", f"{base}:{path}"])
+        old = diffscope.run_git(["show", f"{base}:{path}"])
         skips[path] = non_prose_lines(old) if old else set()
     return [r for r in removed if r.line not in skips[r.path]]
 
@@ -224,7 +216,7 @@ def prose_only(removed: List[Removed], base: str) -> List[Removed]:
 def main() -> int:
     base_ref = os.environ.get("RCO_BASE_REF", "").strip()
     globs = os.environ.get("RCO_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    fail = _flag("RCO_FAIL", True)
+    fail = diffscope.env_flag("RCO_FAIL", True)
     body = os.environ.get("RCO_PR_BODY", "")
     base = merge_base(base_ref)
     diff = diff_since(base, globs) if base else None

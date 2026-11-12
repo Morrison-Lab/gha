@@ -343,10 +343,29 @@ def test_only_added_lines_are_reported():
     assert len(run_text(page, {"d.qmd": RISK_DEF}, added={3})) == 1
 
 
-def test_glob_to_regex_matches_nested_paths():
-    rx = ctl.glob_to_regex("chapters/outtakes/**")
-    assert rx.match("chapters/outtakes/_a.qmd")
-    assert not rx.match("chapters/a.qmd")
+def test_ignore_regexes_match_nested_paths():
+    rxs = ctl.ignore_regexes("chapters/outtakes/**")
+    assert any(rx.match("chapters/outtakes/_a.qmd") for rx in rxs)
+    assert not any(rx.match("chapters/a.qmd") for rx in rxs)
+
+
+def test_ignore_regexes_reach_under_a_wildcard_and_a_bare_directory():
+    # paths-ignore has always ignored what is under any pattern, not only a bare directory.
+    rxs = ctl.ignore_regexes("chapters/*, /outtakes/")
+    assert any(rx.match("chapters/a/b.qmd") for rx in rxs)
+    assert any(rx.match("outtakes/x.qmd") for rx in rxs)
+    assert not any(rx.match("other/chapters/a.qmd") for rx in rxs)
+
+
+def test_cli_name_with_a_quote_is_scoped_to_its_added_lines(repo):
+    # git quotes this name in a diff header; read unquoted, its first use is flagged (gha#1923).
+    (repo / 'q"a.qmd').write_text("::: {#exm-q}\n\nThe risk is quoted.\n\n:::\n")
+    (repo / "é.qmd").write_text("::: {#exm-e}\n\nThe risk is accented.\n\n:::\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "names")
+    res = run_cli(repo, BASE_REF="main", FAIL="true")
+    assert 'q"a.qmd:3' in res.stdout
+    assert "é.qmd:3" in res.stdout
 
 
 def test_defaults_agree_across_script_action_and_workflow():

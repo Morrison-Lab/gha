@@ -606,6 +606,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-pr-size/` (Python, stdlib only) takes its git, listing, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
   It keeps its own `git check-attr` call, because that feeds the paths on standard input.
 - `check-pr-concerns/` (Python, stdlib only) takes its git, listing, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-term-links/` (Python, stdlib only) takes its git, diff, and listing helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  Its `paths-ignore` still ignores what is under any pattern, not only under a bare directory.
+- `check-removed-content/` (Python, stdlib only) takes its git calls, flag reader, and path decoding from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  It keeps its own diff parser, because that also collects the removed lines with their old line numbers.
 - `check-rubric-checklists/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-single-ask-parts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426):

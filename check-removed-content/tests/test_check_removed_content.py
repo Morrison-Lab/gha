@@ -78,6 +78,18 @@ def test_deleted_file_named_in_body_exempt(tmp_path, monkeypatch):
                body="Replaced old.qmd by the new page") == 0
 
 
+def test_deleted_quoted_file_named_in_body_exempt(tmp_path, monkeypatch):
+    # git quotes this name in the diff header; read unquoted, the body names it (gha#1923).
+    assert run(tmp_path, monkeypatch, {'q"a.qmd': SENT + "\n"}, {'q"a.qmd': None},
+               body='Replaced q"a.qmd by the new page') == 0
+
+
+def test_quoted_file_finding_names_the_file_as_written(tmp_path, monkeypatch, capsys):
+    assert run(tmp_path, monkeypatch, {'q"a.qmd': SENT + "\nKept.\n"},
+               {'q"a.qmd': "Kept.\n"}) == 1
+    assert 'file=q"a.qmd,line=1::' in capsys.readouterr().out
+
+
 def test_deleted_file_unnamed_fails(tmp_path, monkeypatch):
     assert run(tmp_path, monkeypatch, {"old.qmd": SENT + "\n"}, {"old.qmd": None}) == 1
 
