@@ -603,6 +603,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   That script loads `check-common` and `check-one-div-per-subfile`, so keep the four directories together.
 - `check-key-equations-displayed/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` and its code-span masking from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
 - `check-serial-comma/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` and its comment stripping from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
+- `check-math-definitions/` (Python) takes its comment stripping from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
+- `check-source-overlap/` (Python) takes its comment stripping from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
 - `check-unexplained-contrasts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-restated-results/` (Python, stdlib only) takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856) and its diff arguments and parser from `check-write-idiom`'s engine, so keep both directories beside it.
 - `check-page-length/` (Python, stdlib only) takes its git, diff, and path-ignore helpers from `check-common/diffscope.py` and its code-span pattern from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
