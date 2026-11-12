@@ -945,6 +945,23 @@ def test_status_path_decodes_a_quoted_name():
     assert nlb._status_path(' M "say \\"hi\\".md"') == 'say "hi".md'
     assert nlb._status_path('R  old.md -> "back\\\\slash.md"') == "back\\slash.md"
     assert nlb._status_path(" M plain.md") == "plain.md"
+    assert nlb._status_path(' M "tab\\there.md"') == "tab\there.md"
+    assert nlb._status_path(" M with space.md") == "with space.md"
+    assert nlb._status_path(" M café.md") == "café.md"
+
+
+@pytest.mark.parametrize("name", ['say "hi".md', "with space.md", "café.md"])
+def test_unstaged_edit_to_an_unusual_name_is_flagged(tmp_path, name):
+    # A tracked file edited but not staged reaches the check through
+    # `git status` rather than the staged diff.
+    _init_repo(tmp_path)
+    (tmp_path / name).write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / name).write_text("# Notes\n\n- Two sentences. On one line.\n")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [(name, 3)]
 
 
 def test_clean_dirty_tree_reports_examined_count(tmp_path, capsys):
