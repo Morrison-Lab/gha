@@ -309,8 +309,11 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `action.yml` and, for R/Python capabilities, a language-specific helper
   script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,
   `check-phi/`, and `check-new-line-breaks/` (Python; it imports
-  `check-common/diffscope.py` for its git calls and path decoding, so a
-  copy of the script needs that directory beside it;
+  `check-common/diffscope.py` for its git calls, path decoding, and
+  path-ignore helpers, so a copy of the script needs that directory beside it;
+  it keeps its own diff parser, which counts deleted lines as a multiset for
+  the moved-content exemption, and its own boolean flag reader, which warns
+  on a value other than `true` or `false`;
   `check-new-line-breaks` mirrors `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
   entirely rather than falling back to a whole-tree scan when the diff can't
   be computed, since a whole-tree scan here would reflag a corpus's

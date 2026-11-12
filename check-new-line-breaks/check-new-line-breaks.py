@@ -971,44 +971,6 @@ def _run_git(args: List[str]) -> Optional[str]:
         return None
 
 
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def _compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
-
-
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 
@@ -1049,7 +1011,7 @@ def _has_uncommitted_changes(
     for line in out.splitlines():
         if not line:
             continue
-        if not _ignored(_status_path(line), ignores):
+        if not diffscope.ignored(_status_path(line), ignores):
             return True
     return False
 
@@ -1070,7 +1032,7 @@ def _untracked_matches(
         if not line.startswith("??"):
             continue
         rel = _status_path(line)
-        if not _ignored(rel, ignores):
+        if not diffscope.ignored(rel, ignores):
             matches.append(rel)
     return sorted(matches)
 
@@ -1255,7 +1217,7 @@ def find_violations(
     examined_lines = 0
     examined_files = 0
     for rel_path in sorted(scope):
-        if _ignored(rel_path, ignores):
+        if diffscope.ignored(rel_path, ignores):
             continue
         path = Path(rel_path)
         if not path.is_file():
@@ -1314,10 +1276,6 @@ def find_violations(
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
-
-def _split_list(value: str) -> List[str]:
-    return [tok.strip() for tok in re.split(r"[,\n]", value or "") if tok.strip()]
-
 
 def _env_flag(name: str, default: bool) -> bool:
     """Read a boolean env var, falling back to ``default`` when unset/empty.
@@ -1381,7 +1339,7 @@ def _env_choice(name: str, default: str, choices: Tuple[str, ...]) -> str:
 def main() -> int:
     base_ref = os.environ.get("NLB_BASE_REF", "").strip()
     globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]
-    ignore = _compile_ignores(_split_list(os.environ.get("NLB_PATHS_IGNORE", "")))
+    ignore = diffscope.compile_ignores(diffscope.split_list(os.environ.get("NLB_PATHS_IGNORE", "")))
     fail = _env_flag("NLB_FAIL", default=_DEFAULT_FAIL)
     clause_breaks = _env_flag("NLB_CLAUSE_BREAKS", _DEFAULT_CLAUSE_BREAKS)
     clause_min_length = _env_int("NLB_CLAUSE_MIN_LENGTH", _DEFAULT_CLAUSE_MIN_LENGTH)
