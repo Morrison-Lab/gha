@@ -53,9 +53,12 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd"
 DEFAULT_FAIL = True
@@ -101,7 +104,6 @@ TEXT_ARG_RE = re.compile(r"\\(?:text|textrm|textit|operatorname|mathrm)\{([^{}]*
 SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
 ATTR_TITLE_RE = re.compile(r'title="([^"]*)"')
 TITLE_RE = re.compile(r"^#{1,6}\s+(.*?)\s*(?:\{[^}]*\})?\s*$")
-HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 MATH_RE = re.compile(r"\$[^$]*\$")
 LINK_RE = re.compile(r"\]\([^)]*\)")
 WORD_RE = re.compile(r"[a-z]+")
@@ -443,53 +445,33 @@ def exercises(lines: List[str], defined: Optional[Set[str]] = None,
 
 def added_lines(diff: str) -> Dict[str, Set[int]]:
     """Added line numbers per path from ``git diff -U0`` output."""
-    added: Dict[str, Set[int]] = {}
-    path: Optional[str] = None
-    for line in diff.splitlines():
-        if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
-            path = None if target == "/dev/null" else target.removeprefix("b/")
-            if path is not None:
-                added.setdefault(path, set())
-            continue
-        m = HUNK_RE.match(line)
-        if m and path is not None:
-            start = int(m.group(1))
-            count = 1 if m.group(2) is None else int(m.group(2))
-            added[path].update(range(start, start + count))
-    return added
-
-
-def _git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(["git", "-c", "core.quotepath=false", *args],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         text=True, encoding="utf-8", errors="replace")
-    return res.stdout if res.returncode == 0 else None
+    added, _deleted = diffscope.parse_diff(diff)
+    return {path: set(lines) for path, lines in added.items()}
 
 
 def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool
                  ) -> Optional[Dict[str, Optional[Set[int]]]]:
     """Files to scan, each with its added lines (None = every line)."""
     if whole_tree:
-        out = _git(["ls-files", "--", *globs])
-        return None if out is None else {p: None for p in out.splitlines() if p}
+        paths = diffscope.git_paths(["ls-files", "--", *globs])
+        return None if paths is None else {p: None for p in paths}
     if not base_ref:
         return None
-    base = _git(["merge-base", base_ref, "HEAD"])
+    base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
     if not base or not base.strip():
         return None
-    diff = _git(["diff", "-U0", "--no-color", "--no-ext-diff", base.strip(),
-                 "--", *globs])
+    diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                              base.strip(), "--", *globs])
     return None if diff is None else dict(added_lines(diff))
 
 
 def corpus(globs: List[str]) -> Tuple[Set[str], Dict[str, str]]:
     """Defined-term stems, and the text of each cross-referenced div, from
     every tracked file the globs match."""
-    out = _git(["ls-files", "--", *globs]) or ""
+    paths = diffscope.git_paths(["ls-files", "--", *globs]) or []
     stems: Set[str] = set()
     index: Dict[str, str] = {}
-    for rel in out.splitlines():
+    for rel in paths:
         try:
             with open(rel, encoding="utf-8", errors="replace") as handle:
                 lines = handle.read().split("\n")
@@ -498,11 +480,6 @@ def corpus(globs: List[str]) -> Tuple[Set[str], Dict[str, str]]:
         stems |= defined_stems(lines)
         index.update(div_texts(lines))
     return stems, index
-
-
-def _flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return default if not value else value in ("1", "true", "yes", "on")
 
 
 def touched(finding: Finding, keep: Optional[Set[int]]) -> bool:
@@ -515,8 +492,8 @@ def touched(finding: Finding, keep: Optional[Set[int]]) -> bool:
 def main() -> int:
     base_ref = os.environ.get("EXB_BASE_REF", "").strip()
     globs = os.environ.get("EXB_GLOBS", DEFAULT_GLOBS).split() or [DEFAULT_GLOBS]
-    fail = _flag("EXB_FAIL", DEFAULT_FAIL)
-    whole = _flag("EXB_WHOLE_TREE", False)
+    fail = diffscope.env_flag("EXB_FAIL", DEFAULT_FAIL)
+    whole = diffscope.env_flag("EXB_WHOLE_TREE", False)
     wanted = wanted_lines(base_ref, globs, whole)
     if wanted is None:
         level = "::warning::" if base_ref else ""
