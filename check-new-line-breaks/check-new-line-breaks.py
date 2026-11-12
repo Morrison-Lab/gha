@@ -134,6 +134,22 @@ _ABBREV_LOWER_RE = re.compile(
     _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
 )
 
+# An uppercase dotted initialism (`U.S.`) before a word that names an
+# institution (`the U.S. Supreme Court`) does not end a sentence.
+# Only words that almost never open a sentence are listed: `Court`,
+# `Congress`, `Army`, and `Bank` all open sentences (`the U.K. Court
+# records show ...`), so they are left out and those phrases still split.
+# Emphasis between the initialism and the word (`**U.S.** Supreme`) is not
+# matched, so such a line still splits.
+# Lowercase initialisms (`a.m.`) are left to the abbreviation lists.
+# Ported from gla's copy of this script (gha#1927), narrowed: gla also
+# protected lowercase common nouns after a determiner and widened the
+# lowercase branch's lookbehind, which splits `9 a.m. sharp`.
+_INITIALISM_FOLLOWERS = ("Supreme", "Dept", "Govt", "Geological")
+_INITIALISM_FOLLOW_RE = re.compile(
+    r"\b((?:[A-Z]\.){2,})(?=\s+(?:" + "|".join(_INITIALISM_FOLLOWERS) + r")\b)"
+)
+
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote/digit/opener.
 # The closing-char class includes `*` and `_` so a sentence ending in Markdown
 # emphasis (`**Some claim.** Explanation...`, or the `__claim.__` / `_claim._`
@@ -226,12 +242,18 @@ def _protect_inline_code(m: "re.Match[str]") -> str:
     return m.group(0).replace(".", _PLACEHOLDER).replace("!", "\x01").replace("?", "\x02")
 
 
+def _protect_initialisms(text: str) -> str:
+    """Protect every dot of an initialism that a listed institution word follows."""
+    return _INITIALISM_FOLLOW_RE.sub(lambda m: m.group(1).replace(".", _PLACEHOLDER), text)
+
+
 def split_sentences(text: str) -> List[str]:
     """Split text at sentence boundaries; return the list of sentences."""
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
+    protected = _protect_initialisms(protected)
     protected = _PAGE_LOCATOR_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, protected)
     protected = _NUM_MARKER_RE.sub(
         lambda m: m.group(1) + m.group(2)[:-1] + _PLACEHOLDER + m.group(3), protected
