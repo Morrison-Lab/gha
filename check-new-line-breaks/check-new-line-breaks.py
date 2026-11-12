@@ -65,6 +65,7 @@ Configuration (all via environment variables, set by the composite action):
                     is instead named in a warning.
 """
 
+import bisect
 import os
 import re
 import sys
@@ -269,7 +270,7 @@ def split_sentences(text: str) -> List[str]:
         lambda target: target.replace(".", _PLACEHOLDER)
         .replace("!", "\x01")
         .replace("?", "\x02"),
-        _markup_spans(protected, _LINK_SKIP_RES),
+        _LINK_SKIP,
     )
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
     # Protect lowercase abbreviation forms only now, after the uppercase branch
@@ -325,7 +326,6 @@ _ENTITY_RE = re.compile(
 # reads `n<k holds Then m>k`, with no dot, as raw HTML.
 # CommonMark's declarations and CDATA sections are left out, because Pandoc
 # renders `<!DOCTYPE x. Y>` and `<![CDATA[A. B]]>` as text.
-_HTML_COMMENT_SPAN_RE = re.compile(r"<!--[\s\S]*?-->")
 _INLINE_HTML_TAG_RE = re.compile(
     r"<[A-Za-z][A-Za-z0-9\-]*(?:\s+[A-Za-z_:][A-Za-z0-9_:\-]*"
     r"(?:\s*=\s*(?:[^\s\"'=<>`]+|'[^']*'|\"[^\"]*\"))?)*\s*/?>"
@@ -356,10 +356,63 @@ _TEX_MATH_ENV_TAIL_RE = re.compile(_TEX_MATH_ENV_OPEN + r"\s*$")
 
 # ── Link targets ────────────────────────────────────────────────────────────
 
+def _code_spans(text: str) -> List[Tuple[int, int]]:
+    """Return CommonMark code spans: a backtick run closed by the next run of
+    the same length.
+
+    A run with no later run of its length is literal text, and the scan moves
+    on to the next run. Runs of each length are listed once, so each lookup is
+    a binary search, and a line of thousands of backticks stays fast where the
+    backtracking `_CODE_SPAN_RE` does not.
+    """
+    runs = [(m.start(), m.end()) for m in re.finditer(r"`+", text)]
+    by_len = {}
+    for idx, (a, b) in enumerate(runs):
+        by_len.setdefault(b - a, []).append(idx)
+    spans = []
+    idx = 0
+    while idx < len(runs):
+        a, b = runs[idx]
+        same = by_len[b - a]
+        pos = bisect.bisect_right(same, idx)
+        if pos == len(same):
+            idx += 1
+            continue
+        close = same[pos]
+        spans.append((a, runs[close][1]))
+        idx = close + 1
+    return spans
+
+
+def _comment_spans(text: str) -> List[Tuple[int, int]]:
+    """Return HTML comment spans, each ``<!--`` closed by the next ``-->``.
+
+    Once an opener finds no closer, no later opener can either, so the scan
+    stops there and the whole line is read once.
+    """
+    spans = []
+    k = text.find("<!--")
+    while k != -1:
+        end = text.find("-->", k + 4)
+        if end == -1:
+            break
+        spans.append((k, end + 3))
+        k = text.find("<!--", end + 3)
+    return spans
+
+
+def _regex_spans(pattern):
+    return lambda text: [m.span() for m in pattern.finditer(text)]
+
+
 # A `](` inside any of these is not a link. strip_inline_markup has
 # already removed code spans, so it passes the rest of the tuple.
-_LINK_SKIP_RES = (
-    _CODE_SPAN_RE, _HTML_COMMENT_SPAN_RE, _INLINE_HTML_TAG_RE, _MATH_RE
+# link_target_spans calls them only on a line that holds a `](`.
+_LINK_SKIP = (
+    _code_spans,
+    _comment_spans,
+    _regex_spans(_INLINE_HTML_TAG_RE),
+    _regex_spans(_MATH_RE),
 )
 
 
@@ -506,7 +559,7 @@ def _target_end(text: str, i: int, escaped, match, nxt, titles, nns) -> int:
 
 
 def link_target_spans(
-    text: str, skip: List[Tuple[int, int]] = ()
+    text: str, skip=()
 ) -> List[Tuple[int, int]]:
     """Return the ``(start, end)`` span of each ``](...)`` link target.
 
@@ -524,12 +577,16 @@ def link_target_spans(
     destination with spaces, which the balanced-parentheses rule covers.
     A ``](`` with no closing ``)``, or a title followed by more text, is not
     a link, so it yields no span and its text stays prose.
-    A ``](`` that starts inside one of the ``skip`` spans (a code span, an
-    HTML tag or comment, or math) is not a link either.
-    Nor is a ``]`` that closes a footnote reference such as ``[^1]``.
+    ``skip`` holds span finders, run only on a line with a ``](``;
+    a ``](`` inside a span one of them returns (a code span, an HTML tag or
+    comment, or math) is not a link either.
+    Nor is a ``]`` that closes a footnote reference such as ``[^1]``,
+    or the second bracket of a reference link such as ``[x][r](u)``,
+    whose ``[`` follows a ``]`` that closes a ``[`` of its own.
     A ``]`` that closes no ``[`` is read as the end of link text wrapped
     from the line before, as in ``continued](u. C)``, unless a ``[`` comes
-    earlier on the line; so ``(a, b](c. D)`` at a line's start is read as a
+    earlier on the line outside a skip span (an escaped one counts,
+    since Pandoc shows it as a bracket); so ``(a, b](c. D)`` at a line's start is read as a
     link, an accepted cost, since this check reads one line at a time.
 
     Parentheses, brackets, quotes, and whitespace runs are each indexed once,
@@ -539,6 +596,7 @@ def link_target_spans(
     """
     if "](" not in text:
         return []
+    skip = [span for find in skip for span in find(text)]
     escaped = _escape_map(text)
     match = _paren_matches(text, escaped)
     nxt = _next_unescaped(text, escaped, ">")
@@ -548,7 +606,11 @@ def link_target_spans(
     for start, end in skip:
         inside[start:end] = bytes([1]) * (end - start)
     opens = _bracket_opens(text, escaped, inside)
-    first_open = text.find("[")
+    first_open = next(
+        (k for k, ch in enumerate(text)
+         if ch == "[" and not inside[k]),
+        -1,
+    )
     spans = []
     i = text.find("](")
     while i != -1:
@@ -558,7 +620,8 @@ def link_target_spans(
         o = opens[i]
         if (escaped[i] or inside[i]
                 or (o == -1 and -1 < first_open < i)
-                or (o != -1 and text[o + 1] == "^")):
+                or (o != -1 and text[o + 1] == "^")
+                or (o > 0 and opens[o - 1] != -1)):
             i = text.find("](", i + 1)
             continue
         end = _target_end(text, i, escaped, match, nxt, titles, nns)
@@ -570,7 +633,7 @@ def link_target_spans(
     return spans
 
 
-def _sub_link_targets(text: str, repl, skip: List[Tuple[int, int]] = ()) -> str:
+def _sub_link_targets(text: str, repl, skip=()) -> str:
     """Replace each link target span with ``repl(span_text)``."""
     out = []
     last = 0
@@ -580,11 +643,6 @@ def _sub_link_targets(text: str, repl, skip: List[Tuple[int, int]] = ()) -> str:
         last = end
     out.append(text[last:])
     return "".join(out)
-
-
-def _markup_spans(text: str, patterns) -> List[Tuple[int, int]]:
-    """Return the spans every pattern in ``patterns`` matches in ``text``."""
-    return [m.span() for p in patterns for m in p.finditer(text)]
 
 
 # One home for each default; action.yml and the reusable workflow declare
@@ -619,7 +677,7 @@ def strip_inline_markup(text: str) -> str:
     # `]` keeps a bracketed link's visible text attached to its own sentence.
     text = _CODE_SPAN_RE.sub("", text)
     text = _sub_link_targets(
-        text, lambda target: "]", _markup_spans(text, _LINK_SKIP_RES[1:])
+        text, lambda target: "]", _LINK_SKIP[1:]
     )
     text = _INLINE_HTML_TAG_RE.sub("", text)
     for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE, _MATH_RE):

@@ -488,13 +488,20 @@ def test_punctuation_inside_link_target_does_not_split(text):
         ('See [x](u "a\\" b. C") ok.', ['](u "a\\" b. C")']),
         # An angle destination needs no space before its title.
         ('See [x](<u>"t. T") ok.', ['](<u>"t. T")']),
+        # A reference link followed by text: Pandoc reads no link.
+        ("See [x][r](u. B) ok.", []),
+        ("See [x][](u. B) ok.", []),
+        # An unmatched `]` before the `[` does not make a reference link.
+        ("[a]][b](u. B)", ["](u. B)"]),
+        # A `[` inside a code span does not block a wrapped link target.
+        ("the `a[0]` value continued](u. Then y) ok.", ["](u. Then y)"]),
     ],
 )
 def test_link_target_spans_match_pandoc(text, spans):
     """Each expected span is what `quarto pandoc -t json` (Pandoc 3.10)
     reads as a link. An unclosed `](`, an unclosed title, and a title
     followed by more text are not links, so their text stays prose."""
-    skip = nlb._markup_spans(text, nlb._LINK_SKIP_RES)
+    skip = nlb._LINK_SKIP
     assert [text[a:b] for a, b in nlb.link_target_spans(text, skip)] == spans
 
 
@@ -557,6 +564,29 @@ def test_link_target_scan_is_linear(text):
     nlb.split_sentences(text)
     nlb.strip_inline_markup(text)
     assert time.perf_counter() - start < 1.0
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["<!--" * 8000, "<!--" * 8000 + "[x](u)",
+     "`" * 8000 + "[x](u)", "` `` " * 3000 + "[x](u)"],
+)
+def test_link_skip_spans_are_linear(text):
+    """The skip spans are found only on a line with a `](`, and by scans
+    that read the line once, so an unclosed `<!--` or a long backtick run
+    stays fast (gha#1927 review)."""
+    start = time.perf_counter()
+    nlb.split_sentences(text)
+    nlb.link_target_spans(text, nlb._LINK_SKIP)
+    assert time.perf_counter() - start < 1.0
+
+
+def test_skip_spans_keep_the_two_callers_in_step():
+    """split_sentences keeps code spans and strip_inline_markup drops them,
+    but both read the same wrapped link target past a `[` in code."""
+    text = "the `a[0]` value continued](u. Then y) ok."
+    assert nlb.split_sentences(text) == [text]
+    assert nlb.strip_inline_markup(text) == "the  value continued] ok."
 
 
 def test_link_target_with_parentheses_and_title_is_stripped_whole():
