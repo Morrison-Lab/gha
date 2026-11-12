@@ -59,10 +59,13 @@ Configuration (environment variables, set by the composite action):
 import importlib.util
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 _ENGINE_PATH = Path(__file__).resolve().parent.parent / "check-write-idiom" / "check-write-idiom.py"
 _spec = importlib.util.spec_from_file_location("check_write_idiom_engine", _ENGINE_PATH)
@@ -240,66 +243,11 @@ def format_message(f: Finding) -> str:
 
 # -- Git plumbing ------------------------------------------------------------
 
-def _run_git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        encoding="utf-8", errors="replace",
-    )
-    return res.stdout if res.returncode == 0 else None
-
-
 # The diff parser is the shared engine's: one copy, so a fix to it reaches every check.
 parse_diff = engine.parse_diff
 
 
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
-
-
-def _split_list(value: str) -> List[str]:
-    return [p.strip() for p in re.split(r"[,\n]", value) if p.strip()]
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    if not value:
-        return default
-    return value in ("1", "true", "yes", "on")
+compile_ignores = diffscope.compile_ignores
 
 
 class Report(NamedTuple):
@@ -308,17 +256,6 @@ class Report(NamedTuple):
     lines: int
     blocks: int
     skipped: bool
-
-
-def _read_lines(path: str) -> Optional[List[str]]:
-    try:
-        with open(path, encoding="utf-8", errors="replace") as handle:
-            lines = handle.read().split("\n")
-    except OSError:
-        return None
-    if lines and lines[-1] == "":
-        lines.pop()  # the newline ending the file does not start a line
-    return lines
 
 
 def select_findings(findings: List[Finding],
@@ -337,24 +274,24 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     """Scan the added lines since ``base_ref``, or every line when whole-tree."""
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = _run_git(["ls-files", "--", *globs])
-        if out is None:
+        paths = diffscope.git_paths(["ls-files", "--", *globs])
+        if paths is None:
             return Report([], 0, 0, 0, True)
-        for rel in out.splitlines():
-            if rel and not _ignored(rel, ignores):
+        for rel in paths:
+            if not diffscope.ignored(rel, ignores):
                 wanted[rel] = None
     else:
         if not base_ref:
             return Report([], 0, 0, 0, True)
-        base = _run_git(["merge-base", base_ref, "HEAD"])
+        base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, 0, 0, True)
-        diff = _run_git([*engine.GIT_DIFF_ARGS, base.strip(), "--", *globs])
+        diff = diffscope.run_git([*engine.GIT_DIFF_ARGS, base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, 0, 0, True)
         added, deleted = parse_diff(diff)
         for rel, numbered in added.items():
-            if _ignored(rel, ignores):
+            if diffscope.ignored(rel, ignores):
                 continue
             wanted[rel] = {n for n, text in numbered.items()
                            if not (text.strip() and text in deleted)}
@@ -362,7 +299,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     findings: List[Tuple[str, Finding]] = []
     files = lines = blocks = 0
     for rel in sorted(wanted):
-        content = _read_lines(rel)
+        content = diffscope.read_lines(rel)
         if content is None:
             continue
         files += 1
@@ -378,9 +315,10 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
 def main() -> int:
     base_ref = os.environ.get("RC_BASE_REF", "").strip()
     globs = os.environ.get("RC_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    ignores = compile_ignores(_split_list(os.environ.get("RC_PATHS_IGNORE", "")))
-    fail = _env_flag("RC_FAIL", _DEFAULT_FAIL)
-    whole_tree = _env_flag("RC_WHOLE_TREE", False)
+    ignores = compile_ignores(
+        diffscope.split_list(os.environ.get("RC_PATHS_IGNORE", "")))
+    fail = diffscope.env_flag("RC_FAIL", _DEFAULT_FAIL)
+    whole_tree = diffscope.env_flag("RC_WHOLE_TREE", False)
 
     report = run_check(base_ref, globs, ignores, whole_tree)
 
