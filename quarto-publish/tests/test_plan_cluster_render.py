@@ -81,6 +81,22 @@ def test_the_planned_render_runs_with_every_input_intact(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert [c.split("--to ")[1].split()[0] for c in calls] == ["html", "pdf"]
     assert all("--profile website,fast" in c for c in calls)
+    assert (tmp_path / ".texvar").is_dir()
+
+
+def test_the_planned_render_gets_a_writable_tex_cache(tmp_path):
+    # The cluster job has no usable home, so a PDF render fails unless the
+    # TeX cache points under the checkout (epi202#28).
+    lines = plan(tmp_path)
+    probe = subprocess.run(
+        ["bash", "-c", lines[0].replace(
+            "bash .gha-render/render-site.sh",
+            "bash -c 'printf \"%s|%s\" \"$TEXMFVAR\" \"$TEXMFCACHE\"'")],
+        cwd=tmp_path, capture_output=True, text=True, check=True,
+    )
+    cache = str(tmp_path / ".texvar")
+    assert probe.stdout == f"{cache}|{cache}"
+    assert (tmp_path / ".texvar").is_dir()
 
 
 def test_a_multi_line_forbidden_pattern_survives_one_command_line(tmp_path):
