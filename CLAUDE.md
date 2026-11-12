@@ -555,6 +555,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-code-fold/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-def-title-synonyms/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-def-wiktionary/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-def-commentary/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-definite-antecedents/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
   It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
