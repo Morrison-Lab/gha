@@ -366,7 +366,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   because new macros belong in `Morrison-Lab/macros`.
   It uses `check-literal-math-letters`'s diff model (added lines only, moved
   lines exempt, skip-not-fall-back, warn-only by default),
-  taking its git, diff and file helpers from `check-common/diffscope.py` (gha#1856).
+  taking its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856).
   It differs in what it skips: a code fence is skipped unless its language is
   `tex`, `latex` or a raw `{=tex}`/`{=latex}`/`{=html}` block, because that is
   where a Quarto page keeps definitions.
