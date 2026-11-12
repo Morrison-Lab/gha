@@ -112,6 +112,31 @@ def test_diff_scoping_and_whole_tree(tmp_path, monkeypatch):
     assert not eet.touched(eet.Finding(1, 6, "x"), set())
 
 
+@pytest.mark.parametrize("display", [
+    "$$x = 1$$ {#eq-a}", "$$x = 1$$  {#eq-a .unnumbered}", '$$x$$ {#eq-a key="{v}"}',
+    "$$x$$ {#eq-a} {.b}", "$$x$$ {#eq-a} trailing text",
+    # Closed on their line before gha#1908 too; kept so the fix cannot reopen them.
+    "$$x = 1$$", "$$x = 1$$ ", "$$$$", "$$ $$", "$$$",
+])
+def test_a_one_line_display_closes_on_its_line(display):
+    # gha#1908: a labelled one-line display used to leave the math open,
+    # so the figure after it was swallowed and never reported.
+    text = exercise(f"Show that\n\n{display}\n\nWhat do you see?\n\n![A](a.png)")
+    assert reasons(text) == ["its last block is a figure, not a task"]
+
+
+def test_a_display_split_over_lines_with_a_label_still_closes():
+    text = exercise("Show that\n\n$$\nx = 1\n$$ {#eq-a}\n\nWhat?\n\n![A](a.png)")
+    assert reasons(text) == ["its last block is a figure, not a task"]
+
+
+@pytest.mark.parametrize("task", ["What is x?", "1. Find x."])
+def test_a_labelled_display_before_a_task_passes(task):
+    # The passing side of gha#1908: closing the display must not hide the task after it.
+    text = exercise(f"Show that\n\n$$x = 1$$ {{#eq-a}}\n\n{task}")
+    assert reasons(text) == []
+
+
 @pytest.mark.parametrize("body", [
     # psw's #exr-sum-deviations (gha#1843): one sentence split by a display.
     "Show that\n\n$$\n\\sum_{i=1}^n (x_i - \\bar{x}) = 0,\n$$\n\n"
