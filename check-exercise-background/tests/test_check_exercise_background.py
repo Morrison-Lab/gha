@@ -318,3 +318,141 @@ def test_a_three_letter_defined_alias_is_judged():
     d = defs("Gradient (also called the del)")
     assert found_with(exercise("The del operator", "Do it."), d) == [["del"]]
     assert found_with(exercise("The del operator", "Use the del here."), d) == []
+
+
+@pytest.mark.parametrize("title, body", [
+    ("Summation", "Find $\\sum_i x_i$."),
+    ("Maximum", "Find $\\max_i x_i$."),
+    ("Fraction", "Simplify $\\frac{a}{b}$."),
+    ("Logs", "Find $\\log x$."),
+])
+def test_a_short_macro_says_its_word(title, body):
+    d = defs(title)
+    assert found_with(exercise(title, body), d) == []
+
+
+def test_a_three_letter_macro_does_not_say_a_longer_word():
+    d = defs("Expectation")
+    assert found_with(exercise("The expectation", "Find $\\exp(x)$."),
+                      d) == [["expectation"]]
+
+
+def test_a_format_macro_says_no_word():
+    d = defs("Text classification")
+    assert found_with(exercise("Text classification", "Find $\\text{x}$ by classification."),
+                      d) == [["text"]]
+
+
+def test_a_three_letter_macro_listed_in_macro_words_still_counts():
+    d = defs("Variance")
+    assert found_with(exercise("The variance", "Find $\\Var{X}$."), d) == []
+
+
+@pytest.mark.parametrize("definition, title, body, missing", [
+    ("Normal distribution", "Normal distribution tail",
+     "Find the distribution tail of $\\norm{x}$.", ["normal"]),
+    ("Partition function", "A partition function",
+     "Find the function $\\partial f$.", ["partition"]),
+    ("Vertex", "Degree of a vertex", "Find $\\vert v \\vert$.", ["vertex"]),
+])
+def test_a_macro_name_does_not_stand_in_for_a_longer_word(definition, title,
+                                                          body, missing):
+    d = defs(definition)
+    assert found_with(exercise(title, body), d) == [missing]
+
+
+@pytest.mark.parametrize("definition, body", [
+    ("Exponential family", "Write $p(x) = \\expf{x}$ as a family."),
+    ("Exponential family", "Write $p(x) = \\expt(x)$ as a family."),
+    ("Gradient", "Compute $\\textbf{gradient}$ of $f$."),
+    ("Softmax", "Apply $\\operatorname*{softmax}(z)$."),
+    ("Gradient", "Find $\\grad f$."),
+])
+def test_math_that_prints_the_word_counts(definition, body):
+    d = defs(definition)
+    assert found_with(exercise(definition, body), d) == []
+
+
+@pytest.mark.parametrize("definition, body", [
+    ("Gradient", "Find $\\gradients f$."),
+    ("Logistic function", "Apply the function $\\logisticfn(z)$."),
+    ("Expected value", "Find the value $\\expectation{X}$."),
+    ("Biased estimator", "Is the estimator $\\bias$ zero?"),
+])
+def test_a_longer_or_listed_macro_says_the_title_word(definition, body):
+    d = defs(definition)
+    assert found_with(exercise(definition, body), d) == []
+
+
+@pytest.mark.parametrize("definition, title, macro", [
+    ("Right triangle", "Right triangle area", "rightarrow"),
+    ("Triangle inequality", "Triangle inequality bound", "triangleq"),
+    ("Normal distribution", "Normal distribution tail", "normalsize"),
+])
+def test_a_longer_macro_with_another_suffix_says_nothing(definition, title,
+                                                         macro):
+    d = defs(definition)
+    body = "Find $a \\" + macro + " b$ for the " + " ".join(
+        title.lower().split()[1:]) + "."
+    assert found_with(exercise(title, body), d) == [[title.split()[0].lower()]]
+
+
+@pytest.mark.parametrize("macro,term", [
+    ("$\\Var{X}$", "Random variable"),
+    ("$\\int f$", "Integer program"),
+    ("$\\sum x$", "Summary statistic"),
+])
+def test_a_listed_macro_word_matches_only_whole(macro, term):
+    d = defs(term)
+    last = term.split()[-1].lower()
+    first = term.split()[0].lower()
+    body = f"Find the {last} of a draw: {macro}."
+    assert found_with(exercise(term, body), d) == [[first]]
+
+
+def test_a_listed_macro_word_still_says_its_whole_word():
+    d = defs("Variance")
+    assert found_with(exercise("Variance", "Find $\\Var{X}$."), d) == []
+
+
+@pytest.mark.parametrize("macro", ["\\paren{x}", "\\set{x}", "\\sb{x}", "\\cb{x}"])
+def test_a_grouping_macro_says_nothing(macro):
+    d = defs("Parent node", "Settings", "Cbor")
+    assert found_with(exercise("Parent node", f"Find the node ${macro}$."), d) == [["parent"]]
+
+
+@pytest.mark.parametrize("definition, title, body", [
+    ("Process", "Process count", "Count the $\\processes$."),
+    ("Logistic", "Logistic curve", "Draw the curve $\\logisticf$."),
+    ("Derivative", "Derivative size", "Find $\\deriv{f}{x}$ in size."),
+])
+def test_each_macro_suffix_and_the_prefix_rule_say_the_word(definition,
+                                                          title, body):
+    assert found_with(exercise(title, body), defs(definition)) == []
+
+
+@pytest.mark.parametrize("definition, title, body", [
+    ("Log", "Log scale", "Use $\\logs$ on the scale."),
+    ("Alphabet", "Alphabet size", "Let $\\alpha$ be the size."),
+    ("Binomial", "Binomial size", "Let $\\binom{n}{k}$ be the size."),
+])
+def test_a_short_or_symbol_macro_does_not_say_a_longer_word(definition,
+                                                           title, body):
+    word = title.split()[0].lower()
+    assert found_with(exercise(title, body), defs(definition)) == [[word]]
+
+
+def test_a_long_macro_name_says_a_longer_word_it_starts():
+    assert exb._macro_says("noise", ("noiseless",))
+    body = "Find $\\noise$ in size."
+    assert found_with(exercise("Noiseless size", body),
+                      defs("Noiseless")) == []
+
+
+@pytest.mark.parametrize("word, body", [
+    ("coloring", "$\\color{red} x$"),
+    ("large", "$\\large x$"),
+    ("sigmoidal", "$\\sigmoid(x)$"),
+])
+def test_layout_and_listed_macros_say_no_longer_word(word, body):
+    assert word in exb.missing_words(word.capitalize() + " numbers", body)

@@ -82,9 +82,49 @@ MACRO_WORDS = {
     "dprod": "dot product", "tprod": "product", "deriv": "derivative",
     "derivf": "derivative partial", "dif": "derivative", "difs": "derivative",
     "sigmoid": "logistic",
+    "var": "variance", "cov": "covariance", "cor": "correlation",
+    "exp": "exponential", "log": "logarithm", "int": "integral",
+    "det": "determinant", "sum": "summation", "max": "maximum",
+    "min": "minimum", "lim": "limit", "sup": "supremum", "inf": "infimum",
+    "vec": "vector", "ker": "kernel", "dim": "dimension", "deg": "degree",
+    "sin": "sine", "cos": "cosine", "tan": "tangent", "arg": "argument",
+    "expf": "exponential", "expt": "exponential",
+    "grad": "gradient", "frac": "fraction",
+    "bias": "bias biased", "expectation": "expected expectation",
 }
+# Layout and font commands print no word of their own (gha#1481).
+FORMAT_MACROS = frozenset("""
+    text textrm textit textbf operatorname mathrm mathbf mathit mathcal
+    mathbb mathsf boldsymbol left right begin end quad qquad
+    cdot cdots ldots textsf texttt mbox intercal limits nolimits
+    displaystyle textstyle label vert lvert rvert
+    paren set sb cb big bigl bigr Big Bigl Bigr
+    tiny scriptsize footnotesize small normalsize large huge
+    space hspace vspace color textcolor cancel middle
+""".lower().split())
+# Macro names that print a symbol rather than a word, so they never say a
+# longer word they start: ``\\alpha`` does not say alphabet, nor ``\\approx``
+# approximate. A name of under five letters never does anyway. The list is
+# made by hand from common LaTeX symbol names and is not exhaustive; add a
+# name here when a symbol macro is read as saying a word.
+SYMBOL_MACROS = frozenset("""
+    alpha gamma delta epsilon theta kappa lambda sigma upsilon omega omicron
+    varepsilon vartheta varphi varsigma varrho varpi varkappa digamma binom
+    approx equiv partial propto infty nabla forall exists
+    subset subseteq supset supseteq setminus emptyset varnothing
+    otimes oplus times parallel angle triangle bullet dagger prime wedge
+    bigcup bigcap bigvee bigwedge coprod mapsto implies
+    rightarrow leftarrow uparrow downarrow longrightarrow
+    notin simeq approxeq preceq succeq vdots ddots square diamond natural
+""".split())
+# A longer macro name says a word when it adds one of these to the word
+# (``\\gradients``, ``\\logisticfn``).
+MACRO_SUFFIXES = ("s", "es", "fn", "f")
 # Words a math span prints as text, such as \operatorname{softmax}.
-TEXT_ARG_RE = re.compile(r"\\(?:text|textrm|textit|operatorname|mathrm)\{([^{}]*)\}")
+TEXT_ARG_RE = re.compile(
+    r"\\(?:text|textrm|textit|textbf|textsf|texttt|mbox|mathrm|operatorname\*?)"
+    r"\{([^{}]*)\}"
+)
 SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
 ATTR_TITLE_RE = re.compile(r'title="([^"]*)"')
 TITLE_RE = re.compile(r"^#{1,6}\s+(.*?)\s*(?:\{[^}]*\})?\s*$")
@@ -211,22 +251,53 @@ def defined_stems(lines: List[str]) -> Set[str]:
     return stems
 
 
-def macro_words(body: str) -> List[str]:
-    """Words that the math macros in ``body`` print, for matching a title.
+def macro_words(body: str) -> Tuple[List[str], List[str], List[str]]:
+    """What the math in ``body`` says, as ``(printed, said, names)``.
 
-    A macro counts as the word its name begins with:``\\grad`` says gradient and
-    ``\\noise`` says noise. Names shorter than three letters only count
-    through ``MACRO_WORDS``.
+    ``printed`` are the words math prints as text (``\\text{}`` and the
+    like), which match a title word by their first five letters, like any
+    body word. ``said`` are the words ``MACRO_WORDS`` lists for a macro
+    (``\\E`` says expected, ``\\grad`` says gradient), which match a title
+    word only whole, so ``\\Var`` does not say variable. ``names`` are the
+    other macro names, which say a title word as ``_macro_says`` decides.
+    Layout, font and grouping commands (``FORMAT_MACROS``) say nothing.
     """
-    out: List[str] = []
+    printed: List[str] = []
+    said: List[str] = []
+    names: List[str] = []
     for arg in TEXT_ARG_RE.findall(body):
-        out.extend(w.lower() for w in WORD_RE.findall(arg.lower()))
+        printed.extend(WORD_RE.findall(arg.lower()))
     for name in MACRO_RE.findall(body):
         low = name.lower()
-        out.extend(MACRO_WORDS.get(low, "").split())
-        if len(low) >= 3:
-            out.append(low)
-    return out
+        if low in FORMAT_MACROS:
+            continue
+        said.extend(MACRO_WORDS.get(low, "").split())
+        names.append(low)
+    return printed, said, names
+
+
+def _macro_says(name: str, forms: Tuple[str, ...]) -> bool:
+    """Whether macro ``name`` says one of the word ``forms``.
+
+    It does when the name is a form (``\\noise`` says noise), when a form
+    begins with a name of at least five letters that is not a symbol name
+    in ``SYMBOL_MACROS`` or a key of ``MACRO_WORDS`` (``\\noise`` says
+    noiseless, ``\\alpha`` does not say alphabet, ``\\sigmoid`` does not say
+    sigmoidal), or
+    when the name is a form of
+    at least five letters plus a plural or function suffix
+    (``MACRO_SUFFIXES``): ``\\gradients`` and ``\\logisticfn`` say gradient
+    and logistic. ``\\norm`` does not say normal, ``\\partial`` does not say
+    partition, and ``\\rightarrow``, ``\\triangleq`` and ``\\normalsize`` do
+    not say right, triangle and normal.
+    """
+    if name in forms:
+        return True
+    prefix = (len(name) >= STEM and name not in SYMBOL_MACROS
+              and name not in MACRO_WORDS)
+    return any((prefix and f.startswith(name))
+               or (len(f) >= STEM and name[len(f):] in MACRO_SUFFIXES
+                   and name.startswith(f)) for f in forms)
 
 
 def missing_words(title: str, body: str,
@@ -237,8 +308,8 @@ def missing_words(title: str, body: str,
     title of some ``#def-`` div) is reported: the rule is about the background
     of technical terms, and an ordinary word needs none.
     """
-    present = _stems(_words(body))
-    macros = macro_words(body)
+    printed, said, names = macro_words(body)
+    present = _stems(_words(body)) | _stems(printed)
     words = _words(title)
     singulars = [_singular(w) for w in words]
     named = set(range(len(words)))
@@ -260,7 +331,10 @@ def missing_words(title: str, body: str,
         if (word[:STEM] in present or singulars[idx][:STEM] in present
                 or word in out):
             continue
-        if any(word.startswith(m[:STEM]) for m in macros):
+        forms = (word, singulars[idx])
+        if set(said).intersection(forms):
+            continue
+        if any(_macro_says(m, forms) for m in names):
             continue
         out.append(word)
     return out
