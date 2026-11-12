@@ -946,8 +946,25 @@ def test_status_path_decodes_a_quoted_name():
     assert nlb._status_path('R  old.md -> "back\\\\slash.md"') == "back\\slash.md"
     assert nlb._status_path(" M plain.md") == "plain.md"
     assert nlb._status_path(' M "tab\\there.md"') == "tab\there.md"
-    assert nlb._status_path(" M with space.md") == "with space.md"
+    # git 2.43 C-quotes a name with a space in porcelain status even under
+    # core.quotepath=false; a non-ASCII name is left bare.
+    assert nlb._status_path(' M "with space.md"') == "with space.md"
     assert nlb._status_path(" M café.md") == "café.md"
+
+
+@pytest.mark.parametrize("name", ['say "hi".md', "with space.md"])
+def test_an_ignored_quoted_name_does_not_widen_scope(tmp_path, monkeypatch, name):
+    # `git status` quotes these names, so the ignore glob matches only if
+    # _status_path decodes them; undecoded, the edit would widen the scope.
+    _init_repo(tmp_path)
+    (tmp_path / name).write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / name).write_text("# Notes\n\nEdited.\n")
+    monkeypatch.chdir(tmp_path)
+
+    ignores = nlb._compile_ignores([name])
+    assert not nlb._has_uncommitted_changes(["*.md"], ignores)
+    assert nlb._has_uncommitted_changes(["*.md"], [])
 
 
 @pytest.mark.parametrize("name", ['say "hi".md', "with space.md", "café.md"])
