@@ -52,6 +52,11 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "check-common")
+)
+import diffscope  # noqa: E402
+
 _DEFAULT_FAIL = True
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 # typos --format json exits 2 when it found a typo (crate-ci/typos 1.49.0,
@@ -125,48 +130,6 @@ def _ref_exists(ref: str, cwd: str) -> bool:
     return _run_git(["rev-parse", "--verify", f"{ref}^{{commit}}"], cwd=cwd) is not None
 
 
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i : i + 2] == "**":
-                i += 2
-                if pat[i : i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def _compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
-
-
-def _split_list(value: str) -> List[str]:
-    return [tok.strip() for tok in re.split(r"[,\n]", value or "") if tok.strip()]
-
-
 def _normalize_path(path: str) -> str:
     # Strip a `./` prefix only. `str.lstrip("./")` would also eat the
     # leading dot of `.github/`, `.gitignore`, `.lintr` -- every hidden
@@ -186,9 +149,7 @@ def _diff_new_file_path(raw: str) -> Optional[str]:
     indistinguishable from a header except by that position: headers
     come before ``@@``, content comes after.
     """
-    target = raw[4:].split("\t", 1)[0]
-    if len(target) >= 2 and target.startswith('"') and target.endswith('"'):
-        target = target[1:-1]
+    target = diffscope.unquote_git_path(raw[4:].split("\t", 1)[0])
     if target == "/dev/null":
         return None
     if target.startswith("b/") or target.startswith("a/"):
@@ -469,7 +430,7 @@ def collect_findings(
         files = [
             p
             for p in tracked
-            if not _ignored(p, ignores) and (Path(cwd) / p).is_file()
+            if not diffscope.ignored(p, ignores) and (Path(cwd) / p).is_file()
         ]
         added: Dict[str, Set[int]] = {}
         filename_scope: Set[str] = set(files)
@@ -478,17 +439,17 @@ def collect_findings(
             return [], True, 0
         added = _added_line_numbers(base_ref, pathspecs, cwd=cwd)
         changed = {
-            p for p in _changed_paths(base_ref, pathspecs, cwd=cwd) if not _ignored(p, ignores)
+            p for p in _changed_paths(base_ref, pathspecs, cwd=cwd) if not diffscope.ignored(p, ignores)
         }
         filename_scope = {
             p
             for p in _added_or_renamed_paths(base_ref, pathspecs, cwd=cwd)
-            if not _ignored(p, ignores)
+            if not diffscope.ignored(p, ignores)
         }
         files = sorted(
             p
             for p in set(added) | changed
-            if not _ignored(p, ignores) and (Path(cwd) / p).is_file()
+            if not diffscope.ignored(p, ignores) and (Path(cwd) / p).is_file()
         )
 
     stdout, rc = _run_typos(typos, files, config, cwd)
@@ -497,7 +458,7 @@ def collect_findings(
         raise RuntimeError(
             "typos exited 2 (findings) but produced no typo records"
         )
-    all_findings = [f for f in parsed if not _ignored(f.path, ignores)]
+    all_findings = [f for f in parsed if not diffscope.ignored(f.path, ignores)]
     in_scope = [
         f for f in all_findings if _in_scope(f, whole_tree, added, filename_scope)
     ]
@@ -554,8 +515,8 @@ def main() -> int:
         config = str(config_path)
 
     globs = os.environ.get("TYPOS_GLOBS", "").split()
-    exclude_globs = _split_list(os.environ.get("TYPOS_PATHS_IGNORE", ""))
-    ignores = _compile_ignores(exclude_globs)
+    exclude_globs = diffscope.split_list(os.environ.get("TYPOS_PATHS_IGNORE", ""))
+    ignores = diffscope.compile_ignores(exclude_globs)
     base_ref = os.environ.get("TYPOS_BASE_REF", "").strip()
     fail = _env_fail()
 
