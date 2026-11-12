@@ -546,6 +546,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Without it git quotes a name holding `"`, a backslash, or a tab even under `core.quotepath=false`, and only `-z` avoids it (gha#1923).
   `git status --porcelain` also quotes a name holding a space (git 2.43.0, gha#1930), so decode every status path with `diffscope.unquote_git_path`.
   `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
+  Before removing a helper from a check, find the checks that load its script (`grep -rl '<name>.py' --include=*.py .`, because a loader may build the path from `Path` segments) and keep each name they call as an alias, since only their tests notice the removal (gha#1947).
   `check-write-idiom` keeps `parse_diff`, `compile_globs`, and `GIT_DIFF_ARGS` as names for the checks that load it as their engine, and takes the code behind them from the module.
 - `check-code-messages/` (Python, stdlib only) keeps R's printed diagnostics out of rendered code.
   It lints calls known to print a message, and it scans a rendered site for stderr output blocks.
