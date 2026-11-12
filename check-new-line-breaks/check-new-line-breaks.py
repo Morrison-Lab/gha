@@ -129,21 +129,17 @@ _ABBREV_LOWER_RE = re.compile(
 )
 
 # An uppercase dotted initialism (`U.S.`) before a word that names an
-# institution or title (`the U.S. Supreme Court`) does not end a sentence.
-# The listed words rarely open a sentence, so a sentence that ends in an
-# initialism still splits (`It moved to the U.S. Then it grew.`).
+# institution (`the U.S. Supreme Court`) does not end a sentence.
+# Only words that almost never open a sentence are listed: `Court`,
+# `Congress`, `Army` and `Bank` all open sentences (`the U.K. Court
+# records show ...`), so they are left out and those phrases still split.
+# Emphasis between the initialism and the word (`**U.S.** Supreme`) is not
+# matched, so such a line still splits.
 # Lowercase initialisms (`a.m.`) are left to the abbreviation lists.
 # Ported from gla's copy of this script (gha#1927), narrowed: gla also
 # protected lowercase common nouns after a determiner and widened the
 # lowercase branch's lookbehind, which splits `9 a.m. sharp`.
-_INITIALISM_FOLLOWERS = (
-    "Supreme", "Department", "Dept", "Senate", "Congress", "Government", "Govt",
-    "District", "Court", "Navy", "Army", "Coast", "Postal", "Marshal",
-    "Marshals", "Attorney", "Attorneys", "Secretary", "Bank", "Dollar",
-    "Dollars", "Circuit", "Parliament", "Securities", "Constitution", "Treaty",
-    "Embassy", "Consulate", "Capitol", "Treasury", "Veterans", "Homeland",
-    "Geological",
-)
+_INITIALISM_FOLLOWERS = ("Supreme", "Dept", "Govt", "Geological")
 _INITIALISM_FOLLOW_RE = re.compile(
     r"\b((?:[A-Z]\.){2,})(?=\s+(?:" + "|".join(_INITIALISM_FOLLOWERS) + r")\b)"
 )

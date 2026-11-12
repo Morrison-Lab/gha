@@ -273,8 +273,8 @@ def test_single_letter_initial_before_lowercase_does_not_split():
     "text",
     [
         "It reached the U.S. Supreme Court in the end.",
-        "She worked at the U.K. Department of Health for years.",
-        "Rates in the U.S. Treasury market fell sharply that week.",
+        "She worked at the U.K. Dept of Health for years.",
+        "Maps from the U.S. Geological Survey were used.",
     ],
 )
 def test_initialism_before_proper_noun_follower_does_not_split(text):
@@ -299,11 +299,15 @@ def test_initialism_before_other_capital_still_splits():
         ("Prices rose in the U.S. First, wages fell.", "Prices rose in the U.S."),
         ("We met at 5 p.m. First, we reviewed the logs.", "We met at 5 p.m."),
         ("The hearing began at 9 a.m. Court reporters were present.", "The hearing began at 9 a.m."),
+        ("He flew back to the U.K. Court records show he lied.", "He flew back to the U.K."),
+        ("Our office is in the U.S. Congress has not acted yet.", "Our office is in the U.S."),
+        ("It reached the U.S. Deptford is next on the list.", "It reached the U.S."),
     ],
 )
 def test_initialism_before_a_sentence_opener_still_splits(text, first):
-    """A word that often opens a sentence is not a follower, and a lowercase
-    initialism is never protected, so each of these still splits (gha#1927)."""
+    """A word that often opens a sentence is not a follower, a follower must
+    end at a word boundary (`Deptford`), and a lowercase initialism is never
+    protected, so each of these still splits (gha#1927)."""
     assert nlb.split_sentences(text)[0] == first
 
 
