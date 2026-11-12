@@ -1844,7 +1844,7 @@ word that almost never opens a sentence (`Supreme`, `Dept`, `Govt`,
 `Geological`; gha#1927), so `the U.S. Then it grew` and
 `the U.K. Court records show` still split.
 Before adding a word to `_INITIALISM_FOLLOWERS`, ask whether it opens
-sentences: `Court`, `Congress`, `Army` and `Bank` were left out because they do,
+sentences: `Court`, `Congress`, `Army`, and `Bank` were left out because they do,
 so `the U.S. Congress` still false-splits, which is the accepted cost.
 Emphasis between the two (`**U.S.** Supreme Court`) is not matched either.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s

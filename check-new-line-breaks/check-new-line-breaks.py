@@ -131,7 +131,7 @@ _ABBREV_LOWER_RE = re.compile(
 # An uppercase dotted initialism (`U.S.`) before a word that names an
 # institution (`the U.S. Supreme Court`) does not end a sentence.
 # Only words that almost never open a sentence are listed: `Court`,
-# `Congress`, `Army` and `Bank` all open sentences (`the U.K. Court
+# `Congress`, `Army`, and `Bank` all open sentences (`the U.K. Court
 # records show ...`), so they are left out and those phrases still split.
 # Emphasis between the initialism and the word (`**U.S.** Supreme`) is not
 # matched, so such a line still splits.
