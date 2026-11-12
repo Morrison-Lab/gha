@@ -577,6 +577,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   That script loads `check-common` and `check-one-div-per-subfile`, so keep the four directories together.
 - `check-key-equations-displayed/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-serial-comma/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-unexplained-contrasts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426):
   a proof inside a `content-hidden` wrapper for `revealjs`, in any file a PR adds a line to,
   and reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement.
