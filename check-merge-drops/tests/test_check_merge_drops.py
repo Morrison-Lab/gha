@@ -164,7 +164,7 @@ def test_paths_ignore_and_globs_exclude_the_file(tmp_path):
     base = _conflicting_merge(tmp_path)
     _git(tmp_path, "checkout", "--ours", "chapter.qmd")
     _commit_merge(tmp_path)
-    ignores = cmd.compile_ignores(["chapter.qmd"])
+    ignores = cmd.diffscope.compile_ignores(["chapter.qmd"])
     assert _find(tmp_path, base, ignores=ignores)[0] == []
     assert _find(tmp_path, base, globs=["*.md"])[0] == []
 

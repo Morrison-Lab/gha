@@ -570,6 +570,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-hybrid-sentences/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-informal-definitions/` (Python, stdlib only) takes its git, diff, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
   It still lists files with its own `git ls-files`, because that runs in the `path` directory rather than the current one.
+- `check-merge-drops/` (Python) takes its path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  It keeps its own git helper, because that runs in the `-C` directory, and its own boolean flag reader, because that warns on a value other than `true` or `false`.
+- `check-typed-output/` (Python, stdlib only) takes its git, listing, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  It keeps its own diff parser, because that also collects the deleted runs the moved-span exemption matches, and its own boolean flag reader, which warns on a bad value.
 - `check-multipart-exercises/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-note-sheet-rows/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).

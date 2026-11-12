@@ -71,8 +71,11 @@ import os
 import re
 import subprocess
 import sys
-from pathlib import Path
 from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 _DEFAULT_GLOBS = "*.md *.qmd"
 _DEFAULT_MIN_LENGTH = 20
@@ -117,46 +120,6 @@ def _git(args: Sequence[str], cwd: Optional[str] = None) -> Optional[str]:
 def normalise(line: str) -> str:
     """Collapse every whitespace run to one space and trim both ends."""
     return " ".join(line.split())
-
-
-# ── path filtering ──────────────────────────────────────────────────────────
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
 
 
 # ── diff parsing ────────────────────────────────────────────────────────────
@@ -313,7 +276,7 @@ def check_merge(
         if diff is None:
             return None
         for path, lines in parse_added_lines(diff).items():
-            if _ignored(path, ignores):
+            if diffscope.ignored(path, ignores):
                 continue
             candidates: List[str] = []
             seen: Set[str] = set()
@@ -423,10 +386,6 @@ def _write_summary(text: str) -> None:
 
 # ── configuration ───────────────────────────────────────────────────────────
 
-def _split_list(value: str) -> List[str]:
-    return [tok.strip() for tok in re.split(r"[,\n]", value or "") if tok.strip()]
-
-
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.environ.get(name, "").strip().lower()
     if not raw:
@@ -486,7 +445,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("::warning::Skipping the merge-drops check: no base ref to start the range from.")
         return 0
     globs = args.globs.split() or _DEFAULT_GLOBS.split()
-    ignores = compile_ignores(_split_list(args.paths_ignore))
+    ignores = diffscope.compile_ignores(diffscope.split_list(args.paths_ignore))
     min_length = max(1, args.min_length)
 
     result = find_drops(base, args.head, globs, ignores, min_length, cwd=args.cwd,

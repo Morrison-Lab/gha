@@ -242,7 +242,7 @@ def _commit(repo, name, text, msg="c"):
 
 def _run(**kw):
     kw.setdefault("patterns", DEFAULTS)
-    return typed.run(["*.qmd"], typed.compile_ignores(kw.pop("ignore", [])), **kw)
+    return typed.run(["*.qmd"], typed.diffscope.compile_ignores(kw.pop("ignore", [])), **kw)
 
 
 def test_whole_tree_reports_legacy(repo):
@@ -266,6 +266,17 @@ def test_diff_scoped_ignores_legacy_and_flags_new(repo):
     _commit(repo, "a.qmd", LEGACY + f"\n{FENCE}r\nx  #> [1] 2\n{FENCE}\n")
     res = _run(diff_scoped=True, base_ref="main")
     assert [(p, f.line) for p, f in res.findings] == [("a.qmd", 8)]
+
+
+def test_diff_scoped_decodes_a_quoted_file_name(repo):
+    # git quotes a name holding `"` in the diff header even under
+    # core.quotepath=false, so the header must be decoded to match the listing.
+    name = 'q"a.qmd'
+    _commit(repo, name, "# Page\n")
+    _git(repo, "checkout", "-qb", "feature")
+    _commit(repo, name, LEGACY)
+    res = _run(diff_scoped=True, base_ref="main")
+    assert [(p, f.line) for p, f in res.findings] == [(name, 4)]
 
 
 def test_diff_scoped_flags_block_when_only_its_body_is_added(repo):
