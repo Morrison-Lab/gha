@@ -69,6 +69,7 @@ make_real_repo() {
     git config user.email t@example.invalid; git config user.name Tester  # phi-allow
     mkdir -p check-new-line-breaks check-phi
     cp "$REPO_ROOT/check-new-line-breaks/check-new-line-breaks.py" check-new-line-breaks/
+    cp -R "$REPO_ROOT/check-common" .
     cp "$REPO_ROOT/check-phi/check-phi.py" check-phi/
     printf '# fixture\n' > README.md
     git add -A; git commit -qm base
@@ -277,6 +278,7 @@ make_real_qmd_repo() {
     git config user.email t@example.invalid; git config user.name Tester  # phi-allow
     mkdir -p check-new-line-breaks check-phi
     cp "$REPO_ROOT/check-new-line-breaks/check-new-line-breaks.py" check-new-line-breaks/
+    cp -R "$REPO_ROOT/check-common" .
     cp "$REPO_ROOT/check-phi/check-phi.py" check-phi/
     printf '# fixture\n' > README.md
     git add -A; git commit -qm base
@@ -307,6 +309,7 @@ make_real_clean_repo() {
     git config user.email t@example.invalid; git config user.name Tester  # phi-allow
     mkdir -p check-new-line-breaks check-phi
     cp "$REPO_ROOT/check-new-line-breaks/check-new-line-breaks.py" check-new-line-breaks/
+    cp -R "$REPO_ROOT/check-common" .
     cp "$REPO_ROOT/check-phi/check-phi.py" check-phi/
     printf '# fixture\n' > README.md
     git add -A; git commit -qm base

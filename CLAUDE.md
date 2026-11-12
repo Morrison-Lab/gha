@@ -308,8 +308,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - Per-capability composite-action directories at the repo root, each with an
   `action.yml` and, for R/Python capabilities, a language-specific helper
   script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,
-  `check-phi/`, and `check-new-line-breaks/` (Python; the last mirrors
-  `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
+  `check-phi/`, and `check-new-line-breaks/` (Python; it imports
+  `check-common/diffscope.py` for its git calls and path decoding, so a
+  copy of the script needs that directory beside it;
+  `check-new-line-breaks` mirrors `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
   entirely rather than falling back to a whole-tree scan when the diff can't
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
@@ -536,6 +538,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
   List files with `diffscope.git_paths`, which adds `-z` to a listing command such as `ls-files`.
   Without it git quotes a name holding `"`, a backslash, or a tab even under `core.quotepath=false`, and only `-z` avoids it (gha#1923).
+  `git status --porcelain` also quotes a name holding a space (git 2.43.0, gha#1930), so decode every status path with `diffscope.unquote_git_path`.
   `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
   It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.

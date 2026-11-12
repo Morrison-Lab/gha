@@ -67,11 +67,17 @@ Configuration (all via environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Set, Tuple
+
+# git calls and path unquoting come from check-common (gha#1856), which pins
+# core.quotepath=false and the a/ b/ diff prefixes, and decodes the C-quoted
+# paths git still writes for a name holding a quote, backslash or tab.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 # ── Sentence splitting ──────────────────────────────────────────────────────
 
@@ -597,11 +603,8 @@ def line_content(line: str) -> str:
 
 def _run_git(args: List[str]) -> Optional[str]:
     try:
-        return subprocess.run(
-            ["git", *args], capture_output=True, check=True,
-            encoding="utf-8", errors="replace",
-        ).stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        return diffscope.run_git(args)
+    except FileNotFoundError:
         return None
 
 
@@ -650,15 +653,13 @@ def _status_path(line: str) -> str:
     """Extract the (post-rename) path from one ``git status --porcelain`` line.
 
     The format is ``XY PATH`` or, for a rename/copy, ``XY PATH -> PATH2``, in
-    which case the new path is what matters here. This does not undo git's
-    C-style quoting of an exotic filename (a literal quote, backslash, or
-    non-ASCII byte); the rest of this module already makes that same
-    simplifying assumption when it slices diff header lines.
+    which case the new path is what matters here. A path git C-quotes (one
+    holding a quote, backslash or tab) is decoded (gha#1927).
     """
     rest = line[3:]
     if " -> " in rest:
         rest = rest.split(" -> ", 1)[1]
-    return rest.strip().strip('"')
+    return diffscope.unquote_git_path(rest.strip())
 
 
 def _has_uncommitted_changes(
@@ -798,7 +799,11 @@ def _added_line_numbers(
             in_hunk = False
             continue
         if not in_hunk and raw.startswith("+++ "):
-            target = raw[4:]
+            # git ends the header with a tab when the name holds a space,
+            # and C-quotes a name holding a quote, backslash or tab, so the
+            # target is trimmed and decoded before the b/ prefix is dropped
+            # (gha#1927).
+            target = diffscope.unquote_git_path(raw[4:].rstrip("\t"))
             cur_path = None if target == "/dev/null" else target[2:]
             if cur_path is not None:
                 result.setdefault(cur_path, set())
