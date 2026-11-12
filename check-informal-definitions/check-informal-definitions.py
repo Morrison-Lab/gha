@@ -42,7 +42,6 @@ Scope:
 """
 
 import argparse
-import fnmatch
 import os
 import re
 import subprocess
@@ -50,6 +49,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -681,118 +684,34 @@ def scan_def_div_terms(
     return findings
 
 
+def _added_line_numbers(diff: str, repo_root: Path) -> Dict[Path, Set[int]]:
+    """{repo_root / path: added line numbers} from a ``-U0`` diff."""
+    added, _deleted = diffscope.parse_diff(diff)
+    return {repo_root / rel: set(lines) for rel, lines in added.items()}
+
+
 def get_diff_added_lines(
     base_ref: str, repo_root: Path, pathspecs: Sequence[str]
 ) -> Optional[Dict[Path, Set[int]]]:
     """Compute mapping of Path -> set of added line numbers since base_ref."""
-    # Find merge base
-    cmd_mb = ["git", "merge-base", base_ref, "HEAD"]
-    res_mb = subprocess.run(
-        cmd_mb, cwd=repo_root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
-    if res_mb.returncode != 0:
+    mb = diffscope.run_git(["merge-base", base_ref, "HEAD"])
+    if mb is None or not mb.strip():
         return None
-    mb = res_mb.stdout.strip()
-    if not mb:
+    diff = diffscope.run_git(["diff", "-U0", mb.strip(), "--", *pathspecs])
+    if diff is None:
         return None
-
-    # Run git diff -U0 mb
-    cmd_diff = ["git", "diff", "-U0", mb, "--"] + list(pathspecs)
-    res_diff = subprocess.run(
-        cmd_diff, cwd=repo_root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
-    if res_diff.returncode != 0:
-        return None
-
-    added: Dict[Path, Set[int]] = {}
-    current_file: Optional[Path] = None
-
-    for line in res_diff.stdout.splitlines():
-        if line.startswith("+++ b/"):
-            rel_path = line[6:].strip()
-            current_file = repo_root / rel_path
-            if current_file not in added:
-                added[current_file] = set()
-        elif line.startswith("@@ ") and current_file is not None:
-            # @@ -a,b +c,d @@ or @@ -a +c,d @@ or @@ -a,b +c @@
-            m = re.search(r"\+(\d+)(?:,(\d+))?", line)
-            if m:
-                start = int(m.group(1))
-                count = int(m.group(2)) if m.group(2) else 1
-                for l in range(start, start + count):
-                    added[current_file].add(l)
-
-    return added
+    return _added_line_numbers(diff, repo_root)
 
 
 def parse_diff_file(diff_path: Path, repo_root: Path) -> Dict[Path, Set[int]]:
     """Parse added line numbers from a saved diff file."""
-    added: Dict[Path, Set[int]] = {}
     if not diff_path.is_file():
-        return added
-
+        return {}
     try:
         content = diff_path.read_text(encoding="utf-8", errors="replace")
     except Exception:
-        return added
-
-    current_file: Optional[Path] = None
-    for line in content.splitlines():
-        if line.startswith("+++ b/"):
-            rel_path = line[6:].strip()
-            current_file = repo_root / rel_path
-            if current_file not in added:
-                added[current_file] = set()
-        elif line.startswith("@@ ") and current_file is not None:
-            m = re.search(r"\+(\d+)(?:,(\d+))?", line)
-            if m:
-                start = int(m.group(1))
-                count = int(m.group(2)) if m.group(2) else 1
-                for l in range(start, start + count):
-                    added[current_file].add(l)
-
-    return added
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        pat = pat.strip()
-        if not pat:
-            continue
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel_str: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel_str) for r in ignores)
+        return {}
+    return _added_line_numbers(content, repo_root)
 
 
 def main() -> int:
@@ -850,9 +769,7 @@ def main() -> int:
     repo_root = Path.cwd()
     target_path = Path(args.path).resolve()
     globs = [g.strip() for g in args.globs.split() if g.strip()]
-    ignore_patterns = [
-        p.strip() for p in re.split(r"[,\n]+", args.paths_ignore) if p.strip()
-    ]
+    ignore_patterns = diffscope.split_list(args.paths_ignore)
     should_fail = str(args.fail).lower() in ("true", "1", "yes")
     diff_scoped = str(args.diff_scoped).lower() in ("true", "1", "yes")
     base_ref = args.base_ref.strip()
@@ -889,7 +806,7 @@ def main() -> int:
                         files_to_scan.append(p.resolve())
 
     # Filter out ignored paths using anchored regexes matching sibling checkers
-    ignores_compiled = compile_ignores(ignore_patterns)
+    ignores_compiled = diffscope.compile_ignores(ignore_patterns)
     filtered_files: List[Path] = []
     for f in sorted(set(files_to_scan)):
         try:
@@ -897,7 +814,7 @@ def main() -> int:
         except ValueError:
             rel = f
         rel_str = str(rel).replace("\\", "/")
-        if _ignored(rel_str, ignores_compiled) or _ignored(f.name, ignores_compiled):
+        if diffscope.ignored(rel_str, ignores_compiled) or diffscope.ignored(f.name, ignores_compiled):
             continue
         filtered_files.append(f)
 

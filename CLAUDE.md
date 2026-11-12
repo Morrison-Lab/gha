@@ -568,6 +568,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-extracted-lemmas/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-heading-siblings/` (Python, stdlib only) takes its git, diff, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-hybrid-sentences/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-informal-definitions/` (Python, stdlib only) takes its git, diff, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  It still lists files with its own `git ls-files`, because that runs in the `path` directory rather than the current one.
 - `check-multipart-exercises/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-note-sheet-rows/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
