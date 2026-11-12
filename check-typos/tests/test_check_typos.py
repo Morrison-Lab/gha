@@ -606,6 +606,21 @@ def test_path_with_space_is_kept(tmp_path):
     assert added == {"my notes.md": {1}}
 
 
+def test_path_git_quotes_is_decoded(tmp_path):
+    """git quotes a name holding `"` even under core.quotepath=false, and
+    escapes the quote inside; stripping the outer quotes alone kept the
+    backslash, so the path matched no file and its lines were dropped."""
+    _init_repo(tmp_path)
+    name = 'q"a.md'
+    (tmp_path / name).write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / name).write_text("A second line.\n")
+    _commit(tmp_path, "edit")
+
+    added = ct._added_line_numbers("HEAD~1", ["."], cwd=str(tmp_path))
+    assert added == {name: {1}}
+
+
 def test_malformed_globs_fail_rather_than_skip(tmp_path, monkeypatch, capsys):
     """A pathspec git rejects must not disable the check with exit 0."""
     _init_repo(tmp_path)
