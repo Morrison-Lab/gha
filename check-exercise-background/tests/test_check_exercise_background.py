@@ -328,16 +328,22 @@ def test_a_three_letter_defined_alias_is_judged():
     ("bias", "bias"),
     ("biases", "bias"),
     ("aliases", "alias"),
+    ("subspecies", "subspecies"),
 ])
 def test_singular_keeps_series_and_words_ending_in_as(plural, singular):
     assert exb._singular(plural) == singular
 
 
 def test_a_plural_title_matches_a_defined_term_ending_in_as():
-    d = defs("Time series", "Inductive bias")
-    assert {"time series", "inductive bias"} <= d
+    d = defs("Inductive bias")
+    assert d == {"inductive bias"}
     assert found_with(exercise("Inductive biases", "Do it."), d) == [
         ["inductive", "biases"]]
+
+
+def test_a_defined_series_term_stays_whole():
+    d = defs("Time series")
+    assert d == {"time series"}
     # "time" is a generic word, so only "series" is reported.
     assert found_with(exercise("A time series", "Do it."), d) == [["series"]]
 
@@ -345,6 +351,17 @@ def test_a_plural_title_matches_a_defined_term_ending_in_as():
 def test_or_at_the_edge_of_a_title_is_part_of_the_term():
     assert defs("Exclusive or") == {"exclusive or"}
     assert defs("Loss or cost") == {"loss", "cost"}
+
+
+# Findings from the cross-harness read of gha#1933 at 72514ee.
+
+@pytest.mark.parametrize("title, terms", [
+    ("Gradient (or del)", {"gradient", "del"}),
+    ("Loss, or cost", {"loss", "cost"}),
+    ("Loss, cost, or risk", {"loss", "cost", "risk"}),
+])
+def test_an_or_alias_after_a_parenthesis_or_comma_drops_the_or(title, terms):
+    assert defs(title) == terms
 
 
 def test_math_in_a_definition_title_is_removed_before_splitting():

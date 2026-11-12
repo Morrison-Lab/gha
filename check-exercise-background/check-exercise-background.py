@@ -149,7 +149,7 @@ def _stems(words: List[str]) -> Set[str]:
     return {w[:STEM] for w in words if len(w) >= 3}
 
 
-# Words ending in "s" whose singular and plural are the same (gha#1481).
+# Word endings whose singular and plural are the same (gha#1481).
 INVARIANT_PLURALS = frozenset({"series", "species"})
 
 
@@ -158,10 +158,11 @@ def _singular(word: str) -> str:
 
     "probabilities" gives "probability", "processes" and "boxes" drop "es",
     "biases" gives "bias", and a word ending in "ss", "us", "is" or "as"
-    ("loss", "radius", "analysis", "bias") is left alone, as are "series"
-    and "species".
+    ("loss", "radius", "analysis", "bias") is left alone, as is a word ending
+    in "series" or "species" ("subspecies").
     """
-    if len(word) <= 3 or not word.endswith("s") or word in INVARIANT_PLURALS:
+    if (len(word) <= 3 or not word.endswith("s")
+            or word.endswith(tuple(INVARIANT_PLURALS))):
         return word
     if word.endswith("ies"):
         return word[:-3] + "y"
@@ -182,6 +183,7 @@ PHRASE_SPLIT_RE = re.compile(
     re.I,
 )
 OR_RE = re.compile(r"\bor\b", re.I)
+LEADING_OR_RE = re.compile(r"^\s*or\b", re.I)
 MAX_PHRASE = 6
 ARTICLES = {"a", "an", "the"}
 
@@ -197,14 +199,16 @@ def _phrases(title: str) -> Set[str]:
     """The defined terms a ``#def-`` title names, each as singular words.
 
     A title such as "Gradient (also called del)" names two terms, so it is
-    split at parentheses, commas, "or" and alias markers such as "called" or
-    "often known as", in any letter case, and a leading article is dropped.
-    Math is removed first, so the comma in ``$(X, Y)$`` splits nothing, and
-    "or" splits a part only where words stand on both sides of it, so
-    "Exclusive or" stays one term.
+    split at parentheses, commas, semicolons and alias markers such as
+    "called" or "often known as", in any letter case, and a leading article
+    is dropped. Math is removed first, so the comma in ``$(X, Y)$`` splits
+    nothing. A part's leading "or" is dropped ("Gradient (or del)"), and an
+    "or" inside a part splits it only where words stand on both sides, so
+    "Loss or cost" names two terms and "Exclusive or" one.
     """
     out: Set[str] = set()
     for part in PHRASE_SPLIT_RE.split(MATH_RE.sub(" ", title)):
+        part = LEADING_OR_RE.sub("", part)
         pieces = [_phrase_words(piece) for piece in OR_RE.split(part)]
         if not all(pieces):
             pieces = [_phrase_words(part)]
