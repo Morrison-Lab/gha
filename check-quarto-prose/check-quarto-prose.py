@@ -57,6 +57,10 @@ import sys
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
+
 _DEFAULT_FAIL = True
 _DEFAULT_GLOBS = "*.qmd *.md"
 _DEFAULT_IDIOMS = Path(__file__).resolve().parent / "banned-idioms.txt"
@@ -250,51 +254,6 @@ def _tracked_files(pathspecs: List[str], cwd: Optional[str] = None) -> List[str]
     return [_normalize_path(p) for p in out.split("\0") if p]
 
 
-# ------------------------------------------------------------- path globbing
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i : i + 2] == "**":
-                i += 2
-                if pat[i : i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def _compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
-
-
-def _split_list(value: str) -> List[str]:
-    return [tok.strip() for tok in re.split(r"[,\n]", value or "") if tok.strip()]
-
-
 # ------------------------------------------------------------ phrase handling
 
 
@@ -362,7 +321,7 @@ def load_allow(path: Path) -> List[Allow]:
             continue
         m = re.match(r"^(\S+):\s+(.+)$", line)
         if m:
-            entries.append(Allow(_glob_to_regex(m.group(1)), _norm(m.group(2))))
+            entries.append(Allow(diffscope.glob_to_regex(m.group(1)), _norm(m.group(2))))
         else:
             entries.append(Allow(None, _norm(line)))
     return entries
@@ -738,7 +697,7 @@ def collect_findings(
     files = [
         p
         for p in candidates
-        if not _ignored(p, ignores) and (not whole_tree or (Path(cwd) / p).is_file())
+        if not diffscope.ignored(p, ignores) and (not whole_tree or (Path(cwd) / p).is_file())
     ]
     in_scope: List[Finding] = []
     dropped = 0
@@ -833,7 +792,9 @@ def main() -> int:
         return 1
 
     globs = os.environ.get("CQP_GLOBS", "").split() or _DEFAULT_GLOBS.split()
-    ignores = _compile_ignores(_split_list(os.environ.get("CQP_PATHS_IGNORE", "")))
+    ignores = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("CQP_PATHS_IGNORE", ""))
+    )
     base_ref = os.environ.get("CQP_BASE_REF", "").strip()
     fail = _env_fail()
 
