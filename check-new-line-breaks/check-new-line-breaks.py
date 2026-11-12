@@ -307,6 +307,62 @@ def split_sentences(text: str) -> List[str]:
 _CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1)[\s\S])*?\1")
 
 
+_AUTOLINK_RE = re.compile(r"<https?://[^>\s]*>")
+_BARE_URL_RE = re.compile(r"https?://\S*[^\s.,;:!?)\]]")
+_ENTITY_RE = re.compile(
+    r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
+)
+# Inline HTML tags, ported from gla's copy (gha#1927): open and closing tags
+# and processing instructions, following what Pandoc's markdown reader (the
+# one Quarto uses) accepts as raw HTML.
+# Punctuation inside a tag, such as the dot in `<img src="a.png" alt="Fig. 1">`
+# or the `;` in `style="color: red; margin: 0"`, is markup rather than prose,
+# so split_sentences protects it and strip_inline_markup drops the tag.
+# The tag name must be followed by whitespace, `/` or `>`, so an autolink
+# such as `<https://example.com>` (a `:` after the name) is not a tag.
+# An attribute name may not contain a dot. Pandoc rejects one, so it renders
+# `i<p holds. Then q>i` as visible text with a real sentence break, while it
+# reads `n<k holds Then m>k`, with no dot, as raw HTML.
+# CommonMark's declarations and CDATA sections are left out, because Pandoc
+# renders `<!DOCTYPE x. Y>` and `<![CDATA[A. B]]>` as text.
+_HTML_COMMENT_SPAN_RE = re.compile(r"<!--[\s\S]*?-->")
+_INLINE_HTML_TAG_RE = re.compile(
+    r"<[A-Za-z][A-Za-z0-9\-]*(?:\s+[A-Za-z_:][A-Za-z0-9_:\-]*"
+    r"(?:\s*=\s*(?:[^\s\"'=<>`]+|'[^']*'|\"[^\"]*\"))?)*\s*/?>"
+    r"|</[A-Za-z][A-Za-z0-9\-]*\s*>"
+    r"|<\?[\s\S]*?\?>"
+)
+# TeX math (gha#998): a `;` inside `$f(x; \theta)$` separates arguments and
+# never ends a clause, and breaking the source line inside the math to please
+# the check is worse than the long line. The inline form follows Pandoc's
+# tex_math_dollars rule: no space after the opening `$` or before the closing
+# one, a closing `$` followed by a digit is not a delimiter (so `$5-$10` is
+# currency), and an escaped `\$` is not a delimiter either.
+_MATH_RE = re.compile(
+    r"\$\$.+?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<![\s\\])\$(?!\d)"
+)
+# A raw TeX math environment such as `\begin{align}` is TeX, not prose:
+# Pandoc's raw_tex extension passes it through as raw TeX, which MathJax and
+# LaTeX then typeset. The opener may follow a blockquote or list marker, or
+# end a line of prose.
+_TEX_MATH_ENV_OPEN = (
+    r"\\begin\{(equation|align|alignat|gather|multline|flalign|eqnarray)(\*?)\}"
+)
+_TEX_MATH_ENV_RE = re.compile(
+    r"(?:>\s*|[-*+]\s+|\d+[.)]\s+)*" + _TEX_MATH_ENV_OPEN
+)
+_TEX_MATH_ENV_TAIL_RE = re.compile(_TEX_MATH_ENV_OPEN + r"\s*$")
+
+
+# ── Link targets ────────────────────────────────────────────────────────────
+
+# A `](` inside any of these is not a link. strip_inline_markup has
+# already removed code spans, so it passes the rest of the tuple.
+_LINK_SKIP_RES = (
+    _CODE_SPAN_RE, _HTML_COMMENT_SPAN_RE, _INLINE_HTML_TAG_RE, _MATH_RE
+)
+
+
 def _escape_map(text: str) -> List[bool]:
     """Mark each character a backslash escapes, reading left to right."""
     escaped = [False] * len(text)
@@ -373,22 +429,47 @@ def _bracket_opens(text: str, escaped, inside) -> List[int]:
     return opens
 
 
-def _close_after_title(text: str, j: int, nxt: dict, nns) -> int:
-    """Return the index of the ``)`` that closes a title opening at ``j``.
+def _title_closes(text: str, quote: str) -> List[int]:
+    """Map each index k to the quote that closes a title whose body starts at k.
 
-    A title is a quoted string; a backslash escapes a quote inside it.
-    It must be followed only by whitespace and the closing ``)``, or Pandoc
-    reads no link at all, and then this returns -1.
+    This follows Pandoc's quoted-title reader. A backslash escapes the next
+    character. A ``quote`` followed by a letter or digit opens a nested
+    quotation, which must close before the title can. Any other ``quote``
+    closes the title. The value is ``len(text)`` when the title never closes.
+    Each entry looks only to its right, so one right-to-left pass fills the
+    table, and every title on the line shares it.
     """
     n = len(text)
-    close = nxt[text[j]][j + 1]
+    close = [n] * (n + 2)
+    for k in range(n - 1, -1, -1):
+        ch = text[k]
+        if ch == "\\" and k + 1 < n:
+            close[k] = close[k + 2]
+        elif ch != quote:
+            close[k] = close[k + 1]
+        elif k + 1 < n and text[k + 1].isalnum():
+            inner = close[k + 1]
+            close[k] = n if inner >= n else close[inner + 1]
+        else:
+            close[k] = k
+    return close
+
+
+def _close_after_title(text: str, j: int, titles: dict, nns) -> int:
+    """Return the index of the ``)`` that closes a title opening at ``j``.
+
+    The title must be followed only by whitespace and the closing ``)``, or
+    Pandoc reads no link at all, and then this returns -1.
+    """
+    n = len(text)
+    close = titles[text[j]][j + 1]
     if close >= n:
         return -1
     k = nns[close + 1]
     return k if k < n and text[k] == ")" else -1
 
 
-def _target_end(text: str, i: int, escaped, match, nxt, nns) -> int:
+def _target_end(text: str, i: int, escaped, match, nxt, titles, nns) -> int:
     """Return the index of the ``)`` ending the target at ``i``, or -1."""
     n = len(text)
     j = nns[i + 2]
@@ -401,8 +482,8 @@ def _target_end(text: str, i: int, escaped, match, nxt, nns) -> int:
         j = nns[gt + 1]
         if j < n and text[j] == ")":
             return j
-        if j < n and text[j] in "\"'" and text[j - 1].isspace():
-            return _close_after_title(text, j, nxt, nns)
+        if j < n and text[j] in "\"'":
+            return _close_after_title(text, j, titles, nns)
         return -1
     while j < n:
         if escaped[j]:
@@ -410,7 +491,7 @@ def _target_end(text: str, i: int, escaped, match, nxt, nns) -> int:
             continue
         ch = text[j]
         if ch in "\"'" and text[j - 1].isspace():
-            return _close_after_title(text, j, nxt, nns)
+            return _close_after_title(text, j, titles, nns)
         if ch == "(":
             # Jump over a nested balanced pair; a quote inside it is
             # destination text, as Pandoc reads it.
@@ -445,8 +526,11 @@ def link_target_spans(
     a link, so it yields no span and its text stays prose.
     A ``](`` that starts inside one of the ``skip`` spans (a code span, an
     HTML tag or comment, or math) is not a link either.
-    Nor is a ``]`` that closes no ``[``, as in ``(a, b](c. D)``, or one that
-    closes a footnote reference such as ``[^1]``.
+    Nor is a ``]`` that closes a footnote reference such as ``[^1]``.
+    A ``]`` that closes no ``[`` is read as the end of link text wrapped
+    from the line before, as in ``continued](u. C)``, unless a ``[`` comes
+    earlier on the line; so ``(a, b](c. D)`` at a line's start is read as a
+    link, an accepted cost, since this check reads one line at a time.
 
     Parentheses, brackets, quotes, and whitespace runs are each indexed once,
     up front, and each start walks only its own destination's top level,
@@ -457,20 +541,27 @@ def link_target_spans(
         return []
     escaped = _escape_map(text)
     match = _paren_matches(text, escaped)
-    nxt = _next_unescaped(text, escaped, "\"'>")
+    nxt = _next_unescaped(text, escaped, ">")
+    titles = {q: _title_closes(text, q) for q in "\"'"}
     nns = _next_non_space(text)
     inside = bytearray(len(text))
     for start, end in skip:
         inside[start:end] = bytes([1]) * (end - start)
     opens = _bracket_opens(text, escaped, inside)
+    first_open = text.find("[")
     spans = []
     i = text.find("](")
     while i != -1:
-        # An escaped `]`, or one inside a skip span, closes no `[` either.
-        if opens[i] == -1 or text[opens[i] + 1] == "^":
+        # An escaped `]`, or one inside a skip span, ends no link. A `]`
+        # that closes no `[` ends a link wrapped from the previous line,
+        # unless a `[` earlier on this line shows it is something else.
+        o = opens[i]
+        if (escaped[i] or inside[i]
+                or (o == -1 and -1 < first_open < i)
+                or (o != -1 and text[o + 1] == "^")):
             i = text.find("](", i + 1)
             continue
-        end = _target_end(text, i, escaped, match, nxt, nns)
+        end = _target_end(text, i, escaped, match, nxt, titles, nns)
         if end == -1:
             i = text.find("](", i + 2)
             continue
@@ -494,56 +585,8 @@ def _sub_link_targets(text: str, repl, skip: List[Tuple[int, int]] = ()) -> str:
 def _markup_spans(text: str, patterns) -> List[Tuple[int, int]]:
     """Return the spans every pattern in ``patterns`` matches in ``text``."""
     return [m.span() for p in patterns for m in p.finditer(text)]
-_AUTOLINK_RE = re.compile(r"<https?://[^>\s]*>")
-_BARE_URL_RE = re.compile(r"https?://\S*[^\s.,;:!?)\]]")
-_ENTITY_RE = re.compile(
-    r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
-)
-# Inline HTML tags, ported from gla's copy (gha#1927): open and closing tags
-# and processing instructions, following what Pandoc's markdown reader (the
-# one Quarto uses) accepts as raw HTML.
-# Punctuation inside a tag, such as the dot in `<img src="a.png" alt="Fig. 1">`
-# or the `;` in `style="color: red; margin: 0"`, is markup rather than prose,
-# so split_sentences protects it and strip_inline_markup drops the tag.
-# The tag name must be followed by whitespace, `/` or `>`, so an autolink
-# such as `<https://example.com>` (a `:` after the name) is not a tag.
-# An attribute name may not contain a dot. Pandoc rejects one, so it renders
-# `i<p holds. Then q>i` as visible text with a real sentence break, while it
-# reads `n<k holds Then m>k`, with no dot, as raw HTML.
-# CommonMark's declarations and CDATA sections are left out, because Pandoc
-# renders `<!DOCTYPE x. Y>` and `<![CDATA[A. B]]>` as text.
-_HTML_COMMENT_SPAN_RE = re.compile(r"<!--[\s\S]*?-->")
-_INLINE_HTML_TAG_RE = re.compile(
-    r"<[A-Za-z][A-Za-z0-9\-]*(?:\s+[A-Za-z_:][A-Za-z0-9_:\-]*"
-    r"(?:\s*=\s*(?:[^\s\"'=<>`]+|'[^']*'|\"[^\"]*\"))?)*\s*/?>"
-    r"|</[A-Za-z][A-Za-z0-9\-]*\s*>"
-    r"|<\?[\s\S]*?\?>"
-)
-# TeX math (gha#998): a `;` inside `$f(x; \theta)$` separates arguments and
-# never ends a clause, and breaking the source line inside the math to please
-# the check is worse than the long line. The inline form follows Pandoc's
-# tex_math_dollars rule: no space after the opening `$` or before the closing
-# one, a closing `$` followed by a digit is not a delimiter (so `$5-$10` is
-# currency), and an escaped `\$` is not a delimiter either.
-_MATH_RE = re.compile(
-    r"\$\$.+?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<![\s\\])\$(?!\d)"
-)
-# A raw TeX math environment such as `\begin{align}` is TeX, not prose:
-# Pandoc's raw_tex extension passes it through as raw TeX, which MathJax and
-# LaTeX then typeset. The opener may follow a blockquote or list marker, or
-# end a line of prose.
-# Markup a `](` inside of is not a link. strip_inline_markup has already
-# removed code spans, so it passes the rest of the tuple.
-_LINK_SKIP_RES = (
-    _CODE_SPAN_RE, _HTML_COMMENT_SPAN_RE, _INLINE_HTML_TAG_RE, _MATH_RE
-)
-_TEX_MATH_ENV_OPEN = (
-    r"\\begin\{(equation|align|alignat|gather|multline|flalign|eqnarray)(\*?)\}"
-)
-_TEX_MATH_ENV_RE = re.compile(
-    r"(?:>\s*|[-*+]\s+|\d+[.)]\s+)*" + _TEX_MATH_ENV_OPEN
-)
-_TEX_MATH_ENV_TAIL_RE = re.compile(_TEX_MATH_ENV_OPEN + r"\s*$")
+
+
 # One home for each default; action.yml and the reusable workflow declare
 # the same values, and a test pins all of them together.
 _DEFAULT_FAIL = True

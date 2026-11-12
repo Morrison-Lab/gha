@@ -467,13 +467,27 @@ def test_punctuation_inside_link_target_does_not_split(text):
         # Link text may hold balanced brackets, and a code span holding `]`.
         ("See [a [b] c](u. C) ok.", ["](u. C)"]),
         ("See [`x]`](u. C) ok.", ["](u. C)"]),
-        # A `](` whose `]` closes no `[`, or closes a footnote reference, is not
-        # a link.
-        ("The pair (a, b](c. Then d) is half-open.", []),
-        ("See x](u. Then y) more.", []),
+        # A `]` that closes no `[` ends link text wrapped from the line before,
+        # unless a `[` comes earlier on the line. Reading a half-open interval
+        # such as `(a, b](c. D)` as a link is the accepted cost.
+        ("continued](u. C) here.", ["](u. C)"]),
+        ("The pair (a, b](c. Then d) is half-open.", ["](c. Then d)"]),
+        ("See x](u. Then y) more.", ["](u. Then y)"]),
         ("See \\[x](u. Then y) more.", []),
+        # A `]` that closes a footnote reference ends no link.
         ("See [a](b](u. C) ok.", []),
         ("See [^1](u. C) ok.", []),
+        # Pandoc reads `^[a note](u)` as a `^` and then a link.
+        ("See ^[a note](here. There) ok.", ["](here. There)"]),
+        # A quote followed by a letter or digit opens a nested quotation,
+        # which must close before the title can.
+        ('See [a](u "a "b" c. D") ok.', ['](u "a "b" c. D")']),
+        ('See [a](u "t."x") ok.', []),
+        ('See [a](u "t" ) ok.', ['](u "t" )']),
+        # An escaped quote before a space does not close the title.
+        ('See [x](u "a\\" b. C") ok.', ['](u "a\\" b. C")']),
+        # An angle destination needs no space before its title.
+        ('See [x](<u>"t. T") ok.', ['](<u>"t. T")']),
     ],
 )
 def test_link_target_spans_match_pandoc(text, spans):
@@ -499,8 +513,6 @@ def test_link_target_spans_match_pandoc(text, spans):
          'Use <a href="[x](y">here</a> now.'),
         ("Map $[f](x$ now. Then z) more.", "Map $[f](x$ now."),
         ("A <!-- [x](y --> b. C) d ok.", "A <!-- [x](y --> b."),
-        ("The pair (a, b](c. Then d) is half-open.", "The pair (a, b](c."),
-        ("See x](u. Then y) more.", "See x](u."),
         ("See \\[x](u. Then y) more.", "See \\[x](u."),
         ("See [a](b](u. C) ok.", "See [a](b](u."),
         ("See [^1](u. C) ok.", "See [^1](u."),
@@ -510,6 +522,15 @@ def test_sentence_end_outside_link_target_still_splits(text, first):
     """Prose around a link, and text that only looks like a link, still
     splits at its sentence ends."""
     assert nlb.split_sentences(text)[0] == first
+
+
+def test_wrapped_link_target_is_stripped():
+    """A link whose text began on the line before still has its target
+    stripped, so a long relative path is not a clause or length finding
+    (gha#1927 review)."""
+    text = ("continued](../chapters/a-very-long/relative/path/name.qmd"
+            "#sec-a-long-anchor) holds here; then more.")
+    assert nlb.strip_inline_markup(text) == "continued] holds here; then more."
 
 
 def test_markup_holding_link_opener_keeps_its_clause_break():
@@ -525,7 +546,8 @@ def test_markup_holding_link_opener_keeps_its_clause_break():
     ["[x](" * 8000, "[x](a(" * 8000 + ")", "[x](a " * 8000,
      "[x](" + "(" * 8000 + ")" * 8000,
      "[x](<a" * 8000 + ">" + " " * 32000 + "x",
-     "[" * 8000 + "x](" * 8000],
+     "[" * 8000 + "x](" * 8000,
+     '[x](u "a"b' * 8000, "[x](u 'a'b" * 8000],
 )
 def test_link_target_scan_is_linear(text):
     """A line of many `](` openers is scanned quickly; the first port took
