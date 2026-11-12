@@ -408,12 +408,12 @@ def test_non_definition_question_with_is_this_not_flagged():
 
 def test_compile_ignores_and_matching():
     # Finding 7 reproduction: anchored ignore matching
-    ignores = check_defs.compile_ignores(["tests", "vendor/**", "_site"])
-    assert check_defs._ignored("tests/foo.qmd", ignores)
-    assert check_defs._ignored("vendor/lib/doc.qmd", ignores)
-    assert check_defs._ignored("_site/index.qmd", ignores)
-    assert not check_defs._ignored("content/test-page.qmd", ignores)
-    assert not check_defs._ignored("scratch-notes.qmd", ignores)
+    ignores = check_defs.diffscope.compile_ignores(["tests", "vendor/**", "_site"])
+    assert check_defs.diffscope.ignored("tests/foo.qmd", ignores)
+    assert check_defs.diffscope.ignored("vendor/lib/doc.qmd", ignores)
+    assert check_defs.diffscope.ignored("_site/index.qmd", ignores)
+    assert not check_defs.diffscope.ignored("content/test-page.qmd", ignores)
+    assert not check_defs.diffscope.ignored("scratch-notes.qmd", ignores)
 
 
 # gha#1482: shapes that are not informal definitions.
