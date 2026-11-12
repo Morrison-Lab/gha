@@ -271,6 +271,7 @@ def test_a_word_inside_another_word_or_hyphenated_name_is_not_a_use():
     "body",
     [
         "Inline code `risk` here.\n",
+        "Inline code ``a ` risk ` b`` here.\n",
         "Math $\\text{risk}$ here.\n",
         "<!-- risk -->\n",
         "```r\nrisk <- 1\n```\n",
@@ -282,6 +283,14 @@ def test_a_word_inside_another_word_or_hyphenated_name_is_not_a_use():
 def test_non_prose_is_skipped(body):
     page = "::: {#exm-a}\n\n" + body + "\n:::\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+@pytest.mark.parametrize("body", ["A ` risk `` here.\n", "A `` risk ` here.\n"])
+def test_unequal_backtick_runs_open_no_code_span(body):
+    # A run closes a span only on a run of the same length (gha#1856), so
+    # these lines hold no span and the term is prose.
+    page = "::: {#exm-a}\n\n" + body + "\n:::\n"
+    assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("unlinked-first-use", "risk")]
 
 
 def test_bare_allow_is_flagged_but_still_suppresses():
