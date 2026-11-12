@@ -81,8 +81,17 @@ MACRO_WORDS = {
     "p": "probability", "sqf": "squared square", "ndist": "normal gaussian",
     "dprod": "dot product", "tprod": "product", "deriv": "derivative",
     "derivf": "derivative partial", "dif": "derivative", "difs": "derivative",
-    "sigmoid": "logistic",
+    "sigmoid": "logistic", "exp": "exponential", "log": "log logarithm",
+    "int": "integral", "var": "variance", "cov": "covariance",
+    "max": "maximum", "min": "minimum", "sum": "sum summation",
 }
+# Commands that format math rather than name a concept (gha#1481).
+TYPESETTING_MACROS = frozenset("""
+    text textrm textit textbf textsf texttt operatorname mathrm mathbf mathit
+    mathsf mathtt mathbb mathcal mathfrak boldsymbol left right bigl bigr
+    begin frac dfrac tfrac sqrt overline underline widehat widetilde
+    quad qquad cdot cdots ldots dots label nonumber displaystyle
+""".split())
 # Words a math span prints as text, such as \operatorname{softmax}.
 TEXT_ARG_RE = re.compile(r"\\(?:text|textrm|textit|operatorname|mathrm)\{([^{}]*)\}")
 SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
@@ -138,20 +147,25 @@ def _stems(words: List[str]) -> Set[str]:
     return {w[:STEM] for w in words if len(w) >= 3}
 
 
+# Words ending in "s" whose singular and plural are the same (gha#1481).
+INVARIANT_PLURALS = frozenset({"series", "species"})
+
+
 def _singular(word: str) -> str:
     """The singular of an English plural, or ``word`` unchanged.
 
     "probabilities" gives "probability", "processes" and "boxes" drop "es",
-    and a word ending in "ss", "us" or "is" ("loss", "radius", "analysis")
-    is left alone.
+    "biases" gives "bias", and a word ending in "ss", "us", "is" or "as"
+    ("loss", "radius", "analysis", "bias") is left alone, as are "series"
+    and "species".
     """
-    if len(word) <= 3 or not word.endswith("s"):
+    if len(word) <= 3 or not word.endswith("s") or word in INVARIANT_PLURALS:
         return word
     if word.endswith("ies"):
         return word[:-3] + "y"
-    if word.endswith(("sses", "xes", "ches", "shes", "zzes")):
+    if word.endswith(("sses", "xes", "ches", "shes", "zzes", "iases")):
         return word[:-2]
-    if word.endswith(("ss", "us", "is")):
+    if word.endswith(("ss", "us", "is", "as")):
         return word
     return word[:-1]
 
@@ -162,11 +176,19 @@ PHRASE_SPLIT_RE = re.compile(
     r"[(),;:/]"
     r"|\b(?:also|often|sometimes|usually|commonly|simply)\s+"
     r"(?:called|known\s+as|named)\b"
-    r"|\bcalled\b|\bknown\s+as\b|\bor\b|\balso\b",
+    r"|\bcalled\b|\bknown\s+as\b|\balso\b",
     re.I,
 )
+OR_RE = re.compile(r"\bor\b", re.I)
 MAX_PHRASE = 6
 ARTICLES = {"a", "an", "the"}
+
+
+def _phrase_words(part: str) -> List[str]:
+    words = [_singular(w) for w in _words(part)]
+    while words and words[0] in ARTICLES:
+        words = words[1:]
+    return words
 
 
 def _phrases(title: str) -> Set[str]:
@@ -175,14 +197,18 @@ def _phrases(title: str) -> Set[str]:
     A title such as "Gradient (also called del)" names two terms, so it is
     split at parentheses, commas, "or" and alias markers such as "called" or
     "often known as", in any letter case, and a leading article is dropped.
+    Math is removed first, so the comma in ``$(X, Y)$`` splits nothing, and
+    "or" splits a part only where words stand on both sides of it, so
+    "Exclusive or" stays one term.
     """
     out: Set[str] = set()
-    for part in PHRASE_SPLIT_RE.split(title):
-        words = [_singular(w) for w in _words(part)]
-        while words and words[0] in ARTICLES:
-            words = words[1:]
-        if 0 < len(words) <= MAX_PHRASE:
-            out.add(" ".join(words))
+    for part in PHRASE_SPLIT_RE.split(MATH_RE.sub(" ", title)):
+        pieces = [_phrase_words(piece) for piece in OR_RE.split(part)]
+        if not all(pieces):
+            pieces = [_phrase_words(part)]
+        for words in pieces:
+            if 0 < len(words) <= MAX_PHRASE:
+                out.add(" ".join(words))
     return out
 
 
@@ -214,9 +240,11 @@ def defined_stems(lines: List[str]) -> Set[str]:
 def macro_words(body: str) -> List[str]:
     """Words that the math macros in ``body`` print, for matching a title.
 
-    A macro counts as the word its name begins with:``\\grad`` says gradient and
-    ``\\noise`` says noise. Names shorter than three letters only count
-    through ``MACRO_WORDS``.
+    A macro counts as the word its name begins with: ``\\grad`` says gradient
+    and ``\\noise`` says noise. Names shorter than four letters only count
+    through ``MACRO_WORDS``, since as prefixes ``\\sim`` and ``\\int`` would
+    say "simple" and "interval". Typesetting commands such as ``\\text`` and
+    ``\\operatorname`` say no word of their own.
     """
     out: List[str] = []
     for arg in TEXT_ARG_RE.findall(body):
@@ -224,7 +252,7 @@ def macro_words(body: str) -> List[str]:
     for name in MACRO_RE.findall(body):
         low = name.lower()
         out.extend(MACRO_WORDS.get(low, "").split())
-        if len(low) >= 3:
+        if len(low) >= 4 and low not in TYPESETTING_MACROS:
             out.append(low)
     return out
 

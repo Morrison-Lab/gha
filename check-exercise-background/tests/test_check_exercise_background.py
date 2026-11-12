@@ -318,3 +318,53 @@ def test_a_three_letter_defined_alias_is_judged():
     d = defs("Gradient (also called the del)")
     assert found_with(exercise("The del operator", "Do it."), d) == [["del"]]
     assert found_with(exercise("The del operator", "Use the del here."), d) == []
+
+
+# Findings from the cross-harness read of gha#1915 at d264018.
+
+@pytest.mark.parametrize("plural, singular", [
+    ("series", "series"),
+    ("species", "species"),
+    ("bias", "bias"),
+    ("biases", "bias"),
+    ("aliases", "alias"),
+])
+def test_singular_keeps_series_and_words_ending_in_as(plural, singular):
+    assert exb._singular(plural) == singular
+
+
+def test_a_plural_title_matches_a_defined_term_ending_in_as():
+    d = defs("Time series", "Inductive bias")
+    assert {"time series", "inductive bias"} <= d
+    assert found_with(exercise("Inductive biases", "Do it."), d) == [
+        ["inductive", "biases"]]
+    # "time" is a generic word, so only "series" is reported.
+    assert found_with(exercise("A time series", "Do it."), d) == [["series"]]
+
+
+def test_or_at_the_edge_of_a_title_is_part_of_the_term():
+    assert defs("Exclusive or") == {"exclusive or"}
+    assert defs("Loss or cost") == {"loss", "cost"}
+
+
+def test_math_in_a_definition_title_is_removed_before_splitting():
+    assert defs("Covariance $(X, Y)$") == {"covariance"}
+
+
+@pytest.mark.parametrize("macro, word", [
+    ("sim", "similarity"),
+    ("int", "intensity"),
+    ("exp", "expectation"),
+    ("text{a}", "text"),
+    ("operatorname{a}", "operator"),
+])
+def test_a_short_or_typesetting_macro_does_not_say_a_longer_word(macro, word):
+    d = defs(word.capitalize())
+    body = "Find $X " + chr(92) + macro + " Y$."
+    assert found_with(exercise(word.capitalize(), body), d) == [[word]]
+
+
+def test_a_short_listed_macro_still_says_its_word():
+    d = defs("Exponential", "Variance")
+    body = "Find $" + chr(92) + "exp{x}$ and $" + chr(92) + "var{X}$."
+    assert found_with(exercise("Exponential variance", body), d) == []
