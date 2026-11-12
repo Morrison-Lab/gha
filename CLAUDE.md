@@ -371,7 +371,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   because new macros belong in `Morrison-Lab/macros`.
   It uses `check-literal-math-letters`'s diff model (added lines only, moved
   lines exempt, skip-not-fall-back, warn-only by default),
-  taking its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856).
+  taking its git, diff, and file helpers from `check-common/diffscope.py` and its Markdown masking from `check-common/mdmask.py` (gha#1856).
   It differs in what it skips: a code fence is skipped unless its language is
   `tex`, `latex` or a raw `{=tex}`/`{=latex}`/`{=html}` block, because that is
   where a Quarto page keeps definitions.
@@ -530,11 +530,11 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `check-fform-paren/` (Python, stdlib only, gha#1082) flags `\name\paren{...}` (or `\sb{`, `\cb{`) on a line a PR adds when the macros file defines `\namef`,
   and suggests `\namef{...}`.
   It takes its diff model from `check-common/diffscope.py` (gha#1856): added lines only, moved lines exempt, skip-not-fall-back, warn-only by default.
-  It still copies `check-local-macros`'s Markdown masking, so keep `check-common` beside it.
+  It takes its Markdown masking from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
   The known f forms are read from `macros-file` (`latex-macros/macros.qmd` by default), and a missing file skips with a warning, because without it no f form is known;
   `check-write-idiom/` (Python, stdlib only, gha#1121, from psw#297) flags a line a PR adds in a `.qmd` or `.md` file that opens, after an optional list marker and label such as `(a)`, with `Write` followed by `the`, `a` or `an`,
   because "Write ..." hides whether to derive, express, state or give.
-  It copies `check-fform-paren`'s diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, fails by default), and its env vars use the `CWI_` prefix.
+  It takes its diff model and Markdown masking from `check-common` (added lines only, moved lines exempt, skip-not-fall-back, fails by default), and its env vars use the `CWI_` prefix.
 - `check-avoided-words/` (Python, stdlib only, psw#418) flags words a style source advises against on a line a PR adds in a `.qmd` or `.md` file:
   `above` or `below` used for a place in the document, `just`, `easy` and `easily`, time-relative words such as `currently` and `recently`, and a generic placeholder set such as `domain A`.
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
@@ -542,6 +542,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Keep the three directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`, which takes its git and diff helpers from `../check-common/diffscope.py` (gha#1856).
 - `check-common/` (Python, stdlib only, gha#1856) is not a check: it holds `diffscope.py`, the one copy of the diff-scoping helpers.
   Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
+  `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
+  Each of those keeps its own fence state.
   A check puts the directory on `sys.path` and imports it.
   A composite action runs from a checkout of the whole repository, so `../check-common` is always beside it.
   Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
@@ -623,7 +625,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
   A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.
-  It copies `check-fform-paren`'s diff model and Markdown masking, adds math-span detection, and its env vars use the `CME_` prefix.
+  It takes its diff model and Markdown masking from `check-common`, adds math-span detection, and its env vars use the `CME_` prefix.
   It takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside `check-write-idiom`.
   Measure a repository with `whole-tree: true` before turning `fail` on, and fix or mark the existing hits (`<!-- check-macro-expansions: allow -->`) first.
   `Write $...$ for ...` (notation) and `Write down` pass, as do fences, spans, comments and front matter;

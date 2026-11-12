@@ -61,6 +61,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -86,9 +87,7 @@ DELIMITERS = ("paren", "sb", "cb", "set", "abs", "norm", "angb")
 PAREN_RE = re.compile(
     r"(?<!\\)\\([A-Za-z]+)\\(" + "|".join(DELIMITERS) + r")(?![A-Za-z])\{"
 )
-FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})\s*(\S*)")
 ALLOW_RE = re.compile(r"<!--\s*check-fform-paren:\s*allow\s*-->")
-CODE_SPAN_RE = re.compile(r"(`+).+?\1")
 
 
 class Finding(NamedTuple):
@@ -158,42 +157,6 @@ def paren_uses(text: str, fforms: Dict[str, Optional[str]]
             if fforms.get(m.group(1) + "f") == m.group(2)]
 
 
-def _blank_closed_comments(line: str) -> str:
-    """Blank each ``<!-- ... -->`` that opens and closes on this line.
-
-    A scan with ``find`` rather than a regex: the comment-open state is
-    carried across lines by the caller, so a one-line pattern is the wrong
-    tool for an HTML comment, and CodeQL flags it as such.
-    """
-    out = line
-    pos = 0
-    while True:
-        start = out.find("<!--", pos)
-        if start < 0:
-            return out
-        end = out.find("-->", start + 4)
-        if end < 0:
-            return out
-        out = out[:start] + " " * (end + 3 - start) + out[end + 3:]
-        pos = end + 3
-
-
-def _mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
-    """Blank code spans and HTML comments; track a comment open across lines."""
-    out = line
-    if in_comment:
-        end = out.find("-->")
-        if end < 0:
-            return "", True
-        out, in_comment = " " * (end + 3) + out[end + 3:], False
-    out = _blank_closed_comments(out)
-    start = out.find("<!--")
-    if start >= 0:
-        out, in_comment = out[:start], True
-    out = CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), out)
-    return out, in_comment
-
-
 def scan_file(lines: List[str], fforms: Dict[str, Optional[str]]) -> Tuple[List[Finding], int]:
     """``([Finding, ...], lines examined)`` for a Markdown-family file."""
     found: List[Finding] = []
@@ -207,7 +170,7 @@ def scan_file(lines: List[str], fforms: Dict[str, Optional[str]]) -> Tuple[List[
             if number > 1 and raw.strip() in ("---", "..."):
                 in_front = False
             continue
-        m = FENCE_RE.match(raw)
+        m = mdmask.FENCE_RE.match(raw)
         if fence is None and m and not in_comment:
             fence = (m.group(1)[0], len(m.group(1)))
             continue
@@ -216,7 +179,7 @@ def scan_file(lines: List[str], fforms: Dict[str, Optional[str]]) -> Tuple[List[
                     and not m.group(2):
                 fence = None
             continue
-        masked, in_comment = _mask_markdown_line(raw, in_comment)
+        masked, in_comment = mdmask.mask_markdown_line(raw, in_comment)
         allowed = ALLOW_RE.search(raw) or (
             number > 1 and ALLOW_RE.search(lines[number - 2]))
         if not allowed:
