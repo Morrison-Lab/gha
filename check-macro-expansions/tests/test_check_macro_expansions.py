@@ -207,7 +207,7 @@ def test_no_base_ref_skips_rather_than_scanning_everything(repo, table):
 
 
 def test_paths_ignore_exempts_a_file(repo, table):
-    ignores = cme.compile_globs(["new.qmd"])
+    ignores = cme.diffscope.compile_ignores(["new.qmd"])
     report = cme.run_check("main", ["*.qmd"], ignores, table, False)
     assert report.findings == []
 
