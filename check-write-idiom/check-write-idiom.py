@@ -59,6 +59,7 @@ for _stream in (sys.stdout, sys.stderr):
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd *.md"
 _DEFAULT_FAIL = True
@@ -70,9 +71,7 @@ WRITE_RE = re.compile(
     r"^\s*(?:(?:[-*]|\d+[.)])\s+)?(?:\(?[A-Za-z0-9]{1,4}\)\s*)?"
     r"(Write (?:the|a|an)) "
 )
-FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})\s*(\S*)")
 ALLOW_RE = re.compile(r"<!--\s*check-write-idiom:\s*allow\s*-->")
-CODE_SPAN_RE = re.compile(r"(`+).+?\1")
 
 MESSAGE = (
     '"Write ..." means derive, express, state or give here; name the action '
@@ -84,42 +83,6 @@ MESSAGE = (
 class Finding(NamedTuple):
     line: int
     phrase: str
-
-
-def _blank_closed_comments(line: str) -> str:
-    """Blank each ``<!-- ... -->`` that opens and closes on this line.
-
-    A scan with ``find`` rather than a regex: the comment-open state is
-    carried across lines by the caller, so a one-line pattern is the wrong
-    tool for an HTML comment, and CodeQL flags it as such.
-    """
-    out = line
-    pos = 0
-    while True:
-        start = out.find("<!--", pos)
-        if start < 0:
-            return out
-        end = out.find("-->", start + 4)
-        if end < 0:
-            return out
-        out = out[:start] + " " * (end + 3 - start) + out[end + 3:]
-        pos = end + 3
-
-
-def _mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
-    """Blank code spans and HTML comments; track a comment open across lines."""
-    out = line
-    if in_comment:
-        end = out.find("-->")
-        if end < 0:
-            return "", True
-        out, in_comment = " " * (end + 3) + out[end + 3:], False
-    out = _blank_closed_comments(out)
-    start = out.find("<!--")
-    if start >= 0:
-        out, in_comment = out[:start], True
-    out = CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), out)
-    return out, in_comment
 
 
 def scan_markdown(lines: List[str], check, allow_re) -> Tuple[List[Tuple[int, object]], int]:
@@ -141,7 +104,7 @@ def scan_markdown(lines: List[str], check, allow_re) -> Tuple[List[Tuple[int, ob
             if number > 1 and raw.strip() in ("---", "..."):
                 in_front = False
             continue
-        m = FENCE_RE.match(raw)
+        m = mdmask.FENCE_RE.match(raw)
         if fence is None and m and not in_comment:
             fence = (m.group(1)[0], len(m.group(1)))
             continue
@@ -150,7 +113,7 @@ def scan_markdown(lines: List[str], check, allow_re) -> Tuple[List[Tuple[int, ob
                     and not m.group(2):
                 fence = None
             continue
-        masked, in_comment = _mask_markdown_line(raw, in_comment)
+        masked, in_comment = mdmask.mask_markdown_line(raw, in_comment)
         allowed = allow_re.search(raw) or (
             number > 1 and allow_re.search(lines[number - 2]))
         if allowed:
