@@ -308,8 +308,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - Per-capability composite-action directories at the repo root, each with an
   `action.yml` and, for R/Python capabilities, a language-specific helper
   script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,
-  `check-phi/`, and `check-new-line-breaks/` (Python; the last mirrors
-  `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
+  `check-phi/`, and `check-new-line-breaks/` (Python; it imports
+  `check-common/diffscope.py` for its git calls and path decoding, so a
+  copy of the script needs that directory beside it;
+  `check-new-line-breaks` mirrors `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
   entirely rather than falling back to a whole-tree scan when the diff can't
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
@@ -529,15 +531,27 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
+- `check-common/` (Python, stdlib only, gha#1856) is not a check: it holds `diffscope.py`, the one copy of the diff-scoping helpers.
+  Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
+  A check puts the directory on `sys.path` and imports it.
+  A composite action runs from a checkout of the whole repository, so `../check-common` is always beside it.
+  Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.
+  List files with `diffscope.git_paths`, which adds `-z` to a listing command such as `ls-files`.
+  Without it git quotes a name holding `"`, a backslash, or a tab even under `core.quotepath=false`, and only `-z` avoids it (gha#1923).
+  `git status --porcelain` also quotes a name holding a space (git 2.43.0, gha#1930), so decode every status path with `diffscope.unquote_git_path`.
+  `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
-  It loads `check-one-div-per-subfile`'s git and file helpers (`_run_git`, `_ignored`, `_read_lines`, `_split_list`, `_env_flag`), so keep the two directories together and rename those helpers in both.
+  It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
   It imports `check-exm-figures`' figure test.
-  That script loads `check-one-div-per-subfile`'s git helpers, so keep the three directories together.
-- `check-proof-statements/` (Python, stdlib only, gha#1351) flags reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement (psw#426).
-  A proof hidden from the slides is deliberate and is never flagged (Ezra, 2026-11-04, gha#1491).
+  That script loads `check-common` and `check-one-div-per-subfile`, so keep the four directories together.
+- `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426):
+  a proof inside a `content-hidden` wrapper for `revealjs`, in any file a PR adds a line to,
+  and reasoning words ("so", "because", and others) on an added line inside a `#thm-`, `#lem-`, `#cor-`, or `#prp-` statement.
+  gha#1491 removed the hidden-proof rule on a paraphrase that Ezra did not confirm (2026-11-11), and psw says to show every proof on the slides.
   It loads `check-write-idiom`'s engine like `check-avoided-words`.
-  It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set.
+  It sets `scan_file.wants_scope`, so `run_check` passes it the added-line set and reports its findings as returned,
+  because the hidden-proof rule is file-level, not line-level.
   Its env vars use the `CPS_` prefix.
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.

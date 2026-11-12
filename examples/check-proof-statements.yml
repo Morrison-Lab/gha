@@ -1,6 +1,6 @@
 # Copy to .github/workflows/check-proof-statements.yml in your repo.
-# Diff-scoped check: flags reasoning words ("so", "because") in a theorem statement
-# on a line a PR adds. A proof hidden from the slides is never flagged.
+# Diff-scoped check: flags a proof hidden from the slides in a file a PR touches, and
+# reasoning words ("so", "because") in a theorem statement on a line a PR adds.
 # Fails by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check proof statements
