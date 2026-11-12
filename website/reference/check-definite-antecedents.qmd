@@ -36,7 +36,7 @@ for [psw#608](https://github.com/Morrison-Lab/psw/issues/608)).
 A link elsewhere in that sentence does not exempt it,
 since the pronoun still refers to something the div has not named.
 A pronoun later in the sentence is not checked,
-because most of those have an antecedent earlier in the same sentence.
+because most such pronouns have an antecedent earlier in the same sentence.
 It fails by default, like the other two.
 
 The check does not count:
