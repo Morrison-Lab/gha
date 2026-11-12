@@ -261,7 +261,7 @@ def test_moved_row_is_not_reported(tmp_path, monkeypatch):
 def test_paths_ignore(tmp_path, monkeypatch):
     _repo(tmp_path, GOOD + "\n", GOOD + "\n" + BAD + "\n")
     monkeypatch.chdir(tmp_path)
-    ignores = nsr.compile_ignores(["x-note-sheet.qmd"])
+    ignores = nsr.diffscope.compile_ignores(["x-note-sheet.qmd"])
     report = nsr.run_check("HEAD^1", [nsr.DEFAULT_GLOBS], ignores, False)
     assert report.findings == []
 
