@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 # check-one-function-per-file: allow-multiple
 r"""
-Flag unlinked definite openers of divs, and bare demonstrative pronouns.
+Flag unlinked definite openers of divs, pronoun openers, and bare demonstratives.
 
-Two findings share this check, both enforcing psw's pages on definite
-references (psw#291; grammar/demonstrative-pronouns):
+Three findings share this check, all enforcing psw's pages on definite
+references (psw#291, psw#608; grammar/demonstrative-pronouns):
 
 - ``opener``: a div whose first sentence opens with an unlinked definite phrase.
+- ``pronoun``: a div whose first sentence opens with a personal pronoun
+  ("It", "Its", "They", "Them", "Their"), as in a solution part that begins
+  "It fails." (gha#1955). Nothing earlier in the div can be the referent, and
+  a link elsewhere in the sentence does not supply one, so no link exempts it.
+  A pronoun later in the sentence ("between them") is out of reach: most such
+  pronouns have an antecedent earlier in the same sentence, so it is left to
+  review. An expletive "It is easy to ..." is reported too; reword it or use
+  the allow comment.
 - ``demonstrative``: ``this``, ``these``, ``those`` or ``that`` standing alone
   as a pronoun ("make this precise", "This is because", "avoids this."),
   which leaves the reader to search backward for the referent. Follow it with
@@ -74,6 +82,7 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 LIST_MARKER_RE = re.compile(r"^(?:[-*+]\s+|\d+[.)]\s+)")
 DEFINITE_RE = re.compile(r"^(The|These|Those|This|That)\s+(?!\*\*)(\S+)")
+PRONOUN_RE = re.compile(r"^[*_]*(It|Its|They|Them|Their)(?![\w'’-])")
 LINKED_RE = re.compile(r"\]\(|(?<!\w)@[A-Za-z]+-|\{\{<")
 
 
@@ -253,6 +262,9 @@ def scan_file(lines: List[str]) -> Tuple[List[Hit], int]:
         if (opener and not LINKED_RE.search(sentence)
                 and not ALLOW_RE.search(lines[idx])):
             hits.append(Hit(idx + 1, f"{opener.group(1)} {opener.group(2)}"))
+        pronoun = PRONOUN_RE.match(sentence)
+        if pronoun and not ALLOW_RE.search(lines[idx]):
+            hits.append(Hit(idx + 1, pronoun.group(1), "pronoun"))
     return hits, examined
 
 
@@ -263,7 +275,17 @@ DEMO_ADVICE = (
 )
 
 
+PRONOUN_ADVICE = (
+    "name the referent in this div instead of the pronoun, for example "
+    "'The loss is never negative.' instead of 'It is never negative.'"
+)
+
+
 def format_message(phrase: str, kind: str = "opener") -> str:
+    if kind == "pronoun":
+        return (f"This div opens with the pronoun '{phrase}', and no earlier "
+                f"text in the div can be its antecedent. "
+                f"Fix: {PRONOUN_ADVICE}")
     if kind == "demonstrative":
         return (f"A demonstrative stands alone as a pronoun in '{phrase}', so "
                 f"the reader must search backward for its referent. "
@@ -361,9 +383,10 @@ def main() -> int:
     for rel, line, phrase, kind in report.findings:
         print(f"::{severity} file={rel},line={line}::{format_message(phrase, kind)}")
     if not report.findings:
-        print("No unlinked definite opener or bare demonstrative.")
+        print("No unlinked definite opener, pronoun opener or bare demonstrative.")
         return 0
-    print(f"\n{len(report.findings)} unlinked definite opener(s) or bare demonstrative(s).")
+    print(f"\n{len(report.findings)} unlinked definite opener(s), pronoun opener(s) "
+          f"or bare demonstrative(s).")
     return 1 if fail else 0
 
 
