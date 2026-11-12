@@ -47,9 +47,12 @@ Configuration (environment variables, set by the composite action):
 import fnmatch
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -233,38 +236,10 @@ def scan_html(html: str) -> List[Tuple[int, str]]:
 
 # -- Git plumbing ----------------------------------------------------------------
 
-def _run_git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        encoding="utf-8", errors="replace")
-    return res.stdout if res.returncode == 0 else None
-
-
-_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
-
-
 def added_lines(diff: str) -> Dict[str, Set[int]]:
-    out: Dict[str, Set[int]] = {}
-    path: Optional[str] = None
-    for line in diff.splitlines():
-        if line.startswith("+++ "):
-            t = line[4:].rstrip("\t")
-            path = None if t == "/dev/null" else t[2:] if t.startswith("b/") else t
-            if path:
-                out.setdefault(path, set())
-            continue
-        m = _HUNK_RE.match(line)
-        if m and path:
-            start = int(m.group(1))
-            count = int(m.group(2)) if m.group(2) is not None else 1
-            out[path].update(range(start, start + count))
-    return out
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return default if not value else value in ("1", "true", "yes", "on")
+    """The added line numbers of each file in a ``-U0`` diff."""
+    added, _deleted = diffscope.parse_diff(diff)
+    return {path: set(numbered) for path, numbered in added.items()}
 
 
 def _read(path: str) -> Optional[str]:
@@ -280,18 +255,18 @@ def source_findings(base_ref: str, globs: List[str], whole_tree: bool
     """Findings and files read, or None when the diff cannot be computed."""
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = _run_git(["ls-files", "--", *globs])
-        if out is None:
+        paths = diffscope.git_paths(["ls-files", "--", *globs])
+        if paths is None:
             return None
-        wanted = {p: None for p in out.splitlines() if p}
+        wanted = {p: None for p in paths}
     else:
         if not base_ref:
             return None
-        base = _run_git(["merge-base", base_ref, "HEAD"])
+        base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
         if not base or not base.strip():
             return None
-        diff = _run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
-                         base.strip(), "--", *globs])
+        diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                                  base.strip(), "--", *globs])
         if diff is None:
             return None
         wanted = dict(added_lines(diff))
@@ -329,10 +304,10 @@ def site_findings(site_dir: str, ignores: List[str]
 def main() -> int:
     base_ref = os.environ.get("CCM_BASE_REF", "").strip()
     globs = os.environ.get("CCM_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    whole_tree = _env_flag("CCM_WHOLE_TREE", False)
+    whole_tree = diffscope.env_flag("CCM_WHOLE_TREE", False)
     site_dir = os.environ.get("CCM_SITE_DIR", "").strip()
     ignores = [p.strip() for p in re.split(r"[,\n]", os.environ.get("CCM_SITE_IGNORE", "")) if p.strip()]
-    fail = _env_flag("CCM_FAIL", True)
+    fail = diffscope.env_flag("CCM_FAIL", True)
     level = "error" if fail else "warning"
     total = 0
 
