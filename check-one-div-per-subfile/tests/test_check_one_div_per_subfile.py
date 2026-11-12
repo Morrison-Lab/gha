@@ -514,3 +514,25 @@ def test_text_after_a_closing_marker_is_kept():
 def test_div_opener_before_a_comment_is_kept():
     doc = "::: {#a} <!-- c\nx\n-->\n:::\n::: {#b}\ny\n:::\n"
     assert [d.line for d in ods.top_level_divs(doc.split("\n"))] == [1, 5]
+
+
+# A name holding a double quote is listed quoted by a plain ``ls-files`` or
+# ``diff --name-only``, even under core.quotepath=false (gha#1923).
+QUOTED = '_subfiles/_q"u.qmd'
+
+
+def test_a_quoted_subfile_name_is_scanned_in_diff_mode(repo):
+    _commit(repo, "x.qmd", "text\n")
+    _write(repo, QUOTED, TWO)
+    _write(repo, "_subfiles/_plain.qmd", TWO)
+    report = _run("HEAD")
+    assert sorted(f for f, _, _ in report.findings) == [
+        "_subfiles/_plain.qmd", QUOTED]
+
+
+def test_a_quoted_subfile_name_is_scanned_in_whole_tree_mode(repo):
+    _write(repo, QUOTED, TWO)
+    _write(repo, "_subfiles/_plain.qmd", TWO)
+    report = ods.run_check("", [ods.DEFAULT_GLOBS], [], True)
+    assert sorted(f for f, _, _ in report.findings) == [
+        "_subfiles/_plain.qmd", QUOTED]

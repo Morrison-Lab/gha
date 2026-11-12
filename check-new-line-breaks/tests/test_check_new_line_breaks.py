@@ -269,6 +269,48 @@ def test_single_letter_initial_before_lowercase_does_not_split():
     assert nlb.split_sentences(text) == [text]
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "It reached the U.S. Supreme Court in the end.",
+        "She worked at the U.K. Dept of Health for years.",
+        "Maps from the U.S. Geological Survey were used.",
+    ],
+)
+def test_initialism_before_proper_noun_follower_does_not_split(text):
+    """An initialism followed by a listed institution word continues the noun
+    phrase, so its final dot is protected from the uppercase branch (gha#1927).
+    Removing the `_protect_initialisms` call from `split_sentences` splits each."""
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_initialism_before_other_capital_still_splits():
+    """A capitalized word that is not a listed follower starts a new sentence."""
+    text = "It moved to the U.S. Then it grew quickly."
+    assert nlb.split_sentences(text) == [
+        "It moved to the U.S.",
+        "Then it grew quickly.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "text, first",
+    [
+        ("Prices rose in the U.S. First, wages fell.", "Prices rose in the U.S."),
+        ("We met at 5 p.m. First, we reviewed the logs.", "We met at 5 p.m."),
+        ("The hearing began at 9 a.m. Court reporters were present.", "The hearing began at 9 a.m."),
+        ("He flew back to the U.K. Court records show he lied.", "He flew back to the U.K."),
+        ("Our office is in the U.S. Congress has not acted yet.", "Our office is in the U.S."),
+        ("It reached the U.S. Deptford is next on the list.", "It reached the U.S."),
+    ],
+)
+def test_initialism_before_a_sentence_opener_still_splits(text, first):
+    """A word that often opens a sentence is not a follower, a follower must
+    end at a word boundary (`Deptford`), and a lowercase initialism is never
+    protected, so each of these still splits (gha#1927)."""
+    assert nlb.split_sentences(text)[0] == first
+
+
 def test_dotted_abbreviation_before_lowercase_does_not_split():
     """`a.m.`: the terminal period follows `.m`, not two lowercase letters."""
     text = "The build starts at 9 a.m. sharp every day."
@@ -909,6 +951,76 @@ def test_same_violation_committed_is_the_control(tmp_path):
     assert not skipped
     assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
     assert [v.reason for v in violations] == ["sentence"]
+
+
+# -- C-quoted and unusual file names (gha#1927) --------------------------------
+#
+# git C-quotes a name holding a quote, backslash or tab even under
+# core.quotepath=false, and ends a diff header with a tab when the name holds
+# a space. Before gha#1927 the diff parser sliced the raw header, so such a
+# file was recorded under a garbage path whose content could not be read, and
+# its violations were never reported.
+
+@pytest.mark.parametrize("name", [
+    'say "hi".md',
+    "back\\slash.md",
+    "with space.md",
+    "tab\there.md",
+    "caf\u00e9.md",
+])
+@pytest.mark.parametrize("committed", [True, False])
+def test_unusual_file_name_is_flagged_under_its_real_path(tmp_path, name, committed):
+    _init_repo(tmp_path)
+    (tmp_path / "base.md").write_text("# Base\n")
+    _commit(tmp_path, "base")
+    (tmp_path / name).write_text("# Notes\n\n- Two sentences. On one line.\n")
+    subprocess.run(["git", "add", "--", name], cwd=tmp_path, check=True)
+    if committed:
+        _commit(tmp_path, "add the violation")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1" if committed else "HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [(name, 3)]
+
+
+def test_status_path_decodes_a_quoted_name():
+    assert nlb._status_path(' M "say \\"hi\\".md"') == 'say "hi".md'
+    assert nlb._status_path('R  old.md -> "back\\\\slash.md"') == "back\\slash.md"
+    assert nlb._status_path(" M plain.md") == "plain.md"
+    assert nlb._status_path(' M "tab\\there.md"') == "tab\there.md"
+    # git 2.43 C-quotes a name with a space in porcelain status even under
+    # core.quotepath=false; a non-ASCII name is left bare.
+    assert nlb._status_path(' M "with space.md"') == "with space.md"
+    assert nlb._status_path(" M café.md") == "café.md"
+
+
+@pytest.mark.parametrize("name", ['say "hi".md', "with space.md"])
+def test_an_ignored_quoted_name_does_not_widen_scope(tmp_path, monkeypatch, name):
+    # `git status` quotes these names, so the ignore glob matches only if
+    # _status_path decodes them; undecoded, the edit would widen the scope.
+    _init_repo(tmp_path)
+    (tmp_path / name).write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / name).write_text("# Notes\n\nEdited.\n")
+    monkeypatch.chdir(tmp_path)
+
+    ignores = nlb._compile_ignores([name])
+    assert not nlb._has_uncommitted_changes(["*.md"], ignores)
+    assert nlb._has_uncommitted_changes(["*.md"], [])
+
+
+@pytest.mark.parametrize("name", ['say "hi".md', "with space.md", "café.md"])
+def test_unstaged_edit_to_an_unusual_name_is_flagged(tmp_path, name):
+    # A tracked file edited but not staged is read from the working-tree
+    # diff, whose header names the path the same way the committed one does.
+    _init_repo(tmp_path)
+    (tmp_path / name).write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / name).write_text("# Notes\n\n- Two sentences. On one line.\n")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [(name, 3)]
 
 
 def test_clean_dirty_tree_reports_examined_count(tmp_path, capsys):

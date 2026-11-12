@@ -187,10 +187,10 @@ class Report(NamedTuple):
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
               whole_tree: bool) -> Report:
     """Report findings whose line was added since ``base_ref``."""
-    listing = ods._run_git(["ls-files", "--", *globs])
+    listing = ods._git_paths(["ls-files", "--", *globs])
     if listing is None:
         return Report([], 0, True)
-    files = [f for f in listing.splitlines()
+    files = [f for f in listing
              if f and not ods._ignored(f, ignores)]
     keep: Dict[str, Set[int]] = {}
     if not whole_tree:

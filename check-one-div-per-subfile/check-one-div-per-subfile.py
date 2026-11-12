@@ -72,7 +72,6 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
@@ -237,142 +236,26 @@ def format_message(count: int) -> str:
 
 
 # -- Git plumbing ------------------------------------------------------------
+# Shared with the other diff-scoped checks through check-common (gha#1856).
+# The underscore names stay, because sibling checks load this script and call
+# them through it.
 
-def _run_git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        encoding="utf-8", errors="replace",
-    )
-    return res.stdout if res.returncode == 0 else None
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
-
-_HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-
-
-def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
-    """Added ``{path: {line_number: text}}`` and the set of deleted texts.
-
-    Hunk header counts decide where a hunk ends, so an added line that begins
-    with two plus signs is never mistaken for a ``+++`` file header.
-    """
-    added: Dict[str, Dict[int, str]] = {}
-    deleted: Set[str] = set()
-    path: Optional[str] = None
-    old_left = new_left = new_line = 0
-    for line in diff.splitlines():
-        if old_left > 0 or new_left > 0:
-            if line.startswith("+"):
-                if path is not None:
-                    added[path][new_line] = line[1:]
-                new_line += 1
-                new_left -= 1
-            elif line.startswith("-"):
-                deleted.add(line[1:])
-                old_left -= 1
-            continue
-        if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
-            path = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
-            if path is not None:
-                added.setdefault(path, {})
-            continue
-        m = _HUNK_RE.match(line)
-        if m:
-            old_left = int(m.group(1)) if m.group(1) is not None else 1
-            new_line = int(m.group(2))
-            new_left = int(m.group(3)) if m.group(3) is not None else 1
-    return added, deleted
-
-
-def parse_renames(status: str) -> List[Tuple[str, str]]:
-    """``(old, new)`` pairs from ``git diff --name-status -M`` output."""
-    pairs: List[Tuple[str, str]] = []
-    for line in status.splitlines():
-        parts = line.split("\t")
-        if len(parts) == 3 and parts[0].startswith("R"):
-            pairs.append((parts[1], parts[2]))
-    return pairs
-
-
-_INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
-
-
-def _names(path: str, target: str) -> bool:
-    """Whether an include ``target`` can name the repository file ``path``."""
-    target = target.removeprefix("./")
-    return path == target or path.endswith("/" + target)
-
-
-def is_repointed_include(text: str, deleted: Set[str],
-                         renames: List[Tuple[str, str]]) -> bool:
-    """An added include line that only follows a renamed file is moved.
-
-    It counts when a deleted line reads the same with the old target, and the
-    diff renames a file the old target names to one the new target names.
-    """
-    m = _INCLUDE_RE.search(text)
-    if not m:
-        return False
-    new_target = m.group(1)
-    for old, new in renames:
-        if not _names(new, new_target):
-            continue
-        for line in deleted:
-            o = _INCLUDE_RE.search(line)
-            if (o and _names(old, o.group(1))
-                    and line[:o.start(1)] + new_target + line[o.end(1):] == text):
-                return True
-    return False
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
-
-
-def _split_list(value: str) -> List[str]:
-    return [p.strip() for p in re.split(r"[,\n]", value) if p.strip()]
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    if not value:
-        return default
-    return value in ("1", "true", "yes", "on")
+_run_git = diffscope.run_git
+_git_paths = diffscope.git_paths
+parse_diff = diffscope.parse_diff
+parse_renames = diffscope.parse_renames
+is_repointed_include = diffscope.is_repointed_include
+_names = diffscope._names
+_glob_to_regex = diffscope.glob_to_regex
+compile_ignores = diffscope.compile_ignores
+_ignored = diffscope.ignored
+_split_list = diffscope.split_list
+_env_flag = diffscope.env_flag
+_read_lines = diffscope.read_lines
 
 
 class Report(NamedTuple):
@@ -385,26 +268,15 @@ class Report(NamedTuple):
     unbalanced: Tuple[str, ...] = ()  # subfiles whose divs do not balance
 
 
-def _read_lines(path: str) -> Optional[List[str]]:
-    try:
-        with open(path, encoding="utf-8", errors="replace") as handle:
-            lines = handle.read().split("\n")
-    except OSError:
-        return None
-    if lines and lines[-1] == "":
-        lines.pop()  # the newline ending the file does not start a line
-    return lines
-
-
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
               whole_tree: bool) -> Report:
     """Scan subfiles with an added line since ``base_ref``, or all when whole-tree."""
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = _run_git(["ls-files", "--", *globs])
+        out = diffscope.git_paths(["ls-files", "--", *globs])
         if out is None:
             return Report([], 0, 0, 0, True)
-        for rel in out.splitlines():
+        for rel in out:
             if rel and not _ignored(rel, ignores):
                 wanted[rel] = None
     else:
@@ -418,12 +290,12 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         # added lines) and text deleted anywhere counts as moved.
         diff = _run_git(["diff", "-U0", "-M", "--no-color", "--no-ext-diff",
                          base.strip()])
-        names = _run_git(["diff", "--name-only", "-M", base.strip(),
-                          "--", *globs])
+        names = diffscope.git_paths(["diff", "--name-only", "-M", base.strip(),
+                                     "--", *globs])
         status = _run_git(["diff", "--name-status", "-M", base.strip()])
         if diff is None or names is None or status is None:
             return Report([], 0, 0, 0, True)
-        in_globs = set(names.splitlines())
+        in_globs = set(names)
         renames = parse_renames(status)
         added, deleted = parse_diff(diff)
         for rel, numbered in added.items():

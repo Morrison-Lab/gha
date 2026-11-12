@@ -310,3 +310,14 @@ def test_moved_heading_is_flagged_like_a_new_one(repo):
     _git(repo, "add", ".")
     report = hlv.run_check("HEAD", ["*.qmd"], [], False)
     assert [(f.line, f.kind) for f in report.findings] == [(5, "deep")]
+
+
+def test_an_added_bad_heading_in_a_quoted_file_name_is_flagged(repo):
+    # ls-files quotes a name holding a double quote unless run with -z (gha#1923).
+    (repo / "page.qmd").write_text('---\ntitle: "T"\n---\n\n# A\n')
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "base")
+    (repo / 'q"u.qmd').write_text('---\ntitle: "Q"\n---\n\n# A\n\n### Deep\n')
+    _git(repo, "add", ".")
+    report = hlv.run_check("HEAD", ["*.qmd"], [], False)
+    assert [(f.path, f.line, f.kind) for f in report.findings] == [('q"u.qmd', 7, "skip")]

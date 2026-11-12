@@ -16,7 +16,9 @@ for name in PROJECT_PATH OUTPUT_DIR RENDER_PROFILE FORMATS PER_FILE_FORMATS \
   FAIL_ON_WARN FORBID_PATTERNS SETUP_JULIA; do
   assign+=" $name=$(printf '%q' "${!name}")"
 done
-render="env$assign PER_FILE_SCRIPT=$helpers/render-per-file.py REDIRECT_STUBS_SCRIPT=$helpers/redirect-stubs.py bash $helpers/render-site.sh"
+# A PDF render needs a writable TeX cache under the checkout, since the job
+# has no usable home (epi202#28), as in preview/plan-cluster-render.sh.
+render="mkdir -p \"\$PWD/.texvar\" && env TEXMFVAR=\"\$PWD/.texvar\" TEXMFCACHE=\"\$PWD/.texvar\"$assign PER_FILE_SCRIPT=$helpers/render-per-file.py REDIRECT_STUBS_SCRIPT=$helpers/redirect-stubs.py bash $helpers/render-site.sh"
 # condor-batch bundles two or more steps; the second one fails the job when
 # the render left no output directory.
 check="test -d $(printf '%q' "$PROJECT_PATH/$OUTPUT_DIR")"
