@@ -34,9 +34,12 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd *.md"
 ALLOW = "check-serial-comma: allow"
@@ -75,7 +78,6 @@ FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 DIV_RE = re.compile(r"^ {0,3}:{3,}")
 MARKER_RE = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:[-*+]|\d{1,2}[.)]|\(?[a-z][.)]|\([a-z]\))[ \t]+")
 HEADING_RE = re.compile(r"^#{1,6}\s")
-HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 CONJ_RE = re.compile(r"\s(and|or)\s")
 ABBREV_RE = re.compile(r"\b(e\.g|i\.e|vs|etc|cf|al|Fig|Eq|Sec|No)\.")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?:;])\s+")
@@ -235,28 +237,8 @@ def findings(lines: List[str]) -> List[Tuple[int, str]]:
 
 def added_lines(diff: str) -> Dict[str, Set[int]]:
     """Added line numbers per path from ``git diff -U0`` output."""
-    added: Dict[str, Set[int]] = {}
-    path: Optional[str] = None
-    for line in diff.splitlines():
-        if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
-            path = None if target == "/dev/null" else target.removeprefix("b/")
-            if path is not None:
-                added.setdefault(path, set())
-            continue
-        m = HUNK_RE.match(line)
-        if m and path is not None:
-            start = int(m.group(1))
-            count = 1 if m.group(2) is None else int(m.group(2))
-            added[path].update(range(start, start + count))
-    return added
-
-
-def _git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(["git", "-c", "core.quotepath=false", *args],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         text=True, encoding="utf-8", errors="replace")
-    return res.stdout if res.returncode == 0 else None
+    added, _deleted = diffscope.parse_diff(diff)
+    return {path: set(numbered) for path, numbered in added.items()}
 
 
 def exclude_specs(patterns: List[str]) -> List[str]:
@@ -265,9 +247,7 @@ def exclude_specs(patterns: List[str]) -> List[str]:
             for p in patterns]
 
 
-def split_list(value: str) -> List[str]:
-    """Split a comma- or newline-separated list, dropping blanks."""
-    return [p.strip() for p in re.split(r"[,\n]", value) if p.strip()]
+split_list = diffscope.split_list
 
 
 def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool,
@@ -276,21 +256,19 @@ def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool,
     """Files to scan, each with its added lines (None = every line)."""
     globs = [*globs, *exclude_specs(ignore or [])]
     if whole_tree:
-        out = _git(["ls-files", "--", *globs])
-        return None if out is None else {p: None for p in out.splitlines() if p}
+        paths = diffscope.git_paths(["ls-files", "--", *globs])
+        return None if paths is None else {p: None for p in paths}
     if not base_ref:
         return None
-    base = _git(["merge-base", base_ref, "HEAD"])
+    base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
     if not base or not base.strip():
         return None
-    diff = _git(["diff", "-U0", "--no-color", "--no-ext-diff", base.strip(),
-                 "--", *globs])
-    return None if diff is None else dict(added_lines(diff))
+    diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                              base.strip(), "--", *globs])
+    return None if diff is None else added_lines(diff)
 
 
-def _flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return default if not value else value in ("1", "true", "yes", "on")
+_flag = diffscope.env_flag
 
 
 def main() -> int:
