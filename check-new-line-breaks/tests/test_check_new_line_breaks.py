@@ -11,6 +11,7 @@ load it by path -- same pattern as check-phi/tests/test_detectors.py.
 
 import importlib.util
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -411,6 +412,140 @@ def test_inline_html_tags_do_not_count_toward_the_length_gate():
     assert len(prose) < nlb._DEFAULT_CLAUSE_MIN_LENGTH
     assert len(prose) + len("</span>") >= nlb._DEFAULT_CLAUSE_MIN_LENGTH
     assert not nlb.has_late_semicolon(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'See [the guide](https://x.org/a.html "Fig. 1. The guide") for it.',
+        "See [the guide](https://x.org/a.html 'Fig. 1. The guide') for it.",
+        "See [the guide](https://x.org/a.html (Fig. 1. The guide)) for it.",
+        "See [the guide](<https://x.org/a b.html?Q. R>) for details.",
+        "See [the page](https://x.org/A_(b. C)) for it.",
+        "See [the page](https://x.org/O'Brien. Then) for details.",
+        "See [the page](https://x.org/a. B) for details.",
+        "See [x](u\\) b. C) for details.",
+        'See [x](u "a) b. C") for details.',
+        "See [x](u 'a. B' ) for details.",
+        'See [x](u "a \\"b. C\\" d") for details.',
+        "See [x](<a)b. C>) for details.",
+        'See [x](<a b> "T. U") for details.',
+        "See [x](<a\\>b. C>) for details.",
+        "See [a [b] c](u. C) for details.",
+        "See [`x]`](u. C) for details.",
+    ],
+)
+def test_punctuation_inside_link_target_does_not_split(text):
+    """A link target is URL or title text, never a sentence boundary
+    (gha#1927, ported from gla). Each case is one Pandoc link: a title with
+    `. `, an angle-bracket destination, balanced parentheses, an apostrophe
+    with no space before it, an escaped `)`, and a `)` inside a title."""
+    assert nlb.split_sentences(text) == [text]
+
+
+@pytest.mark.parametrize(
+    "text, spans",
+    [
+        ("See [x](u. Then go.", []),
+        ('See [x](u "a. B) c. D ok.', []),
+        ('See [x](u "a" b) c. D ok.', []),
+        ("[a](b) one. Two [c](d \"T. U\") three.", ["](b)", '](d "T. U")']),
+        ("See [x]( u ) ok.", ["]( u )"]),
+        # A quote inside nested parentheses is destination text, not a title.
+        ('See [x](u_(a "b) c. D) ok.', ['](u_(a "b) c. D)']),
+        # A backslash escapes a quote inside a title.
+        ('See [x](u "a \\"b. C\\" d") ok.', ['](u "a \\"b. C\\" d")']),
+        # An angle-bracket destination runs to its `>`.
+        ("See [x](<a)b. C>) ok.", ["](<a)b. C>)"]),
+        ('See [x](<a b> "T. U") ok.', ['](<a b> "T. U")']),
+        ("See [x](<a b>c) ok.", []),
+        ("See [x](<a b ok.", []),
+        # An escaped `]` closes no link text.
+        ("See [x\\](u. C) ok.", []),
+        # An escaped `>` does not end an angle-bracket destination.
+        ("See [x](<a\\>b. C>) ok.", ["](<a\\>b. C>)"]),
+        # Link text may hold balanced brackets, and a code span holding `]`.
+        ("See [a [b] c](u. C) ok.", ["](u. C)"]),
+        ("See [`x]`](u. C) ok.", ["](u. C)"]),
+        # A `](` whose `]` closes no `[`, or closes a footnote reference, is not
+        # a link.
+        ("The pair (a, b](c. Then d) is half-open.", []),
+        ("See x](u. Then y) more.", []),
+        ("See \\[x](u. Then y) more.", []),
+        ("See [a](b](u. C) ok.", []),
+        ("See [^1](u. C) ok.", []),
+    ],
+)
+def test_link_target_spans_match_pandoc(text, spans):
+    """Each expected span is what `quarto pandoc -t json` (Pandoc 3.10)
+    reads as a link. An unclosed `](`, an unclosed title, and a title
+    followed by more text are not links, so their text stays prose."""
+    skip = nlb._markup_spans(text, nlb._LINK_SKIP_RES)
+    assert [text[a:b] for a, b in nlb.link_target_spans(text, skip)] == spans
+
+
+@pytest.mark.parametrize(
+    "text, first",
+    [
+        ('See [x](u "a. B) c. D ok.', 'See [x](u "a.'),
+        ('See [x](u "a" b) c. D ok.', 'See [x](u "a" b) c.'),
+        ("Read [it](x.html). Then go.", "Read [it](x.html)."),
+        ("See [x](<a b>c) ok. Then go.", "See [x](<a b>c) ok."),
+        # A `](` inside a code span, an HTML tag or comment, or math opens no
+        # link, so it
+        # cannot hide the sentence end after it.
+        ("See `[x](y` now. Then z) more.", "See `[x](y` now."),
+        ('Use <a href="[x](y">here</a> now. Then z) more.',
+         'Use <a href="[x](y">here</a> now.'),
+        ("Map $[f](x$ now. Then z) more.", "Map $[f](x$ now."),
+        ("A <!-- [x](y --> b. C) d ok.", "A <!-- [x](y --> b."),
+        ("The pair (a, b](c. Then d) is half-open.", "The pair (a, b](c."),
+        ("See x](u. Then y) more.", "See x](u."),
+        ("See \\[x](u. Then y) more.", "See \\[x](u."),
+        ("See [a](b](u. C) ok.", "See [a](b](u."),
+        ("See [^1](u. C) ok.", "See [^1](u."),
+    ],
+)
+def test_sentence_end_outside_link_target_still_splits(text, first):
+    """Prose around a link, and text that only looks like a link, still
+    splits at its sentence ends."""
+    assert nlb.split_sentences(text)[0] == first
+
+
+def test_markup_holding_link_opener_keeps_its_clause_break():
+    """strip_inline_markup reads no link from a `](` inside an HTML tag or
+    comment, or math, so a `;` after it is still a clause break."""
+    for opener in ('<a href="[x](y">', "<!-- [x](y -->", "$[f](x$"):
+        text = "Use " + opener + " here; then z) goes on for a long while."
+        assert ";" in nlb.strip_inline_markup(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["[x](" * 8000, "[x](a(" * 8000 + ")", "[x](a " * 8000,
+     "[x](" + "(" * 8000 + ")" * 8000,
+     "[x](<a" * 8000 + ">" + " " * 32000 + "x",
+     "[" * 8000 + "x](" * 8000],
+)
+def test_link_target_scan_is_linear(text):
+    """A line of many `](` openers is scanned quickly; the first port took
+    seconds on such lines (gha#1927 review). Each opens its link text with
+    `[`, or the scan would skip it before walking anything."""
+    start = time.perf_counter()
+    nlb.split_sentences(text)
+    nlb.strip_inline_markup(text)
+    assert time.perf_counter() - start < 1.0
+
+
+def test_link_target_with_parentheses_and_title_is_stripped_whole():
+    """strip_inline_markup drops the whole target, so a `;` inside a
+    parenthesized destination or a quoted title is not a clause break."""
+    for target in ('(https://x.org/a_(b;c).html)',
+                   '(https://x.org/a.html "Step 1; then step 2")'):
+        text = "Open [the setup guide]" + target + " before you edit it."
+        assert nlb.strip_inline_markup(text) == (
+            "Open [the setup guide] before you edit it."
+        )
 
 
 def test_dotted_abbreviation_before_lowercase_does_not_split():
