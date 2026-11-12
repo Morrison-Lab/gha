@@ -310,8 +310,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,
   `check-phi/`, and `check-new-line-breaks/` (Python; it imports
   `check-common/diffscope.py` for its git calls and path decoding, so a
-  copy of the script needs that directory beside it; check-new-line-breaks mirrors
-  `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
+  copy of the script needs that directory beside it;
+  check-new-line-breaks mirrors `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
   entirely rather than falling back to a whole-tree scan when the diff can't
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
