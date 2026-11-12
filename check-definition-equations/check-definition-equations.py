@@ -247,6 +247,14 @@ def parse_diff(diff: str) -> Dict[str, Set[int]]:
 
 compile_ignores = diffscope.compile_ignores
 
+# Old names kept for the checks that load this script as their base
+# (check-definition-expectation, check-results-in-remarks, and
+# check-result-definition-links), until each moves onto diffscope directly.
+_run_git = diffscope.run_git
+_read_lines = diffscope.read_lines
+_split_list = diffscope.split_list
+_env_flag = diffscope.env_flag
+
 
 class Report(NamedTuple):
     findings: List[Finding]
