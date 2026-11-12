@@ -911,6 +911,41 @@ def test_same_violation_committed_is_the_control(tmp_path):
     assert [v.reason for v in violations] == ["sentence"]
 
 
+# -- C-quoted and unusual file names (gha#1927) --------------------------------
+#
+# git C-quotes a name holding a quote, backslash or tab even under
+# core.quotepath=false, and ends a diff header with a tab when the name holds
+# a space. Before gha#1927 the diff parser sliced the raw header, so such a
+# file was recorded under a garbage path whose content could not be read, and
+# its violations were never reported.
+
+@pytest.mark.parametrize("name", [
+    'say "hi".md',
+    "back\\slash.md",
+    "with space.md",
+    "caf\u00e9.md",
+])
+@pytest.mark.parametrize("committed", [True, False])
+def test_unusual_file_name_is_flagged_under_its_real_path(tmp_path, name, committed):
+    _init_repo(tmp_path)
+    (tmp_path / "base.md").write_text("# Base\n")
+    _commit(tmp_path, "base")
+    (tmp_path / name).write_text("# Notes\n\n- Two sentences. On one line.\n")
+    subprocess.run(["git", "add", "--", name], cwd=tmp_path, check=True)
+    if committed:
+        _commit(tmp_path, "add the violation")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1" if committed else "HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [(name, 3)]
+
+
+def test_status_path_decodes_a_quoted_name():
+    assert nlb._status_path(' M "say \\"hi\\".md"') == 'say "hi".md'
+    assert nlb._status_path('R  old.md -> "back\\\\slash.md"') == "back\\slash.md"
+    assert nlb._status_path(" M plain.md") == "plain.md"
+
+
 def test_clean_dirty_tree_reports_examined_count(tmp_path, capsys):
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
