@@ -1036,6 +1036,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/triage-backlog.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">triage-backlog.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/preview.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">preview.yml</span></a>
   </div>
@@ -1230,14 +1236,14 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-10-29) to extract a lemma wherever feasible: a general fact that does not depend on its setting goes in its own <code>#lem-</code> div, on the site that owns the topic, and the proof or solution that uses it links to the lemma.</p>
+<p>Diff-scoped heuristic check for the lab’s rule (Ezra, 2026-10-29) to extract a lemma wherever feasible: a general fact that does not depend on its setting goes in its own <code>#lem-</code> div, on the site that owns the topic, and the proof or solution that uses it links to the lemma.</p>
 <p>The check reads the body of</p>
 <ul>
 <li>each <code>#sol-</code> div, and</li>
 <li>the proof of each <code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code> div (a <code>.proof</code> div nested in it or directly after it).</li>
 </ul>
 <p>A body is flagged when a sentence of its prose says “for any”, “for every” or “for all” before a kind of mathematical object (real number, random variable, matrix, function, and similar), and also holds inline math, and the body cites no result (<code>@thm-</code>, <code>@lem-</code>, <code>@cor-</code>, <code>@prp-</code>, or a link to a <code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code> anchor). A theorem’s own statement is not read, since a theorem is meant to be general. The check follows <code>{{&lt; include &gt;}}</code> lines, so it reads a page in the order a reader sees it. A body that holds <code>&lt;!-- lemma-ok: reason --&gt;</code> is exempt.</p>
-<p>A body is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing content is fixed when someone edits it anyway. It warns by default; <code>fail: true</code> blocks.</p>
+<p>A body is checked when the pull request adds a line inside it. With no base to diff against, the check skips instead of scanning the whole tree, so existing content is fixed when someone edits it anyway. It blocks by default; <code>fail: false</code> only warns.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -1266,7 +1272,7 @@ cookieconsent.run({
 </tr>
 <tr class="odd">
 <td><code>fail</code></td>
-<td><code>false</code></td>
+<td><code>true</code></td>
 <td>Fail on a finding; <code>false</code> warns</td>
 </tr>
 <tr class="even">
