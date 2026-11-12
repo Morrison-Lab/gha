@@ -97,6 +97,31 @@ def test_paths_ignore_exempts_a_directory(tmp_path):
     assert run(repo, PRS_PATHS_IGNORE="gen/**")[0] == 0
 
 
+BY_MODULE = {"c/_sub/definitions/_by-module.qmd": 270,
+             "c/_sub/results/_by-module.qmd": 270, "c/x.qmd": 10}
+
+
+@pytest.mark.parametrize("attr, counted", [
+    ("linguist-generated", False),
+    ("linguist-generated=true", False),
+    ("linguist-generated=false", True),
+    ("-linguist-generated", True),
+    (None, True),
+])
+def test_linguist_generated_paths_are_not_counted(tmp_path, attr, counted):
+    """lds#2355 shape: two committed generator outputs plus a small hand edit (gha#1959)."""
+    if attr is not None:
+        (tmp_path / ".gitattributes").write_text(f"**/_by-module.qmd {attr}\n")
+    repo = make_repo(tmp_path, BY_MODULE)
+    code, out = run(repo)
+    if counted:
+        assert code == 1
+        assert "550 lines changed (cap 300)" in out
+    else:
+        assert code == 0
+        assert "1 file(s), 10 changed line(s)" in out
+
+
 def test_new_figure_subfile_lines_are_free_but_files_count(tmp_path):
     repo = make_repo(tmp_path, {"c/_fig-a-3d.qmd": 250, "c/_fig-b-3d.qmd": 250, "c/x.qmd": 10})
     code, out = run(repo)
