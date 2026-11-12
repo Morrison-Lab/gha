@@ -280,7 +280,7 @@ def test_single_letter_initial_before_lowercase_does_not_split():
 def test_initialism_before_proper_noun_follower_does_not_split(text):
     """An initialism followed by a listed institution word continues the noun
     phrase, so its final dot is protected from the uppercase branch (gha#1927).
-    Removing `_protect_initialisms` from `split_sentences` splits each one."""
+    Removing the `_protect_initialisms` call from `split_sentences` splits each."""
     assert nlb.split_sentences(text) == [text]
 
 
@@ -293,11 +293,18 @@ def test_initialism_before_other_capital_still_splits():
     ]
 
 
-def test_initialism_before_unlisted_lowercase_word_does_not_split():
-    """With no determiner the final dot stays unprotected, but the lowercase
-    branch's lookbehind still refuses a split after a single-letter initial."""
-    text = "Exports from U.S. firms rose after the deal closed."
-    assert nlb.split_sentences(text) == [text]
+@pytest.mark.parametrize(
+    "text, first",
+    [
+        ("Prices rose in the U.S. First, wages fell.", "Prices rose in the U.S."),
+        ("We met at 5 p.m. First, we reviewed the logs.", "We met at 5 p.m."),
+        ("The hearing began at 9 a.m. Court reporters were present.", "The hearing began at 9 a.m."),
+    ],
+)
+def test_initialism_before_a_sentence_opener_still_splits(text, first):
+    """A word that often opens a sentence is not a follower, and a lowercase
+    initialism is never protected, so each of these still splits (gha#1927)."""
+    assert nlb.split_sentences(text)[0] == first
 
 
 def test_dotted_abbreviation_before_lowercase_does_not_split():

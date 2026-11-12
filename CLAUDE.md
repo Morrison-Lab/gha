@@ -1837,6 +1837,13 @@ That second list excludes `no` (a lowercase `no.` is the word, and should
 split) and adds `min`/`hr`/`hrs`; it is curated rather than exhaustive, so an
 unlisted lowercase abbreviation before a lowercase word can still false-split
 on this check.
+The uppercase branch has the mirror case: an uppercase initialism before a
+capitalized word, as in `the U.S. Supreme Court`.
+`_INITIALISM_FOLLOW_RE` protects the initialism's dots only before a listed
+institution word that rarely opens a sentence (gha#1927), so
+`the U.S. Then it grew` and `9 a.m. Court reporters` still split.
+Before adding a word to `_INITIALISM_FOLLOWERS`, ask whether it opens
+sentences: `First`, `President` and `Courts` were left out because they do.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other (porting gha#425's fix there

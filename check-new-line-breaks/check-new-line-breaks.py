@@ -128,44 +128,25 @@ _ABBREV_LOWER_RE = re.compile(
     _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
 )
 
-# Dotted initialisms (`U.S.`, `e.g.` is handled by `_ABBREVS`). Every internal
-# dot of an initialism is protected. Its final dot is protected too when the
-# next word continues the noun phrase: a capitalized word that names an
-# institution or title (`the U.S. Supreme Court`), or, after a determiner, a
-# lowercase common noun (`the U.S. economy`). Otherwise the final dot stays a
-# candidate boundary, so `It moved to the U.S. Then it grew.` still splits.
-# Ported from gla's copy of this script (gha#1927). gla also widened the
-# lowercase branch's lookbehind to split after an initialism; that is not
-# ported, because it splits `9 a.m. sharp` and other dotted abbreviations.
-_PROPER_NOUN_FOLLOWERS = {
+# An uppercase dotted initialism (`U.S.`) before a word that names an
+# institution or title (`the U.S. Supreme Court`) does not end a sentence.
+# The listed words rarely open a sentence, so a sentence that ends in an
+# initialism still splits (`It moved to the U.S. Then it grew.`).
+# Lowercase initialisms (`a.m.`) are left to the abbreviation lists.
+# Ported from gla's copy of this script (gha#1927), narrowed: gla also
+# protected lowercase common nouns after a determiner and widened the
+# lowercase branch's lookbehind, which splits `9 a.m. sharp`.
+_INITIALISM_FOLLOWERS = (
     "Supreme", "Department", "Dept", "Senate", "Congress", "Government", "Govt",
-    "District", "Court", "Courts", "Navy", "Army", "Air", "Coast", "Postal",
-    "Border", "Customs", "Marshal", "Marshals", "Attorney", "Attorneys",
-    "President", "Secretary", "Bank", "Dollar", "Dollars", "News", "Route",
-    "Highway", "Virgin", "Circuit", "Mayor", "Parliament", "Prime",
-    "Food", "Trade", "Securities", "Internal", "National", "Public",
-    "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh",
-    "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth",
-    "Constitution", "Law", "Laws", "Code", "Treaty", "Flag", "Embassy",
-    "Consulate", "Capitol", "Treasury", "Commerce", "Labor", "Energy",
-    "Education", "Veterans", "Homeland", "Agriculture", "Transportation",
-    "Interior", "Defense", "State", "Health", "Human", "Housing", "Urban",
-    "Justice", "Geological",
-}
-_COMMON_NOUN_FOLLOWERS = {
-    "economy", "market", "markets", "history", "population", "policy", "policies",
-    "citizens", "government", "military", "dollars", "dollar", "laws", "law",
-    "border", "borders", "infrastructure", "system", "systems", "patents",
-    "forces", "courts", "court", "firms", "companies", "data", "standard",
-    "standards", "census", "postal", "customs", "territory", "territories",
-    "soil", "citizenship", "passport", "passports", "currency", "embassy",
-    "embassies", "consulate",
-}
-_INITIALISM_FOLLOW_RE = re.compile(
-    r"(?P<det>\b(?:[Tt]he|[Aa]n?|[Ii]ts|[Oo]ur|[Tt]heir|[Hh]is|[Hh]er|[Tt]his|[Tt]hat)\s+)?"
-    r"(?P<init>(?:[A-Za-z]\.){2,})\s+(?P<follower>[A-Za-z]+)"
+    "District", "Court", "Navy", "Army", "Coast", "Postal", "Marshal",
+    "Marshals", "Attorney", "Attorneys", "Secretary", "Bank", "Dollar",
+    "Dollars", "Circuit", "Parliament", "Securities", "Constitution", "Treaty",
+    "Embassy", "Consulate", "Capitol", "Treasury", "Veterans", "Homeland",
+    "Geological",
 )
-_INITIALISM_RE = re.compile(r"\b(?:[A-Za-z]\.){2,}")
+_INITIALISM_FOLLOW_RE = re.compile(
+    r"\b((?:[A-Z]\.){2,})(?=\s+(?:" + "|".join(_INITIALISM_FOLLOWERS) + r")\b)"
+)
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote/digit/opener.
 # The closing-char class includes `*` and `_` so a sentence ending in Markdown
@@ -260,26 +241,8 @@ def _protect_inline_code(m: "re.Match[str]") -> str:
 
 
 def _protect_initialisms(text: str) -> str:
-    """Protect internal dots in initialisms, and the final dot before a follower."""
-    def _replace_follower(m: "re.Match[str]") -> str:
-        det = m.group("det") or ""
-        init = m.group("init")
-        follower = m.group("follower")
-        if follower[0].isupper():
-            keep_final = follower in _PROPER_NOUN_FOLLOWERS
-        else:
-            keep_final = bool(det) and follower in _COMMON_NOUN_FOLLOWERS
-        if keep_final:
-            return det + init.replace(".", _PLACEHOLDER) + " " + follower
-        return det + init[:-1].replace(".", _PLACEHOLDER) + init[-1] + " " + follower
-
-    text = _INITIALISM_FOLLOW_RE.sub(_replace_follower, text)
-
-    def _replace_internal(m: "re.Match[str]") -> str:
-        val = m.group(0)
-        return val[:-1].replace(".", _PLACEHOLDER) + val[-1]
-
-    return _INITIALISM_RE.sub(_replace_internal, text)
+    """Protect every dot of an initialism that a listed institution word follows."""
+    return _INITIALISM_FOLLOW_RE.sub(lambda m: m.group(1).replace(".", _PLACEHOLDER), text)
 
 
 def split_sentences(text: str) -> List[str]:
