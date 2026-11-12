@@ -6,8 +6,8 @@
   and a `<` with no `>` to close it is ordinary destination text.
   A `;` anywhere in such a target is no longer a clause break,
   and the whole target is left out of the 80-character length gate.
-  A `]` that closes no `[` is read as the end of link text wrapped from the line before,
-  unless a `[` outside code, an HTML tag or comment, or math comes earlier on the line.
+  A `]` that closes no `[` is read as the end of link text wrapped from the line before.
+  An earlier `[` on the line cancels that reading when it sits outside code, HTML, and math.
   This is where the check departs from Pandoc on purpose,
   since Pandoc reads the whole paragraph and the check reads one line.
   Text that only looks like a link stays prose.
