@@ -482,11 +482,11 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `check-literal-math-letters/` bundles the composite action, stdlib-only parser script, and pytest suite for flagging literal Latin and Greek letters in math;
   `check-wikipedia-further-reading/` (Python, stdlib only, gha#1093) bundles the composite action, script, and pytest suite for flagging a Wikipedia citation or link in a Further reading list item;
   it copies `check-literal-math-letters/`'s diff model (added lines only, moved lines exempt, skip-not-fall-back) but blocks by default (`fail: true`),
-  and takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856);
+  and takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it;
   `check-redundant-citations/` (Python, stdlib only, gha#1105) bundles the composite action, script, and pytest suite
   for flagging a source cited twice, with the same locator, in one div or passage;
   it takes the same diff model and is warn-only by default (`fail: false`), because the same key twice is sometimes right,
-  and takes its git and file helpers from `check-common/diffscope.py` (gha#1856) and its diff parser from `check-write-idiom`'s engine;
+  and takes its git and file helpers from `check-common/diffscope.py` (gha#1856) and its diff parser from `check-write-idiom`'s engine, so keep both directories beside it;
   `check-self-credits/` (Python, stdlib only, gha#1076) bundles the composite action, script, and pytest suite
   for flagging a formal credit to the group's own work: a citation of a bibliography entry the consumer marks as own,
   or a credit phrase ("adapted from", a `Source:` line or div) in the same paragraph as an own site or name;
@@ -547,6 +547,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `git status --porcelain` also quotes a name holding a space (git 2.43.0, gha#1930), so decode every status path with `diffscope.unquote_git_path`.
   `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
   `check-write-idiom` keeps `parse_diff`, `compile_globs`, and `GIT_DIFF_ARGS` as names for the checks that load it as their engine, and takes the code behind them from the module.
+- `check-code-messages/` (Python, stdlib only) keeps R's printed diagnostics out of rendered code.
+  It lints calls known to print a message, and it scans a rendered site for stderr output blocks.
+  It takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  Unlike the other diff-scoped checks, it keeps every added line, with no moved-line exemption.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
   It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
