@@ -53,6 +53,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -106,7 +107,6 @@ LINE_OPT_OUT_RE = re.compile(
 )
 
 # Inline code span regex (`...`) to strip before running prose detection patterns
-INLINE_CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
 
 # Detection Patterns: optionally allow inline math or symbol parenthetical between term and verb
 # (e.g. `A **random variable** $X$ is a...` or `The **estimator** $\hat{\theta}$ is defined as...`)
@@ -282,7 +282,7 @@ def scan_file_lines(
         is_targeted_line = added_lines is None or idx in added_lines
 
         # Strip inline code spans (`...`) so backticked symbols and references do not trigger findings
-        prose_line = INLINE_CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
+        prose_line = mdmask.mask_code_spans(line)
 
         # Pattern 1: Bold term followed by defining language
         m_bold = BOLD_DEF_RE.search(prose_line)
@@ -637,7 +637,7 @@ def scan_def_div_terms(
         if TITLE_RE.match(stripped) and not terms:
             own_words |= word_stems(stripped)
             continue
-        prose = INLINE_CODE_SPAN_RE.sub(_blank, line)
+        prose = mdmask.CODE_SPAN_RE.sub(_blank, line)
         div_words |= word_stems(BOLD_SPAN_RE.sub(" ", INLINE_MATH_RE.sub(" ", prose)))
         for bold in BOLD_SPAN_RE.finditer(prose):
             own_words |= word_stems(bold.group("term"))

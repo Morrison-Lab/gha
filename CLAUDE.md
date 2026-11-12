@@ -545,7 +545,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
   `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
   Each of those keeps its own fence state.
-  Its code-span pattern, which closes a span only on a backtick run of the same length, is also the one `check-key-equations-displayed`, `check-definite-antecedents`, `check-quarto-prose`, and `check-literal-math-letters` use.
+  Its code-span pattern, which closes a span only on a backtick run of the same length, is also the one `check-key-equations-displayed`, `check-definite-antecedents`, `check-quarto-prose`, `check-literal-math-letters`, `check-self-credits`, `check-self-contained-captions`, and `check-informal-definitions` use.
+  `check-term-links` masks comments and code spans with `mask_markdown_line`.
+  `PARAGRAPH_CODE_SPAN_RE` is the same pattern over one paragraph or body, where a span may cross a line break;
+  `check-extracted-lemmas` and `check-exercise-question-paragraph` use it.
   A check puts the directory on `sys.path` and imports it.
   A composite action runs from a checkout of the whole repository, so `../check-common` is always beside it.
   Fix a diff-scoping bug there, and in any copy a check still carries until it moves onto the module.

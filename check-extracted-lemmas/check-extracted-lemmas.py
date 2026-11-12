@@ -47,6 +47,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -85,7 +86,6 @@ NEGATION_RE = re.compile(r"(?:not|no|never|cannot|\w+n['’]t)", re.IGNORECASE)
 NEGATION_WINDOW = 4
 INLINE_MATH_TOKEN_RE = re.compile(r"\$[^$]*\$")
 EDGE_PUNCT_RE = re.compile(r"^[\W_]+|[\W_]+$")
-INLINE_CODE_RE = re.compile(r"`[^`]*`")
 CITES_RESULT_RE = re.compile(r"(?:@|#)(?:thm|lem|cor|prp)-")
 PROOF_OPEN_RE = re.compile(r"^ {0,3}:{3,}\s*\{[^}]*\.proof\b")
 SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
@@ -196,7 +196,7 @@ def _negated(sentence: str, start: int) -> bool:
 
 def states_general_fact(text: str) -> bool:
     """A sentence with 'for any/every/all' that also holds inline math."""
-    for sentence in SENTENCE_END_RE.split(INLINE_CODE_RE.sub(" ", text)):
+    for sentence in SENTENCE_END_RE.split(mdmask.PARAGRAPH_CODE_SPAN_RE.sub(" ", text)):
         if "$" not in sentence:
             continue
         if any(not _negated(sentence, m.start()) for m in GENERAL_RE.finditer(sentence)):

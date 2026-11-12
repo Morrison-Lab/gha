@@ -31,6 +31,11 @@ FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})\s*(\S*)")
 # span, where the plain ``(`+).+?\1`` closed both early (gha#1856).
 CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 
+# The same span over a paragraph's text, where CommonMark lets a span run
+# across a line break.  Use it only on text that is one paragraph or one
+# body, never on a whole file.
+PARAGRAPH_CODE_SPAN_RE = re.compile(CODE_SPAN_RE.pattern, re.S)
+
 
 def mask_code_spans(line: str) -> str:
     """Blank every code span on one line, keeping the line's length."""

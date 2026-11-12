@@ -76,6 +76,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -280,7 +281,6 @@ SOURCE_DIV_RE = re.compile(
     re.IGNORECASE)
 ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])[ \t]+")
 HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s")
-INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 SENTENCE_END_RE = re.compile(r"(?<=[.!?])[)\]\"'*_]*\s+(?=\S)")
 ABBREVIATION_RE = re.compile(
     r"(?:\b[A-Z]|\b(?:al|Dr|Prof|Mr|Mrs|Ms|vs|etc|cf|Fig|Eq|No|Vol|pp?)"
@@ -430,7 +430,7 @@ def scan_file(lines: List[str], cfg: Config, own: Set[str]
             continue
         if ITEM_RE.match(raw):
             flush()
-        raw = INLINE_CODE_RE.sub(lambda mm: " " * len(mm.group(0)), raw)
+        raw = mdmask.mask_code_spans(raw)
         for c in CITE_RE.finditer(raw):
             key = c.group(1)
             if key.startswith(XREF_PREFIXES) or key not in own:
