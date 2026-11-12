@@ -530,7 +530,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `above` or `below` used for a place in the document, `just`, `easy` and `easily`, time-relative words such as `currently` and `recently`, and a generic placeholder set such as `domain A`.
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
-  Keep the two directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`.
+  Keep the three directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`, which takes its git and diff helpers from `../check-common/diffscope.py` (gha#1856).
 - `check-common/` (Python, stdlib only, gha#1856) is not a check: it holds `diffscope.py`, the one copy of the diff-scoping helpers.
   Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
   A check puts the directory on `sys.path` and imports it.
@@ -540,6 +540,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Without it git quotes a name holding `"`, a backslash, or a tab even under `core.quotepath=false`, and only `-z` avoids it (gha#1923).
   `git status --porcelain` also quotes a name holding a space (git 2.43.0, gha#1930), so decode every status path with `diffscope.unquote_git_path`.
   `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
+  `check-write-idiom` keeps `parse_diff`, `compile_globs` and `GIT_DIFF_ARGS` as names for the checks that load it as their engine, and takes the code behind them from the module.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
   It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
