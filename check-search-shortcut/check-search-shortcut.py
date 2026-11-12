@@ -32,13 +32,15 @@ Configuration (environment variables, set by the composite action):
   CSS_FAIL           "false" => warn only; default "true".
 """
 
-import fnmatch
 import os
 import re
-import subprocess
 import sys
 from collections import defaultdict
 from typing import Dict, List, NamedTuple, Optional
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_GLOBS = "_quarto*.yml */_quarto*.yml"
 DEFAULT_IGNORE = "_extensions/**"
@@ -164,25 +166,18 @@ def check_project(directory: str, files: Dict[str, List[str]]) -> List[Finding]:
     return findings
 
 
-def _ignored(path: str, patterns: List[str]) -> bool:
-    for pat in patterns:
-        regex = re.escape(pat).replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
-        regex = regex.replace(r"\?", "[^/]")
-        if re.fullmatch(regex, path) or fnmatch.fnmatch(path, pat):
-            return True
-    return False
-
-
 def tracked_files(globs: List[str]) -> List[str]:
-    out = subprocess.run(["git", "ls-files", "--"] + globs, check=True,
-                         capture_output=True, text=True).stdout
-    return [p for p in out.splitlines() if p]
+    paths = diffscope.git_paths(["ls-files", "--"] + globs)
+    if paths is None:
+        raise SystemExit("check-search-shortcut: git ls-files failed; run it inside a git checkout")
+    return paths
 
 
 def run(globs: List[str], patterns: List[str]) -> List[Finding]:
+    ignores = diffscope.compile_ignores(patterns)
     by_dir: Dict[str, Dict[str, List[str]]] = defaultdict(dict)
     for path in tracked_files(globs):
-        if _ignored(path, patterns) or not os.path.isfile(path):
+        if diffscope.ignored(path, ignores) or not os.path.isfile(path):
             continue
         with open(path, encoding="utf-8", errors="replace") as handle:
             by_dir[os.path.dirname(path) or "."][path] = handle.read().splitlines()
@@ -195,8 +190,7 @@ def run(globs: List[str], patterns: List[str]) -> List[Finding]:
 def main() -> int:
     globs = os.environ.get("CSS_GLOBS", "").split() or DEFAULT_GLOBS.split()
     ignore = os.environ.get("CSS_PATHS_IGNORE", "")
-    patterns = [p.strip() for p in re.split(r"[,\n]", ignore) if p.strip()]
-    patterns += DEFAULT_IGNORE.split()
+    patterns = diffscope.split_list(ignore) + DEFAULT_IGNORE.split()
     fail = os.environ.get("CSS_FAIL", "true").lower() != "false"
     findings = run(globs, patterns)
     level = "error" if fail else "warning"

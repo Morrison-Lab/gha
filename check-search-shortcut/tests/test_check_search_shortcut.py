@@ -74,8 +74,9 @@ def test_comment_after_value_ignored():
 
 
 def test_ignore_pattern_matches_extensions():
-    assert css._ignored("_extensions/a/_quarto.yml", ["_extensions/**"])
-    assert not css._ignored("_quarto.yml", ["_extensions/**"])
+    ignores = css.diffscope.compile_ignores(["_extensions/**"])
+    assert css.diffscope.ignored("_extensions/a/_quarto.yml", ignores)
+    assert not css.diffscope.ignored("_quarto.yml", ignores)
 
 
 def test_nested_search_false_does_not_turn_search_off():
@@ -110,3 +111,35 @@ def test_default_globs_reach_a_nested_config(tmp_path, monkeypatch):
     (tmp_path / "docs" / "_quarto.yml").write_text("website:\n  title: x\n")
     subprocess.run(["git", "add", "docs/_quarto.yml"], check=True)
     assert len(css.run(css.DEFAULT_GLOBS.split(), [])) == 1
+
+
+def test_directory_name_with_a_quote_is_listed(tmp_path, monkeypatch):
+    # git quotes such a name in a plain ls-files listing (gha#1923).
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    sub = tmp_path / 'say"hi'
+    sub.mkdir()
+    (sub / "_quarto.yml").write_text("website:\n  title: x\n")
+    subprocess.run(["git", "add", "--", 'say"hi/_quarto.yml'], check=True)
+    found = css.run(css.DEFAULT_GLOBS.split(), [])
+    assert [f.directory for f in found] == ['say"hi']
+
+
+def test_bare_directory_ignore_skips_its_contents(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "_quarto.yml").write_text("website:\n  title: x\n")
+    subprocess.run(["git", "add", "docs/_quarto.yml"], check=True)
+    assert css.run(css.DEFAULT_GLOBS.split(), ["docs"]) == []
+
+
+def test_outside_a_git_checkout_exits_with_an_error(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+    try:
+        css.run(css.DEFAULT_GLOBS.split(), [])
+    except SystemExit as exc:
+        assert "git ls-files failed" in str(exc)
+    else:
+        raise AssertionError("run() returned outside a git checkout")

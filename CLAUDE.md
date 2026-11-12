@@ -601,6 +601,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It keeps its own git and diff helpers, because they run in a target directory, raise on a git error, and split git's output on newlines alone so a lone carriage return does not shift line numbers.
 - `check-unexplained-choices/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-solution-citations/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-search-shortcut/` (Python, stdlib only) takes its file listing and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-format-output-files/` (Python, stdlib only) takes its file listing and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-rubric-checklists/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-single-ask-parts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426):
