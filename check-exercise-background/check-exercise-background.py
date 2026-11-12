@@ -24,10 +24,14 @@ text of every div it cites or links (``@exr-``, ``@def-``, ``@thm-``,
 exercise lends its text but not its solutions. An exercise that cites an
 ``exr-`` the scanned files do not hold is skipped, since its background is
 elsewhere. A part that builds on an earlier exercise ("Use the setup of
-@exr-...") is skipped too. A math macro says the word its name begins
-with (``\grad`` says gradient), short macros say the words ``MACRO_WORDS`` lists
-(``\E`` says expected), and words inside ``\text{}``, ``\operatorname{}`` and
-``\mathrm{}`` count as body words.
+@exr-...") is skipped too. A math macro says the words ``MACRO_WORDS``
+lists for it, matched whole (``\E`` says expected, ``\grad`` says
+gradient); a name of five letters or more says a longer word it starts,
+unless it is in ``SYMBOL_MACROS`` or ``MACRO_WORDS`` (``\noise`` says noiseless);
+and a name says a word of five letters or more that it extends by a suffix
+in ``MACRO_SUFFIXES`` (``\gradients``). Layout and grouping macros
+(``FORMAT_MACROS``) say nothing. Words inside ``\text{}``, ``\textbf{}``,
+``\operatorname{}``, ``\mathrm{}`` and the like count as body words.
 
 A word counts as present when another word in the body shares its first
 five letters, so "Maximizing" matches "maximum". Generic task verbs (find,

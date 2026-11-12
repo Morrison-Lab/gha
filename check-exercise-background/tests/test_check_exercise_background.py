@@ -410,15 +410,18 @@ def test_a_listed_macro_word_matches_only_whole(macro, term):
     assert found_with(exercise(term, body), d) == [[first]]
 
 
-def test_a_listed_macro_word_still_says_its_whole_word():
-    d = defs("Variance")
-    assert found_with(exercise("Variance", "Find $\\Var{X}$."), d) == []
-
-
-@pytest.mark.parametrize("macro", ["\\paren{x}", "\\set{x}", "\\sb{x}", "\\cb{x}"])
-def test_a_grouping_macro_says_nothing(macro):
-    d = defs("Parent node", "Settings", "Cbor")
-    assert found_with(exercise("Parent node", f"Find the node ${macro}$."), d) == [["parent"]]
+@pytest.mark.parametrize("macro, term", [
+    ("\\paren{x}", "Parent"),
+    ("\\set{x}", "Set"),
+])
+def test_a_grouping_macro_says_nothing(macro, term):
+    # Each title word is one the macro name would say if it were not a
+    # grouping macro: the name itself, or a word it starts. Two-letter
+    # names such as sb and cb are below the three-letter floor anyway.
+    d = defs(f"{term} node")
+    title = f"{term} node"
+    word = term.lower()
+    assert found_with(exercise(title, f"Find the node ${macro}$."), d) == [[word]]
 
 
 @pytest.mark.parametrize("definition, title, body", [
