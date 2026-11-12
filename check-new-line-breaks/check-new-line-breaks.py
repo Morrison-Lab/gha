@@ -65,6 +65,7 @@ Configuration (all via environment variables, set by the composite action):
                     is instead named in a warning.
 """
 
+import bisect
 import os
 import re
 import sys
@@ -263,6 +264,14 @@ def split_sentences(text: str) -> List[str]:
     )
     protected = re.sub(r"`[^`]+`", _protect_inline_code, protected)
     protected = _INLINE_HTML_TAG_RE.sub(_protect_inline_code, protected)
+    # A `](` inside a code span, an HTML tag or comment, or math is not a link.
+    protected = _sub_link_targets(
+        protected,
+        lambda target: target.replace(".", _PLACEHOLDER)
+        .replace("!", "\x01")
+        .replace("?", "\x02"),
+        _LINK_SKIP,
+    )
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
     # Protect lowercase abbreviation forms only now, after the uppercase branch
     # has run, so they suppress the lowercase branch below without stopping the
@@ -286,7 +295,7 @@ def split_sentences(text: str) -> List[str]:
 # Order matters: link targets go before bare URLs, so `[text](url)` has
 # already become `[text]` and leaves no URL behind.
 #
-# The code-span pattern backreferences its opening run, so an N-backtick span
+# Code spans are removed by `_drop_code_spans`, so an N-backtick span
 # (CommonMark's form for a span that itself contains a backtick) closes on a
 # run of the same length rather than on the next backtick. A plain
 # `` `[^`]*` `` matches the empty span between the two opening backticks of a
@@ -296,8 +305,8 @@ def split_sentences(text: str) -> List[str]:
 # The bare-URL pattern stops before trailing sentence punctuation, so a `;`
 # that ends the clause a URL sits in survives the strip. `\S+` would eat it
 # along with the URL and silence a genuine rule 5 break.
-_CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1)[\s\S])*?\1")
-_LINK_TARGET_RE = re.compile(r"\]\([^)]*\)")
+
+
 _AUTOLINK_RE = re.compile(r"<https?://[^>\s]*>")
 _BARE_URL_RE = re.compile(r"https?://\S*[^\s.,;:!?)\]]")
 _ENTITY_RE = re.compile(
@@ -342,6 +351,335 @@ _TEX_MATH_ENV_RE = re.compile(
     r"(?:>\s*|[-*+]\s+|\d+[.)]\s+)*" + _TEX_MATH_ENV_OPEN
 )
 _TEX_MATH_ENV_TAIL_RE = re.compile(_TEX_MATH_ENV_OPEN + r"\s*$")
+
+
+# ── Link targets ────────────────────────────────────────────────────────────
+
+def _code_spans(text: str) -> List[Tuple[int, int]]:
+    """Return CommonMark code spans: a backtick run closed by the next run of
+    the same length.
+
+    A run with no later run of its length is literal text, and the scan moves
+    on to the next run. Runs of each length are listed once, so each lookup is
+    a binary search, so a line of thousands of backticks stays fast, where a
+    backreferencing regex backtracks.
+    """
+    runs = [(m.start(), m.end()) for m in re.finditer(r"`+", text)]
+    by_len = {}
+    for idx, (a, b) in enumerate(runs):
+        by_len.setdefault(b - a, []).append(idx)
+    spans = []
+    idx = 0
+    while idx < len(runs):
+        a, b = runs[idx]
+        same = by_len[b - a]
+        pos = bisect.bisect_right(same, idx)
+        if pos == len(same):
+            idx += 1
+            continue
+        close = same[pos]
+        spans.append((a, runs[close][1]))
+        idx = close + 1
+    return spans
+
+
+def _drop_code_spans(text: str) -> str:
+    """Return ``text`` with every code span from `_code_spans` removed."""
+    kept = []
+    last = 0
+    for a, b in _code_spans(text):
+        kept.append(text[last:a])
+        last = b
+    kept.append(text[last:])
+    return "".join(kept)
+
+
+def _comment_spans(text: str) -> List[Tuple[int, int]]:
+    """Return HTML comment spans, each ``<!--`` closed by the next ``-->``.
+
+    Once an opener finds no closer, no later opener can either, so the scan
+    stops there and the whole line is read once.
+    """
+    spans = []
+    k = text.find("<!--")
+    while k != -1:
+        end = text.find("-->", k + 4)
+        if end == -1:
+            break
+        spans.append((k, end + 3))
+        k = text.find("<!--", end + 3)
+    return spans
+
+
+def _regex_spans(pattern):
+    return lambda text: [m.span() for m in pattern.finditer(text)]
+
+
+# A `](` inside any of these is not a link. strip_inline_markup has
+# already removed code spans, so it passes the rest of the tuple.
+# link_target_spans calls them only on a line that holds a `](`.
+_LINK_SKIP = (
+    _code_spans,
+    _comment_spans,
+    _regex_spans(_INLINE_HTML_TAG_RE),
+    _regex_spans(_MATH_RE),
+)
+
+
+def _escape_map(text: str) -> List[bool]:
+    """Mark each character a backslash escapes, reading left to right."""
+    escaped = [False] * len(text)
+    k = 0
+    while k < len(text):
+        if text[k] == "\\" and k + 1 < len(text):
+            escaped[k + 1] = True
+            k += 2
+        else:
+            k += 1
+    return escaped
+
+
+def _paren_matches(text: str, escaped: List[bool]) -> List[int]:
+    """Map each unescaped ``(`` to its matching ``)``, or -1 when unmatched."""
+    match = [-1] * len(text)
+    stack = []
+    for k, ch in enumerate(text):
+        if escaped[k]:
+            continue
+        if ch == "(":
+            stack.append(k)
+        elif ch == ")" and stack:
+            match[stack.pop()] = k
+    return match
+
+
+def _next_unescaped(text: str, escaped: List[bool], chars: str) -> dict:
+    """For each char in ``chars``, map position k to its next unescaped index."""
+    tables = {}
+    n = len(text)
+    for c in chars:
+        nxt = [n] * (n + 1)
+        for k in range(n - 1, -1, -1):
+            nxt[k] = k if text[k] == c and not escaped[k] else nxt[k + 1]
+        tables[c] = nxt
+    return tables
+
+
+def _next_non_space(text: str) -> List[int]:
+    """Map each index to the first index at or after it that is not whitespace."""
+    n = len(text)
+    nns = [n] * (n + 1)
+    for k in range(n - 1, -1, -1):
+        nns[k] = nns[k + 1] if text[k].isspace() else k
+    return nns
+
+
+def _bracket_opens(text: str, escaped, inside) -> List[int]:
+    """Map each unescaped ``]`` to the ``[`` it closes, or -1.
+
+    Brackets inside a skip span (a code span, an HTML tag or comment, or math)
+    take no part, as Pandoc reads them as text there.
+    """
+    opens = [-1] * len(text)
+    stack = []
+    for k, ch in enumerate(text):
+        if escaped[k] or inside[k]:
+            continue
+        if ch == "[":
+            stack.append(k)
+        elif ch == "]" and stack:
+            opens[k] = stack.pop()
+    return opens
+
+
+def _title_closes(text: str, quote: str) -> List[int]:
+    """Map each index k to the quote that closes a title whose body starts at k.
+
+    This follows Pandoc's quoted-title reader. A backslash escapes the next
+    character. A ``quote`` followed by a letter or digit opens a nested
+    quotation, which must close before the title can. Any other ``quote``
+    closes the title. The value is ``len(text)`` when the title never closes.
+    Each entry looks only to its right, so one right-to-left pass fills the
+    table, and every title on the line shares it.
+    """
+    n = len(text)
+    close = [n] * (n + 2)
+    for k in range(n - 1, -1, -1):
+        ch = text[k]
+        if ch == "\\" and k + 1 < n:
+            close[k] = close[k + 2]
+        elif ch != quote:
+            close[k] = close[k + 1]
+        elif k + 1 < n and text[k + 1].isalnum():
+            inner = close[k + 1]
+            close[k] = n if inner >= n else close[inner + 1]
+        else:
+            close[k] = k
+    return close
+
+
+def _close_after_title(text: str, j: int, titles: dict, nns) -> int:
+    """Return the index of the ``)`` that closes a title opening at ``j``.
+
+    The title must be followed only by whitespace and the closing ``)``, or
+    Pandoc reads no link at all, and then this returns -1.
+    """
+    n = len(text)
+    close = titles[text[j]][j + 1]
+    if close >= n:
+        return -1
+    k = nns[close + 1]
+    return k if k < n and text[k] == ")" else -1
+
+
+def _angle_target_end(text: str, j: int, nxt, titles, nns) -> int:
+    """Return the ``)`` ending an angle destination at ``j``, or -1."""
+    n = len(text)
+    gt = nxt[">"][j + 1]
+    if gt >= n:
+        return -1
+    k = nns[gt + 1]
+    if k < n and text[k] == ")":
+        return k
+    if k < n and text[k] in "\"'":
+        return _close_after_title(text, k, titles, nns)
+    return -1
+
+
+def _is_note_ref(text: str, o: int) -> bool:
+    """Whether the ``[`` at ``o`` opens a footnote reference.
+
+    Pandoc reads ``[^label]`` as a note when the label, up to the first
+    ``]``, is not empty and holds no whitespace and no ``^``;
+    so ``[^1]`` is a note, while ``[^a b]`` and ``[^x^]`` are link text.
+    """
+    if text[o + 1:o + 2] != "^":
+        return False
+    close = text.find("]", o + 2)
+    label = text[o + 2:close]
+    return (close != -1 and label != ""
+            and not any(c.isspace() or c == "^" for c in label))
+
+
+def _target_end(text: str, i: int, escaped, match, nxt, titles, nns) -> int:
+    """Return the index of the ``)`` ending the target at ``i``, or -1."""
+    n = len(text)
+    j = nns[i + 2]
+    if j < n and text[j] == "<":
+        # An angle-bracket destination runs to the first unescaped `>`
+        # and may hold spaces and parentheses.
+        # With no unescaped `>` to close it, Pandoc reads the `<` as
+        # ordinary destination text, so fall back to the plain walk.
+        if nxt[">"][j + 1] < n:
+            return _angle_target_end(text, j, nxt, titles, nns)
+    while j < n:
+        if escaped[j]:
+            j += 1
+            continue
+        ch = text[j]
+        if ch in "\"'" and text[j - 1].isspace():
+            return _close_after_title(text, j, titles, nns)
+        if ch == "(":
+            # Jump over a nested balanced pair; a quote inside it is
+            # destination text, as Pandoc reads it.
+            if match[j] == -1:
+                return -1
+            j = match[j] + 1
+            continue
+        if ch == ")":
+            return j
+        j += 1
+    return -1
+
+
+def link_target_spans(
+    text: str, skip=()
+) -> List[Tuple[int, int]]:
+    """Return the ``(start, end)`` span of each ``](...)`` link target.
+
+    Ported from gla's copy (gha#1927), and fitted to what Pandoc 3.10's
+    markdown reader (the one Quarto uses) reads as a link.
+    The destination may hold spaces and balanced parentheses, so
+    ``](https://x.org/A_(b. C))`` is one target.
+    A destination in angle brackets runs to its ``>``, so
+    ``](<a)b. C>)`` is one target.
+    A title is a quoted string after whitespace; it may hold a ``)`` and a
+    backslash-escaped quote, so ``](u "a) b. C")`` is one target too.
+    A quote with no whitespace before it, or inside nested parentheses, is
+    part of the destination, as in ``](https://example.org/O'Brien)``.
+    Pandoc has no parenthesized titles: ``](u (Fig. 1. T))`` is one
+    destination with spaces, which the balanced-parentheses rule covers.
+    A ``](`` with no closing ``)``, or a title followed by more text, is not
+    a link, so it yields no span and its text stays prose.
+    ``skip`` holds span finders, run only on a line with a ``](``;
+    a ``](`` inside a span one of them returns (a code span, an HTML tag or
+    comment, or math) is not a link either.
+    Nor is a ``]`` that closes a footnote reference such as ``[^1]``,
+    or the second bracket of a reference link such as ``[x][r](u)``,
+    whose ``[`` follows a ``]`` that closes a ``[`` of its own.
+    A ``]`` that closes no ``[`` is read as the end of link text wrapped
+    from the line before, as in ``continued](u. C)``, unless a ``[`` comes
+    earlier on the line outside a skip span
+    (an escaped one counts, since Pandoc shows it as a bracket).
+    So ``(a, b](c. D)`` at a line's start is read as a link,
+    an accepted cost, since this check reads one line at a time.
+
+    Parentheses, brackets, quotes, and whitespace runs are each indexed once,
+    up front, and each start walks only its own destination's top level,
+    jumping over nested pairs.
+    The tests time this on long adversarial lines rather than prove a bound.
+    """
+    if "](" not in text:
+        return []
+    skip = [span for find in skip for span in find(text)]
+    escaped = _escape_map(text)
+    match = _paren_matches(text, escaped)
+    nxt = _next_unescaped(text, escaped, ">")
+    titles = {q: _title_closes(text, q) for q in "\"'"}
+    nns = _next_non_space(text)
+    inside = bytearray(len(text))
+    for start, end in skip:
+        inside[start:end] = bytes([1]) * (end - start)
+    opens = _bracket_opens(text, escaped, inside)
+    first_open = next(
+        (k for k, ch in enumerate(text)
+         if ch == "[" and not inside[k]),
+        -1,
+    )
+    spans = []
+    i = text.find("](")
+    while i != -1:
+        # An escaped `]`, or one inside a skip span, ends no link. A `]`
+        # that closes no `[` ends a link wrapped from the previous line,
+        # unless a `[` earlier on this line shows it is something else.
+        o = opens[i]
+        if (escaped[i] or inside[i]
+                or (o == -1 and -1 < first_open < i)
+                or (o != -1 and _is_note_ref(text, o))
+                or (o > 0 and opens[o - 1] != -1)):
+            i = text.find("](", i + 1)
+            continue
+        end = _target_end(text, i, escaped, match, nxt, titles, nns)
+        if end == -1:
+            i = text.find("](", i + 2)
+            continue
+        spans.append((i, end + 1))
+        i = text.find("](", end + 1)
+    return spans
+
+
+def _sub_link_targets(text: str, repl, skip=()) -> str:
+    """Replace each link target span with ``repl(span_text)``."""
+    out = []
+    last = 0
+    for start, end in link_target_spans(text, skip):
+        out.append(text[last:start])
+        out.append(repl(text[start:end]))
+        last = end
+    out.append(text[last:])
+    return "".join(out)
+
+
 # One home for each default; action.yml and the reusable workflow declare
 # the same values, and a test pins all of them together.
 _DEFAULT_FAIL = True
@@ -372,8 +710,10 @@ def strip_inline_markup(text: str) -> str:
     ``\\S+`` would have swallowed along with the URL.
     """
     # `]` keeps a bracketed link's visible text attached to its own sentence.
-    text = _CODE_SPAN_RE.sub("", text)
-    text = _LINK_TARGET_RE.sub("]", text)
+    text = _drop_code_spans(text)
+    text = _sub_link_targets(
+        text, lambda target: "]", _LINK_SKIP[1:]
+    )
     text = _INLINE_HTML_TAG_RE.sub("", text)
     for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE, _MATH_RE):
         text = pattern.sub("", text)
