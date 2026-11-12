@@ -238,7 +238,7 @@ _PLACEHOLDER = "\x00"
 
 
 def _protect_inline_code(m: "re.Match[str]") -> str:
-    """Replace sentence-ending punctuation inside backtick spans with placeholders."""
+    """Replace sentence-ending punctuation in a code span or HTML tag with placeholders."""
     return m.group(0).replace(".", _PLACEHOLDER).replace("!", "\x01").replace("?", "\x02")
 
 
@@ -262,6 +262,7 @@ def split_sentences(text: str) -> List[str]:
         lambda m: m.group(1) + m.group(2) + _PLACEHOLDER, protected
     )
     protected = re.sub(r"`[^`]+`", _protect_inline_code, protected)
+    protected = _INLINE_HTML_TAG_RE.sub(_protect_inline_code, protected)
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
     # Protect lowercase abbreviation forms only now, after the uppercase branch
     # has run, so they suppress the lowercase branch below without stopping the
@@ -302,6 +303,25 @@ _BARE_URL_RE = re.compile(r"https?://\S*[^\s.,;:!?)\]]")
 _ENTITY_RE = re.compile(
     r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
 )
+# Inline HTML tags, ported from gla's copy (gha#1927): open and closing tags
+# and processing instructions, following what Pandoc's markdown reader (the
+# one Quarto uses) accepts as raw HTML.
+# Punctuation inside a tag, such as the dot in `<img src="a.png" alt="Fig. 1">`
+# or the `;` in `style="color: red; margin: 0"`, is markup rather than prose,
+# so split_sentences protects it and strip_inline_markup drops the tag.
+# The tag name must be followed by whitespace, `/` or `>`, so an autolink
+# such as `<https://example.com>` (a `:` after the name) is not a tag.
+# An attribute name may not contain a dot. Pandoc rejects one, so it renders
+# `i<p holds. Then q>i` as visible text with a real sentence break, while it
+# reads `n<k holds Then m>k`, with no dot, as raw HTML.
+# CommonMark's declarations and CDATA sections are left out, because Pandoc
+# renders `<!DOCTYPE x. Y>` and `<![CDATA[A. B]]>` as text.
+_INLINE_HTML_TAG_RE = re.compile(
+    r"<[A-Za-z][A-Za-z0-9\-]*(?:\s+[A-Za-z_:][A-Za-z0-9_:\-]*"
+    r"(?:\s*=\s*(?:[^\s\"'=<>`]+|'[^']*'|\"[^\"]*\"))?)*\s*/?>"
+    r"|</[A-Za-z][A-Za-z0-9\-]*\s*>"
+    r"|<\?[\s\S]*?\?>"
+)
 # TeX math (gha#998): a `;` inside `$f(x; \theta)$` separates arguments and
 # never ends a clause, and breaking the source line inside the math to please
 # the check is worse than the long line. The inline form follows Pandoc's
@@ -332,9 +352,10 @@ _DEFAULT_CLAUSE_MIN_LENGTH = 80
 def strip_inline_markup(text: str) -> str:
     """Drop non-prose markup, leaving the prose around it.
 
-    Removes inline code spans, link targets, autolinks, bare URLs, TeX math, and HTML
-    character entities -- every construct that can carry a ``;`` that is not a
-    clause boundary, or inflate a line's length without adding visible text.
+    Removes inline code spans, link targets, inline HTML tags, autolinks, bare
+    URLs, TeX math, and HTML character entities -- every construct that can
+    carry a ``;`` that is not a clause boundary, or inflate a line's length
+    without adding visible text.
     The spec sanctions the length half of this directly: rule 13 says a line
     "MAY exceed the maximum line length if necessary, such as to accommodate
     hyperlinks, code elements, or other markup".
@@ -353,6 +374,7 @@ def strip_inline_markup(text: str) -> str:
     # `]` keeps a bracketed link's visible text attached to its own sentence.
     text = _CODE_SPAN_RE.sub("", text)
     text = _LINK_TARGET_RE.sub("]", text)
+    text = _INLINE_HTML_TAG_RE.sub("", text)
     for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE, _MATH_RE):
         text = pattern.sub("", text)
     return text
@@ -395,7 +417,8 @@ def has_late_semicolon(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) 
     characters is RECOMMENDED": under it, a line needs no break to conform.
     The gate measures the *stripped* length (see ``strip_inline_markup``, and
     rule 13 behind it), so a line that is only long because of a code span, a
-    link target, a bare URL, or an autolink does not qualify.
+    link target, an inline HTML tag, a bare URL, or an autolink does not
+    qualify.
     ``min_length`` is inclusive: a line of exactly that many visible
     characters is checked.
 
