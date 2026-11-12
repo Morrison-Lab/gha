@@ -521,7 +521,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `check-local-macros/` bundles the same three pieces for flagging macros defined outside `Morrison-Lab/macros`;
   `check-fform-paren/` (Python, stdlib only, gha#1082) flags `\name\paren{...}` (or `\sb{`, `\cb{`) on a line a PR adds when the macros file defines `\namef`,
   and suggests `\namef{...}`.
-  It copies `check-local-macros`'s diff model and Markdown masking rather than importing them (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default).
+  It takes its diff model from `check-common/diffscope.py` (gha#1856): added lines only, moved lines exempt, skip-not-fall-back, warn-only by default.
+  It still copies `check-local-macros`'s Markdown masking, so keep `check-common` beside it.
   The known f forms are read from `macros-file` (`latex-macros/macros.qmd` by default), and a missing file skips with a warning, because without it no f form is known;
   `check-write-idiom/` (Python, stdlib only, gha#1121, from psw#297) flags a line a PR adds in a `.qmd` or `.md` file that opens, after an optional list marker and label such as `(a)`, with `Write` followed by `the`, `a` or `an`,
   because "Write ..." hides whether to derive, express, state or give.
