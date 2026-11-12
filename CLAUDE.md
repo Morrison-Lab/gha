@@ -602,10 +602,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-serial-comma/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-unexplained-contrasts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-restated-results/` (Python, stdlib only) takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856) and its diff arguments and parser from `check-write-idiom`'s engine, so keep both directories beside it.
-- `check-page-length/` (Python, stdlib only) takes its git, diff, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-page-length/` (Python, stdlib only) takes its git, diff, and path-ignore helpers from `check-common/diffscope.py` and its code-span pattern from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
 - `check-split-solutions/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-orphaned-images/` (Python) takes its git and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
-- `check-quarto-links/` (Python) takes its git and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-quarto-links/` (Python) takes its git and path-ignore helpers from `check-common/diffscope.py` and its code-span pattern from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
 - `check-quarto-prose/` (Python, stdlib only) takes its path-ignore helpers from `check-common/diffscope.py` and its code-span pattern from `check-common/mdmask.py` (gha#1856), so keep `check-common` beside it.
   It keeps its own git and diff helpers, because they run in a target directory, raise on a git error, and split git's output on newlines alone so a lone carriage return does not shift line numbers.
 - `check-unexplained-choices/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
@@ -645,6 +645,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   the writer removes by scanning lines, while the checker parses both files
   with `quarto pandoc` and compares the ASTs, so a line-scanning bug in the
   writer is not repeated in the check.
+  Both take their code-span pattern from `check-common/mdmask.py` (gha#1856),
+  so keep `check-common` beside `student-qmd`.
   Include expansion is the shared part the check cannot audit, which is why
   the selftest renders the fixture with Quarto itself and asserts which
   nested include it picked.
