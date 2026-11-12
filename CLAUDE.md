@@ -548,6 +548,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Its code-span pattern, `CODE_SPAN_RE`, closes a span only on a backtick run of the same length.
   A check that masks code spans uses it rather than a pattern of its own;
   `grep -rln 'mdmask' --include=*.py .` lists the checks that do.
+  `check-term-links` masks comments and code spans with `mask_markdown_line`.
   `PARAGRAPH_CODE_SPAN_RE` is the same pattern over one paragraph or body, where a span may cross a line break;
   `check-extracted-lemmas` and `check-exercise-question-paragraph` use it.
   A check puts the directory on `sys.path` and imports it.
