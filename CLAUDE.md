@@ -577,6 +577,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-typos/` (Python) takes its path-ignore helpers and diff-header path decoding from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
   It keeps its own git helpers, because they run in the target directory and one raises with git's error text.
 - `check-self-credits/` (Python, stdlib only) takes its git, diff, listing, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-phi/` (Python, stdlib only) takes its git, diff, listing, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  It keeps its own binary-file test, and its walk of the tree for when `git ls-files` cannot run.
 - `check-multipart-exercises/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-note-sheet-rows/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
