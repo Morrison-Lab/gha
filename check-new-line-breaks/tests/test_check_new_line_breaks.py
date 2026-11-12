@@ -311,6 +311,108 @@ def test_initialism_before_a_sentence_opener_still_splits(text, first):
     assert nlb.split_sentences(text)[0] == first
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        'See <img src="fig.png" alt="Fig. 1. The model"> for the layout.',
+        'Click <a href="x.html" title="Done! Next step">here</a> to go on.',
+        "Read <?php echo 'A. B'; ?> carefully before use.",
+        "See <abbr title='Fig. 1. The'>this</abbr> for the layout.",
+        'See <IMG ALT="Fig. 1. The model"> for the layout.',
+        'See <my-widget title="Fig. 1. The model"> for the layout.',
+        'Draw <circle r="1" title="Fig. 1. A circle"/> for the layout.',
+    ],
+)
+def test_punctuation_inside_inline_html_tag_does_not_split(text):
+    """A dot, `!` or `?` inside a tag or attribute is markup, not a sentence
+    end (gha#1927, ported from gla). Removing the `_INLINE_HTML_TAG_RE` line
+    from `split_sentences` splits each of these."""
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_sentence_end_outside_inline_html_tag_still_splits():
+    """Protecting a tag's punctuation leaves the prose around it alone."""
+    text = 'It ends <span class="x">here</span>. Then more follows.'
+    assert nlb.split_sentences(text) == [
+        'It ends <span class="x">here</span>.',
+        "Then more follows.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "markup",
+    [
+        "<https://example.com/a.b>",
+        "<http://x.org>",
+        "a < b. Then c > d",
+        "n<k holds. Then m>k",
+        "i<p holds. Then q>i",
+        "<!DOCTYPE x. Y>",
+        "<![CDATA[A. B]]>",
+    ],
+)
+def test_autolink_and_comparison_are_not_inline_html_tags(markup):
+    """An autolink has `:` after its name, a comparison has a space after `<`
+    or a dotted word Pandoc rejects as an attribute name, and Pandoc reads a
+    declaration or CDATA section as text, so none of these is a tag."""
+    assert nlb._INLINE_HTML_TAG_RE.search(markup) is None
+
+
+def test_semicolon_inside_inline_html_attribute_is_not_a_clause_break():
+    """A `;` in a `style` attribute is markup, so strip_inline_markup drops the
+    tag and a long line carrying only that `;` is not flagged."""
+    text = (
+        '<span style="color: red; margin: 0">This sentence is long enough '
+        "to pass the length gate on its own words.</span>"
+    )
+    assert ";" not in nlb.strip_inline_markup(text)
+    assert not nlb.has_late_semicolon(text)
+
+
+def test_semicolon_after_inline_html_tag_is_still_a_clause_break():
+    """Stripping a tag keeps the prose `;` that follows it."""
+    text = (
+        'Read the <abbr title="a.k.a.">notes</abbr> first; then run every '
+        "check the guide lists before you push anything."
+    )
+    assert "first; then" in nlb.strip_inline_markup(text)
+    assert nlb.has_late_semicolon(text)
+
+
+@pytest.mark.parametrize(
+    "text, first",
+    [
+        ("We assume n<k holds. Then m>k is false.", "We assume n<k holds."),
+        ("We assume i<p holds. Then q>i is false.", "We assume i<p holds."),
+        ("Read <!DOCTYPE x. Y> before use.", "Read <!DOCTYPE x."),
+        ("Read <![CDATA[A. B]]> before use.", "Read <![CDATA[A."),
+    ],
+)
+def test_text_pandoc_does_not_read_as_html_still_splits(text, first):
+    """Pandoc's markdown reader renders each of these as text (a dotted word
+    is not an attribute name, and it has no declarations or CDATA), so the
+    check must still see the sentence break inside it."""
+    assert nlb.split_sentences(text)[0] == first
+
+
+def test_inline_html_tags_do_not_count_toward_the_length_gate():
+    """Tags are markup (rule 13), so they do not count toward the length gate.
+    The prose is under the gate, and keeping the closing tag alone would put
+    it over, so this also pins the closing-tag alternative."""
+    text = (
+        "Read the <span>guide</span> first; then run every check that it "
+        "lists before you push."
+    )
+    prose = (
+        "Read the guide first; then run every check that it lists before "
+        "you push."
+    )
+    assert nlb.strip_inline_markup(text) == prose
+    assert len(prose) < nlb._DEFAULT_CLAUSE_MIN_LENGTH
+    assert len(prose) + len("</span>") >= nlb._DEFAULT_CLAUSE_MIN_LENGTH
+    assert not nlb.has_late_semicolon(text)
+
+
 def test_dotted_abbreviation_before_lowercase_does_not_split():
     """`a.m.`: the terminal period follows `.m`, not two lowercase letters."""
     text = "The build starts at 9 a.m. sharp every day."
