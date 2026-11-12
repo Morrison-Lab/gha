@@ -46,6 +46,10 @@ from difflib import unified_diff
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import mdmask  # noqa: E402  (check-common/mdmask.py, gha#1856)
+
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         try:
@@ -182,7 +186,7 @@ def normalize_math_content(raw_text: str) -> str:
     - Normalizes common LaTeX formatting differences (spacing around operators)
     """
     # Remove comments
-    text = re.sub(r"<!--.*?-->", "", raw_text, flags=re.DOTALL)
+    text = mdmask.replace_comments(raw_text)
     # Remove leading markdown heading lines if already extracted as title
     lines = []
     first_non_empty = True

@@ -37,6 +37,9 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "check-common"))
+import mdmask  # noqa: E402  (check-common/mdmask.py, gha#1856)
+
 N = 6  # shingle length in words
 OVERLAP_OK = re.compile(r"<!--\s*overlap-ok\b")
 BREAK = "qqbreakqq"  # replaces a removed quotation; no corpus holds it
@@ -55,7 +58,7 @@ def normalize_words(text: str) -> list[str]:
 
 
 def strip_markup(text: str) -> str:
-    text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
+    text = mdmask.replace_comments(text, " ")
     text = re.sub(r"^[ \t]*(```+|~~~+).*?^[ \t]*\1\s*$", " ", text, flags=re.S | re.M)
     text = re.sub(r"^\s*\|.*$", " ", text, flags=re.M)  # table rows
     text = re.sub(r"\$\$.*?\$\$", " ", text, flags=re.S)
