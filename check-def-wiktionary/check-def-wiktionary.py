@@ -35,12 +35,15 @@ Configuration (environment variables, set by the composite action):
 import json
 import os
 import re
-import subprocess
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Callable, Dict, List, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd"
 API = "https://en.wiktionary.org/w/api.php"
@@ -52,7 +55,6 @@ HEADING_RE = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$")
 TITLE_ATTR_RE = re.compile(r"""title\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 MATH_RE = re.compile(r"\$[^$]*\$")
 ALLOW_RE = re.compile(r"<!--\s*wiktionary-link\s*:\s*allow\b", re.IGNORECASE)
-HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 # Group 1/2: link around bold text; 3/4: bold text containing an optional link.
 BOLD_RE = re.compile(r"\[\*\*(.+?)\*\*\]\(([^)\s]*)\)|\*\*(.+?)\*\*")
 INNER_LINK_RE = re.compile(r"^\[(.+?)\]\(([^)\s]*)\)$")
@@ -178,42 +180,25 @@ def check_block(title: str, body: str, lookup: Lookup) -> List[str]:
 
 
 def added_lines(diff: str) -> Dict[str, Set[int]]:
-    added: Dict[str, Set[int]] = {}
-    path: Optional[str] = None
-    for line in diff.splitlines():
-        if line.startswith("+++ "):
-            target = line[4:].rstrip("\t")
-            path = None if target == "/dev/null" else target.removeprefix("b/")
-            if path is not None:
-                added.setdefault(path, set())
-            continue
-        m = HUNK_RE.match(line)
-        if m and path is not None:
-            start = int(m.group(1))
-            count = 1 if m.group(2) is None else int(m.group(2))
-            added[path].update(range(start, start + count))
-    return added
-
-
-def _git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(["git", "-c", "core.quotepath=false", *args],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         text=True, encoding="utf-8", errors="replace")
-    return res.stdout if res.returncode == 0 else None
+    """Added line numbers per path from ``git diff -U0`` output."""
+    added, _deleted = diffscope.parse_diff(diff)
+    return {path: set(numbered) for path, numbered in added.items()}
 
 
 def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool
                  ) -> Optional[Dict[str, Optional[Set[int]]]]:
+    """Files to scan, each with its added lines (None = every line)."""
     if whole_tree:
-        out = _git(["ls-files", "--", *globs])
-        return None if out is None else {p: None for p in out.splitlines() if p}
+        paths = diffscope.git_paths(["ls-files", "--", *globs])
+        return None if paths is None else {p: None for p in paths}
     if not base_ref:
         return None
-    base = _git(["merge-base", base_ref, "HEAD"])
+    base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
     if not base or not base.strip():
         return None
-    diff = _git(["diff", "-U0", "--no-color", "--no-ext-diff", base.strip(), "--", *globs])
-    return None if diff is None else dict(added_lines(diff))
+    diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
+                              base.strip(), "--", *globs])
+    return None if diff is None else added_lines(diff)
 
 
 def main() -> int:
