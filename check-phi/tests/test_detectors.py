@@ -428,28 +428,72 @@ def test_email_detector():
 # ── Path-ignore glob translation ─────────────────────────────────────────────
 
 def test_bare_dir_ignore_is_recursive():
-    ignores = check_phi._compile_ignores(["docs"])
-    assert check_phi._ignored("docs/sub/data.csv", ignores) is True
-    assert check_phi._ignored("docs", ignores) is True
+    ignores = check_phi.diffscope.compile_ignores(["docs"])
+    assert check_phi.diffscope.ignored("docs/sub/data.csv", ignores) is True
+    assert check_phi.diffscope.ignored("docs", ignores) is True
 
 
 def test_wildcard_ignore_stays_single_segment():
-    ignores = check_phi._compile_ignores(["tests/*"])
-    assert check_phi._ignored("tests/a.csv", ignores) is True
-    assert check_phi._ignored("tests/sub/a.csv", ignores) is False
+    ignores = check_phi.diffscope.compile_ignores(["tests/*"])
+    assert check_phi.diffscope.ignored("tests/a.csv", ignores) is True
+    assert check_phi.diffscope.ignored("tests/sub/a.csv", ignores) is False
 
 
 def test_double_star_ignore_is_recursive():
-    ignores = check_phi._compile_ignores(["**/*.csv"])
-    assert check_phi._ignored("any/depth/data.csv", ignores) is True
-    assert check_phi._ignored("data.csv", ignores) is True
+    ignores = check_phi.diffscope.compile_ignores(["**/*.csv"])
+    assert check_phi.diffscope.ignored("any/depth/data.csv", ignores) is True
+    assert check_phi.diffscope.ignored("data.csv", ignores) is True
 
 
 # ── Misc helpers ─────────────────────────────────────────────────────────────
 
 def test_split_list_handles_commas_and_newlines():
-    assert check_phi._split_list("ssn, mrn\n dob ") == ["ssn", "mrn", "dob"]
-    assert check_phi._split_list("") == []
+    assert check_phi.diffscope.split_list("ssn, mrn\n dob ") == ["ssn", "mrn", "dob"]
+    assert check_phi.diffscope.split_list("") == []
+
+
+def _git(repo, *args):
+    import subprocess
+    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+
+def test_path_git_quotes_is_scanned(tmp_path, monkeypatch):
+    # git quotes a name holding a double quote even under core.quotepath=false,
+    # so the diff header and ls-files must be decoded before the file is read.
+    repo = tmp_path
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")  # phi-allow
+    _git(repo, "config", "user.name", "Tester")
+    name = 'q"a.txt'
+    (repo / name).write_text("Text.\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    (repo / name).write_text("Text.\npatient ssn 123-45-6789\n")  # phi-allow
+    _git(repo, "commit", "-qam", "add")
+    monkeypatch.chdir(repo)
+    active = [("ssn", check_phi.DETECTORS["ssn"])]
+    rows = check_phi._scan_lines_diff("HEAD~1", [])
+    assert [(p, n) for p, n, _, _, _ in check_phi.scan_lines(rows, active)] == [(name, 2)]
+    whole = check_phi._scan_lines_all([])
+    assert [(p, n) for p, n, _, _, _ in check_phi.scan_lines(whole, active)] == [(name, 2)]
+
+
+def test_added_line_starting_with_plus_plus_is_content(tmp_path, monkeypatch):
+    # An added line whose text begins "++ " shows in the diff as "+++ ...",
+    # which is not a file header: the hunk counts say it is content.
+    repo = tmp_path
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")  # phi-allow
+    _git(repo, "config", "user.name", "Tester")
+    (repo / "a.txt").write_text("Text.\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    (repo / "a.txt").write_text("Text.\n++ patient ssn 123-45-6789\n")  # phi-allow
+    _git(repo, "commit", "-qam", "add")
+    monkeypatch.chdir(repo)
+    active = [("ssn", check_phi.DETECTORS["ssn"])]
+    rows = check_phi._scan_lines_diff("HEAD~1", [])
+    assert [(p, n) for p, n, _, _, _ in check_phi.scan_lines(rows, active)] == [("a.txt", 2)]
 
 
 def test_inline_pragma_matches_phi_allow_but_not_allowlist():

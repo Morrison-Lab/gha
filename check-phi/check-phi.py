@@ -38,10 +38,13 @@ Inline suppression: any line containing the token ``phi-allow`` (e.g. a
 
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -382,19 +385,6 @@ DETECTORS: Dict[str, Callable[[str, int, str], List[Tuple[int, str]]]] = {
 
 # ── Scope resolution ────────────────────────────────────────────────────────
 
-def _run_git(args: List[str]) -> Optional[str]:
-    try:
-        # Force UTF-8 with errors="replace" rather than relying on the runner
-        # locale, so non-ASCII filenames/content in a diff can't raise an
-        # uncaught UnicodeDecodeError and abort the scan.
-        return subprocess.run(
-            ["git", *args], capture_output=True, check=True,
-            encoding="utf-8", errors="replace",
-        ).stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
 def _looks_binary(path: Path) -> bool:
     try:
         with open(path, "rb") as f:
@@ -403,55 +393,10 @@ def _looks_binary(path: Path) -> bool:
         return True
 
 
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex. Supports ``**`` (any number
-    of path segments — the recursive form GitHub's native ``paths-ignore``
-    users expect), ``*`` (within a single segment), and ``?``. ``fnmatch`` is
-    not used because it treats ``**`` as two literal ``*`` (non-recursive)."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")  # **/  => zero or more leading dirs
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")  # * stays within one path segment
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def _compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        # Bare names (no wildcards) also get an "everything beneath" expansion,
-        # so a directory like "docs" skips "docs/x/y.csv". Patterns that already
-        # use wildcards keep GitHub paths-ignore semantics — "tests/*" stays a
-        # single segment rather than silently becoming recursive.
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
-
-
 def _tracked_files() -> List[str]:
-    out = _run_git(["ls-files"])
-    if out is not None:
-        return [p for p in out.splitlines() if p]
+    paths = diffscope.git_paths(["ls-files"])
+    if paths is not None:
+        return paths
     # Fallback: walk the tree, skipping the git dir.
     files = []
     for root, dirs, names in os.walk("."):
@@ -465,7 +410,7 @@ def _scan_lines_all(ignores: List["re.Pattern[str]"]) -> List[Tuple[str, int, st
     """Return (path, lineno, text) for every line of every tracked text file."""
     rows = []
     for rel in _tracked_files():
-        if _ignored(rel, ignores):
+        if diffscope.ignored(rel, ignores):
             continue
         p = Path(rel)
         if not p.is_file() or _looks_binary(p):
@@ -479,44 +424,24 @@ def _scan_lines_all(ignores: List["re.Pattern[str]"]) -> List[Tuple[str, int, st
     return rows
 
 
-_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
-
-
 def _scan_lines_diff(base_ref: str, ignores: List["re.Pattern[str]"]) -> Optional[List[Tuple[str, int, str]]]:
     """Return (path, lineno, text) for lines *added* relative to base_ref.
     Returns None if the diff could not be computed (caller falls back to all).
 
-    NOTE: the line-number bookkeeping below assumes ``--unified=0`` (no context
-    lines, so every non-``+++`` ``+`` line is an addition to count). If the
-    context value ever changes, the increment logic must account for context
-    lines too."""
-    diff = _run_git(["diff", "--unified=0", "--no-color", f"{base_ref}...HEAD"])
+    ``diffscope.parse_diff`` reads the ``-U0`` diff, decodes a quoted ``+++``
+    path, and uses the hunk counts, so an added line that begins with ``++``
+    is never read as a file header. Ignored and binary files are skipped, for
+    parity with whole-tree scanning."""
+    diff = diffscope.run_git(["diff", "--unified=0", "--no-color", f"{base_ref}...HEAD"])
     if diff is None:
         return None
+    added, _deleted = diffscope.parse_diff(diff)
     rows: List[Tuple[str, int, str]] = []
-    cur_path: Optional[str] = None
-    new_lineno = 0
-    for raw in diff.splitlines():
-        if raw.startswith("+++ "):
-            target = raw[4:]
-            if target == "/dev/null":
-                cur_path = None  # file deleted — nothing added to scan
-            else:
-                cur_path = target[2:]  # strip "b/"
-                # Skip ignored or binary files, for parity with whole-tree
-                # scanning. (git already omits "+"-content for binary files, so
-                # the binary guard is defensive.)
-                if _ignored(cur_path, ignores) or _looks_binary(Path(cur_path)):
-                    cur_path = None
+    for path, lines in added.items():
+        if diffscope.ignored(path, ignores) or _looks_binary(Path(path)):
             continue
-        if raw.startswith("@@"):
-            m = _HUNK_RE.match(raw)
-            new_lineno = int(m.group(1)) if m else 0
-            continue
-        if raw.startswith("+") and not raw.startswith("+++"):
-            if cur_path is not None:
-                rows.append((cur_path, new_lineno, raw[1:] + "\n"))
-            new_lineno += 1
+        for lineno, text in lines.items():
+            rows.append((path, lineno, text + "\n"))
     return rows
 
 
@@ -627,13 +552,9 @@ def scan_lines(
     return findings
 
 
-def _split_list(value: str) -> List[str]:
-    return [tok.strip() for tok in re.split(r"[,\n]", value or "") if tok.strip()]
-
-
 def main() -> int:
     base_ref = os.environ.get("PHI_BASE_REF", "").strip()
-    requested = _split_list(os.environ.get("PHI_DETECTORS", ""))
+    requested = diffscope.split_list(os.environ.get("PHI_DETECTORS", ""))
     enabled = requested or list(DEFAULT_DETECTORS)
     unknown = [d for d in enabled if d not in DETECTORS]
     if unknown:
@@ -642,7 +563,7 @@ def main() -> int:
         return 1
     active = [(name, DETECTORS[name]) for name in enabled]
 
-    ignore = _compile_ignores(_split_list(os.environ.get("PHI_PATHS_IGNORE", "")))
+    ignore = diffscope.compile_ignores(diffscope.split_list(os.environ.get("PHI_PATHS_IGNORE", "")))
     fail = os.environ.get("PHI_FAIL", "true").strip().lower() != "false"
 
     allowlist_file = os.environ.get("PHI_ALLOWLIST_FILE", "").strip()
