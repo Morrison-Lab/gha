@@ -2016,7 +2016,7 @@
     "href": "reference/check-proof-statements.html",
     "title": "check-proof-statements.yml",
     "section": "",
-    "text": "Diff-scoped, failing-by-default check for one of the lab’s proof rules (psw#426, gha#1351).",
+    "text": "Diff-scoped, failing-by-default check for two of the lab’s proof rules (psw#426, gha#1351).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2028,7 +2028,7 @@
     "href": "reference/check-proof-statements.html#rules",
     "title": "check-proof-statements.yml",
     "section": "Rules",
-    "text": "Rules\n\nReasoning in a theorem statement. “so”, “because”, “hence”, “therefore”, “thus” or “since”, or an aside such as “without loss of generality”, “moreover” or “furthermore”, on an added line inside a #thm-, #lem-, #cor- or #prp- div, outside the proof the div holds. A statement gives the result and its hypotheses; the proof gives the reasoning. Heuristic: “so that” and “so-called” pass, and words inside math are not read.\n\nThe check does not read a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, &lt;!-- check-proof-statements: allow --&gt;.",
+    "text": "Rules\n\nProof hidden from slides. A proof div inside ::: {.content-hidden when-format=\"revealjs\"} (or .content-visible unless-format=\"revealjs\") is flagged on the proof’s opening line. An include of a _prf- or _proof- subfile there is flagged on the include line. Every proof is shown on slides. The finding is reported when the pull request adds any line to the file, not only the proof’s own lines.\nReasoning in a theorem statement. “so”, “because”, “hence”, “therefore”, “thus” or “since”, or an aside such as “without loss of generality”, “moreover” or “furthermore”, on an added line inside a #thm-, #lem-, #cor- or #prp- div, outside the proof the div holds. A statement gives the result and its hypotheses; the proof gives the reasoning. Heuristic: “so that” and “so-called” pass, and words inside math are not read.\n\nThe check does not read a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, &lt;!-- check-proof-statements: allow --&gt;.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2052,7 +2052,7 @@
     "href": "reference/check-proof-statements.html#inputs",
     "title": "check-proof-statements.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when reasoning is found in a theorem statement. Set false for warnings only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd *.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip. Supports *, ? and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when a hidden proof or statement reasoning is found. Set false for warnings only.\n\n\nwhole-tree\nboolean\nfalse\nScan every tracked file in full instead of only a PR’s added lines.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nruns-on\nstring\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it (#1167).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -8287,7 +8287,7 @@
     "href": "reference/check-exercise-ends-with-task.html",
     "title": "check-exercise-ends-with-task.yml",
     "section": "",
-    "text": "Diff-scoped check that fails a pull request which adds or edits an exercise that does not end with a question or an instruction. The lab’s rule (Ezra, 2026-11-09, psw#548) is that the last thing a reader meets in an exercise is its task.\nThe check looks at each exercise div (#exr-...). Its last block must be a paragraph with a task sentence: one that ends with a question mark, or starts with an imperative task verb such as Show, Find, Compute, Estimate, Explain, or Derive (the same test as check-exercise-question-paragraph). An exercise is reported when its last paragraph has no task, or when a figure, table, code block, or include shortcode comes after the last task.\nSolutions, callouts such as hints, HTML comments, display math, lists, headings, and block quotes are not examined (they are skipped when finding the last block). &lt;!-- ends-with-task-ok: reason --&gt; inside an exercise exempts it.\nAn untouched exercise is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus. Measure a corpus with whole-tree before making the check blocking in a large repository.",
+    "text": "Diff-scoped check that fails a pull request which adds or edits an exercise that does not end with a question or an instruction. The lab’s rule (Ezra, 2026-11-09, psw#548) is that the last thing a reader meets in an exercise is its task.\nThe check looks at each exercise div (#exr-...). Its last block must be a paragraph with a task sentence: one that ends with a question mark, or starts with an imperative task verb such as Show, Find, Compute, Estimate, Explain, or Derive (the same test as check-exercise-question-paragraph). An exercise is reported when its last paragraph has no task, or when a figure, table, code block, or include shortcode comes after the last task.\nSolutions, callouts such as hints, HTML comments, display math, lists, headings, and block quotes are not examined (they are skipped when finding the last block). A paragraph that opens in lowercase right after a display, such as where $x$ is ..., continues the sentence the display interrupted, so it is judged with the paragraph before the display, or, inside a list item, with the item’s sentence. The join stops at a capitalized paragraph, at any block between the paragraph, the display, and the follower (a solution or callout div included), and at the end of a list: a paragraph after the list does not continue a sentence inside it. &lt;!-- ends-with-task-ok: reason --&gt; inside an exercise exempts it.\nAn untouched exercise is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus. Measure a corpus with whole-tree before making the check blocking in a large repository.",
     "crumbs": [
       "Overview",
       "Reference",
