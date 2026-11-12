@@ -59,6 +59,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -75,7 +76,6 @@ ALLOW_MARKER = "check-page-length: allow"
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 DISPLAY_RE = re.compile(r"\$\$.+?\$\$", re.DOTALL)
 INLINE_RE = re.compile(r"(?<![\\$])\$(?!\$)[^$\n]+?(?<!\\)\$")
 TITLE_RE = re.compile(r"^title:", re.MULTILINE)
@@ -156,7 +156,7 @@ def strip_code(text: str) -> str:
 
 def count_math(text: str) -> int:
     """Display and inline math expressions outside code and comments."""
-    bare = CODE_SPAN_RE.sub("", strip_code(text))
+    bare = mdmask.CODE_SPAN_RE.sub("", strip_code(text))
     display = len(DISPLAY_RE.findall(bare))
     rest = DISPLAY_RE.sub("", bare)
     return display + len(INLINE_RE.findall(rest))

@@ -67,6 +67,7 @@ from urllib.parse import unquote
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd *.md *.Rmd"
 DEFAULT_TARGET_EXTENSIONS = ".qmd, .md, .Rmd, .ipynb"
@@ -91,7 +92,6 @@ _QUOTE_RE = re.compile(r"^(?:[ ]{0,3}>[ ]?)+")
 _LIST_ITEM_RE = re.compile(r"^\s{0,3}(?:[-*+]|[0-9]+[.)])(?:\s|$)")
 _FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
-_CODE_SPAN_RE = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")
 
 
 class Finding(NamedTuple):
@@ -179,7 +179,7 @@ def blank_non_prose(text: str) -> str:
                 fence = None
             lines[i] = " " * len(raw_line)
     text = "\n".join(lines)
-    return _CODE_SPAN_RE.sub(_blank, text)
+    return mdmask.CODE_SPAN_RE.sub(_blank, text)
 
 
 def extract_links(text: str) -> List[tuple]:

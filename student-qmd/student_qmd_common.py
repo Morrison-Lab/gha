@@ -29,10 +29,16 @@ Quarto itself.
 from __future__ import annotations
 
 import glob
+import os
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import mdmask  # noqa: E402
 
 INCLUDE = re.compile(r"^\s*\{\{<\s*include\s+(\S+)\s*>\}\}\s*$")
 
@@ -54,7 +60,9 @@ MISNAMED_ANSWER = frozenset(
 
 
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
-CODE_SPAN = re.compile(r"(`+).*?(?<!`)\1(?!`)")
+# The code-span pattern is check-common's, so a fix to it reaches this
+# writer and checker too (gha#1856).
+CODE_SPAN = mdmask.CODE_SPAN_RE
 # A raw HTML div start tag, which Pandoc's native_divs extension (on by
 # default) reads as a Div node. The tag may run onto later lines, and a
 # quoted attribute value may hold a `>`.
