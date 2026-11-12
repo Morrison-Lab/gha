@@ -59,11 +59,14 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set
+from typing import Dict, List, NamedTuple, Optional, Sequence, Set
 from urllib.parse import unquote
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd *.md *.Rmd"
 DEFAULT_TARGET_EXTENSIONS = ".qmd, .md, .Rmd, .ipynb"
@@ -100,50 +103,6 @@ class Finding(NamedTuple):
     base: str = "."
     # Set when the page exists but does not define this #fragment.
     fragment: str = ""
-
-
-def _run_git(args: List[str], cwd: Optional[Path] = None) -> Optional[str]:
-    try:
-        return subprocess.run(
-            ["git", *args], capture_output=True, check=True,
-            encoding="utf-8", errors="replace", cwd=cwd,
-        ).stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: Iterable[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
 
 
 def split_list(value: str) -> List[str]:
@@ -489,11 +448,10 @@ def find_dead_links(
 
 
 def tracked_files(globs: List[str], ignores: List["re.Pattern[str]"]) -> Optional[List[str]]:
-    out = _run_git(["ls-files", "-z", "--", *globs])
-    if out is None:
+    files = diffscope.git_paths(["ls-files", "--", *globs])
+    if files is None:
         return None
-    files = [f for f in out.split("\0") if f]
-    return sorted(f for f in files if not any(r.match(f) for r in ignores))
+    return sorted(f for f in files if not diffscope.ignored(f, ignores))
 
 
 def _escape_annotation(s: str) -> str:
@@ -506,14 +464,14 @@ def main() -> int:
     if not exts:
         print("::error::check-quarto-links: `target-extensions` is empty, so nothing would be checked.")
         return 1
-    ignores = compile_ignores(
-        t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PATHS_IGNORE", "")) if t.strip()
+    ignores = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("QL_PATHS_IGNORE", ""))
     )
-    partials = compile_ignores(
-        t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PARTIAL_GLOBS", "")) if t.strip()
+    partials = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("QL_PARTIAL_GLOBS", ""))
     )
-    externals = compile_ignores(
-        t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_EXTERNAL_TARGETS", "")) if t.strip()
+    externals = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("QL_EXTERNAL_TARGETS", ""))
     )
     fail = os.environ.get("QL_FAIL", "true").strip().lower() != "false"
 
@@ -521,8 +479,7 @@ def main() -> int:
     if files is None:
         print("::error::check-quarto-links: `git ls-files` failed; is this a git checkout?")
         return 1
-    all_out = _run_git(["ls-files", "-z"]) or ""
-    all_tracked = {f for f in all_out.split("\0") if f}
+    all_tracked = set(diffscope.git_paths(["ls-files"]) or [])
     skipped: List[str] = []
     check_fragments = os.environ.get("QL_CHECK_FRAGMENTS", DEFAULT_CHECK_FRAGMENTS).strip().lower() == "true"
     findings = find_dead_links(Path("."), files, exts, all_tracked, skipped, check_fragments, partials, externals)

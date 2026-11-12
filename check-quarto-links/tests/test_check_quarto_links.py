@@ -58,8 +58,8 @@ def _findings(tmp_path, monkeypatch, files, exts=".qmd, .md, .Rmd, .ipynb", part
         for f in ql.find_dead_links(
             Path("."), tracked, ql.parse_extensions(exts),
             check_fragments=fragments,
-            partials=ql.compile_ignores(partials),
-            externals=ql.compile_ignores(externals))
+            partials=ql.diffscope.compile_ignores(partials),
+            externals=ql.diffscope.compile_ignores(externals))
     ]
 
 
