@@ -190,6 +190,18 @@ def test_whole_tree_flags_existing_uses(tmp_path, monkeypatch):
     assert len(_run(monkeypatch, repo, "", whole_tree=True).findings) == 1
 
 
+@pytest.mark.parametrize("name", ['say "hi".qmd', "back\\slash.qmd", "tab\there.qmd"])
+def test_whole_tree_reads_a_name_git_would_quote(tmp_path, monkeypatch, name):
+    # A plain ls-files listing quotes these names, so the file went unread
+    # until the listing used -z (gha#1923, gha#1856).
+    repo, git = _repo(tmp_path)
+    (repo / name).write_text("Write the x.\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "odd name")
+    report = _run(monkeypatch, repo, "", whole_tree=True)
+    assert [r for r, _ in report.findings] == [name]
+
+
 @pytest.mark.parametrize("base", ["", "no-such-ref"])
 def test_unusable_base_skips_instead_of_falling_back(tmp_path, monkeypatch, base):
     repo, git = _repo(tmp_path)

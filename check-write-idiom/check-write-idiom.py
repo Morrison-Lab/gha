@@ -46,7 +46,6 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
@@ -56,6 +55,10 @@ for _stream in (sys.stdout, sys.stderr):
             _stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd *.md"
 _DEFAULT_FAIL = True
@@ -172,145 +175,16 @@ def format_message(finding: Finding) -> str:
     return MESSAGE
 
 
-def _run_git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        encoding="utf-8", errors="replace",
-    )
-    return res.stdout if res.returncode == 0 else None
-
-
-_HUNK_RE = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-
-
 # The one `git diff` invocation every diff-scoped check uses. Fixed prefixes:
 # diff.mnemonicPrefix would print `w/` and make every touched file read as
 # missing (gha#1355, gha#1357).
 GIT_DIFF_ARGS = ["diff", "-U0", "--no-color", "--no-ext-diff", "--no-textconv",
                  "--src-prefix=a/", "--dst-prefix=b/"]
 
-
-_C_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13,
-              '"': 34, "\\": 92}
-
-
-def _unquote_git_path(target: str) -> str:
-    """Undo git's C-style quoting of a path that holds ``"``, a backslash or a
-    control character (``"b/ch/q\\"u.qmd"``); any other target is returned as is.
-    """
-    if len(target) < 2 or not (target.startswith('"') and target.endswith('"')):
-        return target
-    body = target[1:-1]
-    out = bytearray()
-    i = 0
-    while i < len(body):
-        char = body[i]
-        if char != "\\" or i + 1 >= len(body):
-            out += char.encode("utf-8")
-            i += 1
-            continue
-        nxt = body[i + 1]
-        if nxt in _C_ESCAPES:
-            out.append(_C_ESCAPES[nxt])
-            i += 2
-        elif nxt in "01234567":
-            digits = body[i + 1:i + 4]
-            octal = ""
-            for d in digits:
-                if d not in "01234567":
-                    break
-                octal += d
-            out.append(int(octal, 8) & 0xFF)
-            i += 1 + len(octal)
-        else:
-            out += body[i:i + 2].encode("utf-8")
-            i += 2
-    return out.decode("utf-8", errors="replace")
-
-
-def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
-    """Added ``{path: {line_number: text}}`` and the set of deleted texts.
-
-    Hunk header counts decide where a hunk ends, so an added line that begins
-    with two plus signs is never mistaken for a ``+++`` file header.
-    """
-    added: Dict[str, Dict[int, str]] = {}
-    deleted: Set[str] = set()
-    path: Optional[str] = None
-    old_left = new_left = new_line = 0
-    for line in diff.splitlines():
-        if old_left > 0 or new_left > 0:
-            if line.startswith("+"):
-                if path is not None:
-                    added[path][new_line] = line[1:]
-                new_line += 1
-                new_left -= 1
-            elif line.startswith("-"):
-                deleted.add(line[1:])
-                old_left -= 1
-            continue
-        if line.startswith("+++ "):
-            target = _unquote_git_path(line[4:].rstrip("\t"))
-            path = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
-            if path is not None:
-                added.setdefault(path, {})
-            continue
-        m = _HUNK_RE.match(line)
-        if m:
-            old_left = int(m.group(1)) if m.group(1) is not None else 1
-            new_line = int(m.group(2))
-            new_left = int(m.group(3)) if m.group(3) is not None else 1
-    return added, deleted
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_globs(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _matches(rel: str, globs: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in globs)
-
-
-def _split_list(value: str) -> List[str]:
-    return [p.strip() for p in re.split(r"[,\n]", value) if p.strip()]
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    if not value:
-        return default
-    return value in ("1", "true", "yes", "on")
+# The checks that load this script as their engine, and its tests, read these
+# names from it; the code is check-common's (gha#1856).
+parse_diff = diffscope.parse_diff
+compile_globs = diffscope.compile_ignores
 
 
 class Report(NamedTuple):
@@ -318,17 +192,6 @@ class Report(NamedTuple):
     files: int
     lines: int
     skipped: bool
-
-
-def _read_lines(path: str) -> Optional[List[str]]:
-    try:
-        with open(path, encoding="utf-8", errors="replace") as handle:
-            lines = handle.read().split("\n")
-    except OSError:
-        return None
-    if lines and lines[-1] == "":
-        lines.pop()
-    return lines
 
 
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
@@ -344,24 +207,25 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     scan = scan or scan_file
     wanted: Dict[str, Optional[Set[int]]] = {}
     if whole_tree:
-        out = _run_git(["ls-files", "--", *globs])
-        if out is None:
+        # -z, so a name holding a quote, backslash or tab is read (gha#1923).
+        paths = diffscope.git_paths(["ls-files", "--", *globs])
+        if paths is None:
             return Report([], 0, 0, True)
-        for rel in out.splitlines():
-            if rel and not _matches(rel, ignores):
+        for rel in paths:
+            if not diffscope.ignored(rel, ignores):
                 wanted[rel] = None
     else:
         if not base_ref:
             return Report([], 0, 0, True)
-        base = _run_git(["merge-base", base_ref, "HEAD"])
+        base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], 0, 0, True)
-        diff = _run_git([*GIT_DIFF_ARGS, base.strip(), "--", *globs])
+        diff = diffscope.run_git([*GIT_DIFF_ARGS, base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, 0, True)
         added, deleted = parse_diff(diff)
         for rel, numbered in added.items():
-            if _matches(rel, ignores):
+            if diffscope.ignored(rel, ignores):
                 continue
             wanted[rel] = {n for n, text in numbered.items()
                            if not (text.strip() and text in deleted)}
@@ -369,7 +233,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     findings: List[Tuple[str, Finding]] = []
     files = lines = 0
     for rel in sorted(wanted):
-        content = _read_lines(rel)
+        content = diffscope.read_lines(rel)
         if content is None:
             continue
         files += 1
@@ -401,10 +265,10 @@ def main(scan=None, prefix: str = "CWI_", name: str = "write-idiom",
     check's own ``_DEFAULT_FAIL``."""
     base_ref = os.environ.get(prefix + "BASE_REF", "").strip()
     globs = os.environ.get(prefix + "GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    ignores = compile_globs(_split_list(os.environ.get(prefix + "PATHS_IGNORE", "")))
-    fail = _env_flag(prefix + "FAIL",
-                     _DEFAULT_FAIL if default_fail is None else default_fail)
-    whole_tree = _env_flag(prefix + "WHOLE_TREE", False)
+    ignores = diffscope.compile_ignores(diffscope.split_list(os.environ.get(prefix + "PATHS_IGNORE", "")))
+    fail = diffscope.env_flag(prefix + "FAIL",
+                              _DEFAULT_FAIL if default_fail is None else default_fail)
+    whole_tree = diffscope.env_flag(prefix + "WHOLE_TREE", False)
     describe = format_finding or format_message
 
     report = run_check(base_ref, globs, ignores, whole_tree, scan)
