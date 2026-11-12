@@ -923,6 +923,7 @@ def test_same_violation_committed_is_the_control(tmp_path):
     'say "hi".md',
     "back\\slash.md",
     "with space.md",
+    "tab\there.md",
     "caf\u00e9.md",
 ])
 @pytest.mark.parametrize("committed", [True, False])

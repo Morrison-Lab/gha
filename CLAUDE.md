@@ -308,7 +308,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - Per-capability composite-action directories at the repo root, each with an
   `action.yml` and, for R/Python capabilities, a language-specific helper
   script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,
-  `check-phi/`, and `check-new-line-breaks/` (Python; the last mirrors
+  `check-phi/`, and `check-new-line-breaks/` (Python; it imports
+  `check-common/diffscope.py` for its git calls and path decoding, so a
+  copy of the script needs that directory beside it; it mirrors
   `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
   entirely rather than falling back to a whole-tree scan when the diff can't
   be computed, since a whole-tree scan here would reflag a corpus's
