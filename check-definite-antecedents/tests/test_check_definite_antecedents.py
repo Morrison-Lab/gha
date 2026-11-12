@@ -136,6 +136,49 @@ def test_list_marker_stripped():
     assert hits("::: {#exr-a}\n1. The labels are bad.\n:::") == [(2, "The labels")]
 
 
+def pronouns(text: str):
+    found, _ = oda.scan_file(text.split("\n"))
+    return [(h.line, h.phrase) for h in found if h.kind == "pronoun"]
+
+
+@pytest.mark.parametrize("line, word", [
+    ("It fails.", "It"),
+    ("**It is never negative.** Without that, errors cancel.", "It"),
+    ("They are backwards.", "They"),
+    ("Its largest eigenvalue is 2.", "Its"),
+    ("Their sum is one.", "Their"),
+    ("Them alone it keeps.", "Them"),
+    ("1. It shrinks as the step grows.", "It"),
+    ("It follows from @thm-a.", "It"),
+])
+def test_pronoun_opener_is_flagged(line, word):
+    assert pronouns(f"::: {{#sol-a}}\n{line}\n:::") == [(2, word)]
+
+
+@pytest.mark.parametrize("line", [
+    "Items in the list are sorted.",
+    "Italy is a country.",
+    "The loss is never negative.",
+    "A model is fit; it fails.",
+    "Fit the model. It fails.",
+    "Theirs is a pronoun too, but rare.",
+    "It fails. <!-- check-definite-antecedents: allow -->",
+])
+def test_named_or_exempt_opener_is_not_a_pronoun_finding(line):
+    assert pronouns(f"::: {{#sol-a}}\n{line}\n:::") == []
+
+
+def test_pronoun_only_checked_on_a_div_first_sentence():
+    text = "::: {#sol-a}\nThe loss is convex.\n\nIt has one minimum.\n:::"
+    assert pronouns(text) == []
+
+
+def test_pronoun_message_names_the_pronoun():
+    message = oda.format_message("They", "pronoun")
+    assert "'They'" in message
+    assert "antecedent" in message
+
+
 def test_defaults_fail():
     assert oda._DEFAULT_FAIL is True
     assert oda.DEFAULT_GLOBS == "*.qmd"
