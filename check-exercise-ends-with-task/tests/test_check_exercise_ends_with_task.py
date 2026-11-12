@@ -135,3 +135,73 @@ def test_a_labelled_display_before_a_task_passes(task):
     # The passing side of gha#1908: closing the display must not hide the task after it.
     text = exercise(f"Show that\n\n$$x = 1$$ {{#eq-a}}\n\n{task}")
     assert reasons(text) == []
+
+
+@pytest.mark.parametrize("body", [
+    # psw's #exr-sum-deviations (gha#1843): one sentence split by a display.
+    "Show that\n\n$$\n\\sum_{i=1}^n (x_i - \\bar{x}) = 0,\n$$\n\n"
+    "where $\\bar{x}$ is the sample mean (@def-sample-mean).",
+    "Show that\n$$\nx = 1,\n$$\nwhere $x$ is a number.",
+    "Show that\n\n$$\na = b,\n$$\n\nand\n\n$$\nb = c,\n$$\n\nwhere $a$ is a number.",
+    # A paragraph after a list has ended can still run on past a display.
+    "Intro.\n\n- an item\n\nShow that\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # Unchanged by gha#1843: an indented paragraph inside a list item is still judged.
+    "Consider data.\n\n1. Item a.\n2. Item b.\n\n   Explain why.",
+    "Consider data.\n\n- item\n\n    Find the mean.",
+])
+def test_a_sentence_continued_past_a_display_is_judged_whole(body):
+    assert reasons(exercise(body)) == []
+
+
+@pytest.mark.parametrize("body", [
+    # A capitalized paragraph after the display starts a new sentence.
+    "Show that\n\n$$\nx = 1.\n$$\n\nThe data are in Table 1.",
+    # A display that opens the exercise has no sentence before it to continue.
+    "$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # Another block between the display and the lowercase paragraph breaks the link.
+    "Show that\n\n$$\nx = 1,\n$$\n\n- a list item\n\nwhere $x$ is a number.",
+    # So does a block between the paragraph and the display.
+    "Show that $x = 1$.\n\n- a list item\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # A solution or callout div is not judged, but it still splits the sentence.
+    "Show that\n\n$$\nx = 1,\n$$\n\n::: {.sol}\nAns.\n:::\n\nwhere $x$ is a number.",
+    "Show that\n\n::: {.callout-tip}\nA hint.\n:::\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    # A sentence inside a list item does not run on past a display to a later paragraph,
+    # whether its line is indented or lazy.
+    "Some text.\n\n- an item\n  Show that\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    "Some text.\n\n- an item\nShow that\n\n$$\nx = 1,\n$$\n\nwhere $x$ is a number.",
+    "Some text.\n\n- an item\n  Show that\n  $$\n  x = 1,\n  $$\n\nwhere $x$ is a number.",
+])
+def test_a_new_sentence_after_a_display_is_judged_alone(body):
+    assert reasons(exercise(body)) == ["its last paragraph holds no question or instruction"]
+
+
+def test_a_list_item_display_carries_its_lowercase_follower():
+    text = exercise("1. Show that\n\n   $$ x = 1 $$\n\n   where $x > 0$.")
+    assert reasons(text) == []
+
+
+def test_a_list_item_display_does_not_carry_a_paragraph_after_the_list():
+    text = exercise("1. Show that\n\n   $$ x = 1 $$\n\nwhere $x > 0$.")
+    assert reasons(text) == ["its last paragraph holds no question or instruction"]
+
+
+def test_a_list_item_follower_is_judged_with_its_item():
+    text = exercise("1. Note that\n\n   $$ x = 1 $$\n\n   where $x > 0$.")
+    assert reasons(text) == ["its last paragraph holds no question or instruction"]
+
+
+def test_a_list_item_display_after_indented_paragraphs_joins_them():
+    text = exercise("Consider data.\n\n1. Item.\n\n   Show that\n\n   $$ x = 1 $$\n\n   where $x > 0$.")
+    assert reasons(text) == []
+
+
+def test_a_single_line_display_carries_its_follower():
+    # The follower holds no task of its own, so only the join with "Show that" passes it.
+    text = exercise("Show that\n\n$$x = 1$$\n\nwhere $x$ is a number.")
+    assert reasons(text) == []
+
+
+def test_a_follower_joined_to_a_taskless_paragraph_is_still_flagged():
+    # The follower joins "Consider $x$.", which holds no task, so the joined paragraph fails.
+    text = exercise("Consider $x$.\n\n$$x = 1$$\n\nwhere $x$ is a number.")
+    assert reasons(text) == ["its last paragraph holds no question or instruction"]

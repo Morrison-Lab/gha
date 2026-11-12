@@ -148,15 +148,15 @@ def test_defaults_agree_across_script_action_and_workflow():
     assert "default: '*.qmd'" in input_block(workflow, "globs")
 
 
-def test_corpus_defined_stems_reads_tracked_files_and_is_empty_without_defs(tmp_path, monkeypatch):
+def test_corpus_reads_tracked_files_and_is_empty_without_defs(tmp_path, monkeypatch):
     import subprocess
     monkeypatch.chdir(tmp_path)
     subprocess.run(["git", "init", "-q"], check=True)
     (tmp_path / "a.qmd").write_text("::: {#def-g}\n#### Gamma kernel\n:::\n")
     (tmp_path / "b.qmd").write_text("Nothing defined here.\n")
     subprocess.run(["git", "add", "a.qmd", "b.qmd"], check=True)
-    assert exb.corpus_defined_stems(["*.qmd"]) == {"gamma", "kerne"}
-    assert exb.corpus_defined_stems(["b.qmd"]) == set()
+    assert exb.corpus(["*.qmd"])[0] == {"gamma", "kerne"}
+    assert exb.corpus(["b.qmd"])[0] == set()
 
 
 def test_main_notes_when_no_definitions_exist(tmp_path, monkeypatch, capsys):
@@ -168,3 +168,86 @@ def test_main_notes_when_no_definitions_exist(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("EXB_WHOLE_TREE", "true")
     assert exb.main() == 0
     assert "::notice::No #def- titles" in capsys.readouterr().out
+
+
+# False-positive classes found by the whole-tree runs on lds, mds, pds, sds
+# and psw (gha#1481). Each case passes only through the rule named.
+
+
+def defs(*titles):
+    lines = []
+    for i, t in enumerate(titles):
+        lines += [f"::: {{#def-t{i}}}", f"#### {t}", ":::"]
+    return exb.defined_stems(lines)
+
+
+def found_with(text, defined):
+    lines = text.split("\n")
+    return [f.missing for f in exb.exercises(lines, defined, exb.div_texts(lines))]
+
+
+def test_a_cited_exercise_supplies_background_transitively():
+    d = defs("Kernel")
+    first = exercise("A start", "Here is the kernel.", "{#exr-one}")
+    second = exercise("Next", "Continue @exr-one.", "{#exr-two}")
+    third = exercise("The kernel", "Use @exr-two.", "{#exr-three}")
+    text = "\n".join([first, second, third])
+    assert found_with(text, d) == []
+
+
+def test_an_unknown_cited_exercise_skips_the_exercise():
+    d = defs("Kernel")
+    assert found_with(exercise("The kernel", "Use @exr-elsewhere."), d) == []
+
+
+def test_a_linked_definition_supplies_background():
+    d = defs("Kernel")
+    text = ("::: {#def-kernel}\n#### Kernel\nA kernel is ...\n:::\n"
+            + exercise("The kernel", "See [this](#def-kernel)."))
+    assert found_with(text, d) == []
+
+
+def test_a_solution_counts_only_when_cited():
+    d = defs("Kernel")
+    sol = "::: {#sol-k}\nThe kernel.\n:::"
+    uncited = exercise("The kernel", "Find it.") + "\n" + sol
+    cited = exercise("The kernel", "Use @sol-k.") + "\n" + sol
+    assert found_with(uncited, d) == [["kernel"]]
+    assert found_with(cited, d) == []
+
+
+def test_a_cited_exercise_lends_its_text_but_not_its_solution():
+    d = defs("Kernel")
+    first = ("::: {#exr-one}\n#### A start\n\nFind it.\n\n"
+             "::: {#sol-one}\nThe kernel.\n:::\n:::")
+    second = exercise("The kernel", "Continue @exr-one.", "{#exr-two}")
+    assert found_with(first + "\n" + second, d) == [["kernel"]]
+
+
+def test_corpus_returns_the_div_texts_of_every_file(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "a.qmd").write_text("::: {#def-g}\n#### Gamma kernel\nA kernel.\n:::\n")
+    subprocess.run(["git", "add", "a.qmd"], check=True)
+    assert "kernel" in exb.corpus(["*.qmd"])[1]["def-g"]
+
+
+def test_a_definition_cited_from_another_file_supplies_background(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / "a.qmd").write_text("::: {#def-k}\n#### Kernel\nA kernel is ...\n:::\n")
+    (tmp_path / "b.qmd").write_text(exercise("The kernel", "Use @def-k."))
+    subprocess.run(["git", "add", "a.qmd", "b.qmd"], check=True)
+    defined, index = exb.corpus(["*.qmd"])
+    lines = (tmp_path / "b.qmd").read_text().split("\n")
+    assert [f.missing for f in exb.exercises(lines, defined, index)] == []
+    assert [f.missing for f in exb.exercises(lines, defined)] == [["kernel"]]
+
+
+def test_a_citation_cycle_terminates():
+    d = defs("Kernel")
+    first = exercise("The kernel", "Continue @exr-two.", "{#exr-one}")
+    second = exercise("Next", "Continue @exr-one.", "{#exr-two}")
+    assert found_with(first + "\n" + second, d) == [["kernel"]]

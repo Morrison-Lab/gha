@@ -53,6 +53,12 @@ LABEL_DIV_RE = re.compile(r"#(fig|tbl)-")
 IMAGE_RE = re.compile(r"^\s*!\[")
 TABLE_RE = re.compile(r"^\s*\|")
 SHORTCODE_RE = re.compile(r"^\s*\{\{<")
+# A paragraph that opens with a lowercase word continues the sentence a display interrupted.
+CONTINUATION_RE = re.compile(r"^[*_]*[a-z]")
+# Marks a skipped block (a solution or callout div): it adds no block but ends the paragraph
+# before it, so the paragraph after it cannot continue that one's sentence.
+BREAK = "\0\0"
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 NEUTRAL_RE = re.compile(r"^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|>)")
 
 
@@ -78,17 +84,68 @@ def blocks_of(body: List[str]) -> List[tuple]:
     """(kind, text) blocks of an exercise body, in order."""
     out: List[tuple] = []
     para: List[str] = []
+    # True while the last block is a paragraph that a display equation interrupted,
+    # so a paragraph after the display that opens in lowercase ("where ...") continues
+    # its sentence and is judged with it (gha#1843).
+    continues = False
+    adjacent = False  # the last block is a paragraph, with only blank lines after it
+    # A display inside a list item: a lowercase paragraph after it in the same item
+    # continues the item's sentence and is judged with it. "join" appends it to the
+    # paragraph before the display; "item" judges it with the text of the item's marker
+    # line, which forms no block of its own (a list is skipped when finding the last
+    # block) but whose text is kept for this join.
+    item_carry = ""
+    item_text = ""  # the text of the current list item's marker line, until a paragraph closes
+    item_para = False  # like adjacent, for a paragraph inside a list item
 
     def close() -> None:
+        nonlocal continues, adjacent, item_carry, item_text, item_para
         if para:
-            out.append(("prose", " ".join(para)))
+            text = " ".join(para)
+            carry_ok = item_carry and in_list and CONTINUATION_RE.match(text)
+            if carry_ok and item_carry.startswith("item:"):
+                out.append(("prose", item_carry[5:] + " " + text))
+            elif ((continues or carry_ok) and out and out[-1][0] == "prose"
+                  and CONTINUATION_RE.match(text)):
+                out[-1] = ("prose", out[-1][1] + " " + text)
+            else:
+                out.append(("prose", text))
             para.clear()
+            continues = False
+            item_carry = item_text = ""
+            adjacent = not in_list  # a list paragraph's sentence ends with its list item
+            item_para = in_list
 
     in_math = False
+    # Inside a list item: its indented and lazy lines are judged as before, but a display
+    # there cannot carry a list paragraph's sentence on to a paragraph after the list.
+    in_list = False
+    prev_blank = True
     for raw in body:
         stripped = raw.strip()
-        if stripped.startswith("$$"):
+        if raw == BREAK:
             close()
+            continues = adjacent = item_para = False
+            item_carry = item_text = ""
+            continue
+        if stripped and not in_math:
+            if LIST_ITEM_RE.match(raw):
+                in_list = True
+            elif prev_blank and raw[:1] not in (" ", "\t"):
+                in_list = False
+        prev_blank = not stripped
+        if stripped.startswith("$$"):
+            if not in_math:
+                joinable = (bool(para) or adjacent) and not in_list
+                carry = ""
+                if in_list:
+                    if para or item_para:
+                        carry = "join"
+                    elif item_text:
+                        carry = "item:" + item_text
+                close()
+                continues = joinable
+                item_carry = carry
             # A second "$$" on the opening line closes the display there, whatever follows it,
             # such as an attribute block like {#eq-a} (gha#1908).
             # endswith() still matters for "$$$", whose closing "$$" overlaps the opener.
@@ -98,6 +155,14 @@ def blocks_of(body: List[str]) -> List[tuple]:
         if in_math:
             in_math = "$$" not in raw
             continue
+        if stripped and (raw.startswith("\0") or SHORTCODE_RE.match(raw) or TABLE_RE.match(raw)
+                         or NEUTRAL_RE.match(raw) or (IMAGE_RE.match(raw) and not para)):
+            close()
+            continues = adjacent = False  # another block sits between the paragraph and what follows
+            item_carry = item_text = ""
+            item_para = False
+            if LIST_ITEM_RE.match(raw):
+                item_text = LIST_ITEM_RE.sub("", raw, count=1).strip()
         if not stripped:
             close()
         elif raw.startswith("\0"):
@@ -156,6 +221,7 @@ def exercises(lines: List[str]) -> List[Finding]:
                 elif cur is not None and cur["skip"] is None:
                     if eqp.SKIP_DIV_RE.search(attrs):
                         cur["skip"] = depth
+                        cur["body"].append(BREAK)  # not judged, but it still splits a sentence
                     elif LABEL_DIV_RE.search(attrs):
                         cur["skip"] = depth
                         kind = "figure" if "#fig-" in attrs else "table"

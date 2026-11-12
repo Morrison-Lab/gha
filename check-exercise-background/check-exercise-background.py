@@ -13,7 +13,12 @@ links or explains it, so a pass does not mean the background is adequate.
 What is flagged: an exercise div (id ``exr-...``) with a heading title or a
 ``title="..."`` attribute in which some content word does not occur in the
 body. The body excludes nested solution divs (``#sol-``, ``.sol``,
-``.solution``, ``.answer``), so a solution cannot hide a missing word. A word counts as present
+``.solution``, ``.answer``), so a solution cannot hide a missing word. The
+body also takes in the text of every div it cites or links (``@exr-``,
+``@def-``, ``@thm-``, ``@sol-``, ``#def-...`` and the rest), followed
+transitively, since citing is how a body gives background (gha#1481); a cited
+exercise lends its text but not its solutions. An exercise that cites an
+``exr-`` the scanned files do not hold is skipped. A word counts as present
 when another word in the body shares its first five letters, so "Maximizing"
 matches "maximum". Generic task verbs (find, compute, check, classify, ...)
 and ordinary connecting words are never reported. Math in the title, code
@@ -27,11 +32,6 @@ Diff-scoped like check-bare-yes-no: a finding is reported only when the diff
 adds a line of the exercise, an untouched exercise keeps its form, and with no
 base ref the check skips rather than scanning the whole tree.
 ``EXB_WHOLE_TREE=true`` measures a corpus. Needs Python 3.9 or later.
-
-Stack: this is part 1 of 5, split from gha#1327 to stay under the size cap.
-The tests (gha#1329), composite action (gha#1330), registrations and selftest
-job (gha#1331), and reusable workflow and example stub (gha#1332) follow.
-Until the composite action lands, the script runs only when called directly.
 
 Configuration (environment variables, set by the composite action):
   EXB_BASE_REF    Git ref/SHA to diff against. Empty and not whole-tree => skip.
@@ -58,6 +58,11 @@ DEF_RE = re.compile(r"#def-")
 # gives the background; the part itself need not repeat it.
 CONTINUATION_RE = re.compile(r"\b(?:setup|set-up|situation|model|data) of @exr-|^\s*Use (?:the )?\w+ of @exr-",
                              re.MULTILINE)
+# A cross-reference or link to another div brings that div's text in as
+# background (gha#1481): citing a definition or an earlier exercise is how a
+# body gives the background a title names.
+REF_RE = re.compile(r"(?:@|#)(exr-[\w-]*\w)|(?:@|#)((?:thm|lem|prp|cor|exm|def|sol)-[\w-]*\w)")
+ID_RE = re.compile(r"#((?:exr|thm|lem|prp|cor|exm|def|sol)-[\w-]*\w)")
 SOL_RE = re.compile(r"#sol-|\.(?:sol|solution|answer)(?![\w-])")
 ATTR_TITLE_RE = re.compile(r'title="([^"]*)"')
 TITLE_RE = re.compile(r"^#{1,6}\s+(.*?)\s*(?:\{[^}]*\})?\s*$")
@@ -148,9 +153,76 @@ def missing_words(title: str, body: str,
     return out
 
 
-def exercises(lines: List[str], defined: Optional[Set[str]] = None
-              ) -> List[Finding]:
+def div_texts(lines: List[str]) -> Dict[str, str]:
+    """The text of each div with a cross-reference id in ``lines``, by id.
+
+    An exercise's text is its title and body without solutions, the background
+    a later exercise that cites it can lean on.
+    """
+    texts: Dict[str, str] = {}
+    stack: List[Tuple[Optional[str], bool, List[str]]] = []
+    fence: Optional[str] = None
+    for raw in lines:
+        fm = FENCE_RE.match(raw)
+        if fence is not None:
+            if fm and fm.group(1)[0] == fence:
+                fence = None
+            continue
+        if fm:
+            fence = fm.group(1)[0]
+            continue
+        dm = DIV_RE.match(raw)
+        if dm:
+            if dm.group(2):
+                im = ID_RE.search(dm.group(2))
+                title = ATTR_TITLE_RE.search(dm.group(2))
+                buf = [title.group(1)] if title else []
+                sol = bool(SOL_RE.search(dm.group(2)))
+                stack.append((im.group(1) if im else None, sol, buf))
+            elif stack:
+                ident, sol, buf = stack.pop()
+                text = "\n".join(buf)
+                if ident:
+                    texts[ident] = text
+                if not sol:
+                    for _, _, outer in stack[-1:]:
+                        outer.append(text)
+            continue
+        for _, _, buf in stack[-1:]:
+            buf.append(raw)
+    return texts
+
+
+def background(body: str, index: Dict[str, str],
+               own: Optional[str] = None) -> Optional[str]:
+    """The text of the divs ``body`` builds on, followed transitively.
+
+    Returns None when ``body`` cites an exercise ``index`` does not hold:
+    its background is elsewhere, so no title word can be judged missing.
+    """
+    seen: Set[str] = {own} if own else set()
+    parts: List[str] = []
+    todo = [body]
+    while todo:
+        for exr, other in REF_RE.findall(todo.pop()):
+            ident = exr or other
+            if ident in seen:
+                continue
+            seen.add(ident)
+            if ident not in index:
+                if exr:
+                    return None
+                continue
+            parts.append(index[ident])
+            todo.append(index[ident])
+    return "\n".join(parts)
+
+
+def exercises(lines: List[str], defined: Optional[Set[str]] = None,
+              index: Optional[Dict[str, str]] = None) -> List[Finding]:
     """Each exercise div whose title has a defined term its body never uses."""
+    if index is None:
+        index = div_texts(lines)
     found: List[Finding] = []
     fence: Optional[str] = None
     in_comment = False
@@ -178,9 +250,11 @@ def exercises(lines: List[str], defined: Optional[Set[str]] = None
                 attrs = dm.group(2)
                 if cur is None and EXR_RE.search(attrs):
                     attr_title = ATTR_TITLE_RE.search(attrs)
+                    own_id = re.search(r"#(exr-[\w-]+)", attrs)
                     cur = {"depth": depth, "start": lineno, "skip": None,
                            "title": attr_title.group(1) if attr_title else None,
-                           "title_line": lineno, "body": []}
+                           "title_line": lineno, "body": [],
+                           "id": own_id.group(1) if own_id else None}
                 elif cur is not None:
                     if cur["skip"] is None and SOL_RE.search(attrs):
                         cur["skip"] = depth
@@ -192,8 +266,11 @@ def exercises(lines: List[str], defined: Optional[Set[str]] = None
                 if cur is not None and depth == cur["depth"]:
                     missing = []
                     body = "\n".join(cur["body"])
-                    if cur["title"] and not CONTINUATION_RE.search(body):
-                        missing = missing_words(cur["title"], body, defined)
+                    extra = background(body, index, cur["id"])
+                    if (cur["title"] and extra is not None
+                            and not CONTINUATION_RE.search(body)):
+                        missing = missing_words(cur["title"], body + "\n" + extra,
+                                                defined)
                     if missing:
                         found.append(Finding(cur["title_line"], cur["title"], missing,
                                              cur["start"], lineno))
@@ -257,17 +334,21 @@ def wanted_lines(base_ref: str, globs: List[str], whole_tree: bool
     return None if diff is None else dict(added_lines(diff))
 
 
-def corpus_defined_stems(globs: List[str]) -> Set[str]:
-    """Defined-term stems from every tracked file the globs match."""
+def corpus(globs: List[str]) -> Tuple[Set[str], Dict[str, str]]:
+    """Defined-term stems, and the text of each cross-referenced div, from
+    every tracked file the globs match."""
     out = _git(["ls-files", "--", *globs]) or ""
     stems: Set[str] = set()
+    index: Dict[str, str] = {}
     for rel in out.splitlines():
         try:
             with open(rel, encoding="utf-8", errors="replace") as handle:
-                stems |= defined_stems(handle.read().split("\n"))
+                lines = handle.read().split("\n")
         except OSError:
             continue
-    return stems
+        stems |= defined_stems(lines)
+        index.update(div_texts(lines))
+    return stems, index
 
 
 def _flag(name: str, default: bool) -> bool:
@@ -295,7 +376,7 @@ def main() -> int:
         return 0
     severity = "error" if fail else "warning"
     findings = 0
-    defined = corpus_defined_stems(globs)
+    defined, index = corpus(globs)
     if not defined:
         print("::notice::No #def- titles found in the scanned files, so no title word can be "
               "reported as a defined term; the check reports nothing.")
@@ -305,7 +386,7 @@ def main() -> int:
                 lines = handle.read().split("\n")
         except OSError:
             continue
-        for item in exercises(lines, defined):
+        for item in exercises(lines, defined, index):
             if touched(item, wanted[rel]):
                 findings += 1
                 words = ", ".join(item.missing)
