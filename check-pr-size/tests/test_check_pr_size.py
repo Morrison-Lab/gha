@@ -233,16 +233,40 @@ def test_body_saying_mechanical_content_identical_exempts(tmp_path):
 
 
 def test_parse_numstat_handles_renames():
-    rows = cps.parse_numstat("3\t1\tdir/{old.qmd => new.qmd}\n-\t-\timg.bin\n")
+    rows = cps.parse_numstat("3\t1\t\0dir/old.qmd\0dir/new.qmd\0-\t-\timg.bin\0")
     assert rows == [("dir/new.qmd", 4), ("img.bin", 0)]
 
 
 def test_glob_to_regex_recursive():
-    r = cps.glob_to_regex("_freeze/**")
+    r = cps.diffscope.glob_to_regex("_freeze/**")
     assert r.match("_freeze/a/b/c.json")
     assert not r.match("src/_freeze/a")
-    r2 = cps.glob_to_regex("**/*.png")
+    r2 = cps.diffscope.glob_to_regex("**/*.png")
     assert r2.match("a/b/c.png") and r2.match("c.png")
+
+
+def test_paths_ignore_bare_directory_skips_its_contents(tmp_path):
+    repo = make_repo(tmp_path, {f"gen/g{i}.qmd": 5 for i in range(20)})
+    assert run(repo, PRS_PATHS_IGNORE="gen")[0] == 0
+
+
+def test_name_with_a_quote_is_matched_unquoted(tmp_path):
+    # git quotes such a name in a plain numstat listing (gha#1923), so the
+    # built-in `**/*.png` ignore used to miss it and count the file.
+    repo = make_repo(tmp_path, {'img/say"hi.png': 1, "a.qmd": 1})
+    code, out = run(repo, PRS_MAX_FILES="1")
+    assert code == 0, out
+    assert "1 file(s)" in out
+
+
+def test_quoted_rename_counts_as_a_pure_rename(tmp_path):
+    repo = make_repo(tmp_path, {'d/say"hi.qmd': 3})
+    (tmp_path / "e").mkdir()
+    git(tmp_path, "mv", 'd/say"hi.qmd', 'e/say"hi.qmd')
+    git(tmp_path, "commit", "-q", "-m", "rename")
+    code, out = run(repo)
+    assert code == 0, out
+    assert "0 file(s)" in out
 
 
 def _default(path, key):

@@ -603,6 +603,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-solution-citations/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-search-shortcut/` (Python, stdlib only) takes its file listing and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-format-output-files/` (Python, stdlib only) takes its file listing and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-pr-size/` (Python, stdlib only) takes its git, listing, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+  It keeps its own `git check-attr` call, because that feeds the paths on standard input.
+- `check-pr-concerns/` (Python, stdlib only) takes its git, listing, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-rubric-checklists/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-single-ask-parts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-proof-statements/` (Python, stdlib only, gha#1351) flags two proof rules (psw#426):

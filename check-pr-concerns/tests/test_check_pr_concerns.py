@@ -18,7 +18,7 @@ spec.loader.exec_module(cpc)
 DEFAULTS = (
     cpc.compile_all(cpc.DEFAULT_CONTENT),
     cpc.compile_all(cpc.DEFAULT_INFRA),
-    cpc.compile_all(cpc.BUILTIN_IGNORE),
+    cpc.diffscope.compile_ignores(cpc.BUILTIN_IGNORE),
 )
 
 
@@ -80,8 +80,26 @@ def test_unclassified_paths_count_as_neither():
     assert kinds(["README.md", "references.bib", "images/a.png"]) == ([], [])
 
 
-def test_parse_names_takes_the_new_name_of_a_rename():
-    assert cpc.parse_names("R100\told.qmd\ttools/new.qmd\nM\ta.py\n") == ["tools/new.qmd", "a.py"]
+def test_a_rename_is_classified_by_its_new_name(tmp_path, monkeypatch):
+    repo = make_repo(tmp_path, ["chapters/a.qmd"])
+    (tmp_path / "tools").mkdir()
+    git(tmp_path, "mv", "chapters/a.qmd", "tools/a.qmd")
+    git(tmp_path, "commit", "-q", "-m", "rename")
+    monkeypatch.chdir(repo)
+    assert cpc.changed_paths("HEAD^1") == ["tools/a.qmd"]
+
+
+def test_name_with_a_quote_is_classified(tmp_path):
+    # git quotes such a name in a plain listing (gha#1923), and the quoted
+    # form matched no content glob, so the mix went unseen.
+    repo = make_repo(tmp_path, ['chapters/say"hi.qmd', "tools/check.py"])
+    r = run(repo, PRC_BASE_REF="HEAD^1")
+    assert r.returncode == 1, r.stdout
+
+
+def test_paths_ignore_bare_directory_removes_the_mix(tmp_path):
+    repo = make_repo(tmp_path, ["chapters/a.qmd", "tools/check.py"])
+    assert run(repo, PRC_BASE_REF="HEAD^1", PRC_PATHS_IGNORE="tools").returncode == 0
 
 
 def test_mixed_pr_fails(tmp_path):
