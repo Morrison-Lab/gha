@@ -364,8 +364,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   definition command (`\newcommand`, `\def`, `\DeclareMathOperator` and the
   rest) on a line a PR adds, in `.qmd`/`.Rmd`/`.md`/`.tex`/`.sty`/`.cls`/`.html`,
   because new macros belong in `Morrison-Lab/macros`.
-  It reuses `check-literal-math-letters`'s diff model (added lines only, moved
-  lines exempt, skip-not-fall-back, warn-only by default).
+  It uses `check-literal-math-letters`'s diff model (added lines only, moved
+  lines exempt, skip-not-fall-back, warn-only by default),
+  taking its git, diff and file helpers from `check-common/diffscope.py` (gha#1856).
   It differs in what it skips: a code fence is skipped unless its language is
   `tex`, `latex` or a raw `{=tex}`/`{=latex}`/`{=html}` block, because that is
   where a Quarto page keeps definitions.
