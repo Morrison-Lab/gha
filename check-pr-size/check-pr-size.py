@@ -13,7 +13,8 @@ Env (all optional except where noted):
   PRS_MAX_LINES     added plus deleted line cap (default 300)
   PRS_PATHS_IGNORE  comma/newline-separated globs not counted
 The lines (not the files) of a newly added `_fig-*` subfile are not counted
-(ai-config#4928).
+(ai-config#4928), and neither is a path `.gitattributes` marks
+`linguist-generated` (gha#1959).
   PRS_EXEMPT        'true' when the PR carries the exemption label
   PRS_PR_BODY       the PR description; one saying "mechanical,
                     content-identical" exempts the PR (ai-config#5129)
@@ -145,6 +146,24 @@ def pure_renames(base):
                      if line.startswith("R100") and line.count("\t") == 2)
 
 
+def generated_paths(paths):
+    """The paths among `paths` that `.gitattributes` marks `linguist-generated`.
+
+    A repo marks its committed generator outputs once, and GitHub folds them
+    in review as well (gha#1959, ai-config#5288).
+    """
+    if not paths:
+        return frozenset()
+    out = subprocess.run(["git", "check-attr", "-z", "--stdin", "linguist-generated"],
+                         input="\0".join(paths) + "\0", capture_output=True, text=True)
+    if out.returncode != 0:
+        print("::warning::check-pr-size: git check-attr failed, counting "
+              "linguist-generated paths.")
+        return frozenset()
+    f = out.stdout.split("\0")
+    return frozenset(f[i] for i in range(0, len(f) - 2, 3) if f[i + 2] in ("set", "true"))
+
+
 def diff_rows(base):
     ok = subprocess.run(["git", "rev-parse", "--verify", "-q", base + "^{commit}"],
                         capture_output=True, text=True)
@@ -173,6 +192,8 @@ def main():
         return 0
     patterns = BUILTIN_IGNORE + parse_patterns(os.environ.get("PRS_PATHS_IGNORE", ""))
     regexes = [glob_to_regex(p) for p in patterns]
+    generated = generated_paths([p for p, _ in rows])
+    rows = [(p, n) for p, n in rows if p not in generated]
     files, lines, _ = measure(rows, regexes, added_paths(base), pure_renames(base))
     print(f"check-pr-size: {files} file(s), {lines} changed line(s) "
           f"(caps {max_files} files, {max_lines} lines).")

@@ -19,6 +19,11 @@ These paths are not counted, since nobody writes them by hand:
 lockfiles, `renv.lock`, `_freeze/`, `docs/`, images, PDFs,
 CSV and R data files, and minified scripts.
 Add more with `paths-ignore`.
+A path that the repository's `.gitattributes` marks
+`linguist-generated` is not counted either,
+so a repository marks its committed generator outputs once,
+and GitHub folds them in review as well
+([gha#1959](https://github.com/Morrison-Lab/gha/issues/1959)).
 
 The lines of a newly added `_fig-*` subfile are not counted either,
 since figure code in several languages is long but mechanical

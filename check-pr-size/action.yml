@@ -3,7 +3,8 @@ description: >-
   Diff-scoped, blocking check that fails a pull request changing more than
   10 files or 300 lines (added plus deleted). Every PR should be as small and
   focused as it can be while completely solving its task; a sweep goes out as
-  minimal batches. Generated, lock, image and data paths are not counted, and
+  minimal batches. Generated, lock, image and data paths are not counted,
+  nor any path `.gitattributes` marks `linguist-generated`, and
   neither are the lines of a newly added `_fig-*` figure subfile (each still
   counts as a file), and a pure rename does not count toward the file cap.
   The exemption label (`size-exempt` in the reusable workflow) lifts the cap,
