@@ -25,9 +25,16 @@ from typing import Tuple
 # first word (the language) in group 2.
 FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})\s*(\S*)")
 
-# A code span: a backtick run, its contents, and a closing run of the same
-# length.
-CODE_SPAN_RE = re.compile(r"(`+).+?\1")
+# A code span: a backtick run, its contents, and a closing run of exactly the
+# same length, as CommonMark reads it.  The lookarounds stop a run from
+# matching part of a longer one, so ``a``b`` is one span and `a``b` is one
+# span, where the plain ``(`+).+?\1`` closed both early (gha#1856).
+CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
+
+
+def mask_code_spans(line: str) -> str:
+    """Blank every code span on one line, keeping the line's length."""
+    return CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
 
 
 def blank_closed_comments(line: str) -> str:
@@ -66,5 +73,4 @@ def mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
     start = out.find("<!--")
     if start >= 0:
         out, in_comment = out[:start], True
-    out = CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), out)
-    return out, in_comment
+    return mask_code_spans(out), in_comment
