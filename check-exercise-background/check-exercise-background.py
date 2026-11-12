@@ -150,7 +150,7 @@ def _stems(words: List[str]) -> Set[str]:
 
 
 # Word endings whose singular and plural are the same (gha#1481).
-INVARIANT_PLURALS = frozenset({"series", "species"})
+INVARIANT_PLURALS = ("series", "species")
 
 
 def _singular(word: str) -> str:
@@ -162,7 +162,7 @@ def _singular(word: str) -> str:
     in "series" or "species" ("subspecies").
     """
     if (len(word) <= 3 or not word.endswith("s")
-            or word.endswith(tuple(INVARIANT_PLURALS))):
+            or word.endswith(INVARIANT_PLURALS)):
         return word
     if word.endswith("ies"):
         return word[:-3] + "y"
