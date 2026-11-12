@@ -479,10 +479,12 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `check-informal-definitions/` bundles the composite action, parser script, and pytest suite for detecting informal technical definitions in Quarto prose;
   `check-literal-math-letters/` bundles the composite action, stdlib-only parser script, and pytest suite for flagging literal Latin and Greek letters in math;
   `check-wikipedia-further-reading/` (Python, stdlib only, gha#1093) bundles the composite action, script, and pytest suite for flagging a Wikipedia citation or link in a Further reading list item;
-  it copies `check-literal-math-letters/`'s diff model (added lines only, moved lines exempt, skip-not-fall-back) but blocks by default (`fail: true`);
+  it copies `check-literal-math-letters/`'s diff model (added lines only, moved lines exempt, skip-not-fall-back) but blocks by default (`fail: true`),
+  and takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856);
   `check-redundant-citations/` (Python, stdlib only, gha#1105) bundles the composite action, script, and pytest suite
   for flagging a source cited twice, with the same locator, in one div or passage;
-  it takes the same diff model and is warn-only by default (`fail: false`), because the same key twice is sometimes right;
+  it takes the same diff model and is warn-only by default (`fail: false`), because the same key twice is sometimes right,
+  and takes its git and file helpers from `check-common/diffscope.py` (gha#1856) and its diff parser from `check-write-idiom`'s engine;
   `check-self-credits/` (Python, stdlib only, gha#1076) bundles the composite action, script, and pytest suite
   for flagging a formal credit to the group's own work: a citation of a bibliography entry the consumer marks as own,
   or a credit phrase ("adapted from", a `Source:` line or div) in the same paragraph as an own site or name;
