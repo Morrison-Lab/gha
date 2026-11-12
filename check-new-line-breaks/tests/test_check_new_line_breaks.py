@@ -1304,7 +1304,7 @@ def test_an_ignored_quoted_name_does_not_widen_scope(tmp_path, monkeypatch, name
     (tmp_path / name).write_text("# Notes\n\nEdited.\n")
     monkeypatch.chdir(tmp_path)
 
-    ignores = nlb._compile_ignores([name])
+    ignores = nlb.diffscope.compile_ignores([name])
     assert not nlb._has_uncommitted_changes(["*.md"], ignores)
     assert nlb._has_uncommitted_changes(["*.md"], [])
 
