@@ -359,6 +359,18 @@ The check flags:
     assert len(findings) == 0
 
 
+def test_unequal_backtick_runs_open_no_code_span():
+    # A run closes a span only on a run of the same length (gha#1856), so
+    # this line holds no span and its definition is prose.
+    content = """
+# Methods
+
+A ` **widget** is defined as a small gadget ``.
+"""
+    findings = scan_file_lines(Path("ref.qmd"), content.splitlines())
+    assert len(findings) == 1
+
+
 def test_nested_subsection_under_notation_remains_exempt():
     # Finding 6 reproduction: subsection under Notation remains exempt
     content = """
