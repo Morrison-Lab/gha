@@ -64,11 +64,14 @@ Configuration (environment variables, set by the composite action):
 
 import os
 import re
-import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 # Output-comment patterns. Each is searched for in every line of a code fence
 # of one of CODE_LANGUAGES. `#\s*->` covers both `# ->` and `#->`.
@@ -258,59 +261,11 @@ def scan_text(text: str, patterns: List["re.Pattern[str]"]) -> List[Finding]:
 
 # ── Scope resolution (the approach check-new-line-breaks uses) ───────────────
 
-def _run_git(args: List[str]) -> Optional[str]:
-    try:
-        return subprocess.run(
-            ["git", *args], capture_output=True, check=True,
-            encoding="utf-8", errors="replace",
-        ).stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(r.match(rel) for r in ignores)
-
-
 def _status_path(line: str) -> str:
     rest = line[3:]
     if " -> " in rest:
         rest = rest.split(" -> ", 1)[1]
-    return rest.strip().strip('"')
+    return diffscope.unquote_git_path(rest.strip())
 
 
 def _has_uncommitted_changes(
@@ -319,11 +274,11 @@ def _has_uncommitted_changes(
     """True when a tracked file the pathspecs match carries a staged or
     unstaged change. Untracked files are excluded: ``git diff`` cannot show
     them, so they must not flip the scope (see ``_untracked_matches``)."""
-    out = _run_git(["status", "--porcelain", "-uno", "--", *pathspecs])
+    out = diffscope.run_git(["status", "--porcelain", "-uno", "--", *pathspecs])
     if not out:
         return False
     return any(
-        line and not _ignored(_status_path(line), ignores)
+        line and not diffscope.ignored(_status_path(line), ignores)
         for line in out.splitlines()
     )
 
@@ -331,13 +286,13 @@ def _has_uncommitted_changes(
 def _untracked_matches(
     pathspecs: List[str], ignores: List["re.Pattern[str]"]
 ) -> List[str]:
-    out = _run_git(["status", "--porcelain", "-uall", "--", *pathspecs])
+    out = diffscope.run_git(["status", "--porcelain", "-uall", "--", *pathspecs])
     if not out:
         return []
     return sorted(
         _status_path(line)
         for line in out.splitlines()
-        if line.startswith("??") and not _ignored(_status_path(line), ignores)
+        if line.startswith("??") and not diffscope.ignored(_status_path(line), ignores)
     )
 
 
@@ -356,14 +311,14 @@ def added_lines(
     run is one maximal stretch of consecutive deleted lines, in order; lines
     deleted from a file ``ignores`` covers are not collected, since content
     outside the checked population cannot have moved from it."""
-    merge_base = (_run_git(["merge-base", base_ref, "HEAD"]) or "").strip()
+    merge_base = (diffscope.run_git(["merge-base", base_ref, "HEAD"]) or "").strip()
     if not merge_base:
         return None
     target = [merge_base] if worktree else [f"{merge_base}..HEAD"]
     # --no-renames: a rename then reads as a deletion plus an addition, so a
     # file moved in from an ignored path is examined, and one moved within
     # the checked population is exempted by the moved-span match below.
-    diff = _run_git(["diff", "--unified=0", "--no-color", "--no-renames", *target, "--", *pathspecs])
+    diff = diffscope.run_git(["diff", "--unified=0", "--no-color", "--no-renames", *target, "--", *pathspecs])
     if diff is None:
         return None
     result: Dict[str, Set[int]] = {}
@@ -380,10 +335,11 @@ def added_lines(
             continue
         if not in_hunk and raw.startswith("--- "):
             source = raw[4:]
-            old_ignored = source != "/dev/null" and _ignored(source[2:], ignores or [])
+            source = diffscope.unquote_git_path(source)
+            old_ignored = source != "/dev/null" and diffscope.ignored(source[2:], ignores or [])
             continue
         if not in_hunk and raw.startswith("+++ "):
-            target_path = raw[4:]
+            target_path = diffscope.unquote_git_path(raw[4:])
             cur = None if target_path == "/dev/null" else target_path[2:]
             if cur is not None:
                 result.setdefault(cur, set())
@@ -425,10 +381,7 @@ def take_moved(runs: List[List[str]], block: List[str]) -> bool:
 
 
 def tracked_files(pathspecs: List[str]) -> List[str]:
-    out = _run_git(["ls-files", "-z", "--", *pathspecs])
-    if out is None:
-        return []
-    return sorted(p for p in out.split("\0") if p)
+    return sorted(diffscope.git_paths(["ls-files", "--", *pathspecs]) or [])
 
 
 class Result(NamedTuple):
@@ -473,7 +426,7 @@ def run(
     out: List[Tuple[str, Finding]] = []
     examined = 0
     for rel in files:
-        if _ignored(rel, ignores):
+        if diffscope.ignored(rel, ignores):
             continue
         path = Path(rel)
         if not path.is_file():
@@ -510,10 +463,6 @@ def run(
 
 # ── Main ─────────────────────────────────────────────────────────────────
 
-def _split_list(value: str) -> List[str]:
-    return [tok.strip() for tok in re.split(r"[,\n]", value or "") if tok.strip()]
-
-
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.environ.get(name, "").strip().lower()
     if not raw:
@@ -542,7 +491,9 @@ def main() -> int:
               "than check with fewer patterns than configured.")
         return 2
     globs = os.environ.get("TYPED_OUTPUT_GLOBS", _DEFAULT_GLOBS).split() or [_DEFAULT_GLOBS]
-    ignores = compile_ignores(_split_list(os.environ.get("TYPED_OUTPUT_PATHS_IGNORE", "")))
+    ignores = diffscope.compile_ignores(
+        diffscope.split_list(os.environ.get("TYPED_OUTPUT_PATHS_IGNORE", ""))
+    )
     fail = _env_flag("TYPED_OUTPUT_FAIL", _DEFAULT_FAIL)
     diff_scoped = _env_flag("TYPED_OUTPUT_DIFF_SCOPED", False)
     base_ref = os.environ.get("TYPED_OUTPUT_BASE_REF", "").strip()
