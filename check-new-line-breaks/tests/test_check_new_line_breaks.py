@@ -269,6 +269,37 @@ def test_single_letter_initial_before_lowercase_does_not_split():
     assert nlb.split_sentences(text) == [text]
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "It reached the U.S. Supreme Court in the end.",
+        "She worked at the U.K. Department of Health for years.",
+        "Rates in the U.S. Treasury market fell sharply that week.",
+    ],
+)
+def test_initialism_before_proper_noun_follower_does_not_split(text):
+    """An initialism followed by a listed institution word continues the noun
+    phrase, so its final dot is protected from the uppercase branch (gha#1927).
+    Removing `_protect_initialisms` from `split_sentences` splits each one."""
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_initialism_before_other_capital_still_splits():
+    """A capitalized word that is not a listed follower starts a new sentence."""
+    text = "It moved to the U.S. Then it grew quickly."
+    assert nlb.split_sentences(text) == [
+        "It moved to the U.S.",
+        "Then it grew quickly.",
+    ]
+
+
+def test_initialism_before_unlisted_lowercase_word_does_not_split():
+    """With no determiner the final dot stays unprotected, but the lowercase
+    branch's lookbehind still refuses a split after a single-letter initial."""
+    text = "Exports from U.S. firms rose after the deal closed."
+    assert nlb.split_sentences(text) == [text]
+
+
 def test_dotted_abbreviation_before_lowercase_does_not_split():
     """`a.m.`: the terminal period follows `.m`, not two lowercase letters."""
     text = "The build starts at 9 a.m. sharp every day."

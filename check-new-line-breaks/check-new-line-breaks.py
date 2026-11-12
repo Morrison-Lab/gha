@@ -128,6 +128,45 @@ _ABBREV_LOWER_RE = re.compile(
     _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
 )
 
+# Dotted initialisms (`U.S.`, `e.g.` is handled by `_ABBREVS`). Every internal
+# dot of an initialism is protected. Its final dot is protected too when the
+# next word continues the noun phrase: a capitalized word that names an
+# institution or title (`the U.S. Supreme Court`), or, after a determiner, a
+# lowercase common noun (`the U.S. economy`). Otherwise the final dot stays a
+# candidate boundary, so `It moved to the U.S. Then it grew.` still splits.
+# Ported from gla's copy of this script (gha#1927). gla also widened the
+# lowercase branch's lookbehind to split after an initialism; that is not
+# ported, because it splits `9 a.m. sharp` and other dotted abbreviations.
+_PROPER_NOUN_FOLLOWERS = {
+    "Supreme", "Department", "Dept", "Senate", "Congress", "Government", "Govt",
+    "District", "Court", "Courts", "Navy", "Army", "Air", "Coast", "Postal",
+    "Border", "Customs", "Marshal", "Marshals", "Attorney", "Attorneys",
+    "President", "Secretary", "Bank", "Dollar", "Dollars", "News", "Route",
+    "Highway", "Virgin", "Circuit", "Mayor", "Parliament", "Prime",
+    "Food", "Trade", "Securities", "Internal", "National", "Public",
+    "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh",
+    "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth",
+    "Constitution", "Law", "Laws", "Code", "Treaty", "Flag", "Embassy",
+    "Consulate", "Capitol", "Treasury", "Commerce", "Labor", "Energy",
+    "Education", "Veterans", "Homeland", "Agriculture", "Transportation",
+    "Interior", "Defense", "State", "Health", "Human", "Housing", "Urban",
+    "Justice", "Geological",
+}
+_COMMON_NOUN_FOLLOWERS = {
+    "economy", "market", "markets", "history", "population", "policy", "policies",
+    "citizens", "government", "military", "dollars", "dollar", "laws", "law",
+    "border", "borders", "infrastructure", "system", "systems", "patents",
+    "forces", "courts", "court", "firms", "companies", "data", "standard",
+    "standards", "census", "postal", "customs", "territory", "territories",
+    "soil", "citizenship", "passport", "passports", "currency", "embassy",
+    "embassies", "consulate",
+}
+_INITIALISM_FOLLOW_RE = re.compile(
+    r"(?P<det>\b(?:[Tt]he|[Aa]n?|[Ii]ts|[Oo]ur|[Tt]heir|[Hh]is|[Hh]er|[Tt]his|[Tt]hat)\s+)?"
+    r"(?P<init>(?:[A-Za-z]\.){2,})\s+(?P<follower>[A-Za-z]+)"
+)
+_INITIALISM_RE = re.compile(r"\b(?:[A-Za-z]\.){2,}")
+
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote/digit/opener.
 # The closing-char class includes `*` and `_` so a sentence ending in Markdown
 # emphasis (`**Some claim.** Explanation...`, or the `__claim.__` / `_claim._`
@@ -220,12 +259,36 @@ def _protect_inline_code(m: "re.Match[str]") -> str:
     return m.group(0).replace(".", _PLACEHOLDER).replace("!", "\x01").replace("?", "\x02")
 
 
+def _protect_initialisms(text: str) -> str:
+    """Protect internal dots in initialisms, and the final dot before a follower."""
+    def _replace_follower(m: "re.Match[str]") -> str:
+        det = m.group("det") or ""
+        init = m.group("init")
+        follower = m.group("follower")
+        if follower[0].isupper():
+            keep_final = follower in _PROPER_NOUN_FOLLOWERS
+        else:
+            keep_final = bool(det) and follower in _COMMON_NOUN_FOLLOWERS
+        if keep_final:
+            return det + init.replace(".", _PLACEHOLDER) + " " + follower
+        return det + init[:-1].replace(".", _PLACEHOLDER) + init[-1] + " " + follower
+
+    text = _INITIALISM_FOLLOW_RE.sub(_replace_follower, text)
+
+    def _replace_internal(m: "re.Match[str]") -> str:
+        val = m.group(0)
+        return val[:-1].replace(".", _PLACEHOLDER) + val[-1]
+
+    return _INITIALISM_RE.sub(_replace_internal, text)
+
+
 def split_sentences(text: str) -> List[str]:
     """Split text at sentence boundaries; return the list of sentences."""
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
+    protected = _protect_initialisms(protected)
     protected = _PAGE_LOCATOR_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, protected)
     protected = _NUM_MARKER_RE.sub(
         lambda m: m.group(1) + m.group(2)[:-1] + _PLACEHOLDER + m.group(3), protected
