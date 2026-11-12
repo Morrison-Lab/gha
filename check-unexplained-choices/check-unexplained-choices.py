@@ -218,7 +218,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         if base is None or not base.strip():
             return Report([], 0, True)
         diff = diffscope.run_git(["diff", "-U0", "--no-color", "--no-ext-diff",
-                         base.strip(), "--", *globs])
+                                  base.strip(), "--", *globs])
         if diff is None:
             return Report([], 0, True)
         added, deleted = diffscope.parse_diff(diff)
