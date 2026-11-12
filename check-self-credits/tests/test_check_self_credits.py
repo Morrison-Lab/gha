@@ -361,7 +361,7 @@ def test_parse_diff_added_and_deleted():
         "diff --git a/a.qmd b/a.qmd\n--- a/a.qmd\n+++ b/a.qmd\n"
         "@@ -1,1 +1,2 @@\n-old\n+new [@forcedown]\n+kept\n"
     )
-    added, deleted = sc.parse_diff(diff)
+    added, deleted = sc.diffscope.parse_diff(diff)
     assert added == {"a.qmd": {1: "new [@forcedown]", 2: "kept"}}
     assert deleted == {"old"}
 
@@ -418,9 +418,26 @@ def test_no_base_ref_skips(tmp_path, monkeypatch, cfg):
 def test_paths_ignore(tmp_path, monkeypatch, cfg):
     repo = _repo(tmp_path)
     monkeypatch.chdir(repo)
-    ignores = sc.compile_ignores(["a.qmd"])
+    ignores = sc.diffscope.compile_ignores(["a.qmd"])
     report = sc.run_check("", ["*.qmd"], ignores, True, cfg)
     assert report.findings == []
+
+
+def test_path_git_quotes_is_found(tmp_path, monkeypatch, cfg):
+    # git quotes a name holding a double quote even under core.quotepath=false,
+    # so the diff header and ls-files must be decoded before the file is read.
+    repo = _repo(tmp_path)
+    name = 'q"a.qmd'
+    (repo / name).write_text("Text.\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "quoted")
+    (repo / name).write_text("Text.\nNew [@morrison2026mds].\n")
+    _git(repo, "commit", "-qam", "credit")
+    monkeypatch.chdir(repo)
+    report = sc.run_check("HEAD~1", ["*.qmd"], [], False, cfg)
+    assert [(rel, f.line) for rel, f in report.findings] == [(name, 2)]
+    whole = sc.run_check("", ["*.qmd"], [], True, cfg)
+    assert (name, 2) in [(rel, f.line) for rel, f in whole.findings]
 
 
 def test_load_config_missing_file_returns_none(tmp_path):
