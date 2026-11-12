@@ -578,6 +578,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-key-equations-displayed/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-serial-comma/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-unexplained-contrasts/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-restated-results/` (Python, stdlib only) takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856) and its diff arguments and parser from `check-write-idiom`'s engine, so keep both directories beside it.
 - `check-unexplained-choices/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-solution-citations/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-rubric-checklists/` (Python, stdlib only) takes its git, diff, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
