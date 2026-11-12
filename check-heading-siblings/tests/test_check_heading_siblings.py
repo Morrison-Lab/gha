@@ -143,7 +143,7 @@ def test_fails_by_default():
     workflow = (root.parent / ".github" / "workflows" / "check-heading-siblings.yml").read_text()
     assert "default: 'true'" in action.split("  fail:")[1].split("runs:")[0]
     assert "default: true" in workflow.split("      fail:")[1].split("jobs:")[0]
-    assert 'fail = _env_flag("CHS_FAIL", True)' in (root / "check-heading-siblings.py").read_text()
+    assert 'fail = diffscope.env_flag("CHS_FAIL", True)' in (root / "check-heading-siblings.py").read_text()
 
 
 def test_default_minimum_is_two():
