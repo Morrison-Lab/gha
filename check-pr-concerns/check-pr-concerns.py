@@ -19,9 +19,11 @@ Env (all optional):
   PRC_FAIL           'false' to warn instead of block (default true)
 """
 import os
-import re
-import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_CONTENT = ["chapters/**", "**/_subfiles/**", "**/*.qmd", "**/*.Rmd"]
 DEFAULT_INFRA = [
@@ -35,50 +37,12 @@ BUILTIN_IGNORE = [
 ]
 
 
-def glob_to_regex(pattern):
-    """Translate a glob with `*`, `?` and recursive `**` into a regex."""
-    out = []
-    i = 0
-    while i < len(pattern):
-        c = pattern[i]
-        if pattern.startswith("**/", i):
-            out.append("(?:.*/)?")
-            i += 3
-            continue
-        if pattern.startswith("**", i):
-            out.append(".*")
-            i += 2
-            continue
-        if c == "*":
-            out.append("[^/]*")
-        elif c == "?":
-            out.append("[^/]")
-        else:
-            out.append(re.escape(c))
-        i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def parse_patterns(raw):
-    return [p.strip() for p in re.split(r"[,\n]", raw) if p.strip()]
-
-
 def compile_all(patterns):
-    return [glob_to_regex(p) for p in patterns]
+    return [diffscope.glob_to_regex(p) for p in patterns]
 
 
 def matches(path, regexes):
     return any(r.match(path) for r in regexes)
-
-
-def parse_names(text):
-    """Return the changed paths from `git diff --name-status -M` output."""
-    paths = []
-    for line in text.splitlines():
-        parts = line.split("\t")
-        if len(parts) >= 2:
-            paths.append(parts[-1])
-    return paths
 
 
 def classify(paths, content, infra, ignore):
@@ -95,15 +59,10 @@ def classify(paths, content, infra, ignore):
 
 
 def changed_paths(base):
-    ok = subprocess.run(["git", "rev-parse", "--verify", "-q", base + "^{commit}"],
-                        capture_output=True, text=True)
-    if ok.returncode != 0:
+    """The changed paths, a rename by its new name, or None without a base."""
+    if diffscope.run_git(["rev-parse", "--verify", "-q", base + "^{commit}"]) is None:
         return None
-    out = subprocess.run(["git", "diff", "--name-status", "-M", base, "HEAD"],
-                         capture_output=True, text=True)
-    if out.returncode != 0:
-        return None
-    return parse_names(out.stdout)
+    return diffscope.git_paths(["diff", "--name-only", "-M", base, "HEAD"])
 
 
 def sample(paths, limit=3):
@@ -123,9 +82,10 @@ def main():
         print(f"::warning::check-pr-concerns: cannot diff against {base!r} "
               "(shallow checkout?), skipping.")
         return 0
-    content = compile_all(parse_patterns(os.environ.get("PRC_CONTENT_PATHS", "")) or DEFAULT_CONTENT)
-    infra = compile_all(parse_patterns(os.environ.get("PRC_INFRA_PATHS", "")) or DEFAULT_INFRA)
-    ignore = compile_all(BUILTIN_IGNORE + parse_patterns(os.environ.get("PRC_PATHS_IGNORE", "")))
+    content = compile_all(diffscope.split_list(os.environ.get("PRC_CONTENT_PATHS", "")) or DEFAULT_CONTENT)
+    infra = compile_all(diffscope.split_list(os.environ.get("PRC_INFRA_PATHS", "")) or DEFAULT_INFRA)
+    ignore = diffscope.compile_ignores(
+        BUILTIN_IGNORE + diffscope.split_list(os.environ.get("PRC_PATHS_IGNORE", "")))
     content_hits, infra_hits = classify(paths, content, infra, ignore)
     print(f"check-pr-concerns: {len(content_hits)} content file(s), "
           f"{len(infra_hits)} infrastructure file(s).")

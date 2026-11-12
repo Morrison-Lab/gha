@@ -21,11 +21,14 @@ The lines (not the files) of a newly added `_fig-*` subfile are not counted
 A pure rename (no line changed) does not count toward the file cap.
   PRS_FAIL          'false' to warn instead of block (default true)
 """
-import fnmatch
 import os
 import re
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 DEFAULT_MAX_FILES = 10
 DEFAULT_MAX_LINES = 300
@@ -50,51 +53,26 @@ def states_mechanical(body):
     return bool(MECHANICAL_RE.search(body or ""))
 
 
-def glob_to_regex(pattern):
-    """Translate a glob with `*`, `?` and recursive `**` into a regex."""
-    out = []
-    i = 0
-    while i < len(pattern):
-        c = pattern[i]
-        if pattern.startswith("**/", i):
-            out.append("(?:.*/)?")
-            i += 3
-            continue
-        if pattern.startswith("**", i):
-            out.append(".*")
-            i += 2
-            continue
-        if c == "*":
-            out.append("[^/]*")
-        elif c == "?":
-            out.append("[^/]")
-        else:
-            out.append(re.escape(c))
-        i += 1
-    return re.compile("^" + "".join(out) + "$")
-
-
-def parse_patterns(raw):
-    return [p.strip() for p in re.split(r"[,\n]", raw) if p.strip()]
-
-
-def is_ignored(path, regexes):
-    return any(r.match(path) for r in regexes)
-
-
 def parse_numstat(text):
-    """Return [(path, changed_lines)] from `git diff --numstat` output."""
+    """Return [(path, changed_lines)] from `git diff --numstat -z` output.
+
+    `-z` leaves a name holding `"`, a backslash or a tab unquoted (gha#1923),
+    and gives a rename's new name as its own field instead of `{a => b}`.
+    """
+    fields = text.split("\0")
     rows = []
-    for line in text.splitlines():
-        parts = line.split("\t", 2)
+    i = 0
+    while i < len(fields):
+        parts = fields[i].split("\t", 2)
+        i += 1
         if len(parts) != 3:
             continue
         added, deleted, path = parts
-        if " => " in path:
-            path = re.sub(r"\{[^}]* => ([^}]*)\}", r"\1", path)
-            path = path.split(" => ")[-1]
+        if not path:  # a rename: the old and new names follow
+            path = fields[i + 1] if i + 1 < len(fields) else ""
+            i += 2
         lines = 0 if added == "-" else int(added) + int(deleted)
-        rows.append((path.replace("//", "/"), lines))
+        rows.append((path, lines))
     return rows
 
 
@@ -104,8 +82,8 @@ def measure(rows, regexes, added=frozenset(), renames=frozenset()):
     The lines of a newly added figure subfile are free, and a pure rename
     (no line changed) does not count as a file (ai-config#5129).
     """
-    free = glob_to_regex(NEW_FIGURE_LINES_FREE)
-    kept = [(p, n) for p, n in rows if not is_ignored(p, regexes) and p not in renames]
+    free = diffscope.glob_to_regex(NEW_FIGURE_LINES_FREE)
+    kept = [(p, n) for p, n in rows if not diffscope.ignored(p, regexes) and p not in renames]
     lines = sum(0 if p in added and free.match(p) else n for p, n in kept)
     return len(kept), lines, kept
 
@@ -131,19 +109,24 @@ def read_int(name, default):
 
 def added_paths(base):
     """Paths the diff adds as new files (a rename is not an addition)."""
-    out = subprocess.run(["git", "diff", "--name-only", "--diff-filter=A", "-M", base, "HEAD"],
-                         capture_output=True, text=True)
-    return frozenset(out.stdout.splitlines()) if out.returncode == 0 else frozenset()
+    paths = diffscope.git_paths(["diff", "--name-only", "--diff-filter=A", "-M", base, "HEAD"])
+    return frozenset(paths or ())
 
 
 def pure_renames(base):
     """New paths of renames with 100% similarity, so no line changed."""
-    out = subprocess.run(["git", "diff", "--name-status", "-M100%", base, "HEAD"],
-                         capture_output=True, text=True)
-    if out.returncode != 0:
-        return frozenset()
-    return frozenset(line.split("\t")[2] for line in out.stdout.splitlines()
-                     if line.startswith("R100") and line.count("\t") == 2)
+    fields = diffscope.git_paths(["diff", "--name-status", "-M100%", base, "HEAD"]) or []
+    renames = set()
+    i = 0
+    while i < len(fields):
+        status = fields[i]
+        if status[:1] in ("R", "C"):
+            if status == "R100" and i + 2 < len(fields):
+                renames.add(fields[i + 2])
+            i += 3
+        else:
+            i += 2
+    return frozenset(renames)
 
 
 def generated_paths(paths):
@@ -165,15 +148,10 @@ def generated_paths(paths):
 
 
 def diff_rows(base):
-    ok = subprocess.run(["git", "rev-parse", "--verify", "-q", base + "^{commit}"],
-                        capture_output=True, text=True)
-    if ok.returncode != 0:
+    if diffscope.run_git(["rev-parse", "--verify", "-q", base + "^{commit}"]) is None:
         return None
-    out = subprocess.run(["git", "diff", "--numstat", "-M", base, "HEAD"],
-                         capture_output=True, text=True)
-    if out.returncode != 0:
-        return None
-    return parse_numstat(out.stdout)
+    out = diffscope.run_git(["diff", "--numstat", "-z", "-M", base, "HEAD"])
+    return None if out is None else parse_numstat(out)
 
 
 def main():
@@ -190,8 +168,8 @@ def main():
         print(f"::warning::check-pr-size: cannot diff against {base!r} "
               "(shallow checkout?), skipping.")
         return 0
-    patterns = BUILTIN_IGNORE + parse_patterns(os.environ.get("PRS_PATHS_IGNORE", ""))
-    regexes = [glob_to_regex(p) for p in patterns]
+    patterns = BUILTIN_IGNORE + diffscope.split_list(os.environ.get("PRS_PATHS_IGNORE", ""))
+    regexes = diffscope.compile_ignores(patterns)
     generated = generated_paths([p for p, _ in rows])
     rows = [(p, n) for p, n in rows if p not in generated]
     files, lines, _ = measure(rows, regexes, added_paths(base), pure_renames(base))
