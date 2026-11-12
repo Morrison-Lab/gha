@@ -1,0 +1,5 @@
+- `check-exercise-background` fixes four misreadings (gha#1481):
+  - "series" and "species" stay as they are, and "biases" reads as "bias".
+  - "Exclusive or" stays one defined term, and "Gradient (or del)" names "gradient" and "del".
+  - Math is removed from a definition title before the title is split.
+  - A three-letter macro such as `\sim` says no title word unless it is listed, and a typesetting command such as `\text` says none.

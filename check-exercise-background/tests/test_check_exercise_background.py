@@ -65,7 +65,7 @@ def test_only_defined_terms_are_reported():
 
 
 def test_defined_stems_reads_a_title_attribute():
-    assert "gamma" in exb.defined_stems(['::: {#def-g title="Gamma family"}'])
+    assert exb.defined_stems(['::: {#def-g title="Gamma family"}']) == {"gamma family"}
 
 
 def test_a_plural_title_word_matches_its_singular_in_the_body():
@@ -155,7 +155,7 @@ def test_corpus_reads_tracked_files_and_is_empty_without_defs(tmp_path, monkeypa
     (tmp_path / "a.qmd").write_text("::: {#def-g}\n#### Gamma kernel\n:::\n")
     (tmp_path / "b.qmd").write_text("Nothing defined here.\n")
     subprocess.run(["git", "add", "a.qmd", "b.qmd"], check=True)
-    assert exb.corpus(["*.qmd"])[0] == {"gamma", "kerne"}
+    assert exb.corpus(["*.qmd"])[0] == {"gamma kernel"}
     assert exb.corpus(["b.qmd"])[0] == set()
 
 
@@ -173,7 +173,6 @@ def test_main_notes_when_no_definitions_exist(tmp_path, monkeypatch, capsys):
 # False-positive classes found by the whole-tree runs on lds, mds, pds, sds
 # and psw (gha#1481). Each case passes only through the rule named.
 
-
 def defs(*titles):
     lines = []
     for i, t in enumerate(titles):
@@ -184,6 +183,23 @@ def defs(*titles):
 def found_with(text, defined):
     lines = text.split("\n")
     return [f.missing for f in exb.exercises(lines, defined, exb.div_texts(lines))]
+
+
+def test_a_macro_says_the_title_word():
+    d = defs("Gradient")
+    assert found_with(exercise("The gradient", "Find $\\grad f$."), d) == []
+    assert found_with(exercise("The gradient", "Find $f'$."), d) == [["gradient"]]
+
+
+def test_a_short_macro_says_its_listed_word():
+    d = defs("Expectation")
+    assert found_with(exercise("An expectation", "Find $\\E{X}$."), d) == []
+
+
+def test_text_inside_math_counts_as_body_text():
+    d = defs("Softmax")
+    body = "Find $\\operatorname{softmax}(z)$."
+    assert found_with(exercise("The softmax", body), d) == []
 
 
 def test_a_cited_exercise_supplies_background_transitively():
@@ -214,6 +230,22 @@ def test_a_solution_counts_only_when_cited():
     cited = exercise("The kernel", "Use @sol-k.") + "\n" + sol
     assert found_with(uncited, d) == [["kernel"]]
     assert found_with(cited, d) == []
+
+
+def test_only_a_whole_defined_phrase_is_judged():
+    d = defs("Kernel trick")
+    assert found_with(exercise("A tricky kernel", "Do it."), d) == []
+    assert found_with(exercise("The kernel trick", "Do it."), d) == [["kernel", "trick"]]
+
+
+def test_a_title_naming_aliases_defines_each():
+    d = defs("Gradient (also called the del)")
+    assert {"gradient", "del"} <= d
+
+
+def test_expand_is_a_task_verb():
+    d = defs("Expand")
+    assert found_with(exercise("Expand it", "Do it."), d) == []
 
 
 def test_a_cited_exercise_lends_its_text_but_not_its_solution():
@@ -251,3 +283,108 @@ def test_a_citation_cycle_terminates():
     first = exercise("The kernel", "Continue @exr-two.", "{#exr-one}")
     second = exercise("Next", "Continue @exr-one.", "{#exr-two}")
     assert found_with(first + "\n" + second, d) == [["kernel"]]
+
+
+def test_a_title_case_alias_marker_splits_the_phrase():
+    d = defs("Gradient (Also Called Del)")
+    assert {"gradient", "del"} <= d
+
+
+def test_an_adverb_before_an_alias_marker_is_not_a_term():
+    d = defs("Random variable, often called variate")
+    assert "variate" in d
+    assert not any("often" in phrase for phrase in d)
+
+
+@pytest.mark.parametrize("plural, singular", [
+    ("processes", "process"),
+    ("probabilities", "probability"),
+    ("boxes", "box"),
+    ("kernels", "kernel"),
+    ("class", "class"),
+    ("basis", "basis"),
+])
+def test_singular_handles_common_plurals(plural, singular):
+    assert exb._singular(plural) == singular
+
+
+def test_a_possessive_is_read_as_its_noun():
+    d = defs("Student t distribution")
+    assert found_with(exercise("Student's t distribution", "Do it."), d) == [
+        ["student", "distribution"]]
+
+
+def test_a_three_letter_defined_alias_is_judged():
+    d = defs("Gradient (also called the del)")
+    assert found_with(exercise("The del operator", "Do it."), d) == [["del"]]
+    assert found_with(exercise("The del operator", "Use the del here."), d) == []
+
+
+# Findings from the cross-harness read of gha#1915 at d264018.
+
+@pytest.mark.parametrize("plural, singular", [
+    ("series", "series"),
+    ("species", "species"),
+    ("bias", "bias"),
+    ("biases", "bias"),
+    ("aliases", "alias"),
+    ("subspecies", "subspecies"),
+])
+def test_singular_keeps_series_and_words_ending_in_as(plural, singular):
+    assert exb._singular(plural) == singular
+
+
+def test_a_plural_title_matches_a_defined_term_ending_in_as():
+    d = defs("Inductive bias")
+    assert d == {"inductive bias"}
+    assert found_with(exercise("Inductive biases", "Do it."), d) == [
+        ["inductive", "biases"]]
+
+
+def test_a_defined_series_term_stays_whole():
+    d = defs("Time series")
+    assert d == {"time series"}
+    # "time" is a generic word, so only "series" is reported.
+    assert found_with(exercise("A time series", "Do it."), d) == [["series"]]
+
+
+def test_or_at_the_edge_of_a_title_is_part_of_the_term():
+    assert defs("Exclusive or") == {"exclusive or"}
+    assert defs("Loss or cost") == {"loss", "cost"}
+
+
+# Findings from the cross-harness read of gha#1933 at 72514ee.
+
+@pytest.mark.parametrize("title, terms", [
+    ("Gradient (or del)", {"gradient", "del"}),
+    ("Loss, or cost", {"loss", "cost"}),
+    ("Loss, cost, or risk", {"loss", "cost", "risk"}),
+])
+def test_an_or_alias_after_a_parenthesis_or_comma_drops_the_or(title, terms):
+    assert defs(title) == terms
+
+
+def test_math_in_a_definition_title_is_removed_before_splitting():
+    assert defs("Covariance $(X, Y)$") == {"covariance"}
+
+
+@pytest.mark.parametrize("macro, word", [
+    ("sim", "similarity"),
+    ("int", "intensity"),
+    ("exp", "expectation"),
+    ("text{a}", "text"),
+    ("operatorname{a}", "operator"),
+])
+def test_a_short_or_typesetting_macro_does_not_say_a_longer_word(macro, word):
+    d = defs(word.capitalize())
+    body = "Find $X " + chr(92) + macro + " Y$."
+    assert found_with(exercise(word.capitalize(), body), d) == [[word]]
+
+
+def test_a_short_listed_macro_still_says_its_word():
+    d = defs("Exponential", "Variance")
+    body = "Find $" + chr(92) + "exp{x}$ and $" + chr(92) + "var{X}$."
+    assert found_with(exercise("Exponential variance", body), d) == []
+    d = defs("Determinant", "Limit")
+    body = "Find $" + chr(92) + "det A$ and $" + chr(92) + "lim_n a_n$."
+    assert found_with(exercise("Determinant limit", body), d) == []
