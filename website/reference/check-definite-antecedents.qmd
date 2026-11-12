@@ -30,7 +30,7 @@ so the reader has none unless a link supplies one.
 The finding sits on that line.
 
 A third finding, `pronoun`, flags a div whose first sentence starts
-with "It", "Its", "They", "Them" or "Their"
+with "It", "Its", "They", "Them", or "Their"
 ([gha#1955](https://github.com/Morrison-Lab/gha/issues/1955),
 for [psw#608](https://github.com/Morrison-Lab/psw/issues/608)).
 A link elsewhere in that sentence does not exempt it,
