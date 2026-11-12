@@ -348,6 +348,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It is warn-only by default (`fail: false`), and it diffs the merge base
   against the working tree in one `git diff`, so a staged edit is examined
   without the three-way `NLB_SCOPE` machinery.
+  It takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856),
+  so keep `check-common` beside it.
   The whole file is parsed and only findings on added lines are kept, because
   a display block opens on one line and its letters sit on a later one.
   The skip rules are the check's whole judgment, so each has a guard:
