@@ -34,9 +34,10 @@ five letters, so "Maximizing" matches "maximum". Generic task verbs (find,
 compute, expand, classify, ...) are never reported. Math in the title, code
 fences and HTML comments are ignored.
 
-This is a heuristic. A title word that the body expresses only with a
-synonym or with notation is reported too, which is why the check warns by
-default. Say the word in the body, with its link, or reword the title.
+Whole-tree runs on lds, mds, pds, sds, and psw (gha#1481) left only titles
+that name a term the body never states, so the check fails by default.
+A title word that the body expresses only with a synonym or with notation is
+still reported: say the word in the body, with its link, or reword the title.
 
 Diff-scoped like check-bare-yes-no: a finding is reported only when the diff
 adds a line of the exercise, an untouched exercise keeps its form, and with no
@@ -46,7 +47,7 @@ base ref the check skips rather than scanning the whole tree.
 Configuration (environment variables, set by the composite action):
   EXB_BASE_REF    Git ref/SHA to diff against. Empty and not whole-tree => skip.
   EXB_GLOBS       Space-separated git pathspecs (default: '*.qmd').
-  EXB_FAIL        "true" => exit 1 on a finding; default "false" => warnings.
+  EXB_FAIL        default "true" => exit 1 on a finding; "false" => warnings.
   EXB_WHOLE_TREE  "true" => scan every tracked matching file in full.
 """
 
@@ -57,6 +58,7 @@ import sys
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 DEFAULT_GLOBS = "*.qmd"
+DEFAULT_FAIL = True
 ADVICE = ("say it in the body and link its definition, "
           "or reword the title; give the background the title implies")
 
@@ -513,7 +515,7 @@ def touched(finding: Finding, keep: Optional[Set[int]]) -> bool:
 def main() -> int:
     base_ref = os.environ.get("EXB_BASE_REF", "").strip()
     globs = os.environ.get("EXB_GLOBS", DEFAULT_GLOBS).split() or [DEFAULT_GLOBS]
-    fail = _flag("EXB_FAIL", False)
+    fail = _flag("EXB_FAIL", DEFAULT_FAIL)
     whole = _flag("EXB_WHOLE_TREE", False)
     wanted = wanted_lines(base_ref, globs, whole)
     if wanted is None:

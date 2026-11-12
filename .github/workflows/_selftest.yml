@@ -1891,6 +1891,46 @@ jobs:
         uses: ./check-exercise-background
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # gha#1481 made `fail` default to true. Stage a page whose exercise names
+      # a defined term its body never states, and call the composite with no
+      # `fail` input: the call must fail, proving the default reaches the script.
+      - name: Stage an exercise missing its background
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p exb-fixture
+          printf '%s\n' '::: {#def-kernel}' '#### Kernel' 'A kernel is ...' ':::' '' \
+            '::: {#exr-fixture}' '#### Maximize the kernel' '' 'Find the maximum.' ':::' \
+            > exb-fixture/page.qmd
+          git add exb-fixture/page.qmd
+      - name: Default blocks on the staged finding
+        id: exb-default
+        continue-on-error: true
+        uses: ./check-exercise-background
+        with:
+          whole-tree: 'true'
+          globs: 'exb-fixture/*.qmd'
+      - name: Warn-only passes on the same finding
+        uses: ./check-exercise-background
+        with:
+          whole-tree: 'true'
+          globs: 'exb-fixture/*.qmd'
+          fail: 'false'
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.exb-default.outcome }}
+        run: |
+          if [ "$OUTCOME" != failure ]; then
+            echo "::error::check-exercise-background did not fail by default (outcome: $OUTCOME)"
+            exit 1
+          fi
+      - name: Remove the staged fixture
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -f --cached --ignore-unmatch exb-fixture/page.qmd
+          rm -rf exb-fixture
   # check-exercise-question-paragraph is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-exercise-question-paragraph@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
