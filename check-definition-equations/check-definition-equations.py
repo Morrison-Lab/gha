@@ -44,10 +44,13 @@ Configuration (environment variables, set by the composite action):
 import importlib.util
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                os.pardir, "check-common"))
+import diffscope  # noqa: E402
 
 _ENGINE_PATH = Path(__file__).resolve().parent.parent / "check-write-idiom" / "check-write-idiom.py"
 _spec = importlib.util.spec_from_file_location("check_write_idiom_engine", _ENGINE_PATH)
@@ -235,73 +238,22 @@ def check_file(path: str, lines: List[str],
 
 # -- Git plumbing ------------------------------------------------------------
 
-def _run_git(args: List[str]) -> Optional[str]:
-    res = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        encoding="utf-8", errors="replace",
-    )
-    return res.stdout if res.returncode == 0 else None
-
-
 def parse_diff(diff: str) -> Dict[str, Set[int]]:
-    """Added, non-blank line numbers per path (the shared engine's parser)."""
-    added, _deleted = engine.parse_diff(diff)
+    """Added, non-blank line numbers per path."""
+    added, _deleted = diffscope.parse_diff(diff)
     return {path: {n for n, text in numbered.items() if text.strip()}
             for path, numbered in added.items()}
 
 
-def _glob_to_regex(pat: str) -> "re.Pattern[str]":
-    i, n, out = 0, len(pat), []
-    while i < n:
-        c = pat[i]
-        if c == "*":
-            if pat[i:i + 2] == "**":
-                i += 2
-                if pat[i:i + 1] == "/":
-                    out.append("(?:.*/)?")
-                    i += 1
-                else:
-                    out.append(".*")
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(c))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
+compile_ignores = diffscope.compile_ignores
 
-
-def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
-    compiled = []
-    for pat in patterns:
-        compiled.append(_glob_to_regex(pat))
-        if "*" not in pat and "?" not in pat:
-            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
-    return compiled
-
-
-def _split_list(value: str) -> List[str]:
-    return [p.strip() for p in re.split(r"[,\n]", value) if p.strip()]
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return default if not value else value in ("1", "true", "yes", "on")
-
-
-def _read_lines(path: str) -> Optional[List[str]]:
-    try:
-        with open(path, encoding="utf-8", errors="replace") as handle:
-            lines = handle.read().split("\n")
-    except OSError:
-        return None
-    if lines and lines[-1] == "":
-        lines.pop()
-    return lines
+# Old names kept for the checks that load this script as their base
+# (check-definition-expectation, check-results-in-remarks, and
+# check-result-definition-links), until each moves onto diffscope directly.
+_run_git = diffscope.run_git
+_read_lines = diffscope.read_lines
+_split_list = diffscope.split_list
+_env_flag = diffscope.env_flag
 
 
 class Report(NamedTuple):
@@ -311,19 +263,18 @@ class Report(NamedTuple):
 
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
               whole_tree: bool) -> Report:
-    out = _run_git(["ls-files", "--", *globs])
-    if out is None:
+    paths = diffscope.git_paths(["ls-files", "--", *globs])
+    if paths is None:
         return Report([], True)
-    names = [r for r in out.splitlines()
-             if r and not any(g.match(r) for g in ignores)]
+    names = [r for r in paths if not diffscope.ignored(r, ignores)]
     touched: Optional[Dict[str, Set[int]]] = None
     if not whole_tree:
         if not base_ref:
             return Report([], True)
-        base = _run_git(["merge-base", base_ref, "HEAD"])
+        base = diffscope.run_git(["merge-base", base_ref, "HEAD"])
         if base is None or not base.strip():
             return Report([], True)
-        diff = _run_git([*engine.GIT_DIFF_ARGS, base.strip(), "--", *globs])
+        diff = diffscope.run_git([*engine.GIT_DIFF_ARGS, base.strip(), "--", *globs])
         if diff is None:
             return Report([], True)
         touched = parse_diff(diff)
@@ -331,7 +282,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     for rel in names:
         if touched is not None and not touched.get(rel):
             continue
-        content = _read_lines(rel)
+        content = diffscope.read_lines(rel)
         if content is not None:
             findings.extend(check_file(rel, content,
                                        None if touched is None else touched[rel]))
@@ -341,9 +292,9 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
 def main() -> int:
     base_ref = os.environ.get("DE_BASE_REF", "").strip()
     globs = os.environ.get("DE_GLOBS", DEFAULT_GLOBS).split() or DEFAULT_GLOBS.split()
-    ignores = compile_ignores(_split_list(os.environ.get("DE_PATHS_IGNORE", "")))
-    fail = _env_flag("DE_FAIL", _DEFAULT_FAIL)
-    whole_tree = _env_flag("DE_WHOLE_TREE", False)
+    ignores = compile_ignores(diffscope.split_list(os.environ.get("DE_PATHS_IGNORE", "")))
+    fail = diffscope.env_flag("DE_FAIL", _DEFAULT_FAIL)
+    whole_tree = diffscope.env_flag("DE_WHOLE_TREE", False)
     report = run_check(base_ref, globs, ignores, whole_tree)
     if report.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"

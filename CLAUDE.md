@@ -546,6 +546,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Without it git quotes a name holding `"`, a backslash, or a tab even under `core.quotepath=false`, and only `-z` avoids it (gha#1923).
   `git status --porcelain` also quotes a name holding a space (git 2.43.0, gha#1930), so decode every status path with `diffscope.unquote_git_path`.
   `check-one-div-per-subfile` re-exports the helpers under their old underscore names for the checks that load it, until each moves onto the module directly.
+  Before removing a helper from a check, find the checks that load its script (`grep -rl '<name>.py' --include=*.py .`, because a loader may build the path from `Path` segments) and keep each name they call as an alias, since only their tests notice the removal (gha#1947).
   `check-write-idiom` keeps `parse_diff`, `compile_globs`, and `GIT_DIFF_ARGS` as names for the checks that load it as their engine, and takes the code behind them from the module.
 - `check-code-messages/` (Python, stdlib only) keeps R's printed diagnostics out of rendered code.
   It lints calls known to print a message, and it scans a rendered site for stderr output blocks.
@@ -557,6 +558,9 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-def-wiktionary/` (Python, stdlib only) takes its git calls and diff parser from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-def-commentary/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-definite-antecedents/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
+- `check-definition-equations/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856) and its diff arguments from `check-write-idiom`'s engine, so keep both directories beside it.
+  It re-exports `_run_git`, `_read_lines`, `_split_list`, and `_env_flag` for `check-definition-expectation`, `check-results-in-remarks`, and `check-result-definition-links`, which load it as their base, until each moves onto the module directly.
+- `check-div-ids/` (Python, stdlib only) takes its git, diff, and file helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside it.
 - `check-static-figures/` (Python, stdlib only, gha#1822) flags an interactive figure with no static version, and a note sending readers to the HTML version (psw#568).
   It takes its git and file helpers from `check-common/diffscope.py` and its div and fence parsing from `check-one-div-per-subfile`, so keep the three directories together.
 - `check-function-graphs/` (Python, stdlib only, gha#1838) flags a `#def-` div of a function of one or two scalar inputs with no graph inside it (psw#575).
