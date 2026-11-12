@@ -952,8 +952,8 @@ def test_status_path_decodes_a_quoted_name():
 
 @pytest.mark.parametrize("name", ['say "hi".md', "with space.md", "café.md"])
 def test_unstaged_edit_to_an_unusual_name_is_flagged(tmp_path, name):
-    # A tracked file edited but not staged reaches the check through
-    # `git status` rather than the staged diff.
+    # A tracked file edited but not staged is read from the working-tree
+    # diff, whose header names the path the same way the committed one does.
     _init_repo(tmp_path)
     (tmp_path / name).write_text("# Notes\n")
     _commit(tmp_path, "base")
