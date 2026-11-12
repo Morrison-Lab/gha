@@ -84,6 +84,8 @@ MACRO_WORDS = {
     "sigmoid": "logistic", "exp": "exponential", "log": "log logarithm",
     "int": "integral", "var": "variance", "cov": "covariance",
     "max": "maximum", "min": "minimum", "sum": "sum summation",
+    "det": "determinant", "lim": "limit", "dim": "dimension",
+    "ker": "kernel", "sin": "sine", "cos": "cosine", "tan": "tangent",
 }
 # Commands that format math rather than name a concept (gha#1481).
 TYPESETTING_MACROS = frozenset("""

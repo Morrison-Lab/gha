@@ -368,3 +368,6 @@ def test_a_short_listed_macro_still_says_its_word():
     d = defs("Exponential", "Variance")
     body = "Find $" + chr(92) + "exp{x}$ and $" + chr(92) + "var{X}$."
     assert found_with(exercise("Exponential variance", body), d) == []
+    d = defs("Determinant", "Limit")
+    body = "Find $" + chr(92) + "det A$ and $" + chr(92) + "lim_n a_n$."
+    assert found_with(exercise("Determinant limit", body), d) == []
