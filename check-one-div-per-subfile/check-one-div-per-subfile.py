@@ -124,9 +124,6 @@ def is_subfile(path: str) -> bool:
             and "_subfiles" in parts[:-1])
 
 
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
-
-
 def drop_closed_comments(text: str) -> str:
     """Remove each ``<!-- ... -->`` pair from one line, leaving an open one."""
     while True:
@@ -149,7 +146,7 @@ def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
             return "", True
         raw = raw[end + 3:]
     spans: List[str] = []
-    raw = CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
+    raw = mdmask.CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", raw)
     raw = drop_closed_comments(raw)
     start = raw.find("<!--")
     opened = start >= 0
@@ -243,6 +240,7 @@ def format_message(count: int) -> str:
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 _run_git = diffscope.run_git
 _git_paths = diffscope.git_paths

@@ -53,6 +53,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -80,7 +81,6 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 QUOTED_RE = re.compile(r'"[^"]*"|\'[^\']*\'')
 CLASS_RE = re.compile(r"(?:^|[\s{])\.([A-Za-z][\w-]*)(?=[\s}.#]|$)")
 ID_RE = re.compile(r"(?:^|[\s{])#([A-Za-z][\w-]*)(?=[\s}.#]|$)")
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 
 class Finding(NamedTuple):
@@ -108,7 +108,7 @@ def drop_comments(text: str, in_comment: bool) -> Tuple[str, bool]:
             return "", True
         text = text[end + 3:]
     spans: List[str] = []
-    text = CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", text)
+    text = mdmask.CODE_SPAN_RE.sub(lambda m: spans.append(m.group(0)) or "\0", text)
     while True:
         start = text.find("<!--")
         end = text.find("-->", start + 4) if start >= 0 else -1

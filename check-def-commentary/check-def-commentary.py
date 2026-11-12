@@ -51,6 +51,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -83,7 +84,6 @@ COMMENTARY_RE = re.compile(r"(?:^\s*|(?<=[.!?])\s+)(" + STARTERS + r")\b")
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 DEF_ID_RE = re.compile(r"#def-")
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 
 class Finding(NamedTuple):
@@ -143,7 +143,7 @@ def scan_definitions(lines: List[str]) -> List[Finding]:
             continue
         if not stack or not stack[-1] or ALLOW_MARKER in original:
             continue
-        prose = CODE_SPAN_RE.sub(" ", raw)
+        prose = mdmask.CODE_SPAN_RE.sub(" ", raw)
         hit = COMMENTARY_RE.search(prose)
         if hit:
             findings.append(Finding(idx + 1, hit.group(1)))

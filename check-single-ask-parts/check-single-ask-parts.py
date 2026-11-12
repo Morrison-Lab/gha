@@ -53,6 +53,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "check-common"))
 import diffscope  # noqa: E402
+import mdmask  # noqa: E402
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -73,7 +74,6 @@ DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 EXR_ID_RE = re.compile(r"#exr-")
 SOL_RE = re.compile(r"(?:^|[\s{])\.(?:sol|solution)\b")
 ALLOW_RE = re.compile(r"<!--\s*single-ask-ok\b", re.IGNORECASE)
-CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 INLINE_MATH_RE = re.compile(r"(?<!\\)\$[^$\n]+?(?<!\\)\$")
 ITEM_RE = re.compile(
     r"^[ \t]*(?:>\s*)*(?:[-*+]|\(?(?:[A-Za-z]|[ivxlcdm]{2,}|\d{1,3})[.)])\s+"
@@ -126,7 +126,7 @@ def strip_comments(raw: str, in_comment: bool) -> Tuple[str, bool]:
             return "", True
         raw = raw[end + 3:]
     spans: List[str] = []
-    raw = CODE_SPAN_RE.sub(
+    raw = mdmask.CODE_SPAN_RE.sub(
         lambda m: spans.append(m.group(0)) or f"\0{len(spans) - 1}\0", raw)
     while True:
         start = raw.find("<!--")
@@ -199,7 +199,7 @@ def body_text(lines: List[str]) -> List[Tuple[int, str]]:
             continue
         # A $$...$$ pair on one line is inline display math: blank it and
         # keep the prose around it.
-        plain = CODE_SPAN_RE.sub(" ", raw)
+        plain = mdmask.CODE_SPAN_RE.sub(" ", raw)
         if not in_math:
             plain = DISPLAY_PAIR_RE.sub(" ", plain)
         if "$$" in plain:
