@@ -153,3 +153,25 @@ def test_failed_inspect_without_a_render_list_forces_full(planner, repo_factory)
     commit(work, "edit subfile")
     assert plan_without_inspect(planner, work, sha)[0] == "full"
     assert plan_without_inspect(planner, work, sha, profile="")[0] == "full"
+
+
+def test_changed_nested_subfile_renders_its_page(planner, repo_factory):
+    """A subfile included from a subfile with a page-relative path (gha#2002)."""
+    work = repo_factory(published=None)
+    site(work)
+    write(work, "chapters/_subfiles/a/_part.qmd",
+          "Part.\n\n{{< include _subfiles/a/_fig.qmd >}}\n")
+    write(work, "chapters/_subfiles/a/_fig.qmd", "Figure.\n")
+    sha = commit(work, "nest a figure")
+    write(work, "chapters/_subfiles/a/_fig.qmd", "Figure, revised.\n")
+    commit(work, "edit nested subfile")
+    assert plan(planner, work, sha)[::2] == ("incremental", ["chapters/a.qmd"])
+
+
+def test_unreachable_changed_subfile_forces_full(planner, repo_factory):
+    """A subfile no page reaches is a gap in the walker, not proof it is unused."""
+    work = repo_factory(published=None)
+    sha = site(work)
+    write(work, "chapters/_subfiles/a/_orphan.qmd", "Nobody includes this.\n")
+    commit(work, "add an unreached subfile")
+    assert plan(planner, work, sha)[0] == "full"
