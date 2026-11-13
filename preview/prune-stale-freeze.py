@@ -82,14 +82,24 @@ def changed_paths(source_sha, repo_root):
     return {line for line in diff.splitlines() if line}
 
 
-def dependencies(page, project_dir, _seen=None):
+def dependencies(page, project_dir, _seen=None, _top_dir=None):
     """The page plus every file it includes, recursively, as resolved paths.
 
     An include that resolves to nothing is still recorded, so deleting a
     subfile invalidates the page that included it.
+
+    `quarto render` resolves a relative include from the directory of the
+    top-level page being rendered, even when the include sits in a subfile
+    that page includes; `quarto inspect` resolves it from the including file
+    (gha#1608). A nested include resolved only the second way named a file
+    that does not exist, so an edit to the real file reached no page and the
+    preview planned "0 stale pages" (gha#2002). Both candidates are recorded,
+    since recording a path that does not exist costs nothing and missing the
+    real one publishes stale output.
     """
     seen = set() if _seen is None else _seen
     page = page.resolve()
+    top_dir = page.parent if _top_dir is None else _top_dir
     if page in seen:
         return seen
     seen.add(page)
@@ -100,8 +110,12 @@ def dependencies(page, project_dir, _seen=None):
     for match in INCLUDE_RE.finditer(text):
         target = next(group for group in match.groups() if group)
         # Quarto resolves a leading `/` against the project root.
-        base = project_dir if target.startswith("/") else page.parent
-        dependencies(base / target.lstrip("/"), project_dir, seen)
+        if target.startswith("/"):
+            bases = [project_dir]
+        else:
+            bases = [top_dir, page.parent]
+        for base in dict.fromkeys(bases):
+            dependencies(base / target.lstrip("/"), project_dir, seen, top_dir)
     return seen
 
 

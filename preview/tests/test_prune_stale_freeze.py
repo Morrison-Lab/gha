@@ -145,3 +145,24 @@ def test_nothing_restored_is_a_no_op(pruner, monkeypatch, repo_factory):
     run(pruner, monkeypatch, work, "")
 
     assert frozen(work) == {"a", "b", "c"}
+
+
+def test_changed_nested_subfile_unfreezes_its_page(pruner, monkeypatch, repo_factory):
+    """A subfile included from a subfile, with a page-relative path (gha#2002).
+
+    `quarto render` resolves that include from the page's directory, so the
+    walker must too; resolving it from the including subfile names a file
+    that does not exist, and the page kept its stale freeze.
+    """
+    work = repo_factory(published=None)
+    site(work)
+    write(work, "chapters/_subfiles/a/_part.qmd",
+          "Part one.\n\n{{< include _subfiles/a/_fig.qmd >}}\n")
+    write(work, "chapters/_subfiles/a/_fig.qmd", "Figure.\n")
+    source = commit(work, "nest a figure")
+    write(work, "chapters/_subfiles/a/_fig.qmd", "Figure, revised.\n")
+    commit(work, "edit nested subfile")
+
+    run(pruner, monkeypatch, work, key_for(source))
+
+    assert frozen(work) == {"b", "c"}

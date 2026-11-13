@@ -165,6 +165,12 @@ def decide(project_dir, matched_key, inspect_json, full_globs, ignore_globs,
             # page is already gone, so its output would stay in `_site`.
             if not absolute.exists() and not path.startswith("_") and "/_" not in path:
                 return "full", f"page {path} was deleted", []
+            # A `_`-prefixed file is never rendered on its own, so it only
+            # matters through an include. One that no page reaches is either
+            # unused or included in a way the walker cannot follow, and only
+            # the full render is right in the second case (gha#2002).
+            if absolute.exists() and (path.startswith("_") or "/_" in path):
+                return "full", f"subfile {path} is not reachable from any rendered page", []
             continue
         if any(Path(path).name in text for text in texts):
             continue
