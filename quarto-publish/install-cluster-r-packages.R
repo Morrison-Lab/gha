@@ -27,18 +27,17 @@ if (is.na(cran_repo) || !nzchar(cran_repo) || identical(unname(cran_repo), "@CRA
   options(repos = c(CRAN = "https://cloud.r-project.org"))
 }
 
-# remotes is needed only for deps:: and GitHub entries, so a CRAN-only list
-# installs nothing extra.
-need_remotes <- function() {
-  if (!requireNamespace("remotes", quietly = TRUE)) {
-    utils::install.packages("remotes", lib = lib)
-  }
-}
-
 spec_lines <- readLines(args[[2L]], warn = FALSE)
 spec_lines <- spec_lines[!startsWith(trimws(spec_lines), "#")]
 specs <- unlist(strsplit(spec_lines, "[[:space:],]+"))
 specs <- specs[nzchar(specs)]
+
+# remotes is needed only for deps:: and GitHub entries, so a CRAN-only list
+# installs nothing extra.
+needs_remotes <- any(grepl("/", specs) | startsWith(specs, "deps::"))
+if (needs_remotes && !requireNamespace("remotes", quietly = TRUE)) {
+  utils::install.packages("remotes", lib = lib)
+}
 
 missing_pkg <- function(pkg) !requireNamespace(pkg, quietly = TRUE)
 
@@ -48,7 +47,6 @@ for (spec in specs) {
   if (startsWith(spec, "deps::")) {
     path <- sub("^deps::", "", spec)
     message("Installing the dependencies of ", path)
-    need_remotes()
     remotes::install_deps(path, dependencies = NA, upgrade = "never", lib = lib)
   } else if (grepl("^(any::|cran::)?[A-Za-z][A-Za-z0-9.]*$", spec)) {
     pkg <- sub("^(any::|cran::)", "", spec)
@@ -58,7 +56,6 @@ for (spec in specs) {
     pkg <- sub("@.*$", "", basename(repo))
     if (missing_pkg(pkg)) {
       message("Installing ", repo, " from GitHub")
-      need_remotes()
       remotes::install_github(repo, upgrade = "never", lib = lib)
       github <- c(github, pkg)
     }
