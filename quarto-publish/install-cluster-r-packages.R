@@ -31,32 +31,27 @@ spec_lines <- readLines(args[[2L]], warn = FALSE)
 spec_lines <- spec_lines[!startsWith(trimws(spec_lines), "#")]
 specs <- unlist(strsplit(spec_lines, "[[:space:],]+"))
 specs <- specs[nzchar(specs)]
-
-# remotes is needed only for deps:: and GitHub entries, so a CRAN-only list
-# installs nothing extra.
-needs_remotes <- any(grepl("/", specs) | startsWith(specs, "deps::"))
-if (needs_remotes && !requireNamespace("remotes", quietly = TRUE)) {
-  utils::install.packages("remotes", lib = lib)
-}
-
 missing_pkg <- function(pkg) !requireNamespace(pkg, quietly = TRUE)
 
+# Sort the entries first, then install, so remotes is fetched only when a
+# deps:: entry or a missing GitHub package needs it.
 cran <- character()
+deps <- character()
+github_repos <- character()
 github <- character()
 for (spec in specs) {
   if (startsWith(spec, "deps::")) {
-    path <- sub("^deps::", "", spec)
-    message("Installing the dependencies of ", path)
-    remotes::install_deps(path, dependencies = NA, upgrade = "never", lib = lib)
+    deps <- c(deps, sub("^deps::", "", spec))
   } else if (grepl("^(any::|cran::)?[A-Za-z][A-Za-z0-9.]*$", spec)) {
     pkg <- sub("^(any::|cran::)", "", spec)
     if (missing_pkg(pkg)) cran <- c(cran, pkg)
   } else if (grepl("^(github::)?[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(@.+)?$", spec)) {
     repo <- sub("^github::", "", spec)
-    pkg <- sub("@.*$", "", basename(repo))
+    # Strip the ref before taking the name: a ref may hold a slash.
+    repo_path <- sub("@.*$", "", repo)
+    pkg <- basename(repo_path)
     if (missing_pkg(pkg)) {
-      message("Installing ", repo, " from GitHub")
-      remotes::install_github(repo, upgrade = "never", lib = lib)
+      github_repos <- c(github_repos, repo)
       github <- c(github, pkg)
     }
   } else {
@@ -67,6 +62,18 @@ for (spec in specs) {
 if (length(cran) > 0L) {
   message("Installing from CRAN: ", paste(cran, collapse = ", "))
   utils::install.packages(cran, lib = lib)
+}
+needs_remotes <- length(deps) > 0L || length(github_repos) > 0L
+if (needs_remotes && missing_pkg("remotes")) {
+  utils::install.packages("remotes", lib = lib)
+}
+for (path in deps) {
+  message("Installing the dependencies of ", path)
+  remotes::install_deps(path, dependencies = NA, upgrade = "never", lib = lib)
+}
+for (repo in github_repos) {
+  message("Installing ", repo, " from GitHub")
+  remotes::install_github(repo, upgrade = "never", lib = lib)
 }
 still <- Filter(missing_pkg, unique(c(cran, github)))
 if (length(still) > 0L) {

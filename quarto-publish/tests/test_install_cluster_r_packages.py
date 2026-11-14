@@ -43,6 +43,16 @@ def test_every_documented_separator_is_split(tmp_path, specs):
     assert "::warning::" not in result.stdout + result.stderr
 
 
+@pytest.mark.parametrize("spec", ["owner/stats", "github::owner/stats@v1", "owner/stats@feature/x"])
+def test_a_present_github_package_is_not_installed(tmp_path, spec):
+    # The package name comes from the repository, with the ref stripped
+    # first, since a ref may hold a slash.
+    result = run(tmp_path, spec + "\n")
+    assert result.returncode == 0, result.stderr
+    assert "from GitHub" not in result.stderr
+    assert "Installing" not in result.stdout + result.stderr
+
+
 def test_an_unsupported_form_is_reported_and_skipped(tmp_path):
     result = run(tmp_path, "bioc::Biobase, any::stats\n")
     assert result.returncode == 0, result.stderr
