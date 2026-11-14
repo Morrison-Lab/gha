@@ -142,9 +142,9 @@ on:
         type: boolean
         default: false
       cluster-head:
-        description: Cluster head (or list of heads) for `cluster-render`.
+        description: Cluster head (or list of heads) for `cluster-render`. Empty spreads jobs over every cluster head the image reaches; see the composite's input.
         type: string
-        default: cse-head.cluster.cs.wwu.edu
+        default: ''
       cluster-image:
         description: Apptainer image on the cluster home that `cluster-render` runs in. Empty falls back to the caller's `CI_CLUSTER_IMAGE` variable (gha#1658).
         type: string
