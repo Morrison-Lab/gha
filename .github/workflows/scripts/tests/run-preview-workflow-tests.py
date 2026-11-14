@@ -133,6 +133,35 @@ def check_preview(
     build_job = workflow_doc.get("jobs", {}).get("build", {})
     if "vars.CI_RUNNER_HEAVY" not in str(build_job.get("runs-on", "")):
         errors.append(".github/workflows/preview.yml build job does not read CI_RUNNER_HEAVY")
+    # The cluster runner label wins over the heavy one when the org switch is on (gha#2007).
+    preview_runs_on = str(build_job.get("runs-on", ""))
+    if not (
+        "vars.CI_RUNNER_CLUSTER" in preview_runs_on
+        and preview_runs_on.index("vars.CI_RUNNER_CLUSTER") < preview_runs_on.index("vars.CI_RUNNER_HEAVY")
+    ):
+        errors.append(".github/workflows/preview.yml build job does not read CI_RUNNER_CLUSTER before CI_RUNNER_HEAVY")
+    # runs-on, cluster-render and preinstalled-toolchain must apply the org switch
+    # under the same exclusions, or a labelled PR lands on a submit-only runner
+    # without the cluster render (gha#2009 review).
+    guards = (
+        "github.event.repository.private",
+        "vars.CI_CLUSTER_RENDER == 'true'",
+        "!inputs.use-renv",
+        "!inputs.setup-chrome",
+        "'preview:runner'",
+    )
+    switch_exprs = {"runs-on": preview_runs_on}
+    for step in build_job.get("steps", []):
+        for key in ("cluster-render", "preinstalled-toolchain"):
+            value = str((step.get("with") or {}).get(key, ""))
+            if "CI_CLUSTER_RENDER" in value:
+                switch_exprs[key] = value
+    if set(switch_exprs) != {"runs-on", "cluster-render", "preinstalled-toolchain"}:
+        errors.append(f".github/workflows/preview.yml: CI_CLUSTER_RENDER is read only in {sorted(switch_exprs)}")
+    for key, value in switch_exprs.items():
+        for guard in guards:
+            if guard not in value:
+                errors.append(f".github/workflows/preview.yml: {key} applies CI_CLUSTER_RENDER without {guard}")
     steps = build_job.get("steps", [])
     build_step = None
     for step in steps:
@@ -269,6 +298,26 @@ def run_self_test() -> int:
     baseline_workflow = DEFAULT_WORKFLOW.read_text(encoding="utf-8")
 
     mutations = [
+        (
+            "drop the private-repository guard from cluster-render",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "cluster-render: ${{ inputs.cluster-render || (github.event.repository.private && ",
+                "cluster-render: ${{ inputs.cluster-render || (",
+            ),
+        ),
+        (
+            "read CI_CLUSTER_RENDER as truthy in runs-on",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && ",
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER && ",
+            ),
+        ),
         (
             "drop tinytex OR condition in Quarto setup",
             DEFAULT_COMPOSITE,

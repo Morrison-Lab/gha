@@ -96,6 +96,35 @@ def check_quarto_publish(
         errors.append("quarto-publish.yml build job does not read CI_RUNNER_HEAVY")
     if "CI_RUNNER_HEAVY" in deploy_runs_on:
         errors.append("quarto-publish.yml deploy job must not read CI_RUNNER_HEAVY")
+    # The cluster runner label wins over the heavy one when the org switch is on,
+    # and only for the build job, which is the one that renders (gha#2007).
+    if not (
+        "vars.CI_RUNNER_CLUSTER" in build_runs_on
+        and build_runs_on.index("vars.CI_RUNNER_CLUSTER") < build_runs_on.index("vars.CI_RUNNER_HEAVY")
+    ):
+        errors.append("quarto-publish.yml build job does not read CI_RUNNER_CLUSTER before CI_RUNNER_HEAVY")
+    if "CI_RUNNER_CLUSTER" in deploy_runs_on:
+        errors.append("quarto-publish.yml deploy job must not read CI_RUNNER_CLUSTER")
+    # runs-on, cluster-render and preinstalled-toolchain must apply the org switch
+    # under the same exclusions (gha#2009 review).
+    guards = (
+        "github.event.repository.private",
+        "vars.CI_CLUSTER_RENDER == 'true'",
+        "!inputs.use-renv",
+        "!inputs.setup-chrome",
+    )
+    switch_exprs = {"runs-on": build_runs_on}
+    for step in jobs.get("build", {}).get("steps", []):
+        for key in ("cluster-render", "preinstalled-toolchain"):
+            value = str((step.get("with") or {}).get(key, ""))
+            if "CI_CLUSTER_RENDER" in value:
+                switch_exprs[key] = value
+    if set(switch_exprs) != {"runs-on", "cluster-render", "preinstalled-toolchain"}:
+        errors.append(f"quarto-publish.yml: CI_CLUSTER_RENDER is read only in {sorted(switch_exprs)}")
+    for key, value in switch_exprs.items():
+        for guard in guards:
+            if guard not in value:
+                errors.append(f"quarto-publish.yml: {key} applies CI_CLUSTER_RENDER without {guard}")
 
     # 3. Check default agreement for setup-julia and julia-version
     if (
@@ -199,6 +228,26 @@ def run_self_test() -> int:
     baseline_workflow = DEFAULT_WORKFLOW.read_text(encoding="utf-8")
 
     mutations = [
+        (
+            "drop the private-repository guard from cluster-render",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "cluster-render: ${{ inputs.cluster-render || (github.event.repository.private && ",
+                "cluster-render: ${{ inputs.cluster-render || (",
+            ),
+        ),
+        (
+            "read CI_CLUSTER_RENDER as truthy in runs-on",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && ",
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER && ",
+            ),
+        ),
         (
             "drop setup-julia input in action.yml",
             DEFAULT_COMPOSITE,
