@@ -44,7 +44,7 @@ job-level, so splitting the steps into a composite would add a nested
 | `force-suggests` | boolean | `false` | Value for `_R_CHECK_FORCE_SUGGESTS_` on the full matrix. The hard job always sets this `false`. |
 | `stop-on-invalid-numeric-version-inputs` | boolean | `true` | Value for `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_`. |
 | `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
-| `config` | string | (r-lib 5-way JSON) | JSON array of `{os, r, http-user-agent?}` objects for the full matrix. Ignored when `hard` is true. On a private repository the job also runs when the `CI_CLUSTER_CHECK` variable is `true`. |
+| `config` | string | (r-lib 5-way JSON) | JSON array of `{os, r, http-user-agent?}` objects for the full matrix. Ignored when `hard` is true. |
 | `setup-pandoc` | boolean | `true` | Install Pandoc before the check. |
 | `install-quarto` | boolean | `false` | Install Quarto via `quarto-dev/quarto-actions/setup` before the check. On the full matrix, skipped on `ubuntu-latest` only when `linux-container` contains `verse`. Separate from r-lib `setup-r-dependencies`' own `install-quarto` (default `auto` when the tree has `.qmd` files). |
 | `setup-julia` | boolean | `false` | Install Julia before the check (for JuliaCall packages). |
