@@ -146,7 +146,14 @@ def test_an_empty_cluster_head_spreads_over_the_heads_the_image_reaches():
         "${{ inputs.cluster-head || (inputs.cluster-image-file != '' && "
         f"'{THREE_HEADS}' || '{TWO_HEADS}') }}}}"
     )
+
+
+def test_the_reusable_workflow_leaves_cluster_head_empty():
+    workflows = REPO_ROOT / ".github" / "workflows"
+    # A review job restores the default branch's workflows (gha#598, gha#765).
+    if (workflows / ".restored-from-default-branch").is_file():
+        pytest.skip("workflows restored from the default branch")
     workflow = yaml.safe_load(
-        (REPO_ROOT / ".github" / "workflows" / "preview.yml").read_text(encoding="utf-8")
+        (workflows / "preview.yml").read_text(encoding="utf-8")
     )
     assert workflow[True]["workflow_call"]["inputs"]["cluster-head"]["default"] == ""
