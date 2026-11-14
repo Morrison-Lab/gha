@@ -436,7 +436,12 @@ jobs:
           python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py
           python3 .github/workflows/scripts/tests/run-render-per-file-tests.py
+      # install-cluster-r-packages.R's tests run the script itself.
+      - name: Set up R
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       - name: Run redirect-stubs tests
+        env:
+          REQUIRE_RSCRIPT: '1'
         run: |
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest quarto-publish/tests/ -q
