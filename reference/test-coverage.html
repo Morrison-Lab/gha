@@ -1339,7 +1339,7 @@ cookieconsent.run({
 <td><code>cluster-check</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Measure coverage on a WWU cluster node through <code>condor-batch</code> instead of on the runner (gha#1640). Writes the report to the <code>cluster-coverage</code> artifact, applies <code>min-coverage</code>, and does not upload to Codecov. Skips the runner job. On a private repository the job also runs when the <code>CI_CLUSTER_CHECK</code> variable is <code>true</code>.</td>
+<td>Measure coverage on a WWU cluster node through <code>condor-batch</code> instead of on the runner (gha#1640). Uploads the Cobertura report to Codecov from the runner, writes it to the <code>cluster-coverage</code> artifact, and applies <code>min-coverage</code>. Writes no JUnit report, so <code>upload-test-results</code> does not apply. Skips the runner job. On a private repository the job also runs when the <code>CI_CLUSTER_CHECK</code> variable is <code>true</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>cluster-runs-on</code></td>
