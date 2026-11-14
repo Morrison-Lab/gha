@@ -133,6 +133,13 @@ def check_preview(
     build_job = workflow_doc.get("jobs", {}).get("build", {})
     if "vars.CI_RUNNER_HEAVY" not in str(build_job.get("runs-on", "")):
         errors.append(".github/workflows/preview.yml build job does not read CI_RUNNER_HEAVY")
+    # The cluster runner label wins over the heavy one when the org switch is on (gha#2007).
+    preview_runs_on = str(build_job.get("runs-on", ""))
+    if not (
+        "vars.CI_RUNNER_CLUSTER" in preview_runs_on
+        and preview_runs_on.index("vars.CI_RUNNER_CLUSTER") < preview_runs_on.index("vars.CI_RUNNER_HEAVY")
+    ):
+        errors.append(".github/workflows/preview.yml build job does not read CI_RUNNER_CLUSTER before CI_RUNNER_HEAVY")
     steps = build_job.get("steps", [])
     build_step = None
     for step in steps:
