@@ -155,8 +155,12 @@ inputs:
       (`set-mtimes-from-git.py` needs it).
     default: 'false'
   cluster-head:
-    description: Cluster head (or list of heads) for `cluster-render`; see `condor-batch` `head`.
-    default: cse-head.cluster.cs.wwu.edu
+    description: >-
+      Cluster head (or list of heads) for `cluster-render`; see `condor-batch` `head`.
+      Empty spreads jobs over cse-head and csci-head,
+      plus the csci-lab desktop pool (port 922) when `cluster-image-file` is set,
+      since that pool has no cluster home to read `cluster-image` from (gha#1518).
+    default: ''
   cluster-image:
     description: Apptainer image on the cluster home that `cluster-render` runs in (`condor-batch` `image`). Required with `cluster-render`.
     default: ''
@@ -491,7 +495,7 @@ runs:
       if: inputs.cluster-render == 'true'
       uses: Morrison-Lab/gha/.github/actions/condor-batch@v3
       with:
-        head: ${{ inputs.cluster-head }}
+        head: ${{ inputs.cluster-head || (inputs.cluster-image-file != '' && 'cse-head.cluster.cs.wwu.edu csci-head.cluster.cs.wwu.edu csci-lab-head.cs.wwu.edu:922' || 'cse-head.cluster.cs.wwu.edu csci-head.cluster.cs.wwu.edu') }}
         image: ${{ inputs.cluster-image }}
         image-file: ${{ inputs.cluster-image-file }}
         steps: ${{ steps.cluster-plan.outputs.steps }}

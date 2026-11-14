@@ -11,6 +11,7 @@ import pathlib
 import stat
 import subprocess
 
+import pytest
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -165,3 +166,31 @@ def test_use_renv_sends_no_r_packages_to_the_cluster():
     steps = {s.get("name"): s for s in action["runs"]["steps"]}
     r_packages = steps["Plan the cluster render"]["env"]["R_PACKAGES"]
     assert r_packages == "${{ inputs.use-renv != 'true' && inputs.r-packages || '' }}"
+
+
+TWO_HEADS = "cse-head.cluster.cs.wwu.edu csci-head.cluster.cs.wwu.edu"
+THREE_HEADS = TWO_HEADS + " csci-lab-head.cs.wwu.edu:922"
+
+
+def test_an_empty_cluster_head_spreads_over_the_heads_the_image_reaches():
+    # gha#1518: the desktop pool reads the image only from cluster-image-file,
+    # so it joins the default list only when that input is set.
+    action = yaml.safe_load((ROOT / "quarto-publish" / "action.yml").read_text(encoding="utf-8"))
+    assert action["inputs"]["cluster-head"]["default"] == ""
+    steps = {s.get("name"): s for s in action["runs"]["steps"]}
+    head = steps["Render Quarto project on the cluster"]["with"]["head"]
+    assert head == (
+        "${{ inputs.cluster-head || (inputs.cluster-image-file != '' && "
+        f"'{THREE_HEADS}' || '{TWO_HEADS}') }}}}"
+    )
+
+
+def test_the_reusable_workflow_leaves_cluster_head_empty():
+    workflows = ROOT / ".github" / "workflows"
+    # A review job restores the default branch's workflows (gha#598, gha#765).
+    if (workflows / ".restored-from-default-branch").is_file():
+        pytest.skip("workflows restored from the default branch")
+    workflow = yaml.safe_load(
+        (workflows / "quarto-publish.yml").read_text(encoding="utf-8")
+    )
+    assert workflow[True]["workflow_call"]["inputs"]["cluster-head"]["default"] == ""
