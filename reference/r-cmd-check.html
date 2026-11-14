@@ -1434,31 +1434,31 @@ cookieconsent.run({
 <td><code>cluster-check</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Also run the check on a WWU CS cluster node through <code>condor-batch</code> in <code>cluster-image</code> (gha#1640). Linux only; installs dependencies with <code>remotes::install_deps</code> into a library inside the job. Needs a lab runner with the cluster ssh key. Ignored when <code>hard</code> is true.</td>
+<td>Also run the check on a WWU CS cluster node through <code>condor-batch</code> in <code>cluster-image</code> (gha#1640). Linux only; installs dependencies with <code>remotes::install_deps</code> into a library inside the job. Needs a lab runner with the cluster ssh key. Ignored when <code>hard</code> is true. On a private repository the job also runs when the <code>CI_CLUSTER_CHECK</code> variable is <code>true</code>.</td>
 </tr>
 <tr class="even">
 <td><code>cluster-runs-on</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Runner label for the cluster job. Empty uses <code>vars.CI_RUNNER</code>.</td>
+<td>Runner label for the cluster job. Empty uses <code>vars.CI_RUNNER_CLUSTER</code>, then <code>vars.CI_RUNNER</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>cluster-head</code></td>
 <td>string</td>
-<td><code>cse-head.cluster.cs.wwu.edu</code></td>
-<td>Cluster head (or list of heads) for the cluster job.</td>
+<td><code>''</code></td>
+<td>Cluster head (or space-separated list of heads) for the cluster job. Empty spreads jobs over cse-head and csci-head, plus the csci-lab desktop pool (port 922) when an image file is set (gha#1518).</td>
 </tr>
 <tr class="even">
 <td><code>cluster-image</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Apptainer image on the cluster home that the cluster job runs in.</td>
+<td>Apptainer image on the cluster home that the cluster job runs in. Empty uses <code>vars.CI_CLUSTER_RPKG_IMAGE</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>cluster-image-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>The same image on the runner, for heads without the cluster home.</td>
+<td>The same image on the runner, for heads without the cluster home. Empty uses <code>vars.CI_CLUSTER_RPKG_IMAGE_FILE</code>.</td>
 </tr>
 </tbody>
 </table>
