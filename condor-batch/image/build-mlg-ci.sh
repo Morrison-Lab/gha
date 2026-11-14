@@ -4,14 +4,16 @@
 # Usage: build-mlg-ci.sh [ref] [image-dir]
 #   ref        mlg branch, tag or commit to build from (default: main)
 #   image-dir  directory holding lds-ci.sif and receiving mlg-ci.sif
-#              (default: /cluster/home/morri313/ci/image)
+#              (default: /home/morri313/ci/image, the copy cf463-02 reads)
 #
 # Run it on cf463-02 with Apptainer and read access to Morrison-Lab/mlg, which
 # is private, so git needs credentials for github.com. It rebuilds the image
 # from the ref's renv.lock, so rerun it whenever renv.lock changes; the image
 # is stale otherwise. A condor-batch job that lands on a CSCI desktop-pool head
-# reads the image from the runner (the action's image-file input), so copy the
-# finished image there too when image-dir is not that copy.
+# reads the image from the runner (the action's image-file input), which is the
+# default image-dir. A job on a CSE cluster head reads
+# /cluster/home/morri313/ci/image/mlg-ci.sif instead, and cf463-02 cannot see
+# /cluster, so copy the finished image there from a machine that mounts it.
 #
 # After the build it renders mlg in both profiles inside the new image and
 # runs mlg's own check, as the CI job does. /opt/TinyTeX is read-only in a job,
@@ -22,7 +24,10 @@
 set -euo pipefail
 
 ref="${1:-main}"
-image_dir="${2:-/cluster/home/morri313/ci/image}"
+image_dir="${2:-/home/morri313/ci/image}"
+# Resolve image-dir now: the script cd's into a temp directory below, where a
+# relative path would no longer name it.
+image_dir="$(cd "$image_dir" && pwd)"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
