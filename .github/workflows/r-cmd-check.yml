@@ -180,12 +180,14 @@ on:
           `vars.CI_RUNNER`) and `cluster-image`. Dependencies are installed
           into a writable library inside the job with
           `remotes::install_deps`, because the home quota is too small to
-          restore them. This job is Linux only: leave macOS and Windows
-          cells in `config` and drop the Linux ones you move here. Ignored
+          restore them. This job is Linux only, so when it runs the
+          `ubuntu-*` cells of `config` are dropped and only the macOS and
+          Windows cells run on hosted machines. Ignored
           when `hard` is true. On a private repository the job also runs
           when the `CI_CLUSTER_CHECK` variable is `true`, and the image
           inputs fall back to `CI_CLUSTER_RPKG_IMAGE` and
-          `CI_CLUSTER_RPKG_IMAGE_FILE`.
+          `CI_CLUSTER_RPKG_IMAGE_FILE` (those fallbacks also apply on a
+          public repository when `cluster-check` is true).
         type: boolean
         default: false
       cluster-runs-on:
@@ -216,8 +218,37 @@ on:
         required: false
 
 jobs:
-  R-CMD-check:
+  # The cluster job runs the Linux check, so the matrix drops its ubuntu
+  # cells whenever that job runs, and a Linux check does not also run on a
+  # hosted machine (gha#1640). This job runs where the cluster job runs, so
+  # it costs no hosted minutes on a private repository using the cluster.
+  plan:
+    name: Plan the check matrix
     if: ${{ !inputs.hard }}
+    runs-on: ${{ (inputs.cluster-check || (github.event.repository.private && vars.CI_CLUSTER_CHECK == 'true')) && (inputs.cluster-runs-on || (github.event.repository.private && vars.CI_RUNNER_CLUSTER) || (github.event.repository.private && vars.CI_RUNNER)) || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      config: ${{ steps.plan.outputs.config }}
+    steps:
+      - name: Drop the Linux cells the cluster job covers
+        id: plan
+        env:
+          CONFIG: ${{ inputs.config }}
+          CLUSTER: ${{ inputs.cluster-check || (github.event.repository.private && vars.CI_CLUSTER_CHECK == 'true') }}
+        run: |
+          set -euo pipefail
+          python3 -I - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          cells = json.loads(os.environ["CONFIG"])
+          if os.environ["CLUSTER"] == "true":
+              cells = [c for c in cells if not str(c.get("os", "")).startswith("ubuntu")]
+          print("config=" + json.dumps(cells, separators=(",", ":")))
+          PY
+
+  R-CMD-check:
+    needs: plan
+    if: ${{ !inputs.hard && needs.plan.outputs.config != '[]' }}
     runs-on: ${{ matrix.config.os }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     container: ${{ matrix.config.os == 'ubuntu-latest' && inputs.linux-container || null }}
@@ -225,7 +256,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJSON(inputs.config) }}
+        config: ${{ fromJSON(needs.plan.outputs.config) }}
     permissions:
       contents: read
     env:

@@ -22,9 +22,11 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -355,6 +357,108 @@ def check_workflow(path: pathlib.Path) -> list[str]:
         )
 
     errors.extend(check_cluster_job(path, doc))
+    errors.extend(check_plan_job(path, doc))
+    return errors
+
+
+CLUSTER_GATE = (
+    "inputs.cluster-check || (github.event.repository.private "
+    "&& vars.CI_CLUSTER_CHECK == 'true')"
+)
+
+DEFAULT_CONFIG_OSES = [
+    "macos-latest",
+    "windows-latest",
+    "ubuntu-latest",
+    "ubuntu-latest",
+    "ubuntu-latest",
+]
+
+
+def run_plan_script(run: str, config: str, cluster: str) -> list[dict] | None:
+    """Run the plan step's Python body and return the config it writes."""
+    match = re.search(r"<<'PY'[^\n]*\n(.*?)\n\s*PY\s*$", run, re.S)
+    if match is None:
+        return None
+    body = match.group(1)
+    with tempfile.TemporaryDirectory() as tmp:
+        script = pathlib.Path(tmp) / "plan.py"
+        script.write_text(body + "\n", encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, "-I", str(script)],
+            env={"CONFIG": config, "CLUSTER": cluster},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    if result.returncode != 0:
+        return None
+    for line in result.stdout.splitlines():
+        if line.startswith("config="):
+            return json.loads(line[len("config="):])
+    return None
+
+
+def check_plan_job(path: pathlib.Path, doc: dict) -> list[str]:
+    """When the cluster job runs, the matrix must drop its ubuntu cells (gha#1640)."""
+    errors: list[str] = []
+    jobs = doc.get("jobs") or {}
+    plan = jobs.get("plan")
+    full = jobs.get("R-CMD-check") or {}
+    if not isinstance(plan, dict):
+        return [f"{path}: no plan job to drop the Linux cells the cluster job covers"]
+    if "!inputs.hard" not in str(plan.get("if") or ""):
+        errors.append(f"{path}: plan job must skip when inputs.hard is true")
+    if plan.get("permissions") != {}:
+        errors.append(f"{path}: plan job must hold no permissions")
+    if CLUSTER_GATE not in str(plan.get("runs-on") or ""):
+        errors.append(
+            f"{path}: plan job must run where the cluster job runs when the "
+            "cluster job is on, so it costs no hosted minutes"
+        )
+
+    step = find_run_step(plan, "<<'PY'")
+    if step is None:
+        return errors + [f"{path}: plan job has no Python step"]
+    env = step.get("env") or {}
+    if str(env.get("CLUSTER")) != "${{ " + CLUSTER_GATE + " }}":
+        errors.append(
+            f"{path}: plan step CLUSTER must be the cluster job's own gate "
+            f"(got {env.get('CLUSTER')!r})"
+        )
+    if str(env.get("CONFIG")) != "${{ inputs.config }}":
+        errors.append(f"{path}: plan step CONFIG must be inputs.config")
+
+    config = json.dumps(
+        [{"os": os_name, "r": "release"} for os_name in DEFAULT_CONFIG_OSES]
+    )
+    run = str(step.get("run") or "")
+    kept = run_plan_script(run, config, "true")
+    if kept is None or [c["os"] for c in kept] != DEFAULT_CONFIG_OSES[:2]:
+        errors.append(
+            f"{path}: with the cluster job on, the plan must keep only the "
+            f"macOS and Windows cells (got {kept!r})"
+        )
+    unchanged = run_plan_script(run, config, "false")
+    if unchanged is None or [c["os"] for c in unchanged] != DEFAULT_CONFIG_OSES:
+        errors.append(
+            f"{path}: with the cluster job off, the plan must keep every cell "
+            f"(got {unchanged!r})"
+        )
+
+    if full.get("needs") != "plan":
+        errors.append(f"{path}: R-CMD-check must need the plan job")
+    matrix = str(((full.get("strategy") or {}).get("matrix") or {}).get("config"))
+    if matrix != "${{ fromJSON(needs.plan.outputs.config) }}":
+        errors.append(
+            f"{path}: R-CMD-check matrix must read the plan's config "
+            f"(got {matrix!r})"
+        )
+    if "needs.plan.outputs.config != '[]'" not in str(full.get("if") or ""):
+        errors.append(
+            f"{path}: R-CMD-check must skip when the plan leaves no cells, "
+            "since an empty matrix fails the job"
+        )
     return errors
 
 
@@ -870,6 +974,52 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
             "cluster-check",
         )
         wf.write_text(mutated)
+
+        # 18-22. The plan job that drops the ubuntu cells (gha#1640).
+        plan_mutations = [
+            (
+                "matrix reading inputs.config again fails",
+                "config: ${{ fromJSON(needs.plan.outputs.config) }}",
+                "config: ${{ fromJSON(inputs.config) }}",
+                "plan's config",
+            ),
+            (
+                "plan that keeps the ubuntu cells fails",
+                'startswith("ubuntu")',
+                'startswith("nothing")',
+                "macOS and Windows",
+            ),
+            (
+                "plan CLUSTER drifting from the cluster gate fails",
+                "CLUSTER: ${{ inputs.cluster-check || (github.event.repository.private && vars.CI_CLUSTER_CHECK == 'true') }}",
+                "CLUSTER: ${{ inputs.cluster-check }}",
+                "cluster job's own gate",
+            ),
+            (
+                "R-CMD-check without the empty-matrix skip fails",
+                "if: ${{ !inputs.hard && needs.plan.outputs.config != '[]' }}",
+                "if: ${{ !inputs.hard }}",
+                "empty matrix",
+            ),
+            (
+                "plan job on a hosted runner whatever the cluster gate fails",
+                "runs-on: ${{ (inputs.cluster-check || (github.event.repository.private && vars.CI_CLUSTER_CHECK == 'true')) && (",
+                "runs-on: ${{ false && (",
+                "no hosted minutes",
+            ),
+        ]
+        for label, old, new, needle in plan_mutations:
+            if mutated.count(old) != 1:
+                print(
+                    f"::error::self-test: fixture workflow has {mutated.count(old)} "
+                    f"copies of {old!r} to mutate, expected 1",
+                    file=sys.stderr,
+                )
+                return 1
+            wf.write_text(mutated.replace(old, new, 1))
+            errors = check_workflow(wf)
+            failures += expect(label, 1 if errors else 0, False, "\n".join(errors), needle)
+            wf.write_text(mutated)
 
     if failures:
         print(

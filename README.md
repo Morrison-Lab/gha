@@ -200,6 +200,8 @@ and a repository opts out by setting its own `CI_CLUSTER_RENDER` to `false` ([#2
 `CI_CLUSTER_CHECK` does the same for the cluster jobs of `r-cmd-check.yml` and `test-coverage.yml`,
 which run in the R-package image named by `CI_CLUSTER_RPKG_IMAGE` and `CI_CLUSTER_RPKG_IMAGE_FILE`
 ([#1640](https://github.com/Morrison-Lab/gha/issues/1640)).
+When the cluster job of `r-cmd-check.yml` runs, its matrix drops the `ubuntu-*` cells of `config`,
+so only the macOS and Windows cells run on hosted machines.
 Never point a public repository at a self-hosted runner,
 because a pull request from a fork can run arbitrary code on it
 ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).
