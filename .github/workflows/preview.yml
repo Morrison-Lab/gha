@@ -134,6 +134,11 @@ on:
           with it empty the steps run bare on the execute node, which has no
           Quarto. Falls back to the
           runner when the cluster cannot run the job.
+          False still renders on the cluster in a private repository whose
+          `CI_CLUSTER_RENDER` variable is `true` (gha#2007); set the repository's
+          own `CI_CLUSTER_RENDER` to `false` to opt out. The variable never applies
+          with `use-renv` or `setup-chrome`, which the image lacks. A PR labelled `preview:runner` also
+          renders on the runner.
         type: boolean
         default: false
       cluster-head:
@@ -297,7 +302,7 @@ jobs:
       ((github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
       (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name)))
-    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER_HEAVY) || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && !inputs.use-renv && !inputs.setup-chrome && !contains(github.event.pull_request.labels.*.name, 'preview:runner') && vars.CI_RUNNER_CLUSTER) || (github.event.repository.private && vars.CI_RUNNER_HEAVY) || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # Cancel an in-progress preview build when a newer commit on the same ref
     # supersedes it. Without cancel-in-progress the default is false, so a fresh
@@ -337,7 +342,7 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
-          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain || (inputs.cluster-render && runner.environment == 'self-hosted') }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain || ((inputs.cluster-render || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && !inputs.use-renv && !inputs.setup-chrome && !contains(github.event.pull_request.labels.*.name, 'preview:runner'))) && runner.environment == 'self-hosted') }}
           julia-version: ${{ inputs.julia-version }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
@@ -346,7 +351,7 @@ jobs:
           skip-docx: ${{ inputs.skip-docx }}
           skip-formats: ${{ inputs.skip-formats }}
           incremental: ${{ inputs.incremental }}
-          cluster-render: ${{ inputs.cluster-render }}
+          cluster-render: ${{ inputs.cluster-render || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && !inputs.use-renv && !inputs.setup-chrome && !contains(github.event.pull_request.labels.*.name, 'preview:runner')) }}
           cluster-head: ${{ inputs.cluster-head }}
           cluster-image: ${{ inputs.cluster-image || vars.CI_CLUSTER_IMAGE }}
           cluster-image-file: ${{ inputs.cluster-image-file || vars.CI_CLUSTER_IMAGE_FILE }}
