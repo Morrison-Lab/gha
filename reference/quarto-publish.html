@@ -1439,8 +1439,8 @@ cookieconsent.run({
 <tr class="odd">
 <td><code>cluster-head</code></td>
 <td>string</td>
-<td><code>cse-head.cluster.cs.wwu.edu</code></td>
-<td>Cluster head, or a space- or comma-separated list, for <code>cluster-render</code>.</td>
+<td><code>''</code></td>
+<td>Cluster head, or a space- or comma-separated list, for <code>cluster-render</code>. Empty spreads jobs over <code>cse-head.cluster.cs.wwu.edu</code> and <code>csci-head.cluster.cs.wwu.edu</code>, and adds the csci-lab desktop pool (<code>csci-lab-head.cs.wwu.edu:922</code>) when <code>cluster-image-file</code> is set, because that pool has no cluster home to read <code>cluster-image</code> from.</td>
 </tr>
 <tr class="even">
 <td><code>cluster-image</code></td>
