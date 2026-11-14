@@ -9,7 +9,8 @@
 # <spec-file> holds the `r-packages` input: pak-style specs separated by
 # spaces, commas or newlines, split as the runner-side install splits them:
 #   any::pkg, cran::pkg or pkg   CRAN package, installed when not loadable
-#   deps::<path>                 the dependencies of the DESCRIPTION at <path>
+#   deps::<path>                 the dependencies of the DESCRIPTION at <path>,
+#                                checked afterwards like the other entries
 #   owner/repo[@ref], github::owner/repo[@ref]
 #                                GitHub package, installed when a package
 #                                named like the repository is not loadable,
@@ -67,15 +68,20 @@ needs_remotes <- length(deps) > 0L || length(github_repos) > 0L
 if (needs_remotes && missing_pkg("remotes")) {
   utils::install.packages("remotes", lib = lib)
 }
+deps_pkgs <- character()
 for (path in deps) {
   message("Installing the dependencies of ", path)
   remotes::install_deps(path, dependencies = NA, upgrade = "never", lib = lib)
+  # install_deps does not fail when a dependency cannot be installed, so its
+  # packages join the check below.
+  path_pkgs <- remotes::local_package_deps(path, dependencies = NA)
+  deps_pkgs <- c(deps_pkgs, path_pkgs)
 }
 for (repo in github_repos) {
   message("Installing ", repo, " from GitHub")
   remotes::install_github(repo, upgrade = "never", lib = lib)
 }
-still <- Filter(missing_pkg, unique(c(cran, github)))
+still <- Filter(missing_pkg, unique(c(cran, github, deps_pkgs)))
 if (length(still) > 0L) {
   stop("cluster render: could not install ", paste(still, collapse = ", "))
 }

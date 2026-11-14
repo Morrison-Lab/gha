@@ -156,3 +156,12 @@ def test_no_r_packages_plans_no_install_step(tmp_path):
     lines = plan(tmp_path, R_PACKAGES="")
     assert len(lines) == 2
     assert "R_LIBS" not in lines[0]
+
+
+def test_use_renv_sends_no_r_packages_to_the_cluster():
+    # renv restores the library on the runner side only, so with use-renv the
+    # plan gets no r-packages and plans no install step (the case above).
+    action = yaml.safe_load((ROOT / "quarto-publish" / "action.yml").read_text(encoding="utf-8"))
+    steps = {s.get("name"): s for s in action["runs"]["steps"]}
+    r_packages = steps["Plan the cluster render"]["env"]["R_PACKAGES"]
+    assert r_packages == "${{ inputs.use-renv != 'true' && inputs.r-packages || '' }}"
