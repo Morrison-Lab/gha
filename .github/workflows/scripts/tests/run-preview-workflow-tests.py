@@ -140,6 +140,22 @@ def check_preview(
         and preview_runs_on.index("vars.CI_RUNNER_CLUSTER") < preview_runs_on.index("vars.CI_RUNNER_HEAVY")
     ):
         errors.append(".github/workflows/preview.yml build job does not read CI_RUNNER_CLUSTER before CI_RUNNER_HEAVY")
+    # runs-on, cluster-render and preinstalled-toolchain must apply the org switch
+    # under the same exclusions, or a labelled PR lands on a submit-only runner
+    # without the cluster render (gha#2009 review).
+    guards = ("!inputs.use-renv", "!inputs.setup-chrome", "'preview:runner'")
+    switch_exprs = {"runs-on": preview_runs_on}
+    for step in build_job.get("steps", []):
+        for key in ("cluster-render", "preinstalled-toolchain"):
+            value = str((step.get("with") or {}).get(key, ""))
+            if "CI_CLUSTER_RENDER" in value:
+                switch_exprs[key] = value
+    if set(switch_exprs) != {"runs-on", "cluster-render", "preinstalled-toolchain"}:
+        errors.append(f".github/workflows/preview.yml: CI_CLUSTER_RENDER is read only in {sorted(switch_exprs)}")
+    for key, value in switch_exprs.items():
+        for guard in guards:
+            if guard not in value:
+                errors.append(f".github/workflows/preview.yml: {key} applies CI_CLUSTER_RENDER without {guard}")
     steps = build_job.get("steps", [])
     build_step = None
     for step in steps:

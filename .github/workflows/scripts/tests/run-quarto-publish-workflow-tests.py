@@ -105,6 +105,21 @@ def check_quarto_publish(
         errors.append("quarto-publish.yml build job does not read CI_RUNNER_CLUSTER before CI_RUNNER_HEAVY")
     if "CI_RUNNER_CLUSTER" in deploy_runs_on:
         errors.append("quarto-publish.yml deploy job must not read CI_RUNNER_CLUSTER")
+    # runs-on, cluster-render and preinstalled-toolchain must apply the org switch
+    # under the same exclusions (gha#2009 review).
+    guards = ("!inputs.use-renv", "!inputs.setup-chrome")
+    switch_exprs = {"runs-on": build_runs_on}
+    for step in jobs.get("build", {}).get("steps", []):
+        for key in ("cluster-render", "preinstalled-toolchain"):
+            value = str((step.get("with") or {}).get(key, ""))
+            if "CI_CLUSTER_RENDER" in value:
+                switch_exprs[key] = value
+    if set(switch_exprs) != {"runs-on", "cluster-render", "preinstalled-toolchain"}:
+        errors.append(f"quarto-publish.yml: CI_CLUSTER_RENDER is read only in {sorted(switch_exprs)}")
+    for key, value in switch_exprs.items():
+        for guard in guards:
+            if guard not in value:
+                errors.append(f"quarto-publish.yml: {key} applies CI_CLUSTER_RENDER without {guard}")
 
     # 3. Check default agreement for setup-julia and julia-version
     if (
