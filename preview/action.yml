@@ -776,6 +776,7 @@ runs:
         SETUP_JULIA: ${{ inputs.setup-julia }}
         INCREMENTAL_MODE: ${{ steps.plan-incremental.outputs.mode }}
         INCREMENTAL_PAGES: ${{ inputs.path }}/_incremental_pages.txt
+        R_PACKAGES: ${{ inputs.use-renv != 'true' && inputs.r-packages || '' }}
       run: bash "$GITHUB_ACTION_PATH/plan-cluster-render.sh"
 
     - name: Render Quarto site on the cluster
