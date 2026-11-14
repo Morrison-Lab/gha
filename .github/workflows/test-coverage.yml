@@ -63,8 +63,10 @@ on:
           with the cluster ssh key (`cluster-runs-on`, or `vars.CI_RUNNER`) and
           `cluster-image`. Dependencies are installed into a library inside the
           job with `remotes::install_deps`, because the home quota is too small
-          to restore them. The job writes the Cobertura report and the percent
-          to the `cluster-coverage` artifact; it does not upload to Codecov.
+          to restore them. The job uploads the Cobertura report to Codecov,
+          as the runner job does, and writes it and the percent to the
+          `cluster-coverage` artifact. It writes no JUnit report, so
+          `upload-test-results` does not apply to it.
           When true, the runner `test-coverage` job is skipped. On a private
           repository the job also runs when the `CI_CLUSTER_CHECK` variable
           is `true`, and the image inputs fall back to
@@ -178,6 +180,19 @@ jobs:
           steps: |
             mkdir -p .gha-rlib coverage && R_LIBS="$PWD/.gha-rlib" Rscript -e 'remotes::install_deps("${{ inputs.path }}", dependencies = TRUE, upgrade = "never"); remotes::install_cran(c("covr", "xml2", "testthat"))'
             R_LIBS="$PWD/.gha-rlib" Rscript -e 'cov <- covr::package_coverage("${{ inputs.path }}"); covr::to_cobertura(cov, filename = "coverage/cobertura.xml"); writeLines(format(covr::percent_coverage(cov), digits = 4), "coverage/percent.txt")'
+
+      # Before the threshold, as in the test-coverage composite, so a miss
+      # still publishes the report (gha#1640). The upload runs on the runner,
+      # which holds the checkout and the Codecov token; the cluster node only
+      # wrote the report. No JUnit report: the cluster job writes none.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: ${{ inputs.fail-ci-if-error != 'auto' && inputs.fail-ci-if-error || (github.event_name != 'pull_request' || secrets.CODECOV_TOKEN != '') }}
+          files: ./coverage/cobertura.xml
+          plugins: noop
+          disable_search: true
 
       - name: Report coverage and apply the threshold
         shell: bash

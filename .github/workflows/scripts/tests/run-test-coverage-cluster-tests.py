@@ -64,6 +64,18 @@ def check(text: str) -> list[str]:
             problems.append("condor-batch image does not fall back to CI_CLUSTER_RPKG_IMAGE")
         if args.get("image-file") != f"${{{{ {IMAGE_FILE} }}}}":
             problems.append("condor-batch image-file does not fall back to CI_CLUSTER_RPKG_IMAGE_FILE")
+    codecov = [i for i, u in enumerate(uses) if "codecov/codecov-action@" in u]
+    threshold = [i for i, s in enumerate(steps) if "MIN_COVERAGE" in s.get("run", "")]
+    if not codecov:
+        problems.append("the cluster job does not upload the report to Codecov")
+    else:
+        args = steps[codecov[0]].get("with", {})
+        if args.get("files") != "./coverage/cobertura.xml":
+            problems.append(f"the Codecov upload does not read the cluster report: {args.get('files')!r}")
+        if args.get("token") != "${{ secrets.CODECOV_TOKEN }}":
+            problems.append("the Codecov upload does not pass CODECOV_TOKEN")
+        if threshold and codecov[0] > threshold[0]:
+            problems.append("the Codecov upload must come before the threshold, so a miss still publishes")
     if not any("upload-artifact@" in u for u in uses):
         problems.append("the cluster job does not upload the report")
     runs = "\n".join(s.get("run", "") for s in steps)
@@ -85,6 +97,10 @@ def self_test(text: str) -> int:
         "image variable dropped": ("inputs.cluster-image || vars.CI_CLUSTER_RPKG_IMAGE }}", "inputs.cluster-image }}"),
         "threshold dropped": ("exit 1", "exit 0"),
         "report not uploaded": ("upload-artifact@", "noop@"),
+        "no Codecov upload": ("codecov/codecov-action@", "noop/noop@"),
+        "Codecov reads the wrong file": ("files: ./coverage/cobertura.xml", "files: ./cobertura.xml"),
+        "Codecov without the token": ("token: ${{ secrets.CODECOV_TOKEN }}\n          fail_ci_if_error",
+                                      "token: ''\n          fail_ci_if_error"),
     }
     failures = 0
     for label, (old, new) in mutations.items():
