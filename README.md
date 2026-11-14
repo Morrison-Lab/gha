@@ -197,6 +197,9 @@ When a private repository's `CI_CLUSTER_RENDER` variable is `true`, those two jo
 and read `CI_RUNNER_CLUSTER` (the submit-only runners' label) before `CI_RUNNER_HEAVY`.
 The variable never applies with `use-renv` or `setup-chrome`, which the cluster image lacks, or to a preview PR labelled `preview:runner`,
 and a repository opts out by setting its own `CI_CLUSTER_RENDER` to `false` ([#2007](https://github.com/Morrison-Lab/gha/issues/2007)).
+`CI_CLUSTER_CHECK` does the same for the cluster jobs of `r-cmd-check.yml` and `test-coverage.yml`,
+which run in the R-package image named by `CI_CLUSTER_RPKG_IMAGE` and `CI_CLUSTER_RPKG_IMAGE_FILE`
+([#1640](https://github.com/Morrison-Lab/gha/issues/1640)).
 Never point a public repository at a self-hosted runner,
 because a pull request from a fork can run arbitrary code on it
 ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).
