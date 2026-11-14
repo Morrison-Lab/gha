@@ -23,11 +23,12 @@ failures=0
 fail() { echo "::error::$1"; failures=$((failures + 1)); }
 
 # make_runner <dir> <run.sh body>: a fake runner directory. The listener is a
-# copy of sleep named Runner.Listener, so pgrep -x and its argv[0] match the
-# real one's.
+# symlink to python3 named Runner.Listener, so pgrep -x and its argv[0] match
+# the real one's. A copy of `sleep` does not work on ubuntu-26.04, where sleep
+# is a multi-call coreutils binary that refuses to run under another name.
 make_runner() {
   mkdir -p "$1/bin"
-  cp "$(command -v sleep)" "$1/bin/Runner.Listener"
+  ln -sf "$(command -v python3)" "$1/bin/Runner.Listener"
   printf '#!/usr/bin/env bash\n%s\n' "$2" > "$1/run.sh"
   chmod +x "$1/run.sh"
 }
@@ -52,7 +53,7 @@ case "$out" in *".listener.lock"*) ;; *) fail "the refusal should name the lock:
 
 # A listener started without the wrapper is found by its path, and named.
 make_runner "$work/c" 'echo started > ran'
-(cd "$work/c" && exec "$(pwd -P)/bin/Runner.Listener" 30) &
+(cd "$work/c" && exec "$(pwd -P)/bin/Runner.Listener" -c 'import time; time.sleep(30)') &
 listener=$!
 pids+=("$listener")
 sleep 0.3
