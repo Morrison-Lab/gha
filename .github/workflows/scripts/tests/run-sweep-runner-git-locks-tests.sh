@@ -49,8 +49,12 @@ expect "$work/_tool/x/.git/stale.lock" present
 # A git process working inside the work folder stops the sweep.
 echo x > "$work/epi204/epi204/.git/index.lock"; old "$work/epi204/epi204/.git/index.lock"
 # pgrep matches the process name, so the holder must really be named git.
+# A script named git runs as a process named git. A copy of `sleep` does not
+# work on ubuntu-26.04, where sleep is a multi-call coreutils binary that
+# dispatches on its own name and exits with "unknown program 'git'".
 fakebin=$(mktemp -d)
-cp "$(command -v sleep)" "$fakebin/git"
+printf '#!/bin/sh\nsleep "$1" &\nwait\n' > "$fakebin/git"
+chmod +x "$fakebin/git"
 (cd "$work/epi204/epi204" && exec "$fakebin/git" 30) &
 holder=$!
 sleep 1
