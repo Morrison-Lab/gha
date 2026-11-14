@@ -38,7 +38,9 @@
 # CONDOR_IMAGE (default none: a path to an Apptainer image on the cluster home,
 # read in place; when set, every step runs inside it with the unpacked checkout
 # bound at /work, and the home, TMPDIR and uv caches under /work because the
-# contained /tmp and home are small tmpfs),
+# contained /tmp and home are small tmpfs; TEXMFVAR and TEXMFCACHE point into
+# the bound /tmp, because the image's TeX tree is read-only and LuaLaTeX
+# stops with "no writeable cache path" otherwise, gha#2012),
 # CONDOR_DESKTOP_HEADS (default csci-lab-head*: space-separated patterns for
 # heads of the CSCI desktop pool, such as csci-lab-head.cs.wwu.edu:922. Such a head
 # has no /cluster, so the run directory is CONDOR_DESKTOP_ROOT (default lds-ci)
@@ -221,7 +223,7 @@ mkdir -p "$scratch/work/.home" "$scratch/.tmp"
 tar -xzf checkout.tar.gz -C "$scratch/work"
 export TMPDIR="$scratch/.tmp"; cd "$scratch/work"; rc=0; i=0
 wrap=()
-[ -z "$img" ] || wrap=(apptainer exec --containall --bind "$scratch/work:/work" --bind "$TMPDIR:/tmp" --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp --env UV_CACHE_DIR=/work/.uvcache --env UV_PYTHON_INSTALL_DIR=/work/.uvpy "$img")
+[ -z "$img" ] || wrap=(apptainer exec --containall --bind "$scratch/work:/work" --bind "$TMPDIR:/tmp" --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp --env UV_CACHE_DIR=/work/.uvcache --env UV_PYTHON_INSTALL_DIR=/work/.uvpy --env TEXMFVAR=/tmp/texmf-var --env TEXMFCACHE=/tmp/texmf-cache "$img")
 while IFS= read -r cmd <&3; do
   [ -n "${cmd//[[:space:]]/}" ] || continue
   i=$((i+1)); echo "::step $i: $cmd"
