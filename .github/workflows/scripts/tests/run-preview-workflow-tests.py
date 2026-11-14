@@ -143,7 +143,13 @@ def check_preview(
     # runs-on, cluster-render and preinstalled-toolchain must apply the org switch
     # under the same exclusions, or a labelled PR lands on a submit-only runner
     # without the cluster render (gha#2009 review).
-    guards = ("!inputs.use-renv", "!inputs.setup-chrome", "'preview:runner'")
+    guards = (
+        "github.event.repository.private",
+        "vars.CI_CLUSTER_RENDER == 'true'",
+        "!inputs.use-renv",
+        "!inputs.setup-chrome",
+        "'preview:runner'",
+    )
     switch_exprs = {"runs-on": preview_runs_on}
     for step in build_job.get("steps", []):
         for key in ("cluster-render", "preinstalled-toolchain"):
@@ -292,6 +298,26 @@ def run_self_test() -> int:
     baseline_workflow = DEFAULT_WORKFLOW.read_text(encoding="utf-8")
 
     mutations = [
+        (
+            "drop the private-repository guard from cluster-render",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "cluster-render: ${{ inputs.cluster-render || (github.event.repository.private && ",
+                "cluster-render: ${{ inputs.cluster-render || (",
+            ),
+        ),
+        (
+            "read CI_CLUSTER_RENDER as truthy in runs-on",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && ",
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER && ",
+            ),
+        ),
         (
             "drop tinytex OR condition in Quarto setup",
             DEFAULT_COMPOSITE,

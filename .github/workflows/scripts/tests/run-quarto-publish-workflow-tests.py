@@ -107,7 +107,12 @@ def check_quarto_publish(
         errors.append("quarto-publish.yml deploy job must not read CI_RUNNER_CLUSTER")
     # runs-on, cluster-render and preinstalled-toolchain must apply the org switch
     # under the same exclusions (gha#2009 review).
-    guards = ("!inputs.use-renv", "!inputs.setup-chrome")
+    guards = (
+        "github.event.repository.private",
+        "vars.CI_CLUSTER_RENDER == 'true'",
+        "!inputs.use-renv",
+        "!inputs.setup-chrome",
+    )
     switch_exprs = {"runs-on": build_runs_on}
     for step in jobs.get("build", {}).get("steps", []):
         for key in ("cluster-render", "preinstalled-toolchain"):
@@ -223,6 +228,26 @@ def run_self_test() -> int:
     baseline_workflow = DEFAULT_WORKFLOW.read_text(encoding="utf-8")
 
     mutations = [
+        (
+            "drop the private-repository guard from cluster-render",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "cluster-render: ${{ inputs.cluster-render || (github.event.repository.private && ",
+                "cluster-render: ${{ inputs.cluster-render || (",
+            ),
+        ),
+        (
+            "read CI_CLUSTER_RENDER as truthy in runs-on",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && ",
+                "runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER && ",
+            ),
+        ),
         (
             "drop setup-julia input in action.yml",
             DEFAULT_COMPOSITE,
