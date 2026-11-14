@@ -1,0 +1,54 @@
+Bootstrap: localimage
+From: lds-ci.sif
+
+# mlg render image for condor-batch (gha#2006): lds-ci.sif plus poppler-utils
+# and mlg's renv library, restored from its renv.lock into a system library
+# inside the image. mlg's check-student-copy.yml renders the student copy and
+# the answer key, renders each exercise fragment alone, and checks every render
+# with tools/check_student_copy.py, which reads the PDFs with pdftotext and
+# pdftoppm; lds-ci.sif has no poppler. A render copies only its working
+# directory in and the output paths out, so the library has to live in the
+# image; restoring it into the cluster home would break WWU CS IT rule 4 (the
+# home quota is 5 GB).
+#
+# Build with condor-batch/image/build-mlg-ci.sh, which checks out mlg at a ref,
+# passes this recipe the lockfile, and test-renders mlg in the new image.
+# Build on cf463-02 with Apptainer, next to lds-ci.sif.
+#
+# renv's autoloader is turned off at run time: mlg's .Rprofile sources
+# renv/activate.R, which would otherwise look for a project library that the
+# job's working directory does not hold and try to bootstrap renv from the
+# network.
+
+%files
+    renv.lock /opt/mlg/renv.lock
+
+%environment
+    export R_LIBS_SITE=/opt/mlg-library
+    export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    apt-get update
+    apt-get install -y --no-install-recommends poppler-utils
+
+    # Every package in mlg's renv.lock comes from CRAN ("Source": "Repository"),
+    # so the restore needs no credentials.
+    mkdir -p /opt/mlg-library
+    export R_LIBS_SITE=/opt/mlg-library
+    export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+    export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+    # The lockfile's R version is newer than the R 4.5 in lds-ci.sif
+    # (lds-ci.def), so renv warns about the version and restores the locked
+    # package versions, as it does for epi204-ci.sif.
+    Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/mlg/renv.lock", library = "/opt/mlg-library", prompt = FALSE)'
+    chmod -R a+rX /opt/mlg-library /opt/mlg
+
+%test
+    set -e
+    export R_LIBS_SITE=/opt/mlg-library
+    pdftotext -v
+    pdftoppm -v
+    Rscript -e 'library(knitr); library(rmarkdown); library(dplyr); library(ggplot2); library(plotly)'
