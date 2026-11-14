@@ -7,5 +7,5 @@
   `condor-batch/image/build-mlg-ci.sh` passes the same variables to its test render.
 - **`mlg-ci.sif` bakes the three LaTeX packages mlg's PDFs need**
   ([#2012](https://github.com/Morrison-Lab/gha/issues/2012)):
-  koma-script, nameref and xpatch,
+  koma-script, nameref, and xpatch,
   which Quarto cannot install at render time on the image's read-only TeX tree.

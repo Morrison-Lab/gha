@@ -52,7 +52,7 @@ From: lds-ci.sif
     # writable, as epi204-ci.def does (gha#1660). The list is every package
     # Quarto installed when the runner rendered all 15 mlg documents in both
     # the assign and solution profiles in a writable copy of the image on
-    # cf463-02: koma-script (scrartcl.cls), nameref and xpatch.
+    # cf463-02: koma-script (scrartcl.cls), nameref, and xpatch.
     /opt/TinyTeX/bin/x86_64-linux/tlmgr option repository https://tlnet.yihui.org
     /opt/TinyTeX/bin/x86_64-linux/tlmgr install koma-script nameref xpatch
     chmod -R a+rX /opt/TinyTeX
