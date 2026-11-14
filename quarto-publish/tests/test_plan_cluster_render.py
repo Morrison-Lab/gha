@@ -136,3 +136,23 @@ def test_the_action_wires_the_cluster_steps():
     for name, value in local["env"].items():
         if name not in ("PER_FILE_SCRIPT", "REDIRECT_STUBS_SCRIPT"):
             assert plan_env[name] == value
+
+
+def test_r_packages_add_an_install_step_before_the_render(tmp_path):
+    """The image has its own R library, so r-packages are installed in the job (gha#2007)."""
+    specs = "deps::.\nany::knitr"
+    install, render, check = plan(tmp_path, R_PACKAGES=specs)
+    assert install == (
+        'Rscript .gha-render/install-cluster-r-packages.R "$PWD/.gha-rlib" '
+        ".gha-render/r-packages.txt"
+    )
+    assert (tmp_path / ".gha-render" / "r-packages.txt").read_text(encoding="utf-8") == specs + "\n"
+    assert (tmp_path / ".gha-render" / "install-cluster-r-packages.R").is_file()
+    assert ' R_LIBS="$PWD/.gha-rlib" ' in render
+    assert check.startswith("test -d ")
+
+
+def test_no_r_packages_plans_no_install_step(tmp_path):
+    lines = plan(tmp_path, R_PACKAGES="")
+    assert len(lines) == 2
+    assert "R_LIBS" not in lines[0]
