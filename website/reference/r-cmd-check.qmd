@@ -44,7 +44,7 @@ job-level, so splitting the steps into a composite would add a nested
 | `force-suggests` | boolean | `false` | Value for `_R_CHECK_FORCE_SUGGESTS_` on the full matrix. The hard job always sets this `false`. |
 | `stop-on-invalid-numeric-version-inputs` | boolean | `true` | Value for `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_`. |
 | `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
-| `config` | string | (r-lib 5-way JSON) | JSON array of `{os, r, http-user-agent?}` objects for the full matrix. Ignored when `hard` is true. |
+| `config` | string | (r-lib 5-way JSON) | JSON array of `{os, r, http-user-agent?}` objects for the full matrix. Ignored when `hard` is true. On a private repository the job also runs when the `CI_CLUSTER_CHECK` variable is `true`. |
 | `setup-pandoc` | boolean | `true` | Install Pandoc before the check. |
 | `install-quarto` | boolean | `false` | Install Quarto via `quarto-dev/quarto-actions/setup` before the check. On the full matrix, skipped on `ubuntu-latest` only when `linux-container` contains `verse`. Separate from r-lib `setup-r-dependencies`' own `install-quarto` (default `auto` when the tree has `.qmd` files). |
 | `setup-julia` | boolean | `false` | Install Julia before the check (for JuliaCall packages). |
@@ -59,11 +59,11 @@ job-level, so splitting the steps into a composite would add a nested
 | `build-args` | string | `'c("--no-manual","--compact-vignettes=gs+qpdf")'` | R expression forwarded to `check-r-package` `build_args`. |
 | `upload-snapshots` | boolean | `true` | Upload all testthat snapshots as an artifact (r-lib's wording). Default uploads on success too. |
 | `upload-results` | boolean | `true` | Upload the check results directory as a workflow artifact. |
-| `cluster-check` | boolean | `false` | Also run the check on a WWU CS cluster node through `condor-batch` in `cluster-image` (gha#1640). Linux only; installs dependencies with `remotes::install_deps` into a library inside the job. Needs a lab runner with the cluster ssh key. Ignored when `hard` is true. |
-| `cluster-runs-on` | string | `''` | Runner label for the cluster job. Empty uses `vars.CI_RUNNER`. |
-| `cluster-head` | string | `cse-head.cluster.cs.wwu.edu` | Cluster head (or list of heads) for the cluster job. |
-| `cluster-image` | string | `''` | Apptainer image on the cluster home that the cluster job runs in. |
-| `cluster-image-file` | string | `''` | The same image on the runner, for heads without the cluster home. |
+| `cluster-check` | boolean | `false` | Also run the check on a WWU CS cluster node through `condor-batch` in `cluster-image` (gha#1640). Linux only; installs dependencies with `remotes::install_deps` into a library inside the job. Needs a lab runner with the cluster ssh key. Ignored when `hard` is true. On a private repository the job also runs when the `CI_CLUSTER_CHECK` variable is `true`. |
+| `cluster-runs-on` | string | `''` | Runner label for the cluster job. Empty uses `vars.CI_RUNNER_CLUSTER`, then `vars.CI_RUNNER`. |
+| `cluster-head` | string | `''` | Cluster head (or space-separated list of heads) for the cluster job. Empty spreads jobs over cse-head and csci-head, plus the csci-lab desktop pool (port 922) when an image file is set (gha#1518). |
+| `cluster-image` | string | `''` | Apptainer image on the cluster home that the cluster job runs in. Empty uses `vars.CI_CLUSTER_RPKG_IMAGE`. |
+| `cluster-image-file` | string | `''` | The same image on the runner, for heads without the cluster home. Empty uses `vars.CI_CLUSTER_RPKG_IMAGE_FILE`. |
 
 ## Secrets
 

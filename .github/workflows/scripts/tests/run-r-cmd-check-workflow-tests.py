@@ -368,13 +368,23 @@ def check_cluster_job(path: pathlib.Path, doc: dict) -> list[str]:
     if not isinstance(job, dict):
         return errors + [f"{path}: no R-CMD-check-cluster job"]
     cond = str(job.get("if") or "")
-    if "inputs.cluster-check" not in cond or "!inputs.hard" not in cond:
+    expected = (
+        "${{ (inputs.cluster-check || (github.event.repository.private "
+        "&& vars.CI_CLUSTER_CHECK == 'true')) && !inputs.hard }}"
+    )
+    if cond != expected:
         errors.append(
-            f"{path}: cluster job if: must require cluster-check and not hard "
+            f"{path}: cluster job if: must require cluster-check (or a private "
+            f"repository's CI_CLUSTER_CHECK) and not hard "
             f"(got {cond!r})"
         )
-    if find_step(job, "actions/condor-batch@") is None:
+    step = find_step(job, "actions/condor-batch@")
+    if step is None:
         errors.append(f"{path}: cluster job has no condor-batch step")
+    elif "vars.CI_CLUSTER_RPKG_IMAGE }}" not in str((step.get("with") or {}).get("image")):
+        errors.append(f"{path}: cluster job image must fall back to CI_CLUSTER_RPKG_IMAGE")
+    if (inputs.get("cluster-head") or {}).get("default") != "":
+        errors.append(f"{path}: input cluster-head must default to empty (gha#1518)")
     return errors
 
 
@@ -840,7 +850,10 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
         wf.write_text(mutated)
 
         # 17. A cluster job that is no longer gated on cluster-check must fail.
-        gate = "if: ${{ inputs.cluster-check && !inputs.hard }}"
+        gate = (
+            "if: ${{ (inputs.cluster-check || (github.event.repository.private "
+            "&& vars.CI_CLUSTER_CHECK == 'true')) && !inputs.hard }}"
+        )
         if gate not in mutated:
             print(
                 "::error::self-test: fixture workflow has no cluster job gate to mutate",

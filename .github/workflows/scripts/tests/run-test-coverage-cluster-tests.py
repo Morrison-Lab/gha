@@ -22,6 +22,16 @@ import yaml
 
 WORKFLOW = pathlib.Path(__file__).resolve().parents[2] / "test-coverage.yml"
 
+# The cluster job runs when the caller asks for it, or on a private repository
+# whose CI_CLUSTER_CHECK variable is true (gha#1640).
+ON = "inputs.cluster-check || (github.event.repository.private && vars.CI_CLUSTER_CHECK == 'true')"
+TWO_HEADS = "cse-head.cluster.cs.wwu.edu csci-head.cluster.cs.wwu.edu"
+THREE_HEADS = TWO_HEADS + " csci-lab-head.cs.wwu.edu:922"
+IMAGE_FILE = "inputs.cluster-image-file || vars.CI_CLUSTER_RPKG_IMAGE_FILE"
+HEAD = (
+    f"${{{{ inputs.cluster-head || (({IMAGE_FILE}) != '' && '{THREE_HEADS}' || '{TWO_HEADS}') }}}}"
+)
+
 
 def check(text: str) -> list[str]:
     """Return the contract violations found in the workflow text."""
@@ -32,15 +42,28 @@ def check(text: str) -> list[str]:
     for name in ("cluster-check", "cluster-runs-on", "cluster-head", "cluster-image", "cluster-image-file"):
         if name not in inputs:
             problems.append(f"input {name} is missing")
-    if "!inputs.cluster-check" not in jobs["test-coverage"].get("if", ""):
-        problems.append("the runner job does not stand down when cluster-check is true")
+    if jobs["test-coverage"].get("if", "") != f"${{{{ !({ON}) }}}}":
+        problems.append("the runner job does not stand down when the cluster job runs")
     cluster = jobs.get("test-coverage-cluster", {})
-    if "inputs.cluster-check" not in cluster.get("if", ""):
-        problems.append("the cluster job is not gated on cluster-check")
+    if cluster.get("if", "") != f"${{{{ {ON} }}}}":
+        problems.append("the cluster job is not gated on cluster-check or CI_CLUSTER_CHECK")
+    if inputs["cluster-check"].get("default") is not False:
+        problems.append("input cluster-check must default to false")
+    if inputs["cluster-head"].get("default") != "":
+        problems.append("input cluster-head must default to empty, so jobs spread over the heads")
     steps = cluster.get("steps", [])
     uses = [s.get("uses", "") for s in steps]
-    if not any("actions/condor-batch@" in u for u in uses):
+    batch = [s for s in steps if "actions/condor-batch@" in s.get("uses", "")]
+    if not batch:
         problems.append("the cluster job does not call condor-batch")
+    else:
+        args = batch[0].get("with", {})
+        if args.get("head") != HEAD:
+            problems.append(f"condor-batch head is not the default-heads expression: {args.get('head')!r}")
+        if args.get("image") != "${{ inputs.cluster-image || vars.CI_CLUSTER_RPKG_IMAGE }}":
+            problems.append("condor-batch image does not fall back to CI_CLUSTER_RPKG_IMAGE")
+        if args.get("image-file") != f"${{{{ {IMAGE_FILE} }}}}":
+            problems.append("condor-batch image-file does not fall back to CI_CLUSTER_RPKG_IMAGE_FILE")
     if not any("upload-artifact@" in u for u in uses):
         problems.append("the cluster job does not upload the report")
     runs = "\n".join(s.get("run", "") for s in steps)
@@ -54,8 +77,12 @@ def check(text: str) -> list[str]:
 def self_test(text: str) -> int:
     """Each mutation of the workflow must make `check` report a problem."""
     mutations = {
-        "runner job always runs": ("    if: ${{ !inputs.cluster-check }}\n", ""),
-        "cluster job always runs": ("    if: ${{ inputs.cluster-check }}\n", ""),
+        "runner job always runs": (f"    if: ${{{{ !({ON}) }}}}\n", ""),
+        "cluster job always runs": (f"    if: ${{{{ {ON} }}}}\n", ""),
+        "variable ignored": ("vars.CI_CLUSTER_CHECK == 'true') }}\n    runs-on: ${{ inputs.cluster-runs-on",
+                             "vars.CI_CLUSTER_CHECK == 'yes') }}\n    runs-on: ${{ inputs.cluster-runs-on"),
+        "single head": (f"head: {HEAD}", "head: ${{ inputs.cluster-head }}"),
+        "image variable dropped": ("inputs.cluster-image || vars.CI_CLUSTER_RPKG_IMAGE }}", "inputs.cluster-image }}"),
         "threshold dropped": ("exit 1", "exit 0"),
         "report not uploaded": ("upload-artifact@", "noop@"),
     }
