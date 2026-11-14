@@ -267,6 +267,8 @@ def test_image_is_passed_to_the_job_and_used_by_the_run_script(tmp_path):
     run = (tmp_path / "calls.log.run").read_text()
     assert "apptainer exec --containall" in run
     assert "--pwd /work --home /work/.home" in run
+    # The image's TeX tree is read-only, so LuaLaTeX needs a writable cache (gha#2012).
+    assert "--env TEXMFVAR=/tmp --env TEXMFCACHE=/tmp" in run
 
 
 def test_image_steps_execute_through_apptainer(tmp_path):

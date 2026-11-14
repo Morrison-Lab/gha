@@ -46,6 +46,17 @@ From: lds-ci.sif
     Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/mlg/renv.lock", library = "/opt/mlg-library", prompt = FALSE)'
     chmod -R a+rX /opt/mlg-library /opt/mlg
 
+    # LaTeX packages mlg's PDF renders need that lds-ci.sif lacks (gha#2012).
+    # Quarto installs a missing package with tlmgr at render time, but
+    # /opt/TinyTeX is read-only in a job, so bake them here, where it is
+    # writable, as epi204-ci.def does (gha#1660). The list is every package
+    # Quarto installed when the runner rendered all 15 mlg documents in both
+    # the assign and solution profiles in a writable copy of the image on
+    # cf463-02: koma-script (scrartcl.cls), nameref, and xpatch.
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr option repository https://tlnet.yihui.org
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr install koma-script nameref xpatch
+    chmod -R a+rX /opt/TinyTeX
+
 %test
     set -e
     export R_LIBS_SITE=/opt/mlg-library

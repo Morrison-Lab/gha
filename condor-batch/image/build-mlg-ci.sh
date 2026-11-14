@@ -51,6 +51,7 @@ apptainer build mlg-ci.sif mlg-ci.def
 mkdir -p "$work/mlg/.home" "$work/tmp"
 apptainer exec --containall --bind "$work/mlg:/work" --bind "$work/tmp:/tmp" \
   --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp \
+  --env TEXMFVAR=/tmp --env TEXMFCACHE=/tmp \
   mlg-ci.sif bash -c 'set -e; quarto render; quarto render --profile solution; python3 tools/check_student_copy.py'
 
 mv mlg-ci.sif "$image_dir/mlg-ci.sif"
