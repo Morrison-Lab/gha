@@ -483,6 +483,7 @@ runs:
         PER_FILE_FORMATS: ${{ inputs.per-file-formats }}
         FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
+        R_PACKAGES: ${{ inputs.use-renv != 'true' && inputs.r-packages || '' }}
         SETUP_JULIA: ${{ inputs.setup-julia }}
       run: bash "$GITHUB_ACTION_PATH/plan-cluster-render.sh"
 
