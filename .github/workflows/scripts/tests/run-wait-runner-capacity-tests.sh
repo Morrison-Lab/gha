@@ -84,11 +84,14 @@ leftover=$(find "$WAIT_HOLD_DIR" -type f | wc -l)
 rm -f "$WAIT_HOLD_DIR"/*
 fake_dir="$work/fake-bin"
 mkdir -p "$fake_dir"
-cp "$(command -v sleep)" "$fake_dir/Runner.Worker"
+# exec -a gives each stand-in an argv[0] ending in Runner.Worker. A copy of
+# `sleep` does not work on ubuntu-26.04, where sleep is a multi-call coreutils
+# binary that dispatches on its own name and refuses "Runner.Worker".
+fake_worker() { exec -a "$fake_dir/Runner.Worker" python3 -c 'import time; time.sleep(60)'; }
 baseline=$(pgrep -fc '^[^ ]*Runner[.]Worker( |$)' || true)
-"$fake_dir/Runner.Worker" 60 &
+(fake_worker) &
 fake1=$!
-"$fake_dir/Runner.Worker" 60 &
+(fake_worker) &
 fake2=$!
 bash -c 'sleep 60; :' "$fake_dir/Runner.Worker" &
 decoy=$!

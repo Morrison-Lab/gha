@@ -140,6 +140,10 @@ on:
           ssh key (`runs-on`); the setup steps still run on the runner, and
           `lds-ci.sif` has no renv and no Chromium. Falls back to the runner
           when the cluster cannot run the job.
+          False still renders on the cluster in a private repository whose
+          `CI_CLUSTER_RENDER` variable is `true` (gha#2007); set the repository's
+          own `CI_CLUSTER_RENDER` to `false` to opt out. The variable never applies
+          with `use-renv` or `setup-chrome`, which the image lacks.
         type: boolean
         default: false
       cluster-head:
@@ -196,7 +200,7 @@ jobs:
   # deploy job below declares it, even when deploy is false). Only the deploy
   # job actually uses the write token.
   build:
-    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER_HEAVY) || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && !inputs.use-renv && !inputs.setup-chrome && vars.CI_RUNNER_CLUSTER) || (github.event.repository.private && vars.CI_RUNNER_HEAVY) || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -236,7 +240,7 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           setup-julia: ${{ inputs.setup-julia }}
-          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain || (inputs.cluster-render && runner.environment == 'self-hosted') }}
+          preinstalled-toolchain: ${{ inputs.preinstalled-toolchain || ((inputs.cluster-render || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && !inputs.use-renv && !inputs.setup-chrome)) && runner.environment == 'self-hosted') }}
           julia-version: ${{ inputs.julia-version }}
           apt-packages: ${{ inputs.apt-packages }}
           output-dir: ${{ inputs.output-dir }}
@@ -250,7 +254,7 @@ jobs:
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}
-          cluster-render: ${{ inputs.cluster-render }}
+          cluster-render: ${{ inputs.cluster-render || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && !inputs.use-renv && !inputs.setup-chrome) }}
           cluster-head: ${{ inputs.cluster-head }}
           cluster-image: ${{ inputs.cluster-image || vars.CI_CLUSTER_IMAGE }}
           cluster-image-file: ${{ inputs.cluster-image-file || vars.CI_CLUSTER_IMAGE_FILE }}

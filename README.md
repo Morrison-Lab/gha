@@ -193,6 +193,10 @@ The build workflows `preview.yml`, `preview-deploy.yml` and `quarto-publish.yml`
 accept it too, for every job they run.
 `preview.yml` and the build job of `quarto-publish.yml` read a `CI_RUNNER_HEAVY` variable before `CI_RUNNER`,
 so a private repository can send its renders to a different runner label ([#1563](https://github.com/Morrison-Lab/gha/issues/1563)).
+When a private repository's `CI_CLUSTER_RENDER` variable is `true`, those two jobs render on the cluster even if the caller leaves `cluster-render` off,
+and read `CI_RUNNER_CLUSTER` (the submit-only runners' label) before `CI_RUNNER_HEAVY`.
+The variable never applies with `use-renv` or `setup-chrome`, which the cluster image lacks, or to a preview PR labelled `preview:runner`,
+and a repository opts out by setting its own `CI_CLUSTER_RENDER` to `false` ([#2007](https://github.com/Morrison-Lab/gha/issues/2007)).
 Never point a public repository at a self-hosted runner,
 because a pull request from a fork can run arbitrary code on it
 ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)).
