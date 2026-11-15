@@ -1435,7 +1435,7 @@ cookieconsent.run({
 <td><code>extra-preview-labels</code></td>
 <td>string</td>
 <td><code>'[]'</code></td>
-<td>JSON array string of additional PR label names that trigger a preview re-render on add or remove (e.g.&nbsp;<code>'["preview:tracked-changes"]'</code>), beyond the built-in set (<code>clear freezer</code>, <code>preview:pdf</code>, <code>preview:docx</code>, <code>preview:revealjs</code>).</td>
+<td>JSON array string of additional PR label names that trigger a preview re-render on add or remove (e.g.&nbsp;<code>'["preview:tracked-changes"]'</code>), beyond the built-in set (<code>clear freezer</code>, <code>preview:pdf</code>, <code>preview:docx</code>, <code>preview:revealjs</code>, <code>preview:runner</code>). Any other label event gets a concurrency group of its own, so it neither starts a build nor cancels one; a caller needs no workflow-level <code>concurrency</code> group (gha#1998).</td>
 </tr>
 <tr class="odd">
 <td><code>fail-on-render-warning</code></td>
