@@ -442,3 +442,115 @@ def test_fragments_are_not_checked_by_default(tmp_path, monkeypatch):
         "b.qmd": "# B\n",
     })
     assert got == []
+
+
+# -- anchors on published sites (QL_SITE_URLS, gha#1034) ---------------------
+
+_SITE = "https://lab.example/pds/"
+
+
+def _site_findings(tmp_path, monkeypatch, files, pages, prefixes=(_SITE,)):
+    _repo(tmp_path, files)
+    monkeypatch.chdir(tmp_path)
+    tracked = ql.tracked_files(ql.DEFAULT_GLOBS.split(), [])
+    fetched = []
+
+    def fetch(url):
+        fetched.append(url)
+        return pages.get(url)
+
+    found, unreadable, n = ql.find_dead_site_anchors(Path("."), tracked, prefixes, fetch)
+    return [(f.path, f.line, f.fragment, f.base) for f in found], unreadable, fetched
+
+
+def test_missing_anchor_on_a_listed_site_is_flagged(tmp_path, monkeypatch):
+    # The lds#2509 case: the page defines def-random-variable, not def-random.
+    page = _SITE + "random-variables.html"
+    got, unreadable, _ = _site_findings(tmp_path, monkeypatch, {
+        "a.qmd": f"A [random]({page}#def-random) and [rv]({page}#def-random-variable).\n",
+    }, {page: {"def-random-variable", "def-range"}})
+    assert got == [("a.qmd", 1, "def-random", page)]
+    assert unreadable == []
+
+
+def test_each_page_is_fetched_once(tmp_path, monkeypatch):
+    page = _SITE + "p.html"
+    _, _, fetched = _site_findings(tmp_path, monkeypatch, {
+        "a.qmd": f"[1]({page}#x) [2]({page}#y)\n",
+        "b.qmd": f"[3]({page}#x)\n",
+    }, {page: {"x", "y"}})
+    assert fetched == [page]
+
+
+def test_unlisted_sites_and_links_without_fragments_are_not_fetched(tmp_path, monkeypatch):
+    got, _, fetched = _site_findings(tmp_path, monkeypatch, {
+        "a.qmd": (
+            "[1](https://other.example/p.html#x) [2](https://lab.example/pds/p.html)\n"
+            "[3](https://lab.example/pdsx/p.html#x) [4](local.qmd#x)\n"
+        ),
+        "local.qmd": "# L\n",
+    }, {})
+    assert got == [] and fetched == []
+
+
+def test_unfetchable_page_is_unchecked_not_dead(tmp_path, monkeypatch):
+    page = _SITE + "gone.html"
+    got, unreadable, _ = _site_findings(tmp_path, monkeypatch, {
+        "a.qmd": f"[1]({page}#x)\n",
+    }, {})
+    assert got == [] and unreadable == [page]
+
+
+def test_site_links_in_code_and_comments_are_not_checked(tmp_path, monkeypatch):
+    page = _SITE + "p.html"
+    _, _, fetched = _site_findings(tmp_path, monkeypatch, {
+        "a.qmd": f"`[1]({page}#x)`\n\n<!-- [2]({page}#y) -->\n\n```\n[3]({page}#z)\n```\n",
+    }, {page: set()})
+    assert fetched == []
+
+
+def test_encoded_fragment_and_html_href_are_checked(tmp_path, monkeypatch):
+    page = _SITE + "p.html"
+    got, _, _ = _site_findings(tmp_path, monkeypatch, {
+        "a.qmd": f'[1]({page}#sec%2Dok) <a href="{page}#gone">2</a>\n',
+    }, {page: {"sec-ok"}})
+    assert got == [("a.qmd", 1, "gone", page)]
+
+
+def test_fetch_page_ids_reads_ids_from_a_served_page(tmp_path):
+    import http.server
+    import threading
+
+    (tmp_path / "p.html").write_text('<div id="def-x"></div><a name="old"></a><p id=\'y\'>')
+    handler = lambda *a, **k: http.server.SimpleHTTPRequestHandler(  # noqa: E731
+        *a, directory=str(tmp_path), **k)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}/"
+        assert ql.fetch_page_ids(base + "p.html") == {"def-x", "old", "y"}
+        assert ql.fetch_page_ids(base + "missing.html") is None
+    finally:
+        server.shutdown()
+
+
+def test_main_reports_a_dead_site_anchor(tmp_path, monkeypatch, capsys):
+    page = _SITE + "p.html"
+    monkeypatch.setattr(ql, "fetch_page_ids", lambda url: {"x"})
+    files = {"a.qmd": f"[1]({page}#gone)\n"}
+    monkeypatch.delenv("QL_SITE_URLS", raising=False)
+    assert _main(tmp_path, monkeypatch, files) == 0
+    assert _main(tmp_path, monkeypatch, files, QL_SITE_URLS=_SITE) == 1
+    out = capsys.readouterr().out
+    assert "title=Link to a missing anchor::" in out
+    assert "which the published page " + page in out
+    assert "Fetched 1 page(s)" in out
+
+
+def test_declared_site_urls_default_is_empty():
+    root = _MOD_PATH.parent.parent
+    for rel in ("check-quarto-links/action.yml", ".github/workflows/check-quarto-links.yml"):
+        text = (root / rel).read_text()
+        after = text.split("site-urls:", 1)[1]
+        default = re.search(r"default:\s*(.*)", after).group(1).strip()
+        assert default == "''", rel

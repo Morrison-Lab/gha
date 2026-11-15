@@ -54,6 +54,14 @@ Configuration (environment variables, set by the composite action):
                         and does not exist locally is not reported; the match
                         is on the target with leading ``./`` and ``../``
                         removed, so ``algebra.qmd`` matches ``../algebra.qmd``.
+  QL_SITE_URLS          Comma/newline-separated URL prefixes of published
+                        sites (such as ``https://morrison-lab.github.io/mds/``)
+                        whose anchors to verify. Each absolute link that starts
+                        with one and carries a ``#fragment`` has its page
+                        fetched once, and the fragment must be an ``id`` (or
+                        ``name``) on that page. A page that cannot be fetched
+                        is reported as unchecked, never as a dead anchor.
+                        Empty (the default) checks no absolute link.
   QL_FAIL               Only an explicit 'false' makes findings non-blocking.
 """
 
@@ -61,8 +69,10 @@ import os
 import re
 import sys
 from pathlib import Path, PurePosixPath
-from typing import Dict, List, NamedTuple, Optional, Sequence, Set
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
+from urllib.error import URLError
 from urllib.parse import unquote
+from urllib.request import Request, urlopen
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
@@ -449,6 +459,75 @@ def find_dead_links(
     return findings
 
 
+FETCH_TIMEOUT = 30
+
+
+def fetch_page_ids(url: str) -> Optional[Set[str]]:
+    """The ``id``/``name`` values on the page at ``url``, or None if unreadable."""
+    req = Request(url, headers={"User-Agent": "Morrison-Lab-gha-check-quarto-links"})
+    # One retry: a fetch of a Pages site failed once and then succeeded
+    # seconds later (measured against lds's links, 2026-11-15).
+    for attempt in range(2):
+        try:
+            with urlopen(req, timeout=FETCH_TIMEOUT) as resp:  # noqa: S310 (listed prefixes only)
+                html = resp.read().decode("utf-8", errors="replace")
+        except (URLError, OSError, ValueError):
+            if attempt:
+                return None
+            continue
+        return set(_ATTR_ID_RE.findall(html))
+    return None
+
+
+def site_link(raw: str, prefixes: Sequence[str]) -> Optional[Tuple[str, str]]:
+    """``(page_url, fragment)`` when ``raw`` is a link into a listed site with a fragment."""
+    target = raw.strip()
+    if target.startswith("<") and target.endswith(">"):
+        target = target[1:-1].strip()
+    if "#" not in target or any(tok in target for tok in ("{{", "{%", "${", "`r ")):
+        return None
+    if not any(target.startswith(p) for p in prefixes):
+        return None
+    page, frag = target.split("#", 1)
+    frag = unquote(frag)
+    if not frag:
+        return None
+    return page, frag
+
+
+def find_dead_site_anchors(
+    root: Path,
+    files: Sequence[str],
+    prefixes: Sequence[str],
+    fetch: Callable[[str], Optional[Set[str]]] = fetch_page_ids,
+) -> Tuple[List[Finding], List[str], int]:
+    """Absolute links into ``prefixes`` whose #fragment the live page lacks.
+
+    Returns the findings, the page URLs that could not be fetched (unchecked,
+    not dead), and the number of distinct pages examined. Each page is
+    fetched once however many links point at it.
+    """
+    ids_cache: Dict[str, Optional[Set[str]]] = {}
+    findings: List[Finding] = []
+    for rel in files:
+        try:
+            text = (root / rel).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line, raw in extract_links(text):
+            hit = site_link(raw, prefixes)
+            if hit is None:
+                continue
+            page, frag = hit
+            if page not in ids_cache:
+                ids_cache[page] = fetch(page)
+            ids = ids_cache[page]
+            if ids is not None and frag not in ids:
+                findings.append(Finding(rel, line, raw.strip(), page, frag))
+    unreadable = sorted(p for p, ids in ids_cache.items() if ids is None)
+    return findings, unreadable, len(ids_cache)
+
+
 def tracked_files(globs: List[str], ignores: List["re.Pattern[str]"]) -> Optional[List[str]]:
     files = diffscope.git_paths(["ls-files", "--", *globs])
     if files is None:
@@ -490,6 +569,21 @@ def main() -> int:
         f"Examined {len(files) - len(skipped)} file(s) matching {' '.join(globs)} "
         f"for links to {', '.join(sorted(exts))} targets."
     )
+    site_prefixes = diffscope.split_list(os.environ.get("QL_SITE_URLS", ""))
+    if site_prefixes:
+        rendered = [f for f in files if os.path.normpath(f) not in set(skipped)]
+        site_findings, unreadable, n_pages = find_dead_site_anchors(
+            Path("."), rendered, site_prefixes, fetch_page_ids)
+        findings.extend(site_findings)
+        print(
+            f"Fetched {n_pages} page(s) under {', '.join(site_prefixes)} "
+            "to check the #fragments of links into them."
+        )
+        for page in unreadable:
+            print(
+                f"::warning title=Anchors not checked::{_escape_annotation(page)} could "
+                "not be fetched, so the #fragments of links to it were not checked."
+            )
     if skipped:
         print(
             f"Skipped {len(skipped)} `_`-prefixed file(s) that no scanned page "
@@ -497,6 +591,14 @@ def main() -> int:
         )
     level = "error" if fail else "warning"
     for f in findings:
+        if f.fragment and f.base.startswith(("https://", "http://")):
+            print(
+                f"::{level} file={f.path},line={f.line},title=Link to a missing anchor::"
+                f"{_escape_annotation(f.target)} points at #{_escape_annotation(f.fragment)}, "
+                f"which the published page {_escape_annotation(f.base)} does not define "
+                "(did the anchor move or get renamed?)"
+            )
+            continue
         if f.fragment:
             title = "Link to a missing anchor"
             detail = (f"points at #{_escape_annotation(f.fragment)}, which that page "

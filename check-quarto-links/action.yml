@@ -58,6 +58,17 @@ inputs:
       target with leading `./` and `../` removed (`algebra.qmd` matches
       `../algebra.qmd`).
     default: ''
+  site-urls:
+    description: >-
+      Comma/newline-separated URL prefixes of published sites whose anchors to
+      verify, such as `https://morrison-lab.github.io/pds/`. Each absolute link
+      that starts with one and has a #fragment has its page fetched once, and
+      the fragment must be an `id` on that page, so an anchor that a sibling
+      site renamed or moved is caught. A page that cannot be fetched is
+      reported as unchecked, not as dead. Leave out the caller's own site,
+      whose published copy lags a pull request. Empty (the default) checks no
+      absolute link.
+    default: ''
 runs:
   using: composite
   steps:
@@ -71,4 +82,5 @@ runs:
         QL_CHECK_FRAGMENTS: ${{ inputs.check-fragments }}
         QL_PARTIAL_GLOBS: ${{ inputs.partial-globs }}
         QL_EXTERNAL_TARGETS: ${{ inputs.external-targets }}
+        QL_SITE_URLS: ${{ inputs.site-urls }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-quarto-links.py"
