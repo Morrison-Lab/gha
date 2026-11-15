@@ -42,6 +42,11 @@ on:
         type: string
         default: ''
 
+      site-urls:
+        description: URL prefixes of published sites (not this one) whose page is fetched to verify the #fragment of each absolute link into it.
+        type: string
+        default: ''
+
 jobs:
   check-quarto-links:
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
@@ -62,3 +67,4 @@ jobs:
           check-fragments: ${{ inputs.check-fragments }}
           partial-globs: ${{ inputs.partial-globs }}
           external-targets: ${{ inputs.external-targets }}
+          site-urls: ${{ inputs.site-urls }}
