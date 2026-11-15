@@ -694,6 +694,10 @@ to bypass the Quarto freeze cache (ensure caller workflows subscribe to
 both `labeled` and `unlabeled` event types to react to label changes, and
 configure `extra-preview-labels` with a JSON array string to extend the
 label allowlist for custom triggers).
+`preview:runner` is a build label too, since it moves a private repository's build off the cluster.
+A label the build does not read, such as `ai-authored`, gets a concurrency group of its own,
+so it neither starts a build nor cancels one (gha#1998).
+So a caller needs no workflow-level `concurrency` group, and one that copies the build-label list goes stale when the list changes.
 After restoring the freeze cache, the build drops the frozen results of every
 page whose own file, included subfiles, or named data files changed since the
 cached render (`preview/prune-stale-freeze.py`), so `clear freezer` is no

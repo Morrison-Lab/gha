@@ -225,6 +225,38 @@ def check_preview(
             ".github/workflows/preview.yml build job 'if' condition does not parse extra-preview-labels with fromJSON"
         )
 
+    # 7b. A label the build does not read gets its own concurrency group, and
+    # the group's label list matches the `if:` list (gha#1998). The build's
+    # runs-on reads preview:runner, so that label is a build label too.
+    group = str((build_job.get("concurrency") or {}).get("group", ""))
+    label_list_re = re.compile(r"fromJSON\('(\[[^']*\])'\)")
+    if_lists = label_list_re.findall(job_if)
+    group_lists = label_list_re.findall(group)
+    if len(if_lists) != 1 or len(group_lists) != 1:
+        errors.append(
+            ".github/workflows/preview.yml build job 'if' and concurrency group must each hold one fromJSON label list"
+        )
+    else:
+        if_labels = sorted(yaml.safe_load(if_lists[0]))
+        group_labels = sorted(yaml.safe_load(group_lists[0]))
+        if if_labels != group_labels:
+            errors.append(
+                ".github/workflows/preview.yml build job 'if' labels "
+                f"{if_labels} differ from its concurrency group labels {group_labels}"
+            )
+        if "preview:runner" not in if_labels:
+            errors.append(
+                ".github/workflows/preview.yml build-label list omits preview:runner, which runs-on reads"
+            )
+    if "contains(fromJSON(inputs.extra-preview-labels), github.event.label.name)" not in group:
+        errors.append(
+            ".github/workflows/preview.yml build concurrency group does not read extra-preview-labels"
+        )
+    if "format('-label-{0}', github.run_id)" not in group:
+        errors.append(
+            ".github/workflows/preview.yml build concurrency group gives an unrelated label no group of its own"
+        )
+
     # 8. Ensure TinyTeX repository is not repointed via tlmgr_repo (gha#907)
     if "tlmgr_repo" in composite_text:
         errors.append(
@@ -370,6 +402,30 @@ def run_self_test() -> int:
             baseline_composite,
             DEFAULT_WORKFLOW,
             baseline_workflow.replace("fromJSON(inputs.extra-preview-labels)", "inputs.extra-preview-labels"),
+        ),
+        (
+            "drift the concurrency group's label list from the if: list in preview.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(
+                "!contains(fromJSON('[\"clear freezer\", \"preview:pdf\", ",
+                "!contains(fromJSON('[\"preview:pdf\", ",
+            ),
+        ),
+        (
+            "drop preview:runner from both build-label lists in preview.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace(', "preview:runner"]', "]"),
+        ),
+        (
+            "drop the per-run label group from preview.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace("format('-label-{0}', github.run_id)", "''"),
         ),
         (
             "declare extra-preview-labels on action.yml",
