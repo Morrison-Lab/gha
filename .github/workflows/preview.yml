@@ -300,7 +300,7 @@ jobs:
       (github.event.action != 'closed' ||
       github.event.pull_request.head.repo.full_name != github.repository) &&
       ((github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
-      contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
+      contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs", "preview:runner"]'), github.event.label.name) ||
       (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name)))
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_CLUSTER_RENDER == 'true' && !inputs.use-renv && !inputs.setup-chrome && !contains(github.event.pull_request.labels.*.name, 'preview:runner') && vars.CI_RUNNER_CLUSTER) || (github.event.repository.private && vars.CI_RUNNER_HEAVY) || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
@@ -308,8 +308,19 @@ jobs:
     # supersedes it. Without cancel-in-progress the default is false, so a fresh
     # push QUEUES behind the stale run and the up-to-date preview is delayed
     # until the obsolete one finishes (see d-morrison/rme#812).
+    # A label event for a label the build does not read takes a group of its
+    # own, suffixed with the run id, so it can neither cancel the PR's build
+    # nor be cancelled by it (gha#1998). The label list here must match the
+    # one in the job `if:` above; run-preview-workflow-tests.py pins that.
+    # Callers need no workflow-level concurrency group: one that copies this
+    # list goes stale when gha adds a build label (Morrison-Lab/lds#2490).
     concurrency:
-      group: preview-${{ github.ref }}
+      group: >-
+        preview-${{ github.ref }}${{
+        (github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
+        !contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs", "preview:runner"]'), github.event.label.name) &&
+        !(inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name)) &&
+        format('-label-{0}', github.run_id) || '' }}
       cancel-in-progress: true
     # Read-only: this job runs in the fork's restricted context and must never
     # write to the base repo. All writes are handled by preview-deploy.yml,
