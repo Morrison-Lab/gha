@@ -3660,7 +3660,8 @@ jobs:
           set -euo pipefail
           mkdir -p _ci-geom
           printf '%s\n' 'The loss has elliptical contours.' > _ci-geom/page.qmd
-          git add -f _ci-geom/page.qmd
+          printf '%s\n' 'This page makes no claim.' > _ci-geom/clean.qmd
+          git add -f _ci-geom/page.qmd _ci-geom/clean.qmd
       - name: Check the staged claim, expecting a failure
         id: geom-expected-failure
         continue-on-error: true
@@ -3731,7 +3732,7 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: '.github/dependabot.yml'
+          globs: '_ci-geom/clean.qmd'
       - name: Remove the staged claim
         if: always()
         shell: bash
