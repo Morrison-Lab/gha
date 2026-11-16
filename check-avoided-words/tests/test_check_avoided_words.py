@@ -162,13 +162,13 @@ def test_notation_write_passes_express_typing_and_denote():
     assert found("A <!-- check-avoided-words: allow --> Write $L$ for it.") == {}
 
 
-def test_notation_write_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+def test_notation_write_fails_when_fail_is_on(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("prose\nWrite $L$ for that number.\n")
     git("add", "-A")
     _main_env(monkeypatch, repo, CAW_FAIL="true")
-    assert wi.main() == 0
-    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
+    assert wi.main() == 1
+    assert "::error file=page.qmd,line=2::" in capsys.readouterr().out
 
 
 def test_thing_passes_compounds_code_and_allow_comment():

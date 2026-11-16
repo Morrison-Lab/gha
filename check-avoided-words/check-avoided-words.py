@@ -74,8 +74,8 @@ gha#1568):
   "is written $X$" or "are written as $X$". Name notation with "let $X$
   denote ..." or "$X$ denotes ..."; "write" names a physical act (Ezra,
   2026-11-16; psw#671). "Write the sum as $...$" (express) and "write
-  `\predval`" (typing a macro, in a code span) pass. Warn-only while the
-  rule is new.
+  `\predval`" (typing a macro, in a code span) pass. Fails by default, like
+  the other rules: only added lines are read, so legacy uses do not trip it.
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
@@ -198,7 +198,7 @@ NOTATION_WRITE_RE = re.compile(
 ALWAYS_FAIL = frozenset({"parenref", "thing", "vague"})
 # Rules in their trial period: a finding is a warning and never fails the run
 # (gha#1570: warn-only first; promote after several PRs with no false positive).
-WARN_ONLY = frozenset({"gaussian", "optional", "notation-write"})
+WARN_ONLY = frozenset({"gaussian", "optional"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
