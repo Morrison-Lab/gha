@@ -1,6 +1,9 @@
 project:
   type: website
   output-dir: _site
+  # Writes the capability lists into _generated/ (git-ignored) from the files
+  # each capability owns, so a new check edits no list by hand (gha#1862).
+  pre-render: python3 ../.github/workflows/scripts/gen_capability_lists.py
 
 website:
   title: "Morrison-Lab/gha"
