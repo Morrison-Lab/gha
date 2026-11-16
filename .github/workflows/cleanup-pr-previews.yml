@@ -139,6 +139,24 @@ jobs:
             esac
           fi
 
+          # Stage the published tree: the checked-out gh-pages tree minus the
+          # pruned previews, and nothing else. `git add -A` would also stage
+          # untracked files left in a reused self-hosted workdir, such as a
+          # main checkout's `latex-macros` submodule, which then lands on
+          # gh-pages as a gitlink with no .gitmodules entry; the post-job
+          # step of every later gh-pages checkout then fails with git exit
+          # 128 (lds annotation-gate, 2026-11-15). So stage only changes to
+          # tracked files, and drop any gitlink already committed, since
+          # gh-pages never holds one.
+          stage_published_tree() {
+            git add -u
+            git ls-files --stage | awk '$1 == "160000"' | cut -f2- |
+              while IFS= read -r gitlink; do
+                echo "Dropping stray gitlink '${gitlink}' from gh-pages."
+                git update-index --force-remove -- "$gitlink"
+              done
+          }
+
           # Remove preview dirs whose PR is no longer open, in the currently
           # checked-out gh-pages working tree. Sets the global REMOVED count.
           prune_stale() {
@@ -376,7 +394,7 @@ jobs:
             echo "Removed ${REMOVED} stale PR preview(s)."
             echo "removed=${REMOVED}" >> "$GITHUB_OUTPUT"
             if [ "$REMOVED" != "0" ]; then
-              git add -A
+              stage_published_tree
               git commit -m "chore: remove stale PR previews [skip ci]"
               git push
             fi
@@ -403,7 +421,7 @@ jobs:
             removed="$REMOVED"
 
             git checkout --quiet --orphan compacted
-            git add -A
+            stage_published_tree
             git commit --quiet \
               -m "chore: compact gh-pages history (pruned ${removed} stale preview(s)) [skip ci]"
 

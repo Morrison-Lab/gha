@@ -239,6 +239,77 @@ class TestPruneStaleJqLogic(unittest.TestCase):
         )
 
 
+def extract_stage_function(workflow_path: pathlib.Path) -> str:
+    content = workflow_path.read_text(encoding="utf-8")
+    m = re.search(
+        r"^( *)stage_published_tree\(\) \{\n.*?^\1\}$", content, re.DOTALL | re.MULTILINE
+    )
+    if not m:
+        raise ValueError("Could not find stage_published_tree in cleanup-pr-previews.yml")
+    return m.group(0)
+
+
+class TestStagePublishedTree(unittest.TestCase):
+    """The published tree is gh-pages minus pruned previews, and nothing else."""
+
+    def git(self, cwd, *args):
+        return subprocess.run(
+            ["git", "-c", "protocol.file.allow=always", *args],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+
+    def test_leftover_repo_and_stray_gitlink_are_not_published(self):
+        import tempfile
+
+        func = extract_stage_function(DEFAULT_WORKFLOW)
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp) / "pages"
+            repo.mkdir()
+            env_args = ["-c", "user.name=t", "-c", "user.email=t@example.invalid"]  # phi-allow
+            self.git(repo, "init", "-q")
+            (repo / "index.html").write_text("site\n")
+            (repo / "pr-preview" / "pr-1").mkdir(parents=True)
+            (repo / "pr-preview" / "pr-1" / "index.html").write_text("old\n")
+            # A gitlink already committed to gh-pages, as lds had (2026-11-15).
+            sub = pathlib.Path(tmp) / "sub"
+            sub.mkdir()
+            self.git(sub, "init", "-q")
+            (sub / "m.tex").write_text("x\n")
+            self.git(sub, "add", "m.tex")
+            self.git(sub, *env_args, "commit", "-qm", "m")
+            sha = self.git(sub, "rev-parse", "HEAD").strip()
+            self.git(repo, "add", "index.html", "pr-preview")
+            self.git(repo, "update-index", "--add", "--cacheinfo", f"160000,{sha},latex-macros")
+            self.git(repo, *env_args, "commit", "-qm", "pages")
+            # An untracked nested repository left by an earlier job in the workdir.
+            leftover = repo / "latex-macros"
+            leftover.mkdir()
+            self.git(leftover, "init", "-q")
+            (leftover / "macros.qmd").write_text("x\n")
+            self.git(leftover, "add", "macros.qmd")
+            self.git(leftover, *env_args, "commit", "-qm", "m")
+            (repo / "stray.txt").write_text("untracked\n")
+            # Prune one preview, as prune_stale does.
+            subprocess.run(["rm", "-rf", "pr-preview/pr-1"], cwd=repo, check=True)
+
+            proc = subprocess.run(
+                ["bash", "-euo", "pipefail", "-c", func + "\nstage_published_tree\n"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            staged = self.git(repo, "ls-files", "--stage")
+            self.assertIn("index.html", staged)
+            self.assertNotIn("pr-preview/pr-1", staged)
+            self.assertNotIn("latex-macros", staged)
+            self.assertNotIn("stray.txt", staged)
+            self.assertNotIn("160000", staged)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true", help="Run self-tests")
@@ -247,6 +318,7 @@ def main():
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestCleanupPrPreviewsContract)
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPublishWorkflowMatcher))
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestPruneStaleJqLogic))
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(TestStagePublishedTree))
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
