@@ -86,6 +86,7 @@ QUOTE_PREFIX_RE = re.compile(r"^[ \t]*(?:>[ \t]*)*")
 DIV_OPEN_RE = re.compile(r"^(?P<fence>:{3,})\s*(?P<attrs>\{[^}]*\}|\S.*)?$")
 DIV_CLOSE_RE = re.compile(r"^(?P<fence>:{3,})\s*$")
 DEF_ID_RE = re.compile(r"#(?P<id>def-[A-Za-z0-9_-]+)")
+PANEL_TABSET_RE = re.compile(r"(?<![\w-])\.panel-tabset(?![\w-])")
 HEADING_RE = re.compile(r"^#{1,6}\s+(?P<title>.+?)\s*(?:\{[^}]*\})?\s*$")
 # A setext heading's underline (at most three spaces of indentation), and a list item,
 # whose next-line `---` is a thematic break rather than an underline.
@@ -432,6 +433,7 @@ def harvest_terms(
                 terms.setdefault(key, set()).add(def_id)
 
     stack: List[Tuple[int, Optional[str]]] = []
+    tabs: List[bool] = []  # parallel to stack: is the div a .panel-tabset
     for line in masked:
         s = line.strip()
         m_close = DIV_CLOSE_RE.match(s)
@@ -439,15 +441,19 @@ def harvest_terms(
         if m_open:
             d = DEF_ID_RE.search(m_open.group("attrs") or "")
             stack.append((len(m_open.group("fence")), d.group("id") if d else None))
+            tabs.append(PANEL_TABSET_RE.search(m_open.group("attrs") or "") is not None)
             continue
         if m_close:
             if stack and len(m_close.group("fence")) >= stack[-1][0]:
                 stack.pop()
+                tabs.pop()
             continue
         def_id = next((d for _, d in reversed(stack) if d), None)
         if def_id:
             h = HEADING_RE.match(s)
-            if h:
+            if h and any(tabs):
+                pass  # a tab label names a tab, not a term (gha: panel-tabset headings)
+            elif h:
                 add(mask_inline(h.group("title")), def_id)
             else:
                 for b in BOLD_RE.finditer(mask_inline(line)):
@@ -473,6 +479,7 @@ def harvest_def_words(masked: Sequence[str]) -> Dict[str, Set[str]]:
             words.setdefault(def_id, set()).add(w)
 
     stack: List[Tuple[int, Optional[str]]] = []
+    tabs: List[bool] = []  # parallel to stack: is the div a .panel-tabset
     for line in masked:
         s = line.strip()
         m_close = DIV_CLOSE_RE.match(s)
@@ -480,15 +487,19 @@ def harvest_def_words(masked: Sequence[str]) -> Dict[str, Set[str]]:
         if m_open:
             d = DEF_ID_RE.search(m_open.group("attrs") or "")
             stack.append((len(m_open.group("fence")), d.group("id") if d else None))
+            tabs.append(PANEL_TABSET_RE.search(m_open.group("attrs") or "") is not None)
             continue
         if m_close:
             if stack and len(m_close.group("fence")) >= stack[-1][0]:
                 stack.pop()
+                tabs.pop()
             continue
         def_id = next((d for _, d in reversed(stack) if d), None)
         if not def_id:
             continue
         h = HEADING_RE.match(s)
+        if h and any(tabs):
+            continue
         if h:
             add(mask_inline(h.group("title")), def_id)
         else:
