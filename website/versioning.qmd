@@ -12,17 +12,17 @@ Each capability pins the major tag its own
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) stub names,
 and these lists are generated from those stubs when the site renders.
 
-Pin these to `@v3`:
+Pin these capabilities to `@v3`:
 
-{{< include _generated/tag-v3.md >}}
+{{< capability-list v3 >}}
 
-Pin these to `@v2`:
+Pin these capabilities to `@v2`:
 
-{{< include _generated/tag-v2.md >}}
+{{< capability-list v2 >}}
 
-These stay at `@v1`:
+These capabilities stay at `@v1`:
 
-{{< include _generated/tag-v1.md >}}
+{{< capability-list v1 >}}
 
 `cleanup-pr-previews.yml`, `summary.yml`, `sync-shared-fragments.yml`, and
 `update-snapshots.yml` shipped at an earlier tag and moved to `@v3`.

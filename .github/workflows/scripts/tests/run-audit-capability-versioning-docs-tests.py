@@ -183,7 +183,7 @@ def main() -> int:
     # A region that includes the generated list for a tag names every
     # capability at that tag (gen_capability_lists.py writes it from the same
     # stubs), and only that tag.
-    include_v3 = "Pin these to `@v3`:\n\n{{< include _generated/tag-v3.md >}}\n"
+    include_v3 = "Pin these capabilities to `@v3`:\n\n{{< capability-list v3 >}}\n"
     check(
         "is_listed counts the generated include for the capability's own tag",
         audit.is_listed(include_v3, "check-foo", "v3") is True,
@@ -197,7 +197,7 @@ def main() -> int:
         audit.is_listed(include_v3, "check-foo") is False,
     )
     check(
-        "a mention of tag-v3.md that is not an include shortcode does not count",
+        "a mention of tag-v3.md that is not the shortcode does not count",
         audit.is_listed("See `_generated/tag-v3.md`.", "check-foo", "v3") is False,
     )
 

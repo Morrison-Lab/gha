@@ -68,11 +68,11 @@ find round 1's gaps was keyed to the ``.yml`` spelling, and one of this
 repo's own list locations (this file's own "About this repo" paragraph)
 names capabilities bare.
 
-**A region that includes the generated list for a tag lists that tag by
+**A region that inserts the generated list for a tag lists that tag by
 construction.** ``gen_capability_lists.py`` writes
 ``website/_generated/tag-<major>.md`` from the same example stubs at render
-time (gha#1862), so a region carrying
-``{{< include _generated/tag-v3.md >}}`` names every ``@v3`` capability
+time (gha#1862), and ``website/capability-list.lua`` inserts it, so a region
+carrying ``{{< capability-list v3 >}}`` names every ``@v3`` capability
 without restating one.
 A website page that only links to such a list holds no list to drift, so it
 is not a region.
@@ -272,8 +272,8 @@ def extract_region(repo_root: pathlib.Path, rel_path: str, start: str | None, en
 
 
 def includes_generated_list(region_text: str, tag: str) -> bool:
-    """Whether the region includes the generated list for `tag`."""
-    pattern = r"\{\{<\s*include\s+\S*_generated/tag-" + re.escape(tag) + r"\.md\s*>\}\}"
+    """Whether the region inserts the generated list for `tag`."""
+    pattern = r"\{\{<\s*capability-list\s+" + re.escape(tag) + r"\s*>\}\}"
     return re.search(pattern, region_text) is not None
 
 
