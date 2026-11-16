@@ -126,7 +126,8 @@ read -ra head_list <<< "${heads_in//,/ }"
 wait_min="${CONDOR_WAIT_MINUTES:-}"
 case "$wait_min" in
   '') wait_min=. ;;
-  *[!0-9]*|0) echo "CONDOR_WAIT_MINUTES must be a positive whole number of minutes: $wait_min" >&2; exit 64 ;;
+  *[!0-9]*) echo "CONDOR_WAIT_MINUTES must be a positive whole number of minutes: $wait_min" >&2; exit 64 ;;
+  *) [ "$((10#$wait_min))" -gt 0 ] || { echo "CONDOR_WAIT_MINUTES must be a positive whole number of minutes: $wait_min" >&2; exit 64; } ;;
 esac
 head_entry="${head_list[0]}"
 if [ "${#head_list[@]}" -gt 1 ]; then
@@ -291,7 +292,7 @@ if [ -n "$rv" ]; then
   case "$rv" in 70|71|255) exit 1 ;; esac
   exit "$rv"
 fi
-if [ "$wait_min" != . ] && [ -s .cluster-id ]; then
+if [ "$wait_min" != . ] && [ "$wait_rc" -ne 0 ] && [ -s .cluster-id ]; then
   # A job still idle or running after the limit would hold the slot and the
   # run directory; remove it, and the runner reruns the steps.
   echo "job did not end within $wait_min minutes; removing cluster $(cat .cluster-id)" >&2

@@ -237,8 +237,17 @@ def test_wait_limit_does_not_remove_a_job_that_ended(tmp_path):
     assert _count(calls, "condor_rm") == 0
 
 
+def test_wait_limit_does_not_remove_a_job_that_ended_without_a_value(tmp_path):
+    # condor_wait returned 0 (the job ended, e.g. aborted) with no return
+    # value: exit 70 without condor_rm or the timeout wording.
+    proc, calls = _run(tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15")
+    assert proc.returncode == 70
+    assert _count(calls, "condor_rm") == 0
+    assert "did not end within" not in proc.stderr
+
+
 def test_malformed_wait_limit_is_refused(tmp_path):
-    for bad in ["0", "-5", "1.5", "ten", "15 "]:
+    for bad in ["0", "00", "000", "-5", "1.5", "ten", "15 "]:
         sub = tmp_path / bad.replace(" ", "_").replace(".", "_")
         sub.mkdir()
         proc, calls = _run(sub, ["a", "b"], CONDOR_WAIT_MINUTES=bad)
