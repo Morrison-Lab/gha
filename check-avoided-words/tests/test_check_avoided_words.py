@@ -138,6 +138,39 @@ def test_optional_step_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, ca
     assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("text, phrase", [
+    ("Write $L$ for that number.", "write $l$ for"),
+    ("- write $b$ for the intercept,", "write $b$ for"),
+    ("ISL writes $w$ for the weights.", "writes $w$ for"),
+    ("such as writing $d_i$ for the deviation,", "writing $d_i$ for"),
+    ("We write $S$ to denote the sum.", "write $s$ to denote"),
+    ("Write $q$ to stand for the quantile.", "write $q$ to stand for"),
+    ("The average fit at $x$ is written $f(x)$.", "is written $"),
+    ("The two sums are written as $A$ and $B$.", "are written as $"),
+])
+def test_notation_write_forms(text, phrase):
+    assert found(text) == {1: ("notation-write", phrase)}
+
+
+def test_notation_write_passes_express_typing_and_denote():
+    assert found("Write the sum as $S$.") == {}
+    assert found("Write $X$ in terms of $Y$.") == {}
+    assert found("Never write the mean as $m$ for an observed value.") == {}
+    assert found("Let $L$ denote that number.") == {}
+    assert found("Write `$L$ for` in code.") == {}
+    assert found("A rewrite $L$ for the record.") == {}
+    assert found("A <!-- check-avoided-words: allow --> Write $L$ for it.") == {}
+
+
+def test_notation_write_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nWrite $L$ for that number.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CAW_FAIL="true")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
+
+
 def test_thing_passes_compounds_code_and_allow_comment():
     assert found("Something, anything and nothing are fine.") == {}
     assert found("Use `things` in code.") == {}
