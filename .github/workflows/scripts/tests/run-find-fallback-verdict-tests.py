@@ -15,6 +15,7 @@ Usage::
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -226,6 +227,49 @@ def check_wiring():
     return problems
 
 
+FAKE_GH = """#!/usr/bin/env bash
+case "$2" in
+  */collaborators/admin-user/permission) echo admin;;
+  */collaborators/writer/permission) echo write;;
+  */collaborators/reader/permission) echo read;;
+  *) exit 1;;
+esac
+"""
+
+
+def check_permission_lookup():
+    """A CONTRIBUTOR with write access counts; one without, or a failed lookup, does not (gha#2032)."""
+    problems = []
+    cases = [
+        ("admin who shows up as CONTRIBUTOR counts", "CONTRIBUTOR", "admin-user", "owner/repo", HEAD, True),
+        ("write-access CONTRIBUTOR counts", "CONTRIBUTOR", "writer", "owner/repo", HEAD, True),
+        ("read-only CONTRIBUTOR does not count", "CONTRIBUTOR", "reader", "owner/repo", HEAD, False),
+        ("CONTRIBUTOR whose lookup fails does not count", "CONTRIBUTOR", "stranger", "owner/repo", HEAD, False),
+        ("CONTRIBUTOR with no REPO set does not count", "CONTRIBUTOR", "admin-user", "", HEAD, False),
+        ("NONE is never looked up", "NONE", "admin-user", "owner/repo", HEAD, False),
+        ("write-access CONTRIBUTOR's review of an older sha does not count", "CONTRIBUTOR", "admin-user", "owner/repo", OLD, False),
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        bin_dir = Path(tmp) / "bin"
+        bin_dir.mkdir()
+        gh = bin_dir / "gh"
+        gh.write_text(FAKE_GH)
+        gh.chmod(0o755)
+        path = Path(tmp) / "comments.json"
+        for name, association, login, repo, sha, expected in cases:
+            path.write_text(json.dumps([dict(comment(review(sha=sha), association), user={"login": login})]))
+            env = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "REPO": repo}
+            result = subprocess.run(
+                [sys.executable, str(FINDER), str(path), HEAD, str(CLASSIFIER)],
+                capture_output=True, text=True, check=True, env=env,
+            )
+            found = "found=true" in result.stdout.splitlines()
+            print(f"{'ok' if found == expected else 'FAIL'}: {name} (found={found}, expected={expected})")
+            if found != expected:
+                problems.append(name)
+    return problems
+
+
 def check_classifier_failure():
     """A classifier failure on the newest review is a miss, not a skip to an older one (gha#1229)."""
     problems = []
@@ -268,7 +312,7 @@ def main():
         if found != expected:
             failures += 1
         print(f"{status}: {name} (found={found}, expected={expected})")
-    for problem in check_classifier_failure() + check_decision_log():
+    for problem in check_classifier_failure() + check_decision_log() + check_permission_lookup():
         failures += 1
         print(f"FAIL: {problem}")
     for problem in check_wiring():

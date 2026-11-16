@@ -14,7 +14,12 @@ A comment counts only when all of these hold:
     without push rights also qualifies, and the agent marker below is plain
     text anyone can type (gha#1229). The PR author's own comment
     counts: the lab's agent sessions post under the account holder's login,
-    so excluding the author would reject the real fallback review;
+    so excluding the author would reject the real fallback review.
+    A CONTRIBUTOR comment also counts when the collaborator-permission API
+    reports write, maintain or admin for its author: an admin whose org
+    membership is private shows up as CONTRIBUTOR (gha#2032). The lookup
+    needs $REPO (owner/name) and `gh`; with either missing, or on an API
+    error, the commenter is not trusted;
   - it carries the agent-authorship marker, so a human note is not mistaken
     for a review;
   - the LAST "Reviewed-Commit:" (or "Reviewed commit:") line of its own
@@ -49,6 +54,8 @@ import tempfile
 
 TRUSTED_ASSOCIATIONS = {"OWNER", "MEMBER", "COLLABORATOR"}
 MARKER = "not written by a human"
+WRITE_PERMISSIONS = {"write", "maintain", "admin"}
+PERMISSION_CHECKED = {"CONTRIBUTOR"}
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -112,6 +119,24 @@ def is_clean(body, head_sha, classifier):
     return "clean=true" in result.stdout.splitlines()
 
 
+def has_write_access(login):
+    """Return True when the collaborator-permission API reports write access (gha#2032)."""
+    repo = os.environ.get("REPO", "")
+    if not repo or not login:
+        return False
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{repo}/collaborators/{login}/permission", "--jq", ".permission"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        print(f"find-fallback-verdict: permission lookup for {login} failed: {error}", file=sys.stderr)
+        return False
+    return result.stdout.strip() in WRITE_PERMISSIONS
+
+
 def find(comments, head_sha, classifier):
     """Return the html_url of the newest review of this head if it is clean, else "".
 
@@ -122,8 +147,12 @@ def find(comments, head_sha, classifier):
         body = comment.get("body") or ""
         association = comment.get("author_association")
         if association not in TRUSTED_ASSOCIATIONS:
-            log(comment, f"skipped: author_association {association} is not OWNER, MEMBER or COLLABORATOR")
-            continue
+            login = (comment.get("user") or {}).get("login")
+            if association in PERMISSION_CHECKED and has_write_access(login):
+                log(comment, f"trusted: {association} {login} has write access to the repository")
+            else:
+                log(comment, f"skipped: author_association {association} is not OWNER, MEMBER or COLLABORATOR")
+                continue
         if MARKER not in own_prose(body).lower():
             log(comment, f"skipped: {association} comment has no agent marker in its own prose")
             continue
