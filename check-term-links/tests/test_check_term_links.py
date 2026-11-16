@@ -858,3 +858,55 @@ def test_a_setext_heading_right_after_a_div_closes_is_a_heading():
     # Flash review of gha#1906: the title after a closing fence is a heading, not prose.
     page = "::: {#exm-a}\nbody\n:::\nThe risk\n---\n\nText.\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
+
+
+TABSET_DEF = """\
+::: {#def-curve}
+
+#### Curve
+
+A **curve** is a plotted function.
+
+::: {.panel-tabset group="language"}
+
+### R
+
+R code.
+
+### Python
+
+Python code.
+
+:::
+
+:::
+"""
+
+
+def _harvest(text):
+    masked, _ = ctl.preprocess(text.splitlines())
+    return ctl.harvest_terms(masked, set())
+
+
+def test_a_tab_heading_inside_a_definition_is_not_a_term():
+    # lds#2355: "### Python" in a def div's code tabset made every "Python" a term.
+    terms = _harvest(TABSET_DEF)
+    assert "curve" in terms
+    assert "python" not in terms
+    assert "r" not in terms
+
+
+def test_a_tab_heading_does_not_enter_the_def_words():
+    masked, _ = ctl.preprocess(TABSET_DEF.splitlines())
+    assert ctl.harvest_def_words(masked)["def-curve"] == {"curve"}
+
+
+def test_a_heading_after_the_tabset_closes_is_still_a_term():
+    text = (
+        "::: {#def-curve}\n\n#### Curve\n\n"
+        "::: {.panel-tabset}\n\n### Python\n\nCode.\n\n:::\n\n"
+        "#### Plot\n\n:::\n"
+    )
+    terms = _harvest(text)
+    assert "plot" in terms
+    assert "python" not in terms

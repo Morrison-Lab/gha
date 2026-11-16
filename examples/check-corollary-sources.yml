@@ -1,0 +1,20 @@
+# Copy to .github/workflows/check-corollary-sources.yml in your repo.
+# Diff-scoped, warn-only check: flags a corollary div (#cor-) a PR edits whose statement and proof name no earlier result (an @thm-, @lem-, @cor-, or @prp- cross-reference, or a link to such an anchor). <!-- check-corollary-sources: allow: reason --> exempts one.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check corollary sources
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-corollary-sources.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   whole-tree: true                       # check every corollary, not just those a PR touches
