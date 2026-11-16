@@ -1,0 +1,1 @@
+`check-title-references` no longer flags lowercase concept links, such as a link to a chapter whose title differs from the link text only in case, or links on heading and table caption lines (gha#2054).
