@@ -14,8 +14,10 @@
 #   .github/ci-image/apt-packages.txt    extra apt packages, one per line
 #   .github/ci-image/tlmgr-packages.txt  extra LaTeX packages, one per line
 #   .github/ci-image/test.sh             run inside the new image after the
-#                                        build, from the checkout; a failure
-#                                        fails the build and keeps the old image
+#                                        build, from the checkout; a failure,
+#                                        or no test.sh, fails the build and
+#                                        keeps the old image (REPO_CI_NO_TEST=1
+#                                        builds without one)
 #
 # Run it on cf463-02 with Apptainer. A private repository needs git
 # credentials for github.com. Rerun it whenever any of those files changes;
@@ -76,8 +78,13 @@ if [ -f "$src/.github/ci-image/test.sh" ]; then
     --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp \
     --env TEXMFVAR=/tmp --env TEXMFCACHE=/tmp \
     "$repo-ci.sif" bash .github/ci-image/test.sh
+elif [ "${REPO_CI_NO_TEST:-}" = 1 ]; then
+  echo "::warning::$repo has no .github/ci-image/test.sh; REPO_CI_NO_TEST=1, so the image was not test-rendered."
 else
-  echo "::notice::$repo has no .github/ci-image/test.sh, so the image was not test-rendered."
+  # Fail closed, keeping the old image: an untested image is what lets a
+  # missing LaTeX package reach CI.
+  echo "build-repo-ci.sh: $repo has no .github/ci-image/test.sh at $ref; add one, or set REPO_CI_NO_TEST=1." >&2
+  exit 1
 fi
 
 mv "$repo-ci.sif" "$image_dir/$repo-ci.sif"
