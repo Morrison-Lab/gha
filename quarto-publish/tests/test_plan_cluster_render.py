@@ -135,7 +135,7 @@ def test_the_action_wires_the_cluster_steps():
     # The plan step reads the same inputs the local render step does.
     plan_env = steps["Plan the cluster render"]["env"]
     for name, value in local["env"].items():
-        if name not in ("PER_FILE_SCRIPT", "REDIRECT_STUBS_SCRIPT"):
+        if name not in ("PER_FILE_SCRIPT", "REDIRECT_STUBS_SCRIPT", "SLOT_SCRIPT"):
             assert plan_env[name] == value
 
 

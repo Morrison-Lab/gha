@@ -474,6 +474,11 @@ def _run_action(tmp_path: Path, script_rc: int):
         "SCRIPT": str(script),
         "CONDOR_SSH_KEY": str(key),
         "RUNNER_TEMP": str(tmp_path),
+        # The fallback takes a render slot (gha#2062); keep its locks here.
+        "SLOT_SCRIPT": str(ACTION.parents[3] / "scripts" / "with-render-slot.sh"),
+        "RUNNER_ENVIRONMENT": "self-hosted",
+        "RENDER_SLOTS": "1",
+        "RENDER_SLOT_DIR": str(tmp_path / "slots"),
     }
     # GitHub runs `shell: bash` as this command line, with errexit on.
     cmd = ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", run]
