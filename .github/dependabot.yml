@@ -59,6 +59,7 @@ updates:
       - "/check-tree-lists"
       - "/check-search-shortcut"
       - "/check-visualization-figures"
+      - "/check-geometric-figures"
       - "/check-self-contained-captions"
       - "/check-def-title-synonyms"
       - "/check-def-wiktionary"

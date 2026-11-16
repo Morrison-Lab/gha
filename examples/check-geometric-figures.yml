@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-geometric-figures.yml in your repo.
+# Diff-scoped check: flags a geometric claim (contour, ellipse, circle, level set, tangent, hyperplane, ...)
+# with no figure within 40 lines or in an enclosing div, when a PR adds the line.
+# Add a figure, or <!-- no-figure: reason --> nearby. Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check geometric figures
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-geometric-figures.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
