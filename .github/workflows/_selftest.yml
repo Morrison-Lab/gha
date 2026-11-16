@@ -10447,6 +10447,10 @@ jobs:
         shell: bash
         run: bash .github/workflows/scripts/tests/run-wait-runner-capacity-tests.sh
 
+      - name: Run with-render-slot tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-with-render-slot-tests.sh
+
       - name: Run sample-runner-load tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-sample-runner-load-tests.sh
