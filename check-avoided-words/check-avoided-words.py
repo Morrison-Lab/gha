@@ -42,7 +42,10 @@ gha#1568):
 - **trailing parenthetical links**: a crossref such as "differentiable at $c$
   (@def-differentiable)" after a word, or a "([why](url))" link after a claim.
   Link the term itself, or make the whole claim the link text (gha#1402).
-  "(see @thm-x)" passes, since no word can carry that link.
+  A parenthetical that holds only a link, as in "gradient descent
+  ([Gradient Descent](gd.qmd))", is flagged too (gha#2034).
+  "(see @thm-x)" and "(see [the proof](url))" pass, since no word can carry
+  that link.
 
 - **"score" for a linear predictor**: "score" or "scores" on a line that
   also has `\eta`, "linear predictor", "log-odds", "logit", "sigmoid", or
@@ -160,6 +163,7 @@ VAGUE_RE = re.compile(
 PARENREF_RE = re.compile(
     r"(?i)[^\s(]\s+\(@(?:def|thm|lem|prp|cor)-[\w-]+\)"
     r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
+    r"|[^\s(]\s+\(\[[^\]]+\]\([^)\s]+\)\)"
 )
 _LP_CONTEXT = (
     r"(?:\\eta\b|\u03b7|linear\s+predictors?|log-?odds|\blogits?\b|sigmoid|"
