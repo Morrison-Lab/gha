@@ -4437,7 +4437,7 @@ The `lint-workflows` job in `_selftest.yml` passes `examples/*.yml` to `actionli
 gha#730: every capability that ships past the frozen `@v1` snapshot must be
 named in each hand-restated versioning-list region -- README.md's
 `## Versioning` section *and* its nested `### Pinning third-party actions`
-subsection, `website/versioning.qmd`, `website/workflows.qmd`, and this
+subsection, `website/versioning.qmd`, and this
 file's own "About this repo" -- and that restatement has drifted on four
 separate occasions (gha#181, gha#374, gha#728 rounds 1 and 2) because every
 prior fix checked the lists against each other, or against whichever files
