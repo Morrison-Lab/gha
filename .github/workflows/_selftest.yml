@@ -3724,8 +3724,9 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
+          globs: '_ci-geom/*.qmd'
           paths-ignore: '_ci-geom'
-      - name: Check again with globs excluding the div
+      - name: Check again with globs excluding the claim
         uses: ./check-geometric-figures
         with:
           whole-tree: 'true'
