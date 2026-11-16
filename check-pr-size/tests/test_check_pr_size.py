@@ -299,7 +299,8 @@ def _substitution_repo(tmp_path, edit):
     git(tmp_path, "init", "-q")
     for i in range(25):
         (tmp_path / f"p{i}.qmd").write_text(
-            f"Page {i}.\n\nThe slope $\\beta_x$ is fixed.\nUnchanged line.\nAgain $\\beta$.\n")
+            f"Page {i} on topic{i}.\n\nThe slope $\\beta_x$ is fixed.\nUnchanged line.\n"
+            "Again $\\beta$.\nCheck x == y and flag = true and n = 3.\n")
     git(tmp_path, "add", "-A")
     git(tmp_path, "commit", "-q", "-m", "base")
     for i in range(25):
@@ -334,6 +335,25 @@ def test_substitution_plus_a_rewritten_line_is_measured(tmp_path):
     assert code == 1, out
 
 
+@pytest.mark.parametrize("old,new", [
+    ("x == y", "x != y"),          # punctuation changes meaning
+    ("flag = true", "flag = false"),  # a logic word
+    ("n = 3", "n = 4"),            # a number
+    ("x == y", "x == y.z"),        # a token inserted, not swapped
+])
+def test_substitution_that_changes_meaning_is_measured(tmp_path, old, new):
+    repo = _substitution_repo(tmp_path, lambda i, t: t.replace(old, new))
+    code, out = run(repo)
+    assert code == 1, out
+
+
+def test_hunks_strip_the_tab_git_adds_after_a_name_with_a_space():
+    diff = ("diff --git a/my page.qmd b/my page.qmd\n--- a/my page.qmd\t\n"
+            "+++ b/my page.qmd\t\n@@ -1 +1 @@\n-old\n+new\n")
+    assert [p for p, _, _ in cps._hunks(diff)] == ["my page.qmd"]
+    assert cps.substitution_map(diff, lambda p: p == "my page.qmd") is None
+
+
 def test_inconsistent_substitution_is_measured(tmp_path):
     repo = _substitution_repo(
         tmp_path, lambda i, t: t.replace("\\beta", "\\coef" if i else "\\slope"))
@@ -351,10 +371,10 @@ def test_substitution_with_an_added_line_is_measured(tmp_path):
 
 def test_more_than_the_substitution_limit_is_measured(tmp_path):
     def renumber(k):
-        """`\\beta` everywhere, plus pages below k renumbered: k + 1 entries."""
+        """`\\beta` everywhere, plus pages below k retopiced: k + 1 entries."""
         def edit(i, t):
             t = t.replace("\\beta", "\\coef")
-            return t.replace(f"Page {i}.", f"Page {i + 100}.") if i < k else t
+            return t.replace(f"topic{i}.", f"subject{i}.") if i < k else t
         return edit
     limit = cps.MAX_SUBSTITUTIONS
     (tmp_path / "over").mkdir()

@@ -21,7 +21,7 @@ The lines (not the files) of a newly added `_fig-*` subfile are not counted
 A pure rename (no line changed) does not count toward the file cap.
 A diff that is a pure token substitution is exempt (gha#2050): every hunk
 adds as many lines as it removes, and each changed line pair differs only by
-one consistent map of at most MAX_SUBSTITUTIONS replacements, such as a
+one consistent map of at most MAX_SUBSTITUTIONS one-name renames, such as a
 macro renamed across many files. The check prints the map.
   PRS_FAIL          'false' to warn instead of block (default true)
 """
@@ -54,7 +54,7 @@ NEW_FIGURE_LINES_FREE = "**/_fig-*"
 MAX_SUBSTITUTIONS = 10
 # A token is a backslash macro name, a word, a run of whitespace, or one other
 # character, so renaming the macro `beta` to `coef` is one replacement however
-# it is subscripted.
+# it is subscripted; `_is_name` decides which tokens a rename may swap.
 TOKEN_RE = re.compile(r"\\[A-Za-z]+|\w+|\s+|.")
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@")
 
@@ -71,7 +71,8 @@ def _hunks(diff):
                 yield path, removed, added
             path, in_hunk = None, False
         elif not in_hunk and line.startswith("+++ "):
-            target = diffscope.unquote_git_path(line[4:])
+            # git ends the name with a tab when it holds a space.
+            target = diffscope.unquote_git_path(line[4:].rstrip("\t"))
             path = None if target == "/dev/null" else target[2:]
         elif not in_hunk and line.startswith("Binary files "):
             yield path or line, None, None
@@ -99,13 +100,29 @@ def _line_replacements(old, new):
     for op, i1, i2, j1, j2 in matcher.get_opcodes():
         if op == "equal":
             continue
-        old_run, new_run = "".join(a[i1:i2]), "".join(b[j1:j2])
-        # A run holding whitespace spans words, so it can rewrite a whole
-        # sentence as one entry; refusing it keeps each entry to one word.
-        if op != "replace" or re.search(r"\s", old_run + new_run):
+        # A rename swaps one name for another. A run of several tokens can
+        # rewrite a phrase, and punctuation, numbers and logic words change
+        # meaning (`==` to `!=`, `3` to `4`, `true` to `false`), so each side
+        # must be one name that is not a logic word.
+        if op != "replace" or i2 - i1 != 1 or j2 - j1 != 1:
             return None
-        found.append((old_run, new_run))
+        if not (_is_name(a[i1]) and _is_name(b[j1])):
+            return None
+        found.append((a[i1], b[j1]))
     return found
+
+
+# A name: a backslash macro, or an identifier that does not start with a digit.
+NAME_RE = re.compile(r"\\[A-Za-z]+|[^\W\d]\w*")
+# Words whose swap reverses or blanks a statement, so never a rename.
+LOGIC_WORDS = frozenset(
+    w.lower() for w in ("true", "false", "t", "f", "yes", "no", "not", "and", "or",
+                        "null", "none", "na", "nan", "always", "never", "all", "any",
+                        "min", "max", "on", "off"))
+
+
+def _is_name(token):
+    return bool(NAME_RE.fullmatch(token)) and token.lower() not in LOGIC_WORDS
 
 
 def substitution_map(diff, skip=lambda path: False):
