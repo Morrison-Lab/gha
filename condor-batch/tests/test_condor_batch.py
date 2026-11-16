@@ -58,6 +58,7 @@ RM_STUB = 'echo "condor_rm $*" >> "$STUB_LOG"\n'
 Q_STUB = """\
 echo "condor_q $*" >> "$STUB_LOG"
 echo "analysis of $*: no machine matches the requirements"
+[ -z "${STUB_Q_LINES:-}" ] || seq 1 "$STUB_Q_LINES"
 [ -z "${STUB_Q_RC:-}" ] || exit "$STUB_Q_RC"
 """
 
@@ -260,6 +261,19 @@ def test_a_failing_diagnostic_does_not_stop_the_fallback(tmp_path):
     assert "condor_status -total" in calls
     assert "condor_rm 77" in calls
     assert "did not end within 15 minutes" in proc.stderr
+
+
+def test_long_diagnostics_are_cut_and_do_not_stop_the_fallback(tmp_path):
+    # head closes the pipe after 150 lines and the group gets SIGPIPE; under
+    # set -eo pipefail the script must still remove the job and exit 70.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15", STUB_WAIT_RC="1", STUB_Q_LINES="400"
+    )
+    assert proc.returncode == 70
+    assert "condor_rm 77" in calls
+    lines = proc.stderr.splitlines()
+    assert "399" not in lines
+    assert "did not end normally" in proc.stderr
 
 
 def test_no_diagnostics_for_a_job_that_ended_or_without_a_limit(tmp_path):
