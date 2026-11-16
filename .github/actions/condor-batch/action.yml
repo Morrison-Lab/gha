@@ -56,12 +56,18 @@ runs:
         CONDOR_WAIT_MINUTES: ${{ inputs.wait-minutes }}
         WORKDIR: ${{ inputs.working-directory }}
         SCRIPT: ${{ github.action_path }}/../../../condor-batch/condor-batch.sh
+        SLOT_SCRIPT: ${{ github.action_path }}/../../../scripts/with-render-slot.sh
       run: |
         set -uo pipefail
         steps_file="$RUNNER_TEMP/condor-steps.txt"
         printf '%s\n' "$STEPS" > "$steps_file"
         run_local() {
           echo "::notice::running the steps on the runner: $1"
+          # Steps sent to the cluster are the heavy ones, so a fallback takes
+          # one of the host's render slots and holds it until this shell exits
+          # (gha#2062).
+          # shellcheck source=/dev/null
+          source "$SLOT_SCRIPT" && acquire_render_slot
           cd "$WORKDIR"
           while IFS= read -r cmd <&3; do
             [ -n "${cmd//[[:space:]]/}" ] || continue
