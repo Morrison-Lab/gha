@@ -290,3 +290,92 @@ def test_defaults_agree_across_script_action_and_workflow(name, expected):
     workflow = ROOT.parent / ".github" / "workflows" / "check-pr-size.yml"
     assert int(_default(action, name)) == expected
     assert int(_default(workflow, name)) == expected
+
+
+# A pure token substitution is exempt (gha#2050).
+
+def _substitution_repo(tmp_path, edit):
+    """25 pages using `\\beta`, then `edit(i, text)` rewrites page i."""
+    git(tmp_path, "init", "-q")
+    for i in range(25):
+        (tmp_path / f"p{i}.qmd").write_text(
+            f"Page {i}.\n\nThe slope $\\beta_x$ is fixed.\nUnchanged line.\nAgain $\\beta$.\n")
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-q", "-m", "base")
+    for i in range(25):
+        p = tmp_path / f"p{i}.qmd"
+        p.write_text(edit(i, p.read_text()))
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-q", "-m", "substitute")
+    return tmp_path
+
+
+def test_pure_substitution_exempts_and_prints_the_map(tmp_path):
+    repo = _substitution_repo(tmp_path, lambda i, t: t.replace("\\beta", "\\coef"))
+    code, out = run(repo)
+    assert code == 0, out
+    assert "pure substitution" in out
+    assert "'\\\\beta' -> '\\\\coef'" in out
+
+
+def test_substitution_plus_an_inserted_word_is_measured(tmp_path):
+    def edit(i, t):
+        t = t.replace("\\beta", "\\coef")
+        return t.replace("is fixed", "is not fixed") if i == 7 else t
+    code, out = run(_substitution_repo(tmp_path, edit))
+    assert code == 1, out
+
+
+def test_substitution_plus_a_rewritten_line_is_measured(tmp_path):
+    def edit(i, t):
+        t = t.replace("\\beta", "\\coef")
+        return t.replace("Unchanged line.", "Something else entirely") if i == 5 else t
+    code, out = run(_substitution_repo(tmp_path, edit))
+    assert code == 1, out
+
+
+def test_inconsistent_substitution_is_measured(tmp_path):
+    repo = _substitution_repo(
+        tmp_path, lambda i, t: t.replace("\\beta", "\\coef" if i else "\\slope"))
+    code, out = run(repo)
+    assert code == 1, out
+
+
+def test_substitution_with_an_added_line_is_measured(tmp_path):
+    def edit(i, t):
+        t = t.replace("\\beta", "\\coef")
+        return t + "New sentence.\n" if i == 3 else t
+    code, out = run(_substitution_repo(tmp_path, edit))
+    assert code == 1, out
+
+
+def test_more_than_the_substitution_limit_is_measured(tmp_path):
+    def renumber(k):
+        """`\\beta` everywhere, plus pages below k renumbered: k + 1 entries."""
+        def edit(i, t):
+            t = t.replace("\\beta", "\\coef")
+            return t.replace(f"Page {i}.", f"Page {i + 100}.") if i < k else t
+        return edit
+    limit = cps.MAX_SUBSTITUTIONS
+    (tmp_path / "over").mkdir()
+    (tmp_path / "at").mkdir()
+    code, out = run(_substitution_repo(tmp_path / "over", renumber(limit)))
+    assert code == 1, out
+    code, out = run(_substitution_repo(tmp_path / "at", renumber(limit - 1)))
+    assert code == 0, out
+
+
+def test_substitution_map_refuses_binary_and_deleted_files():
+    binary = "diff --git a/x.png b/x.png\nBinary files a/x.png and b/x.png differ\n"
+    assert cps.substitution_map(binary) is None
+    deleted = ("diff --git a/x.qmd b/x.qmd\ndeleted file mode 100644\n--- a/x.qmd\n"
+               "+++ /dev/null\n@@ -1 +0,0 @@\n-gone\n")
+    assert cps.substitution_map(deleted) is None
+    assert cps.substitution_map("") is None
+
+
+def test_substitution_map_skips_ignored_paths():
+    diff = ("diff --git a/a.qmd b/a.qmd\n--- a/a.qmd\n+++ b/a.qmd\n@@ -1 +1 @@\n-old x\n+new x\n"
+            "diff --git a/b.lock b/b.lock\n--- a/b.lock\n+++ b/b.lock\n@@ -1 +1,2 @@\n-a\n+b\n+c\n")
+    assert cps.substitution_map(diff) is None
+    assert cps.substitution_map(diff, lambda p: p.endswith(".lock")) == {"old": "new"}
