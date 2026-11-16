@@ -18,7 +18,8 @@ The list is narrow on purpose:
 convex, angle, orthogonal, and projection alone are ordinary algebra.
 
 The claim is paired when an image, a `fig-` chunk, a `fig-` div,
-an `@fig-` reference, or an include of a `_fig` subfile lies within `window` lines (default 40)
+an `@fig-` reference, or an include of a `_fig` subfile
+lies within `window` lines (default 40)
 or in a div that encloses the claim.
 `<!-- no-figure: reason -->` nearby exempts a claim no figure can show.
 Only claims on lines a pull request adds are reported, one per paragraph.
