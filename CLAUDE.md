@@ -287,7 +287,10 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 - the read-only capability lists in `README.md` and `website/permissions.qmd`;
 - the `@v3` lists in `CLAUDE.md`, `README.md` (two), and `website/workflows.qmd`, and the table rows in `README.md` and `website/workflows.qmd`
   (`website/versioning.qmd` inserts lists generated from the example stubs at render time, gha#1862);
-- `.github/dependabot.yml`, `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
+- `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
+
+`.github/dependabot.yml` covers every `check-*` directory by glob, so a check named `check-...` needs no line there.
+A capability with another name and an external `uses:` still does.
 
 A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
 The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub.
