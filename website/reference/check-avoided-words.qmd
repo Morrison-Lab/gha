@@ -81,7 +81,7 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   Source: psw's "Phrase optional steps as conditions" (psw#490, psw#493).
   This rule only warns, even with `fail` on, while it is new.
 - **"Write" to name notation.**
-  A math span after "write", "writes" or "writing" and then "for"
+  A math span after "write", "writes", or "writing" and then "for"
   (or "to mean", "to denote", "to stand for"),
   as in `Write $L$ for that number`,
   and a passive such as `is written $f(x)$` or `are written as $A$`.
