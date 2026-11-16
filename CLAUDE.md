@@ -297,7 +297,9 @@ The pds, mds, and mcs repos have no gate.
 
 A synthetic email address in a test needs a `# phi-allow` comment.
 `lint-qmd` fails a prose line with whitespace after column 80 (MD013), and the lists of check names in `website/*.qmd` are where a new check hits it.
-Wrap prose lines at a comma, leave table rows and code fences alone, and run `LINT_QMD_GLOBS='*.qmd' LINT_QMD_MAX_LINE_LENGTH=80 node lint-qmd/run_lint_qmd.mjs` before the first push (gha#2048).
+Wrap prose lines at a comma.
+Table rows and code fences are exempt, so leave them alone.
+Run `LINT_QMD_GLOBS='*.qmd' LINT_QMD_MAX_LINE_LENGTH=80 node lint-qmd/run_lint_qmd.mjs` before the first push (gha#2048).
 When a check fails within seconds, read its `##[error]` lines with a log tail of 120 lines or more before calling it an infrastructure failure.
 
 ### Layout
