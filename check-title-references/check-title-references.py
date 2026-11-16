@@ -80,6 +80,10 @@ ADVICE = (
 )
 
 
+# A heading or table caption is the title itself, so a type word is out of place.
+HEADING_OR_CAPTION_RE = re.compile(r"^\s*(#{1,6}\s|:\s)")
+
+
 class Finding(NamedTuple):
     line: int
     rule: str
@@ -87,10 +91,14 @@ class Finding(NamedTuple):
 
 
 def normalize(text: str) -> str:
-    """Link or heading text compared case-insensitively, without markup."""
+    """Link or heading text without markup, in its own case.
+
+    A link is a title reference only when its text is written as the title.
+    A lowercase concept link such as ``[logistic regression](x.qmd)`` to a
+    chapter titled "Logistic regression" is ordinary prose (gha#2054).
+    """
     plain = re.sub(r"[*_`]", "", text)
-    plain = re.sub(r"\s+", " ", plain).strip().strip("\"'").rstrip(".:")
-    return plain.lower()
+    return re.sub(r"\s+", " ", plain).strip().strip("\"'").rstrip(".:")
 
 
 def slugify(text: str) -> str:
@@ -188,6 +196,8 @@ def target_titles(target: str) -> Set[str]:
 
 def _find(masked: str) -> List[Tuple[str, str]]:
     out: List[Tuple[str, str]] = []
+    if HEADING_OR_CAPTION_RE.match(masked):
+        return out
     for m in LINK_RE.finditer(masked):
         text = normalize(m.group("text"))
         if not text or text not in target_titles(m.group("target")):

@@ -58,7 +58,7 @@ def flagged(line):
 @pytest.mark.parametrize("line", [
     "See [Practical considerations](#practical-considerations) for more.",
     "See [Practical considerations](reg.qmd#practical-considerations).",
-    "See [practical considerations](reg.html#practical-considerations).",
+    "See [Practical considerations](reg.html#practical-considerations).",
     "See [Choosing λ](#sec-choosing).",
     "Read [Regularization](reg.qmd) first.",
     "See [**Practical considerations**](#practical-considerations).",
@@ -82,6 +82,10 @@ def test_type_word_beside_the_link_passes(repo, line):
 
 @pytest.mark.parametrize("line", [
     "A [ridge penalty](#practical-considerations) matters.",
+    "Use [practical considerations](reg.html#practical-considerations) here.",
+    "Run [regularization](reg.qmd) as an alternative.",
+    "## [Practical considerations](#practical-considerations) {.unnumbered}",
+    ": [Regularization](reg.qmd) results by module",
     "A [regularization](#def-regularization) term.",
     "See [Practical considerations](https://example.org/#practical-considerations).",
     "See [Practical considerations](#no-such-anchor).",
