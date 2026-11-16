@@ -1,1 +1,1 @@
-`check-avoided-words`: the `parenref` rule now also flags a parenthetical that holds only a link after a word, such as `gradient descent ([Gradient Descent](gd.qmd))` (gha#2034).
+- `check-avoided-words`: the `parenref` rule now also flags a parenthetical that holds only a link after a word, such as `gradient descent ([Gradient Descent](gd.qmd))` (gha#2034).
