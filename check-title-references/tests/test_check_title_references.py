@@ -44,7 +44,7 @@ def repo(tmp_path, monkeypatch):
     subprocess.run(["git", "init", "-q", "."], check=True)
     (tmp_path / "reg.qmd").write_text(PAGE)
     subprocess.run(["git", "add", "-A"], check=True)
-    subprocess.run(["git", "-c", "user.email=t@example.org", "-c", "user.name=t",
+    subprocess.run(["git", "-c", "user.email=t@example.org", "-c", "user.name=t",  # phi-allow
                     "commit", "-qm", "init"], check=True)
     yield tmp_path
     ctr.reset_index()
@@ -126,7 +126,7 @@ def run_main(monkeypatch, tmp_path, **env):
 def commit_page(repo, text):
     (repo / "new.qmd").write_text(f'---\ntitle: "N"\n---\n\n{text}\n')
     subprocess.run(["git", "add", "-A"], check=True)
-    subprocess.run(["git", "-c", "user.email=t@example.org", "-c", "user.name=t",
+    subprocess.run(["git", "-c", "user.email=t@example.org", "-c", "user.name=t",  # phi-allow
                     "commit", "-qm", "add"], check=True)
 
 
