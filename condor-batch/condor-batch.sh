@@ -61,10 +61,17 @@
 # rsync, unpacks it at the same paths in the checkout, and only then deletes the
 # run directory. A step that fails still returns whatever exists at the paths.
 #
+# CONDOR_WAIT_MINUTES (default none: wait as long as the job takes) limits the
+# wait for the job to end. When the job has not ended by then, it is removed
+# with condor_rm and the script exits 70, so the caller reruns the steps on the
+# runner; set it below the caller's timeout-minutes, or the job timeout cancels
+# the step before the fallback can run (gha#2037).
+#
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
-# 70 = the cluster could not run the job normally (copy or ssh failed, or the
-# job was held, removed, aborted, or condor_wait failed); 64 = CONDOR_SSH_KEY
-# contains whitespace.
+# 70 = the cluster could not run the job normally (copy or ssh failed, the
+# job was held, removed or aborted, condor_wait failed, or the job did not end
+# within CONDOR_WAIT_MINUTES); 64 = CONDOR_SSH_KEY contains whitespace, or
+# another setting is malformed.
 set -euo pipefail
 
 checkout="${1:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
@@ -116,6 +123,12 @@ ssh_opts=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o IdentitiesOnly
 # is exit 70. One head is used as given, with no extra ssh call.
 read -ra head_list <<< "${heads_in//,/ }"
 [ "${#head_list[@]}" -gt 0 ] || { echo "CONDOR_HEAD names no head" >&2; exit 64; }
+wait_min="${CONDOR_WAIT_MINUTES:-}"
+case "$wait_min" in
+  '') wait_min=. ;;
+  *[!0-9]*) echo "CONDOR_WAIT_MINUTES must be a positive whole number of minutes: $wait_min" >&2; exit 64 ;;
+  *) [ "$((10#$wait_min))" -gt 0 ] || { echo "CONDOR_WAIT_MINUTES must be a positive whole number of minutes: $wait_min" >&2; exit 64; } ;;
+esac
 head_entry="${head_list[0]}"
 if [ "${#head_list[@]}" -gt 1 ]; then
   run_num="${run//[^0-9]/}"
@@ -194,11 +207,11 @@ trap 'printf "%s\n" "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s 
 rc=0
 # A desktop head has no cluster home, so a cluster-home image path never applies.
 [ "$desktop" != 1 ] || CONDOR_IMAGE=
-ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-.}" "${CONDOR_OUTPUT:-.}" <<'REMOTE' || rc=$?
+ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-.}" "${CONDOR_OUTPUT:-.}" "$wait_min" <<'REMOTE' || rc=$?
 set -euo pipefail
 # ssh drops an empty argument, so the optional image comes last and a bare dot
 # stands for "no transferred image".
-dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-.} out=${8:-.}
+dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-.} out=${8:-.} wait_min=${9:-.}
 [ "$image" != . ] || image=
 cd "$dir"
 dir=$PWD
@@ -266,8 +279,9 @@ queue 1
 SUB
 condor_submit .condor.sub | tee .submit.out
 sed -n 's/.*submitted to cluster \([0-9][0-9]*\)\..*/\1/p' .submit.out > .cluster-id
-wait_rc=0
-condor_wait condor.log || wait_rc=$?
+wait_rc=0 wait_args=()
+[ "$wait_min" = . ] || wait_args=(-wait "$((10#$wait_min * 60))")
+condor_wait ${wait_args[@]+"${wait_args[@]}"} condor.log || wait_rc=$?
 [ ! -f out.log ] || cat out.log
 [ ! -f err.log ] || cat err.log >&2
 rv=
@@ -277,6 +291,12 @@ if [ -n "$rv" ]; then
   [ "$out" != . ] || { cd / && rm -rf "$dir" || echo "could not remove $dir" >&2; }
   case "$rv" in 70|71|255) exit 1 ;; esac
   exit "$rv"
+fi
+if [ "$wait_min" != . ] && [ "$wait_rc" -ne 0 ] && [ -s .cluster-id ]; then
+  # A job still idle or running after the limit would hold the slot and the
+  # run directory; remove it, and the runner reruns the steps.
+  echo "job did not end within $wait_min minutes; removing cluster $(cat .cluster-id)" >&2
+  condor_rm "$(cat .cluster-id)" || true
 fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
 exit 70

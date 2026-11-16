@@ -211,6 +211,50 @@ def test_held_or_aborted_job_exits_70(tmp_path):
     assert "did not end normally" in proc.stderr
 
 
+def test_wait_limit_is_passed_to_condor_wait_and_a_late_job_is_removed(tmp_path):
+    # condor_wait -wait expired with no "return value" line: the job is removed
+    # and the script exits 70, so the action reruns the steps on the runner.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15", STUB_WAIT_RC="1"
+    )
+    assert proc.returncode == 70
+    assert "condor_wait -wait 900 condor.log" in calls
+    assert "condor_rm 77" in calls
+    assert "did not end within 15 minutes" in proc.stderr
+
+
+def test_no_wait_limit_by_default(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_WAIT_RC="1")
+    assert proc.returncode == 70
+    assert "condor_wait condor.log" in calls
+    assert _count(calls, "condor_rm") == 0
+
+
+def test_wait_limit_does_not_remove_a_job_that_ended(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="08", STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert "condor_wait -wait 480 condor.log" in calls
+    assert _count(calls, "condor_rm") == 0
+
+
+def test_wait_limit_does_not_remove_a_job_that_ended_without_a_value(tmp_path):
+    # condor_wait returned 0 (the job ended, e.g. aborted) with no return
+    # value: exit 70 without condor_rm or the timeout wording.
+    proc, calls = _run(tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15")
+    assert proc.returncode == 70
+    assert _count(calls, "condor_rm") == 0
+    assert "did not end within" not in proc.stderr
+
+
+def test_malformed_wait_limit_is_refused(tmp_path):
+    for bad in ["0", "00", "000", "-5", "1.5", "ten", "15 "]:
+        sub = tmp_path / bad.replace(" ", "_").replace(".", "_")
+        sub.mkdir()
+        proc, calls = _run(sub, ["a", "b"], CONDOR_WAIT_MINUTES=bad)
+        assert proc.returncode == 64, bad
+        assert calls == [], bad
+
+
 def test_ssh_key_with_whitespace_is_refused(tmp_path):
     proc, calls = _run(tmp_path, ["a", "b"], CONDOR_SSH_KEY="/tmp/my key")
     assert proc.returncode == 64
