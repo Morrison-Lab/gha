@@ -37,6 +37,17 @@ A pure rename (no line changed) does not count toward the file cap.
 A PR whose description says "mechanical, content-identical"
 (a pure move, rename, or split with no wording change)
 is exempt at any size, as one carrying the exemption label is.
+A diff that is a pure token substitution is exempt without either
+([#2050](https://github.com/Morrison-Lab/gha/issues/2050)):
+every hunk adds as many lines as it removes,
+and each changed line differs from the line it replaces only by
+one map of at most 10 substitutions that stays the same across the PR,
+such as a macro renamed in every file that uses it.
+Each substitution swaps one name (a backslash macro or an identifier) for another.
+An inserted or deleted token, a phrase, punctuation, a number,
+or a logic word such as `true`, `not`, or `never` is an edit, not a substitution,
+so it is measured as usual.
+The check prints the map, so a reviewer sees exactly what was substituted.
 The reusable workflow reads the description live through the API.
 Content PRs keep the 10 file and 300 line caps
 ([ai-config#5129](https://github.com/Morrison-Lab/ai-config/pull/5129)).

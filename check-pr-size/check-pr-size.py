@@ -19,8 +19,13 @@ The lines (not the files) of a newly added `_fig-*` subfile are not counted
   PRS_PR_BODY       the PR description; one saying "mechanical,
                     content-identical" exempts the PR (ai-config#5129)
 A pure rename (no line changed) does not count toward the file cap.
+A diff that is a pure token substitution is exempt (gha#2050): every hunk
+adds as many lines as it removes, and each changed line pair differs only by
+one consistent map of at most MAX_SUBSTITUTIONS one-name renames, such as a
+macro renamed across many files. The check prints the map.
   PRS_FAIL          'false' to warn instead of block (default true)
 """
+import difflib
 import os
 import re
 import subprocess
@@ -43,6 +48,110 @@ BUILTIN_IGNORE = [
 # New figure subfiles are plotting code in several languages. Their lines do not
 # count toward the line cap, but each still counts as a file (ai-config#4928).
 NEW_FIGURE_LINES_FREE = "**/_fig-*"
+
+
+# A pure substitution (gha#2050) has at most this many distinct replacements.
+MAX_SUBSTITUTIONS = 10
+# A token is a backslash macro name, a word, a run of whitespace, or one other
+# character, so renaming the macro `beta` to `coef` is one replacement however
+# it is subscripted; `_is_name` decides which tokens a rename may swap.
+TOKEN_RE = re.compile(r"\\[A-Za-z]+|\w+|\s+|.")
+HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@")
+
+
+def _hunks(diff):
+    """Yield (path, removed lines, added lines) for each hunk of a `-U0` diff.
+
+    A binary file yields (path, None, None), so the caller can refuse it.
+    """
+    path, removed, added, in_hunk = None, [], [], False
+    for line in diff.split("\n"):
+        if line.startswith("diff --git "):
+            if in_hunk:
+                yield path, removed, added
+            path, in_hunk = None, False
+        elif not in_hunk and line.startswith("+++ "):
+            # git ends the name with a tab when it holds a space.
+            target = diffscope.unquote_git_path(line[4:].rstrip("\t"))
+            path = None if target == "/dev/null" else target[2:]
+        elif not in_hunk and line.startswith("Binary files "):
+            yield path or line, None, None
+        elif HUNK_RE.match(line):
+            if in_hunk:
+                yield path, removed, added
+            removed, added, in_hunk = [], [], True
+        elif in_hunk and line.startswith("-"):
+            removed.append(line[1:])
+        elif in_hunk and line.startswith("+"):
+            added.append(line[1:])
+    if in_hunk:
+        yield path, removed, added
+
+
+def _line_replacements(old, new):
+    """The (old run, new run) pairs that turn `old` into `new`.
+
+    None when a token is only inserted or only deleted, since that is an edit
+    rather than a substitution.
+    """
+    a, b = TOKEN_RE.findall(old), TOKEN_RE.findall(new)
+    found = []
+    matcher = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        if op == "equal":
+            continue
+        # A rename swaps one name for another. A run of several tokens can
+        # rewrite a phrase, and punctuation, numbers and logic words change
+        # meaning (`==` to `!=`, `3` to `4`, `true` to `false`), so each side
+        # must be one name that is not a logic word.
+        if op != "replace" or i2 - i1 != 1 or j2 - j1 != 1:
+            return None
+        if not (_is_name(a[i1]) and _is_name(b[j1])):
+            return None
+        found.append((a[i1], b[j1]))
+    return found
+
+
+# A name: a backslash macro, or an identifier that does not start with a digit.
+NAME_RE = re.compile(r"\\[A-Za-z]+|[^\W\d]\w*")
+# Words whose swap reverses or blanks a statement, so never a rename.
+LOGIC_WORDS = frozenset(
+    w.lower() for w in ("true", "false", "t", "f", "yes", "no", "not", "and", "or",
+                        "null", "none", "na", "nan", "always", "never", "all", "any",
+                        "min", "max", "on", "off"))
+
+
+def _is_name(token):
+    return bool(NAME_RE.fullmatch(token)) and token.lower() not in LOGIC_WORDS
+
+
+def substitution_map(diff, skip=lambda path: False):
+    """The replacement map when `diff` is a pure substitution, else None.
+
+    `diff` is `git diff -U0` output. A hunk in a path `skip` accepts is not
+    examined. A diff with no examined hunk is not a substitution.
+    """
+    mapping = {}
+    for path, removed, added in _hunks(diff):
+        if path is not None and skip(path):
+            continue
+        if not removed or len(removed) != len(added):
+            return None
+        for old, new in zip(removed, added):
+            found = _line_replacements(old, new)
+            if not found:
+                return None
+            for key, value in found:
+                if mapping.setdefault(key, value) != value:
+                    return None
+            if len(mapping) > MAX_SUBSTITUTIONS:
+                return None
+    return mapping or None
+
+
+def substitution_diff(base):
+    return diffscope.run_git(["-c", "core.quotepath=false", "diff", "-U0", "--no-color",
+                              "--no-ext-diff", "-M", base, "HEAD"])
 
 
 MECHANICAL_RE = re.compile(r"mechanical,\s*content-identical", re.IGNORECASE)
@@ -180,6 +289,14 @@ def main():
         return 0
     if os.environ.get("PRS_EXEMPT", "").strip().lower() == "true":
         print("check-pr-size: over the cap, but the PR carries the exemption label.")
+        return 0
+    diff = substitution_diff(base)
+    mapping = None if diff is None else substitution_map(
+        diff, lambda p: p in generated or diffscope.ignored(p, regexes))
+    if mapping:
+        print("check-pr-size: over the cap, but the diff is a pure substitution:")
+        for old, new in mapping.items():
+            print(f"  {old!r} -> {new!r}")
         return 0
     if states_mechanical(os.environ.get("PRS_PR_BODY", "")):
         print("check-pr-size: over the cap, but the PR says it is mechanical, "
