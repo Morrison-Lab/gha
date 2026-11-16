@@ -3,7 +3,7 @@
 
 Hand-kept lists put every new check over `check-pr-size`'s 10-file cap
 (gha#1862). The facts are on disk, so this writes the lists at render time
-into git-ignored include files:
+into git-ignored files that `website/capability-list.lua` inserts:
 
 - a capability is a reusable workflow `.github/workflows/<name>.yml` with an
   `examples/<name>.yml` stub (`discover_population` in

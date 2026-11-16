@@ -5,6 +5,10 @@ project:
   # each capability owns, so a new check edits no list by hand (gha#1862).
   pre-render: python3 ../.github/workflows/scripts/gen_capability_lists.py
 
+# Reads those lists during the render, after pre-render has written them.
+shortcodes:
+  - capability-list.lua
+
 website:
   title: "Morrison-Lab/gha"
   description: >-
