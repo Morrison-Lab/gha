@@ -142,35 +142,6 @@ cookieconsent.run({
 </script> 
   
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -1329,7 +1300,7 @@ window.Quarto = {
 <li><p><strong>The word “thing”.</strong> <code>thing</code> or <code>things</code> as a whole word; <code>something</code>, <code>anything</code>, and <code>nothing</code> pass. Name the object, quantity, step, or idea instead. Source: psw’s “Say which thing” (gha#1454). This rule also fails the run whatever <code>fail</code> says, and <code>&lt;!-- check-avoided-words: allow --&gt;</code> exempts a deliberate use. A consumer on the <code>v3</code> tag sees its check turn red on any added line containing the word.</p></li>
 <li><p><strong>Normal for the Gaussian distribution.</strong> “Normal distribution”, “standard normal”, “multivariate normal”, “bivariate normal”, “normally distributed”, “normal random variable”, or “normal random vector”. Write “Gaussian” instead, since “normal” also means perpendicular and usual. “Normal equations”, normal vectors, and normal subgroups pass. Source: psw’s rule to write “Gaussian” (psw#510, gha#1570). This rule only warns, even with <code>fail</code> on, while it is new.</p></li>
 <li><p><strong>Optional steps phrased as orders.</strong> A sentence that opens “In another language”, “In other languages”, or “Optionally,”, or a bare “(optional)”. Put the condition first, as “If you use a language other than R, …”, and say what a reader who skips the step loses or does instead. “Otherwise,” is not flagged, because in the notes repositories it opens the second case of a proof. Source: psw’s “Phrase optional steps as conditions” (psw#490, psw#493). This rule only warns, even with <code>fail</code> on, while it is new.</p></li>
-<li><p><strong>“Write” to name notation.</strong> “Write <span class="math inline">\(X\)</span> for”, “writes <span class="math inline">\(X\)</span> for”, or “writing <span class="math inline">\(X\)</span> for” (or “to mean”, “to denote”, “to stand for”), and “is written <span class="math inline">\(X\)</span>” or “are written as <span class="math inline">\(X\)</span>”. Write “let <span class="math inline">\(X\)</span> denote …” or “<span class="math inline">\(X\)</span> denotes …” instead, since “write” names a physical act. “Write the sum as <span class="math inline">\(S\)</span>” and “write <span class="math inline">\(X\)</span> in terms of <span class="math inline">\(Y\)</span>” pass. Source: psw’s rule on the verb for each step (Ezra, 2026-11-16; psw#671). This rule only warns, even with <code>fail</code> on, while it is new.</p></li>
+<li><p><strong>“Write” to name notation.</strong> A math span after “write”, “writes”, or “writing” and then “for” (or “to mean”, “to denote”, “to stand for”), as in <code>Write $L$ for that number</code>, and a passive such as <code>is written $f(x)$</code> or <code>are written as $A$</code>. Write <code>let $L$ denote that number</code> or <code>$L$ denotes that number</code> instead, since “write” names a physical act. <code>Write the sum as $S$</code> and <code>write $X$ in terms of $Y$</code> pass. Source: psw’s rule on the verb for each step (Ezra, 2026-11-16; psw#671). This rule fails by default, as the other rules do.</p></li>
 </ul>
 <p>The other rules fail by default; set <code>fail</code> to false to make them warn.</p>
 <p>The check does not flag a code fence or code span, an HTML comment, YAML front matter, or a line carrying, or following, <code>&lt;!-- check-avoided-words: allow --&gt;</code>. It reports at most one finding per rule per line.</p>
@@ -1368,7 +1339,7 @@ window.Quarto = {
 <td><code>fail</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Fail the workflow when an avoided word is found. Set <code>false</code> for warnings only; a trailing parenthetical link and the words “thing” and “things” always fail, and the Gaussian, optional-step, and notation-write rules only warn.</td>
+<td>Fail the workflow when an avoided word is found. Set <code>false</code> for warnings only; a trailing parenthetical link and the words “thing” and “things” always fail, and the Gaussian and optional-step rules only warn.</td>
 </tr>
 <tr class="even">
 <td><code>whole-tree</code></td>
