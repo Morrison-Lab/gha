@@ -29,6 +29,7 @@ DEFAULT = [
     r"^\d+ bytes of body are still expected$",
     r"^RPC failed; curl \d+\b",
     r"^the remote end hung up unexpectedly$",
+    r"^running the steps on the runner: the cluster job did not run normally$",
 ]
 
 
@@ -254,8 +255,30 @@ def test_runner_hook_patterns_are_anchored_and_leave_other_text_gated():
 
 def test_action_default_allow_lists_the_runner_hook_and_git_transport_patterns():
     text = open(os.path.join(os.path.dirname(__file__), "..", "action.yml")).read()
-    for pattern in DEFAULT[-7:]:
+    for pattern in DEFAULT[-8:]:
         assert pattern in text
+
+
+def test_condor_batch_cluster_fallback_notice_is_allowed():
+    # condor-batch reran the steps on the runner; a failing step fails the job.
+    msg = "running the steps on the runner: the cluster job did not run normally"
+    assert not g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_other_condor_batch_runner_notices_stay_gated():
+    for msg in (
+        "running the steps on the runner: no cluster key on this runner",
+        "running the steps on the runner: the cluster job did not run normally; extra",
+        "Error: running the steps on the runner: the cluster job did not run normally",
+    ):
+        assert g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_condor_batch_fallback_notice_matches_the_action_text():
+    action = os.path.join(os.path.dirname(__file__), "..", "..", ".github", "actions", "condor-batch", "action.yml")
+    text = open(action).read()
+    assert 'echo "::notice::running the steps on the runner: $1"' in text
+    assert 'run_local "the cluster job did not run normally"' in text
 
 
 # The failure annotations of a checkout fetch that actions/checkout retried

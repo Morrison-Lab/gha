@@ -25,7 +25,10 @@ inputs:
       non-clean verdict), and the two notices the runner job-started hook
       emits about the host (a busy host held the job, a low-disk host), and
       the git transport errors of a checkout fetch that `actions/checkout`
-      retried: a fetch that keeps failing fails the job itself (gha#1731).
+      retried: a fetch that keeps failing fails the job itself (gha#1731),
+      and condor-batch's notice that it reran the steps on the runner after the
+      cluster job did not run normally: a step that then fails fails the job
+      itself (gha#2039).
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
@@ -50,6 +53,7 @@ inputs:
       ^\d+ bytes of body are still expected$
       ^RPC failed; curl \d+\b
       ^the remote end hung up unexpectedly$
+      ^running the steps on the runner: the cluster job did not run normally$
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always
