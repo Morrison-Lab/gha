@@ -81,12 +81,13 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   Source: psw's "Phrase optional steps as conditions" (psw#490, psw#493).
   This rule only warns, even with `fail` on, while it is new.
 - **"Write" to name notation.**
-  "Write $X$ for", "writes $X$ for", or "writing $X$ for"
+  A math span after "write", "writes" or "writing" and then "for"
   (or "to mean", "to denote", "to stand for"),
-  and "is written $X$" or "are written as $X$".
-  Write "let $X$ denote ..." or "$X$ denotes ..." instead,
+  as in `Write $L$ for that number`,
+  and a passive such as `is written $f(x)$` or `are written as $A$`.
+  Write `let $L$ denote that number` or `$L$ denotes that number` instead,
   since "write" names a physical act.
-  "Write the sum as $S$" and "write $X$ in terms of $Y$" pass.
+  `Write the sum as $S$` and `write $X$ in terms of $Y$` pass.
   Source: psw's rule on the verb for each step (Ezra, 2026-11-16; psw#671).
   This rule fails by default, as the other rules do.
 
