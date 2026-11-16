@@ -1254,7 +1254,13 @@ cookieconsent.run({
 <li>a cross-reference such as <code>@thm-id</code>, <code>@lem-id</code>, <code>@cor-id</code>, or <code>@prp-id</code>; or</li>
 <li>a Markdown link whose target ends in such an anchor, on this site or another one.</li>
 </ul>
-<p>The proof is a <code>.proof</code> div nested in the corollary, or one that follows it with only blank lines between, directly or inside a wrapper div with no id, such as <code>.content-hidden</code>. The corollary’s own id does not count, and neither does a citation inside a comment or a code fence. A corollary that follows from a definition or an axiom alone is exempt with <code>&lt;!-- check-corollary-sources: allow: reason --&gt;</code> in the div or its proof; a pragma with no reason does not exempt it.</p>
+<p>The check reads the corollary’s proof in any of three places:</p>
+<ul>
+<li>a <code>.proof</code> div nested in the corollary;</li>
+<li>a <code>.proof</code> div that follows the corollary with only blank lines between;</li>
+<li>a <code>.proof</code> div inside a wrapper div with no id, such as <code>.content-hidden</code>, that follows the corollary.</li>
+</ul>
+<p>The corollary’s own id does not count, and neither does a citation inside a comment or a code fence. A corollary that follows from a definition or an axiom alone is exempt with <code>&lt;!-- check-corollary-sources: allow: reason --&gt;</code> in the div or its proof; a pragma with no reason does not exempt it.</p>
 <p>Whether a result is central, smaller, or a proof step is a judgment that no pattern can make, so the rest of the rule is a review item.</p>
 <p>A corollary is checked when the pull request adds a line inside it or its proof. With no base to diff against, the check skips instead of scanning the whole tree. It only warns by default; set <code>fail: true</code> after a measured corpus shows no false positive.</p>
 <section id="inputs" class="level2">
