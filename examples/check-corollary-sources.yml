@@ -1,5 +1,5 @@
 # Copy to .github/workflows/check-corollary-sources.yml in your repo.
-# Diff-scoped, warn-only check: flags a corollary div (#cor-) a PR edits whose statement and proof name no earlier result (an @thm-, @lem-, @cor- or @prp- cross-reference, or a link to such an anchor). <!-- check-corollary-sources: allow: reason --> exempts one.
+# Diff-scoped, warn-only check: flags a corollary div (#cor-) a PR edits whose statement and proof name no earlier result (an @thm-, @lem-, @cor-, or @prp- cross-reference, or a link to such an anchor). <!-- check-corollary-sources: allow: reason --> exempts one.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check corollary sources
 

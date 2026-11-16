@@ -20,10 +20,13 @@ A result is named by either:
 - a Markdown link whose target ends in such an anchor,
   on this site or another one.
 
-The proof is a `.proof` div nested in the corollary,
-or one that follows it with only blank lines between,
-directly or inside a wrapper div with no id,
-such as `.content-hidden`.
+The check reads the corollary's proof in any of three places:
+
+- a `.proof` div nested in the corollary;
+- a `.proof` div that follows the corollary with only blank lines between;
+- a `.proof` div inside a wrapper div with no id,
+  such as `.content-hidden`, that follows the corollary.
+
 The corollary's own id does not count,
 and neither does a citation inside a comment or a code fence.
 A corollary that follows from a definition or an axiom alone

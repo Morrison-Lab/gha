@@ -1,6 +1,6 @@
 name: Check corollary sources
 description: >-
-  Diff-scoped, warn-only check that flags a corollary div (#cor-) a PR edits whose statement and proof name no earlier result (an @thm-, @lem-, @cor- or @prp- cross-reference, or a link to such an anchor). `<!-- check-corollary-sources: allow: reason -->` exempts one. Warns by default.
+  Diff-scoped, warn-only check that flags a corollary div (#cor-) a PR edits whose statement and proof name no earlier result (an @thm-, @lem-, @cor-, or @prp- cross-reference, or a link to such an anchor). `<!-- check-corollary-sources: allow: reason -->` exempts one. Warns by default.
 inputs:
   python-version:
     description: Python version to set up.
