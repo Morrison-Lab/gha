@@ -3613,6 +3613,7 @@ jobs:
         shell: bash
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-viz || true
+          rm -rf _ci-viz
   # check-geometric-figures is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-geometric-figures@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
@@ -3642,6 +3643,15 @@ jobs:
         uses: ./check-geometric-figures
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          # These files name the check's own vocabulary, so they would flag themselves.
+          paths-ignore: |-
+            check-geometric-figures/**
+            examples/check-geometric-figures.yml
+            website/reference/check-geometric-figures.qmd
+            changelog.d/add-check-geometric-figures.added.md
+            README.md
+            CLAUDE.md
+            website/workflows.qmd
       # This repo has no geometric claims, so stage one with no figure and assert
       # that the blocking call really fails.
       - name: Stage a geometric claim with no figure
@@ -3720,13 +3730,13 @@ jobs:
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'website/reference/*.qmd'
+          globs: '.github/dependabot.yml'
       - name: Remove the staged claim
         if: always()
         shell: bash
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-geom || true
-          rm -rf _ci-viz
+          rm -rf _ci-geom
 
   # check-tree-lists is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-tree-lists@v3` does not resolve until
