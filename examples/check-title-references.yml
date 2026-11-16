@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check-title-references.yml in your repo.
+# Diff-scoped check: flags a link whose text is the title of the heading or page it
+# targets, with no content type (section, chapter, page, ...) beside it (psw#660).
+# Fails by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check title references
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-title-references.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: false                            # warn instead of block (defaults to true)
+    #   whole-tree: true                       # scan every page, not just a PR's additions
