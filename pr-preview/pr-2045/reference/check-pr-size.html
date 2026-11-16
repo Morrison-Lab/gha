@@ -598,6 +598,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-title-references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-title-references.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-self-reference.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-self-reference.yml</span></a>
   </div>
@@ -1250,7 +1256,7 @@ cookieconsent.run({
 <p>The lines of a newly added <code>_fig-*</code> subfile are not counted either, since figure code in several languages is long but mechanical (<a href="https://github.com/Morrison-Lab/ai-config/issues/4928">ai-config#4928</a>). Each such file still counts as a file, and editing an existing <code>_fig-*</code> file still counts its lines.</p>
 <section id="exemptions" class="level2">
 <h2 class="anchored" data-anchor-id="exemptions">Exemptions</h2>
-<p>A pure rename (no line changed) does not count toward the file cap. A PR whose description says “mechanical, content-identical” (a pure move, rename, or split with no wording change) is exempt at any size, as one carrying the exemption label is. The reusable workflow reads the description live through the API. Content PRs keep the 10 file and 300 line caps (<a href="https://github.com/Morrison-Lab/ai-config/pull/5129">ai-config#5129</a>).</p>
+<p>A pure rename (no line changed) does not count toward the file cap. A PR whose description says “mechanical, content-identical” (a pure move, rename, or split with no wording change) is exempt at any size, as one carrying the exemption label is. A diff that is a pure token substitution is exempt without either (<a href="https://github.com/Morrison-Lab/gha/issues/2050">#2050</a>): every hunk adds as many lines as it removes, and each changed line differs from the line it replaces only by one map of at most 10 substitutions that stays the same across the PR, such as a macro renamed in every file that uses it. Each substitution swaps one name (a backslash macro or an identifier) for another. An inserted or deleted token, a phrase, punctuation, a number, or a logic word such as <code>true</code>, <code>not</code>, or <code>never</code> is an edit, not a substitution, so it is measured as usual. The check prints the map, so a reviewer sees exactly what was substituted. The reusable workflow reads the description live through the API. Content PRs keep the 10 file and 300 line caps (<a href="https://github.com/Morrison-Lab/ai-config/pull/5129">ai-config#5129</a>).</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
