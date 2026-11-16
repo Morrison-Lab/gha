@@ -67,6 +67,15 @@ because that is exactly what gha#728's second round missed: the grep used to
 find round 1's gaps was keyed to the ``.yml`` spelling, and one of this
 repo's own list locations (this file's own "About this repo" paragraph)
 names capabilities bare.
+
+**A region that inserts the generated list for a tag lists that tag by
+construction.** ``gen_capability_lists.py`` writes
+``website/_generated/tag-<major>.md`` from the same example stubs at render
+time (gha#1862), and ``website/capability-list.lua`` inserts it, so a region
+carrying ``{{< capability-list v3 >}}`` names every ``@v3`` capability
+without restating one.
+A website page that only links to such a list holds no list to drift, so it
+is not a region.
 """
 
 from __future__ import annotations
@@ -93,7 +102,6 @@ REGIONS: list[tuple[str, str | None, str]] = [
     ("README.md", "## Versioning", "### Advancing a major tag"),
     ("README.md", "### Pinning third-party actions", "### Job timeouts"),
     ("website/versioning.qmd", None, "## Widening permissions is a breaking change"),
-    ("website/versioning.qmd", "## Pinning third-party actions", "## Reverse dependencies"),
     ("website/workflows.qmd", "## Versioning {#versioning}", "## Quality checks {#quality-checks}"),
     ("CLAUDE.md", "## About this repo", "### Layout"),
 ]
@@ -263,8 +271,20 @@ def extract_region(repo_root: pathlib.Path, rel_path: str, start: str | None, en
     return "\n".join(lines[start_idx + 1 : end_idx])
 
 
-def is_listed(region_text: str, name: str) -> bool:
-    """Whether `name` appears as an exact backtick-delimited token."""
+def includes_generated_list(region_text: str, tag: str) -> bool:
+    """Whether the region inserts the generated list for `tag`."""
+    pattern = r"\{\{<\s*capability-list\s+" + re.escape(tag) + r"\s*>\}\}"
+    return re.search(pattern, region_text) is not None
+
+
+def is_listed(region_text: str, name: str, tag: str | None = None) -> bool:
+    """Whether `name` appears as an exact backtick-delimited token.
+
+    With `tag`, a region that includes the generated list for that tag
+    counts as listing `name` too.
+    """
+    if tag is not None and includes_generated_list(region_text, tag):
+        return True
     return f"`{name}`" in region_text or f"`{name}.yml`" in region_text
 
 
@@ -288,7 +308,7 @@ def run_audit(
         if tag == BASELINE_TAG:
             continue
         for region in REGIONS:
-            if is_listed(region_texts[region], name):
+            if is_listed(region_texts[region], name, tag):
                 continue
             rel_path, start, end = region
             location = f"{rel_path} ({start or 'start of file'} .. {end})"
