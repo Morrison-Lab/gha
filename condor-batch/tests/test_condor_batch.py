@@ -55,6 +55,18 @@ exit "${STUB_WAIT_RC:-0}"
 
 RM_STUB = 'echo "condor_rm $*" >> "$STUB_LOG"\n'
 
+Q_STUB = """\
+echo "condor_q $*" >> "$STUB_LOG"
+echo "analysis of $*: no machine matches the requirements"
+[ -z "${STUB_Q_LINES:-}" ] || seq 1 "$STUB_Q_LINES"
+[ -z "${STUB_Q_RC:-}" ] || exit "$STUB_Q_RC"
+"""
+
+STATUS_STUB = """\
+echo "condor_status $*" >> "$STUB_LOG"
+echo "pool totals: 0 machines available"
+"""
+
 
 def _stub(path: Path, body: str) -> None:
     path.write_text("#!/usr/bin/env bash\n" + body)
@@ -70,6 +82,8 @@ def _run(tmp_path: Path, steps: list[str], **extra_env: str):
     _stub(bin_dir / "condor_submit", SUBMIT_STUB)
     _stub(bin_dir / "condor_wait", WAIT_STUB)
     _stub(bin_dir / "condor_rm", RM_STUB)
+    _stub(bin_dir / "condor_q", Q_STUB)
+    _stub(bin_dir / "condor_status", STATUS_STUB)
     checkout = tmp_path / "checkout"
     checkout.mkdir()
     (checkout / ".git").mkdir()
@@ -221,6 +235,57 @@ def test_wait_limit_is_passed_to_condor_wait_and_a_late_job_is_removed(tmp_path)
     assert "condor_wait -wait 900 condor.log" in calls
     assert "condor_rm 77" in calls
     assert "did not end within 15 minutes" in proc.stderr
+
+
+def test_a_late_job_is_explained_in_the_log_before_it_is_removed(tmp_path):
+    # gha#2041: the queue entry is gone after condor_rm, so the analysis, the
+    # pool totals and the tail of condor.log are printed first.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15", STUB_WAIT_RC="1"
+    )
+    assert proc.returncode == 70
+    assert "condor_q -better-analyze 77" in calls
+    assert "condor_status -total" in calls
+    assert calls.index("condor_q -better-analyze 77") < calls.index("condor_rm 77")
+    assert "no machine matches the requirements" in proc.stderr
+    assert "pool totals: 0 machines available" in proc.stderr
+    assert "--- tail of condor.log" in proc.stderr
+
+
+def test_a_failing_diagnostic_does_not_stop_the_fallback(tmp_path):
+    # condor_q failing must not skip condor_status, condor_rm or exit 70.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15", STUB_WAIT_RC="1", STUB_Q_RC="3"
+    )
+    assert proc.returncode == 70
+    assert "condor_status -total" in calls
+    assert "condor_rm 77" in calls
+    assert "did not end within 15 minutes" in proc.stderr
+
+
+def test_long_diagnostics_are_cut_and_do_not_stop_the_fallback(tmp_path):
+    # head closes the pipe after 150 lines and the group gets SIGPIPE; under
+    # set -eo pipefail the script must still remove the job and exit 70.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15", STUB_WAIT_RC="1", STUB_Q_LINES="400"
+    )
+    assert proc.returncode == 70
+    assert "condor_rm 77" in calls
+    lines = proc.stderr.splitlines()
+    assert "399" not in lines
+    assert "did not end normally" in proc.stderr
+
+
+def test_no_diagnostics_for_a_job_that_ended_or_without_a_limit(tmp_path):
+    ended, ended_calls = _run(tmp_path, ["a", "b"], CONDOR_WAIT_MINUTES="15", STUB_RV="0")
+    assert ended.returncode == 0, ended.stderr
+    assert _count(ended_calls, "condor_q") == 0
+    sub = tmp_path / "unbounded"
+    sub.mkdir()
+    proc, calls = _run(sub, ["a", "b"], STUB_WAIT_RC="1")
+    assert proc.returncode == 70
+    assert _count(calls, "condor_q") == 0
+    assert _count(calls, "condor_status") == 0
 
 
 def test_no_wait_limit_by_default(tmp_path):

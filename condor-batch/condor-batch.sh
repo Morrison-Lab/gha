@@ -65,7 +65,9 @@
 # wait for the job to end. When the job has not ended by then, it is removed
 # with condor_rm and the script exits 70, so the caller reruns the steps on the
 # runner; set it below the caller's timeout-minutes, or the job timeout cancels
-# the step before the fallback can run (gha#2037).
+# the step before the fallback can run (gha#2037). Before it removes the job it
+# prints condor_q -better-analyze for the cluster, condor_status -total and the
+# tail of condor.log, so the job log says why the job did not start (gha#2041).
 #
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
 # 70 = the cluster could not run the job normally (copy or ssh failed, the
@@ -295,8 +297,20 @@ fi
 if [ "$wait_min" != . ] && [ "$wait_rc" -ne 0 ] && [ -s .cluster-id ]; then
   # A job still idle or running after the limit would hold the slot and the
   # run directory; remove it, and the runner reruns the steps.
-  echo "job did not end within $wait_min minutes; removing cluster $(cat .cluster-id)" >&2
-  condor_rm "$(cat .cluster-id)" || true
+  cluster_id=$(cat .cluster-id)
+  echo "job did not end within $wait_min minutes; removing cluster $cluster_id" >&2
+  # Say why the job is still queued or running before it is removed: the queue
+  # entry and the run directory are gone by the time anyone looks (gha#2041).
+  # Each command is bounded and may fail without stopping the others.
+  {
+    echo "--- condor_q -better-analyze $cluster_id"
+    timeout 60 condor_q -better-analyze "$cluster_id" || true
+    echo "--- condor_status -total"
+    timeout 30 condor_status -total || true
+    echo "--- tail of condor.log"
+    tail -n 25 condor.log || true
+  } 2>&1 | head -n 150 >&2 || true
+  condor_rm "$cluster_id" || true
 fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
 exit 70
