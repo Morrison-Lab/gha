@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 """Write the website's capability lists from the files each capability owns.
 
-Adding a check used to mean editing about ten hand-kept lists (gha#1862):
-the `@v2`/`@v3` lists, the read-only list, and the workflow table rows.
-Each new check touched every one of those files, so it could not fit under
-`check-pr-size`'s 10-file cap. The facts are already on disk, and the audits
-already derive them from there, so this script writes the lists at render
-time into git-ignored include files instead:
+Hand-kept lists put every new check over `check-pr-size`'s 10-file cap
+(gha#1862). The facts are on disk, so this writes the lists at render time
+into git-ignored include files:
 
 - a capability is a reusable workflow `.github/workflows/<name>.yml` with an
   `examples/<name>.yml` stub (`discover_population` in
@@ -19,20 +16,9 @@ time into git-ignored include files instead:
 - its inputs are the workflow's `workflow_call` inputs, less the runner
   plumbing every workflow takes (`COMMON_INPUTS`).
 
-Nothing here is a second copy of a rule: the two helpers are imported, so a
-fix to either reaches the lists too.
-
-Outputs, under `website/_generated/` by default:
-
-- `tag-<major>.md`: the backticked workflow file names pinned at that tag,
-  one file per tag the stubs use;
-- `readonly.md`: the backticked names of the read-only capabilities;
-- `workflows-table.md`: the catalog table, header included.
-
-Usage::
-
-    python3 gen_capability_lists.py [--repo-root DIR] [--out DIR]
-
+The two helpers are imported, not copied, so a fix to either reaches the lists.
+Outputs (default `website/_generated/`): `tag-<major>.md` per tag the stubs
+use, `readonly.md`, and `workflows-table.md` (header included).
 Quarto runs it as a `pre-render` step from `website/`.
 """
 
