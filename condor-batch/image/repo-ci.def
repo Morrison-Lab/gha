@@ -32,7 +32,10 @@ From: lds-ci.sif
     tlmgr-packages.txt /opt/repo/tlmgr-packages.txt
 
 %environment
-    export R_LIBS_SITE=/opt/repo-library
+    # R_LIBS_SITE replaces R's default site libraries rather than adding to
+    # them, so name lds-ci.sif's too: knitr and rmarkdown live there, and a
+    # repository with no renv.lock leaves /opt/repo-library empty.
+    export R_LIBS_SITE=/opt/repo-library:/usr/local/lib/R/site-library:/usr/lib/R/site-library
     export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
 
 %post
@@ -48,7 +51,7 @@ From: lds-ci.sif
 
     mkdir -p /opt/repo-library
     if [ -s /opt/repo/renv.lock ]; then
-        export R_LIBS_SITE=/opt/repo-library
+        export R_LIBS_SITE=/opt/repo-library:/usr/local/lib/R/site-library:/usr/lib/R/site-library
         export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
         export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
         # A lockfile's R version can be newer than the R 4.5 in lds-ci.sif
