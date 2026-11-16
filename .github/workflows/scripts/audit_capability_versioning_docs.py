@@ -102,7 +102,6 @@ REGIONS: list[tuple[str, str | None, str]] = [
     ("README.md", "## Versioning", "### Advancing a major tag"),
     ("README.md", "### Pinning third-party actions", "### Job timeouts"),
     ("website/versioning.qmd", None, "## Widening permissions is a breaking change"),
-    ("website/workflows.qmd", "## Versioning {#versioning}", "## Quality checks {#quality-checks}"),
     ("CLAUDE.md", "## About this repo", "### Layout"),
 ]
 
