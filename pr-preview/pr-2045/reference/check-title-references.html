@@ -1288,11 +1288,12 @@ cookieconsent.run({
 <p>Diff-scoped check that flags a reference to a section, chapter, or page by its title that does not name the content type. It fails by default, since agents ignore warnings (Ezra, 2026-11-02). The rule (Ezra, 2026-11-16, psw#660): when text refers to a section, subsection, chapter, page and so on by its title, it names the type of content, and only the title is the link text. Write <code>the [Practical considerations](#practical-considerations) section</code>, not <code>see [Practical considerations](#practical-considerations)</code>.</p>
 <p>The check flags a Markdown link on a line the pull request adds when both hold:</p>
 <ul>
-<li><strong>Title as link text.</strong> The target is internal: <code>#anchor</code>, <code>page.qmd#anchor</code>, <code>page.html#anchor</code>, or <code>page.qmd</code>. The link text equals the title of the heading the anchor names, with case and markup ignored. For a bare page link, it equals the <code>title:</code> of the page.</li>
+<li><strong>Title as link text.</strong> The target is internal: <code>#anchor</code>, <code>page.qmd#anchor</code>, <code>page.html#anchor</code>, or <code>page.qmd</code>. The link text equals the title of the heading the anchor names, in the same case, with markup ignored. A lowercase concept link such as <code>[logistic regression](logistic-regression.qmd)</code> is prose, not a title. For a bare page link, it equals the <code>title:</code> of the page.</li>
 <li><strong>No content type beside it.</strong> No type word sits immediately before the link or immediately after it. The type words are section, subsection, chapter, page, part, appendix, lecture, handout, unit, and module. The type word may be followed by “titled”, “called”, or “named”, then by an opening quote.</li>
 </ul>
 <p>The check does not count:</p>
 <ul>
+<li>a link on a heading line or a table caption line (<code>:</code>), where the link is the title itself;</li>
 <li>a <code>@sec-</code> crossref, which renders its own “Section n” label;</li>
 <li>a link to a <code>#def-</code> or <code>#thm-</code> div, which targets no heading;</li>
 <li>a link inside a code fence, a code span, an HTML comment, or the YAML front matter;</li>
