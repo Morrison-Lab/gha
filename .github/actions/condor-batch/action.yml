@@ -34,6 +34,14 @@ inputs:
       same paths in the checkout. A path the job never made is skipped. Empty
       returns nothing.
     default: ''
+  wait-minutes:
+    description: >-
+      Longest wait, in whole minutes, for the cluster job to end. A job that
+      has not ended by then is removed and the steps run on the runner. Set it
+      below the job's timeout-minutes, or the job timeout cancels the step
+      before the fallback can run (gha#2037). Empty waits as long as the job
+      takes.
+    default: ''
 runs:
   using: composite
   steps:
@@ -45,6 +53,7 @@ runs:
         CONDOR_IMAGE: ${{ inputs.image }}
         CONDOR_IMAGE_FILE: ${{ inputs.image-file }}
         CONDOR_OUTPUT: ${{ inputs.output }}
+        CONDOR_WAIT_MINUTES: ${{ inputs.wait-minutes }}
         WORKDIR: ${{ inputs.working-directory }}
         SCRIPT: ${{ github.action_path }}/../../../condor-batch/condor-batch.sh
       run: |
