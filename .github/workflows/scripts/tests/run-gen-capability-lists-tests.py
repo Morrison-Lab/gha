@@ -4,10 +4,6 @@
 Each case builds a small fixture tree, so it isolates one behaviour; the last
 case runs the generator over this repo itself, which is what the website's
 `pre-render` step does on every render.
-
-Usage::
-
-    python3 run-gen-capability-lists-tests.py
 """
 
 from __future__ import annotations
