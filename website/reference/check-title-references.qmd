@@ -15,8 +15,10 @@ The check flags a Markdown link on a line the pull request adds when both hold:
 
 - **Title as link text.**
   The target is internal: `#anchor`, `page.qmd#anchor`, `page.html#anchor`, or `page.qmd`.
-  The link text equals the title of the heading the anchor names, with case and
-  markup ignored.
+  The link text equals the title of the heading the anchor names, in the same
+  case, with markup ignored.
+  A lowercase concept link such as `[logistic regression](logistic-regression.qmd)`
+  is prose, not a title.
   For a bare page link, it equals the `title:` of the page.
 - **No content type beside it.**
   No type word sits immediately before the link or immediately after it.
@@ -27,6 +29,8 @@ The check flags a Markdown link on a line the pull request adds when both hold:
 
 The check does not count:
 
+- a link on a heading line or a table caption line (`:`), where the link is the
+  title itself;
 - a `@sec-` crossref, which renders its own "Section n" label;
 - a link to a `#def-` or `#thm-` div, which targets no heading;
 - a link inside a code fence, a code span, an HTML comment, or the YAML front matter;

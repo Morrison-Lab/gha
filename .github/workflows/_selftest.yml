@@ -542,6 +542,9 @@ jobs:
         run: |
           python3 .github/workflows/scripts/tests/run-permissions-docs-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-permissions-docs-tests.py
+      - name: Run gen_capability_lists.py unit tests (gha#1862)
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-gen-capability-lists-tests.py
       - name: Run assemble-news unit tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-assemble-news-tests.sh
