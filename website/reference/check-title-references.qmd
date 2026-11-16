@@ -1,0 +1,91 @@
+---
+title: "check-title-references.yml"
+---
+
+Diff-scoped check that flags a reference to a section, chapter, or page by its
+title that does not name the content type.
+It fails by default, since agents ignore warnings (Ezra, 2026-11-02).
+The rule (Ezra, 2026-11-16, psw#660): when text refers to a section, subsection,
+chapter, page and so on by its title,
+it names the type of content, and only the title is the link text.
+Write `the [Practical considerations](#practical-considerations) section`,
+not `see [Practical considerations](#practical-considerations)`.
+
+The check flags a Markdown link on a line the pull request adds when both hold:
+
+- **Title as link text.**
+  The target is internal: `#anchor`, `page.qmd#anchor`, `page.html#anchor`, or `page.qmd`.
+  The link text equals the title of the heading the anchor names, with case and
+  markup ignored.
+  For a bare page link, it equals the `title:` of the page.
+- **No content type beside it.**
+  No type word sits immediately before the link or immediately after it.
+  The type words are section, subsection, chapter, page, part, appendix,
+  lecture, handout, unit, and module.
+  The type word may be followed by "titled", "called", or "named", then by an
+  opening quote.
+
+The check does not count:
+
+- a `@sec-` crossref, which renders its own "Section n" label;
+- a link to a `#def-` or `#thm-` div, which targets no heading;
+- a link inside a code fence, a code span, an HTML comment, or the YAML front matter;
+- a line carrying, or following, `<!-- check-title-references: allow -->`.
+
+The check cannot see a book, article, or video, whose title lives off-site.
+The reviewer instruction in psw covers books, articles, and videos.
+
+## Scope
+
+A finding is reported only when the line was added in the pull request,
+so existing references are not swept.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked page in full on purpose.
+The heading index always reads every tracked `.qmd` file.
+
+## Inputs
+
+| Input          | Type    | Default    | Description |
+| -------------- | ------- | ---------- | ----------- |
+| `globs`        | string  | `'*.qmd *.md'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`     | Fail the workflow when an added link names a title without its content type. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`    | Scan every tracked page in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`   | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-title-references.yml in your repo.
+# Diff-scoped check: flags a link whose text is the title of the heading or page it
+# targets, with no content type (section, chapter, page, ...) beside it (psw#660).
+# Fails by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check title references
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-title-references.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: false                            # warn instead of block (defaults to true)
+    #   whole-tree: true                       # scan every page, not just a PR's additions
+```
+
+See
+[`examples/check-title-references.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-title-references.yml)
+for the full caller stub.
