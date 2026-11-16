@@ -285,7 +285,8 @@ Model a new diff-scoped check on `check-exm-figures` or `check-tree-lists` (comp
 A new check also has to appear in these lists, or CI fails (gha#1264):
 
 - the read-only capability lists in `README.md` and `website/permissions.qmd`;
-- the `@v3` lists in `CLAUDE.md`, `README.md` (two), `website/versioning.qmd` (two) and `website/workflows.qmd`, and the table rows in `README.md` and `website/workflows.qmd`;
+- the `@v3` lists in `CLAUDE.md`, `README.md` (two) and `website/workflows.qmd`, and the table rows in `README.md` and `website/workflows.qmd`
+  (`website/versioning.qmd` includes lists generated from the example stubs at render time, gha#1862);
 - `.github/dependabot.yml`, `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
 
 A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
