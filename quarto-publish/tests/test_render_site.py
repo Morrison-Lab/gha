@@ -83,7 +83,9 @@ def test_a_forbidden_pattern_fails_the_render(tmp_path):
 def test_the_action_runs_the_script_with_the_same_environment():
     action = yaml.safe_load((ROOT / "quarto-publish" / "action.yml").read_text(encoding="utf-8"))
     step = next(s for s in action["runs"]["steps"] if s.get("name") == "Render Quarto project")
-    assert step["run"] == 'bash "$GITHUB_ACTION_PATH/render-site.sh"'
+    # The render holds a per-host render slot (gha#2062).
+    assert step["run"] == 'bash "$SLOT_SCRIPT" bash "$GITHUB_ACTION_PATH/render-site.sh"'
+    assert step["env"]["SLOT_SCRIPT"].endswith('/../scripts/with-render-slot.sh')
     for name in ("PROJECT_PATH", "OUTPUT_DIR", "RENDER_PROFILE", "FORMATS",
                  "PER_FILE_FORMATS", "PER_FILE_SCRIPT", "REDIRECT_STUBS_SCRIPT",
                  "FAIL_ON_WARN", "FORBID_PATTERNS", "SETUP_JULIA"):
