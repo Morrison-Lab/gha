@@ -37,6 +37,7 @@ updates:
       - "/check-python-qmd-chunks"
       - "/check-heading-levels"
       - "/check-heading-titles"
+      - "/check-title-references"
       - "/check-self-reference"
       - "/check-page-length"
       - "/check-heading-siblings"
