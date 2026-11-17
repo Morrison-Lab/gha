@@ -109,6 +109,18 @@ inputs:
       beyond `actions: read`, `checks: write` and `contents: read`; `head-sha`
       and `all-runs` are unused.
     default: 'false'
+  repair-workflows:
+    description: >-
+      With `all-runs`, newline-separated names of workflows whose re-run may
+      never send the `workflow_run` event that starts a gate (a Claude review
+      re-run after its 429, gha#2072 and gha#2077). After gating its own commit, a gate that did not
+      defer also gates again each commit where one of these workflows finished
+      in the last `repair-hours` and the commit's newest `annotation-gate`
+      check is older. It never fails the gate that called it. Empty turns it off.
+    default: ''
+  repair-hours:
+    description: How far back `repair-workflows` looks for a finished run, in hours.
+    default: '3'
   token:
     description: Token granted actions read and checks read, plus checks write with `head-sha`.
     default: ${{ github.token }}
@@ -129,4 +141,6 @@ runs:
         GATE_ALL_RUNS: ${{ inputs.all-runs }}
         GATE_DEFER_WHILE_RUNNING: ${{ inputs.defer-while-running }}
         GATE_BACKFILL: ${{ inputs.backfill }}
+        GATE_REPAIR_WORKFLOWS: ${{ inputs.repair-workflows }}
+        GATE_REPAIR_HOURS: ${{ inputs.repair-hours }}
       run: python3 "$GITHUB_ACTION_PATH/annotation_gate.py"

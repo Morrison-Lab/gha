@@ -181,6 +181,19 @@ It reads runs and check runs only,
 so it needs no permission beyond the ones the workflow already holds.
 `head-sha` is required by the workflow but unused in this mode, so pass any value.
 
+`repair-workflows` (with `all-runs`;
+the workflow defaults it to `Claude Code Review`, the action to empty)
+repairs a commit whose gate predates a re-run that never started a gate.
+A finished re-run of the Claude review after its 429 sent no `workflow_run`
+event, so the commit kept the failure its first attempt posted
+until the next scheduled backfill, hours later (gha#2077).
+After a gate that did not defer posts its own result,
+it lists the recent runs of the named workflows
+and gates again each commit where one finished
+in the last `repair-hours` (default 3)
+and the newest `annotation-gate` check is older.
+It never fails the gate that called it.
+
 To gate a commit again without a new commit and without re-running any other
 workflow, add a `workflow_dispatch` trigger with a `head-sha` input to the
 caller, as the example stub does, and pass

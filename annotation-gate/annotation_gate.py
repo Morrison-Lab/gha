@@ -32,6 +32,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 
 LEVELS_ALL = ("notice", "warning", "failure")
@@ -277,6 +278,7 @@ def gate_commit(settings, head_sha, trigger_id="", trigger_attempt=""):
     own = settings["workflow"]
     waiting = unfinished_runs(runs, own)
     if settings["defer"] and waiting:
+        settings["deferred"] = True
         print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
         return 0
     targets = gate_targets(runs, own, trigger_id, trigger_attempt)
@@ -296,6 +298,50 @@ def backfill(settings):
     print(f"annotation-gate: backfill, {len(stale)} recent pull request commit(s) with no check run or an out-of-date one.")
     codes = [gate_commit(settings, sha) for sha in stale]
     return 1 if any(codes) else 0
+
+
+def recently_finished_heads(base, repo, token, names, hours, now=None):
+    """Commits whose run of a workflow in `names` finished in the last `hours` hours.
+
+    A re-run of such a workflow (a Claude review after its 429, gha#2072) may
+    never send the `workflow_run` event that starts a gate, so the commit keeps
+    the failure its first attempt posted. Only the runs of these workflows are
+    listed, a page or two a day, not every run in the repository.
+    """
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    since = (now - datetime.timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    recent = (now - datetime.timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    heads = {}
+    for workflow in paged(f"{base}/repos/{repo}/actions/workflows", token, "workflows"):
+        if workflow.get("name") not in names:
+            continue
+        for run in paged(f"{base}/repos/{repo}/actions/workflows/{workflow['id']}/runs?status=completed&created=>={since}", token, "workflow_runs"):
+            if (run.get("updated_at") or "") >= recent:
+                heads[run["head_sha"]] = True
+    return list(heads)
+
+
+def repair(settings, exclude=""):
+    """Gate again each recent commit whose gate predates a finished run of a watched workflow.
+
+    Never fails the gate that called it: a commit's unallowed annotation fails
+    that commit's own check run, not this one, and an API error here only
+    leaves the commit to the scheduled backfill.
+    """
+    names = split_lines(os.environ.get("GATE_REPAIR_WORKFLOWS"))
+    hours = float(os.environ.get("GATE_REPAIR_HOURS") or 3)
+    if not names:
+        return 0
+    base, repo, token = settings["base"], settings["repo"], settings["token"]
+    try:
+        heads = [sha for sha in recently_finished_heads(base, repo, token, names, hours) if sha != exclude]
+        stale = [sha for sha in heads if gate_is_stale(base, repo, token, sha, settings["workflow"])]
+        print(f"annotation-gate: repair, {len(stale)} of {len(heads)} recently finished commit(s) have an out-of-date check.")
+        for sha in stale:
+            gate_commit({**settings, "defer": True}, sha)
+    except (urllib.error.URLError, OSError) as err:
+        print(f"annotation-gate: repair skipped: {err}")
+    return 0
 
 
 def main():
@@ -327,7 +373,10 @@ def main():
         print("::error::all-runs needs head-sha, the commit to gate.")
         return 2
     if all_runs:
-        return gate_commit(settings, head_sha, target_run, os.environ.get("GATE_RUN_ATTEMPT", ""))
+        code = gate_commit(settings, head_sha, target_run, os.environ.get("GATE_RUN_ATTEMPT", ""))
+        if not settings.get("deferred"):
+            repair(settings, head_sha)
+        return code
     annotations, checked = gate_jobs(base, repo, token, run_id, attempt, own_job, gate, {}, {})
     return report(settings, head_sha, [(run_id, attempt)], annotations, checked, bool(target_run and head_sha))
 

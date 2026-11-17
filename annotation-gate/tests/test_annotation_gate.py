@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 
@@ -604,3 +605,85 @@ def test_backfill_fails_and_posts_a_failure_when_a_head_has_an_unallowed_annotat
     bad = ("job", {"annotation_level": "warning", "message": "odd"})
     code, posted = backfill_mode(monkeypatch, ["a1"], set(), runs, found=[bad])
     assert code == 1 and posted[0][4] is False
+
+
+def repair_mode(monkeypatch, review_runs, gated, deferred=False, other_runs=()):
+    """Run commit mode with GATE_REPAIR_WORKFLOWS set; return (code, posted shas)."""
+    for key in ("GATE_RUN_ID", "GATE_RUN_ATTEMPT", "GITHUB_JOB", "GATE_ALLOW", "GATE_DEFAULT_ALLOW", "GITHUB_EVENT_NAME"):
+        monkeypatch.delenv(key, raising=False)
+    env = {"GITHUB_TOKEN": "t", "GITHUB_REPOSITORY": "o/r", "GITHUB_RUN_ID": "1", "GITHUB_WORKFLOW": "Annotation gate",
+           "GATE_ALL_RUNS": "true", "GATE_HEAD_SHA": "main1", "GATE_REPAIR_WORKFLOWS": "Claude Code Review",
+           "GATE_DEFER_WHILE_RUNNING": "true"}
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    posted = []
+
+    def fake_api(url, token):
+        if "/commits/" in url:
+            sha = url.split("/commits/")[1].split("/")[0]
+            return {"check_runs": [{"completed_at": gated[sha]}] if sha in gated else []}
+        return {"run_attempt": 1}
+
+    def fake_paged(url, token, key=None):
+        if key == "workflows":
+            return iter([{"id": 7, "name": "Claude Code Review"}, {"id": 8, "name": "Other"}])
+        if key == "workflow_runs" and "/workflows/7/runs" in url:
+            return iter(review_runs)
+        if key == "workflow_runs" and "head_sha=main1" in url:
+            return iter(list(other_runs))
+        if key == "workflow_runs":
+            sha = url.split("head_sha=")[1]
+            return iter([r for r in review_runs if r["head_sha"] == sha])
+        if key == "check_runs":
+            return iter([])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(g, "api", fake_api)
+    monkeypatch.setattr(g, "paged", fake_paged)
+    monkeypatch.setattr(g, "current_attempts", lambda base, repo, token, targets: targets)
+    monkeypatch.setattr(g, "gate_jobs", lambda *args: ([], 1))
+    monkeypatch.setattr(g, "post_check_run", lambda *args: posted.append(args[3]))
+    return g.main(), posted
+
+
+def finished_review(sha, updated):
+    return {"id": 1, "workflow_id": 7, "event": "pull_request", "run_number": 1, "run_attempt": 2, "name": "Claude Code Review",
+            "status": "completed", "head_sha": sha, "updated_at": updated}
+
+
+def test_repair_gates_again_a_head_whose_review_rerun_finished_after_its_gate(monkeypatch):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    stamp = lambda minutes: (now - datetime.timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    code, posted = repair_mode(monkeypatch, [finished_review("pr1", stamp(5))], {"pr1": stamp(60)})
+    assert code == 0 and posted == ["main1", "pr1"]
+
+
+def test_repair_keeps_a_head_whose_gate_finished_after_the_review(monkeypatch):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    stamp = lambda minutes: (now - datetime.timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    code, posted = repair_mode(monkeypatch, [finished_review("pr1", stamp(30))], {"pr1": stamp(5)})
+    assert posted == ["main1"]
+
+
+def test_repair_ignores_a_review_that_finished_before_the_window(monkeypatch):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    old = (now - datetime.timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    code, posted = repair_mode(monkeypatch, [finished_review("pr1", old)], {})
+    assert posted == ["main1"]
+
+
+def test_repair_is_off_without_workflow_names(monkeypatch):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    recent = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    code, posted = repair_mode(monkeypatch, [finished_review("pr1", recent)], {})
+    monkeypatch.setenv("GATE_REPAIR_WORKFLOWS", "")
+    posted.clear()
+    assert g.repair({"base": "b", "repo": "r", "token": "t", "workflow": "Annotation gate"}, "main1") == 0 and posted == []
+
+
+def test_repair_does_not_run_when_the_gate_deferred(monkeypatch):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    recent = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    still = {"id": 9, "name": "Check", "status": "in_progress", "workflow_id": 9, "event": "push", "run_number": 1, "run_attempt": 1}
+    code, posted = repair_mode(monkeypatch, [finished_review("pr1", recent)], {}, other_runs=[still])
+    assert code == 0 and posted == []
