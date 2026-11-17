@@ -64,3 +64,4 @@ runs:
         output: ${{ inputs.output }}
         wait-minutes: ${{ inputs.wait-minutes }}
         working-directory: ${{ inputs.working-directory }}
+        allow-local-fallback: 'false'

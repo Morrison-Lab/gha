@@ -23,7 +23,16 @@ inputs:
 runs:
   using: composite
   steps:
+    # The crawl starts headless Chromium renderers, which is CI rendering;
+    # that is banned on the self-hosted runners (cf463-01, cf463-02) and on
+    # Ezra's Mac (Ezra, 2026-11-17; gha#2108). Skip it there with a notice
+    # until a browser-free check can run on the cluster.
+    - name: Skip the crawl on a self-hosted runner
+      if: runner.environment == 'self-hosted'
+      shell: bash
+      run: echo "::notice::equation-render crawl skipped on a self-hosted runner (gha#2108)"
     - name: Install Playwright
+      if: runner.environment != 'self-hosted'
       shell: bash
       run: |
         set -euo pipefail
@@ -40,6 +49,7 @@ runs:
         npx --prefix "$GITHUB_ACTION_PATH" playwright install ${deps[@]+"${deps[@]}"} chromium
 
     - name: Check equation renders
+      if: runner.environment != 'self-hosted'
       shell: bash
       env:
         SITE_DIR: ${{ inputs.site-dir }}

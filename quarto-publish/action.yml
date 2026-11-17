@@ -170,6 +170,15 @@ inputs:
 runs:
   using: composite
   steps:
+    # CI rendering on the self-hosted runners (cf463-01, cf463-02) and on
+    # Ezra's Mac is banned (Ezra, 2026-11-17; gha#2108). A self-hosted runner
+    # may only submit the render to the cluster, so fail before any setup.
+    - name: Refuse a render on a self-hosted runner
+      if: runner.environment == 'self-hosted' && inputs.cluster-render != 'true'
+      shell: bash
+      run: |
+        echo "::error::CI rendering on self-hosted runners is banned (gha#2108). Set cluster-render: true, or run this job on a GitHub-hosted runner."
+        exit 1
     - name: Put the runner's preinstalled tools on PATH
       if: inputs.preinstalled-toolchain == 'true'
       shell: bash
@@ -502,6 +511,7 @@ runs:
         image-file: ${{ inputs.cluster-image-file }}
         steps: ${{ steps.cluster-plan.outputs.steps }}
         output: ${{ inputs.path }}/${{ inputs.output-dir }},${{ inputs.path }}/_freeze,${{ inputs.path }}/.quarto
+        allow-local-fallback: 'false'
 
     - name: Save Quarto freeze
       if: >-

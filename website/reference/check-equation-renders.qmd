@@ -33,6 +33,14 @@ It runs independently of `preview-deploy.yml` -- both trigger on the same build
 completion, but this one downloads the artifact directly rather than depending
 on the deploy, so it needs no `gh-pages` write access and no live preview URL.
 
+On a self-hosted runner the crawl does not run.
+The job passes with only a notice,
+so a green check there means the equations were not examined.
+The crawl starts headless Chromium renderers,
+and CI rendering is banned on the self-hosted runners
+([#2108](https://github.com/Morrison-Lab/gha/issues/2108)).
+Run the job on a GitHub-hosted runner to check equations.
+
 ## Inputs
 
 | Input  | Type    | Default | Description                                                  |
