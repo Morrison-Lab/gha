@@ -18,6 +18,9 @@ RENDER_COMPOSITES = [
     "quarto-publish/action.yml",
     ".github/actions/student-copy-render/action.yml",
 ]
+# Composites that also have a local render step get a refusal step first.
+# student-copy-render has no local render step: it renders only through
+# condor-batch, whose disabled fallback already covers it.
 GUARDED = ["preview/action.yml", "quarto-publish/action.yml"]
 
 
@@ -30,7 +33,7 @@ def test_condor_batch_has_fallback_switch():
         (ROOT / ".github/actions/condor-batch/action.yml").read_text())
     assert action["inputs"]["allow-local-fallback"]["default"] == "true"
     run = action["runs"]["steps"][0]["run"]
-    assert 'if [ "${ALLOW_LOCAL_FALLBACK:-true}" = "false" ]' in run
+    assert 'if [ "${ALLOW_LOCAL_FALLBACK:-true}" = "false" ] && [ "${RUNNER_ENVIRONMENT:-}" = "self-hosted" ]' in run
     refusal = run.split("run_local()", 1)[1].split("::notice::running the steps", 1)[0]
     assert "exit 1" in refusal
 

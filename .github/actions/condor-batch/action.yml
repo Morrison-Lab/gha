@@ -61,10 +61,12 @@ inputs:
     default: ''
   allow-local-fallback:
     description: >-
-      'false' fails the step instead of running the steps on the runner when
-      the cluster cannot be used. Render composites pass 'false': CI rendering
-      on the self-hosted runners (cf463-01, cf463-02) and on Ezra's Mac is
-      banned (gha#2108).
+      'false' fails the step on a self-hosted runner instead of running the
+      steps there when the cluster cannot be used (exit 70 or 71, or no
+      cluster key). A GitHub-hosted runner still falls back. Render
+      composites pass 'false': CI rendering on the self-hosted runners
+      (cf463-01, cf463-02) and on Ezra's Mac is banned (gha#2108). Their
+      plans always carry at least two steps, so exit 71 does not arise there.
     default: 'true'
 runs:
   using: composite
@@ -89,7 +91,7 @@ runs:
         steps_file="$RUNNER_TEMP/condor-steps.txt"
         printf '%s\n' "$STEPS" > "$steps_file"
         run_local() {
-          if [ "${ALLOW_LOCAL_FALLBACK:-true}" = "false" ]; then
+          if [ "${ALLOW_LOCAL_FALLBACK:-true}" = "false" ] && [ "${RUNNER_ENVIRONMENT:-}" = "self-hosted" ]; then
             echo "::error::not running the steps on the runner ($1): CI rendering on self-hosted runners is banned (gha#2108)"
             exit 1
           fi

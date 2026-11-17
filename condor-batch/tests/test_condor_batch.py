@@ -600,15 +600,21 @@ def test_composite_reruns_locally_only_for_infrastructure_codes(tmp_path):
         assert (code, ran_locally) == (final, reruns), rc
 
 
-
 def test_composite_never_runs_locally_when_fallback_is_disabled(tmp_path):
-    # gha#2108: a render composite passes allow-local-fallback 'false', so a
-    # cluster failure fails the step instead of rendering on the runner.
-    for rc, final in [(70, 1), (71, 1), (0, 0), (2, 2)]:
-        case_dir = tmp_path / str(rc)
+    # gha#2108: a render composite passes allow-local-fallback 'false', so on a
+    # self-hosted runner a cluster failure fails the step instead of
+    # rendering there. A GitHub-hosted runner still falls back.
+    for env, rc, final, local in [
+        ("self-hosted", 70, 1, False), ("self-hosted", 71, 1, False),
+        ("self-hosted", 0, 0, False), ("self-hosted", 2, 2, False),
+        ("github-hosted", 70, 0, True), ("github-hosted", 71, 0, True),
+    ]:
+        case_dir = tmp_path / f"{env}-{rc}"
         case_dir.mkdir()
-        code, ran_locally = _run_action(case_dir, rc, ALLOW_LOCAL_FALLBACK="false")
-        assert (code, ran_locally) == (final, False), rc
+        code, ran_locally = _run_action(
+            case_dir, rc, ALLOW_LOCAL_FALLBACK="false", RUNNER_ENVIRONMENT=env)
+        assert (code, ran_locally) == (final, local), (env, rc)
+
 
 def test_head_list_is_spread_by_run_number(tmp_path):
     for run, expected in (("42", "a.example"), ("43", "b.example")):
