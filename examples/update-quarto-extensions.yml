@@ -18,7 +18,8 @@ jobs:
     # with:
     #   # Optional: custom extension repository mapping (owner/repo). Built-in
     #   # defaults cover common extensions (code-language-labels,
-    #   # div-anchors, equation-anchors, slidebreak, revealjs-html-links).
+    #   # div-anchors, equation-anchors, slidebreak, revealjs-html-links,
+    #   # answer-space).
     #   extension-repos: |
     #     my-extension: my-org/my-extension
     #   extensions-dir: _extensions

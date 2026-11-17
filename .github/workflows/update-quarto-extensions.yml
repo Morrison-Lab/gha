@@ -15,7 +15,8 @@ on:
           Mapping of extension names to upstream GitHub repositories (owner/repo).
           Can be formatted as YAML/JSON or multiline key-value pairs. Built-in
           defaults cover common extensions (code-language-labels,
-          div-anchors, equation-anchors, slidebreak, revealjs-html-links).
+          div-anchors, equation-anchors, slidebreak, revealjs-html-links,
+          answer-space).
         type: string
         default: ''
       extensions-dir:
