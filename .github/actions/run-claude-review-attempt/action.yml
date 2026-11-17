@@ -895,6 +895,25 @@ runs:
           inline or display math, inline code, or the inside of a
           Pandoc citation bracket such as "[@a; see @b]". A list item that packs several clauses still
           violates the rule.
+          (13) A result div's type matches the role of the result
+          (psw's "Using theorem environments in Quarto", psw#668): a
+          `#thm-` div is a central result of the page that later results
+          build on; a `#prp-` div is worth stating for its own sake but
+          smaller or more elementary; a `#lem-` div is stated mainly as a
+          step in another result's proof; a `#cor-` div follows directly
+          from one earlier result and names it. When more than one fits,
+          the first of corollary, lemma, theorem, proposition wins. For a
+          result div that the diff adds or retypes, report as a
+          suggestion a type that the page's own use contradicts, such as
+          a `#lem-` div that the page cites only in prose and never in a
+          proof (a lemma on a prerequisite site may be cited only from
+          other sites, so do not flag one there), a `#thm-` div that restates
+          an elementary identity, or a `#prp-` div whose only use is in
+          another result's proof; name the type you would
+          use and why. Report as blocking a result that the page states
+          twice, under two ids or two types, with both `path:line`
+          anchors. The `check-corollary-sources` check covers a
+          corollary that names no earlier result, so do not repeat it.
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
