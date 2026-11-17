@@ -395,3 +395,60 @@ def test_linpred_score_passes_the_statistical_score(text):
 
 def test_linpred_score_takes_the_allow_comment():
     assert found("The sigmoid of a score <!-- check-avoided-words: allow -->") == {}
+
+
+# -- British spellings (gha#2095) ---------------------------------------------
+
+@pytest.mark.parametrize("text, phrase", [
+    ("Points are coloured by class.", "coloured"),
+    ("The colour shows the label.", "colour"),
+    ("Its behaviour is stable.", "behaviour"),
+    ("The k nearest neighbours vote.", "neighbours"),
+    ("Normalise the inputs first.", "normalise"),
+    ("We optimised the loss.", "optimised"),
+    ("Regularisation shrinks the weights.", "regularisation"),
+    ("Analyse the residuals.", "analyse"),
+    ("The data are centred.", "centred"),
+    ("The centre of the ellipse.", "centre"),
+    ("Statistical modelling is hard.", "modelling"),
+    ("A labelled data set.", "labelled"),
+    ("Terms cancelled out.", "cancelled"),
+    ("The grey arrow is the gradient.", "grey"),
+    ("Use your judgement.", "judgement"),
+    ("It holds, whilst the other fails.", "whilst"),
+    ("A speed in metres per second.", "metres"),
+])
+def test_british_forms(text, phrase):
+    assert found(text) == {1: ("british", phrase)}
+
+
+@pytest.mark.parametrize("text", [
+    "Points are colored by class.",
+    "Otherwise the noise is precise; exercise it.",
+    "Two analyses agree.",
+    "The emphasis is on the parameter.",
+    "A characteristic of the organism.",
+    "Use `colour = class` in the call.",
+    'The book "The Colour of Data" is long.',
+    "See *Statistical Modelling* by Davison.",
+    "Read [the book](https://example.org/colour-guide).",
+    "See @fig-colour-map.",
+    "The plot {#fig-colour} is shown.",
+    "> The colour of the sky, as quoted.",
+    "Every tour has four stops.",
+])
+def test_british_passes_american_code_quotes_titles_and_links(text):
+    hits = {line: hit for line, hit in found(text).items()
+            if hit[0] == "british"}
+    assert hits == {}
+
+
+def test_british_takes_the_allow_comment():
+    assert found("A colour <!-- check-avoided-words: allow -->") == {}
+
+
+def test_british_is_not_warn_only():
+    hits, _ = wi.scan_file(["The colour is red."])
+    assert [h.rule for h in hits] == ["british"]
+    assert "british" not in wi.WARN_ONLY
+    assert "American spelling" in wi.format_message(hits[0])
