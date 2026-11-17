@@ -69,6 +69,13 @@
 # prints condor_q -better-analyze for the cluster, condor_status -total and the
 # tail of condor.log, so the job log says why the job did not start (gha#2041).
 #
+# CONDOR_IDLE_MINUTES (default none: no limit) limits how long the job may sit
+# idle in the queue. When it has not started by then, the same diagnostics are
+# printed, the job is removed and the script exits 70, so the runner runs the
+# steps instead. A job that has started is left alone, under
+# CONDOR_WAIT_MINUTES, which still counts from submission. Unlike a total wait
+# limit, this never cuts off a long job that is running (gha#2085).
+#
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
 # 70 = the cluster could not run the job normally (copy or ssh failed, the
 # job was held, removed or aborted, condor_wait failed, or the job did not end
@@ -130,6 +137,12 @@ case "$wait_min" in
   '') wait_min=. ;;
   *[!0-9]*) echo "CONDOR_WAIT_MINUTES must be a positive whole number of minutes: $wait_min" >&2; exit 64 ;;
   *) [ "$((10#$wait_min))" -gt 0 ] || { echo "CONDOR_WAIT_MINUTES must be a positive whole number of minutes: $wait_min" >&2; exit 64; } ;;
+esac
+idle_min="${CONDOR_IDLE_MINUTES:-}"
+case "$idle_min" in
+  '') idle_min=. ;;
+  *[!0-9]*) echo "CONDOR_IDLE_MINUTES must be a positive whole number of minutes: $idle_min" >&2; exit 64 ;;
+  *) [ "$((10#$idle_min))" -gt 0 ] || { echo "CONDOR_IDLE_MINUTES must be a positive whole number of minutes: $idle_min" >&2; exit 64; } ;;
 esac
 head_entry="${head_list[0]}"
 if [ "${#head_list[@]}" -gt 1 ]; then
@@ -209,11 +222,11 @@ trap 'printf "%s\n" "$clean_script" | ssh "${ssh_opts[@]}" "$head_host" bash -s 
 rc=0
 # A desktop head has no cluster home, so a cluster-home image path never applies.
 [ "$desktop" != 1 ] || CONDOR_IMAGE=
-ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-.}" "${CONDOR_OUTPUT:-.}" "$wait_min" <<'REMOTE' || rc=$?
+ssh "${ssh_opts[@]}" "$head_host" bash -s -- "$root/$run" "${REQUEST_CPUS:-4}" "${REQUEST_MEMORY:-8GB}" "${REQUEST_DISK:-20GB}" "$desktop" "$(basename "${image_file:-.}")" "${CONDOR_IMAGE:-.}" "${CONDOR_OUTPUT:-.}" "$wait_min" "$idle_min" <<'REMOTE' || rc=$?
 set -euo pipefail
 # ssh drops an empty argument, so the optional image comes last and a bare dot
 # stands for "no transferred image".
-dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-.} out=${8:-.} wait_min=${9:-.}
+dir=$1 cpus=$2 mem=$3 disk=$4 desktop=$5 sent_image=$6 image=${7:-.} out=${8:-.} wait_min=${9:-.} idle_min=${10:-.}
 [ "$image" != . ] || image=
 cd "$dir"
 dir=$PWD
@@ -281,9 +294,49 @@ queue 1
 SUB
 condor_submit .condor.sub | tee .submit.out
 sed -n 's/.*submitted to cluster \([0-9][0-9]*\)\..*/\1/p' .submit.out > .cluster-id
-wait_rc=0 wait_args=()
-[ "$wait_min" = . ] || wait_args=(-wait "$((10#$wait_min * 60))")
-condor_wait ${wait_args[@]+"${wait_args[@]}"} condor.log || wait_rc=$?
+# Say why the job is still queued or running before it is removed: the queue
+# entry and the run directory are gone by the time anyone looks (gha#2041).
+# Each command is bounded and may fail without stopping the others.
+diagnose() {
+  {
+    echo "--- condor_q -better-analyze $1"
+    timeout 60 condor_q -better-analyze "$1" || true
+    echo "--- condor_status -total"
+    timeout 30 condor_status -total || true
+    echo "--- tail of condor.log"
+    tail -n 25 condor.log || true
+  } 2>&1 | head -n 150 >&2 || true
+}
+wait_rc=0 wait_args=() waited=0
+if [ "$idle_min" != . ] && [ -s .cluster-id ]; then
+  # A job still idle (JobStatus 1) after the idle limit is removed, so the
+  # runner takes over; one that started is waited for as usual (gha#2085).
+  waited=$((10#$idle_min * 60))
+  idle_rc=0
+  condor_wait -wait "$waited" condor.log || idle_rc=$?
+  if [ "$idle_rc" -ne 0 ]; then
+    cluster_id=$(cat .cluster-id)
+    status=$(timeout 60 condor_q "$cluster_id" -af JobStatus 2>/dev/null | head -n 1) || true
+    if [ "$status" = 1 ]; then
+      echo "job did not start within $idle_min minutes; removing cluster $cluster_id" >&2
+      diagnose "$cluster_id"
+      condor_rm "$cluster_id" || true
+      echo "job did not end normally: see $dir/condor.log" >&2
+      exit 70
+    fi
+  else
+    # The job ended inside the idle window: skip the second wait.
+    waited=-1
+  fi
+fi
+if [ "$waited" -ge 0 ]; then
+  if [ "$wait_min" != . ]; then
+    left=$((10#$wait_min * 60 - waited))
+    [ "$left" -gt 0 ] || left=1
+    wait_args=(-wait "$left")
+  fi
+  condor_wait ${wait_args[@]+"${wait_args[@]}"} condor.log || wait_rc=$?
+fi
 [ ! -f out.log ] || cat out.log
 [ ! -f err.log ] || cat err.log >&2
 rv=
@@ -299,17 +352,7 @@ if [ "$wait_min" != . ] && [ "$wait_rc" -ne 0 ] && [ -s .cluster-id ]; then
   # run directory; remove it, and the runner reruns the steps.
   cluster_id=$(cat .cluster-id)
   echo "job did not end within $wait_min minutes; removing cluster $cluster_id" >&2
-  # Say why the job is still queued or running before it is removed: the queue
-  # entry and the run directory are gone by the time anyone looks (gha#2041).
-  # Each command is bounded and may fail without stopping the others.
-  {
-    echo "--- condor_q -better-analyze $cluster_id"
-    timeout 60 condor_q -better-analyze "$cluster_id" || true
-    echo "--- condor_status -total"
-    timeout 30 condor_status -total || true
-    echo "--- tail of condor.log"
-    tail -n 25 condor.log || true
-  } 2>&1 | head -n 150 >&2 || true
+  diagnose "$cluster_id"
   condor_rm "$cluster_id" || true
 fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
