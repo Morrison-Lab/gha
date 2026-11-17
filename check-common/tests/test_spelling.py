@@ -11,6 +11,7 @@ import spelling  # noqa: E402
 
 
 @pytest.mark.parametrize("british, american", [
+    ("enrolment", "enrollment"), ("fulfilment", "fulfillment"),
     ("colour", "color"), ("Coloured", "Colored"), ("neighbourhoods", "neighborhoods"),
     ("behaviour", "behavior"), ("normalise", "normalize"), ("Regularisation", "Regularization"),
     ("analysed", "analyzed"), ("centre", "center"), ("centres", "centers"),

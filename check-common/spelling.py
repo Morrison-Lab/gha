@@ -1,3 +1,4 @@
+# check-one-function-per-file: allow-multiple
 """British spellings and their American forms (gha#2095).
 
 One copy of the word list: ``check-avoided-words`` flags ``BRITISH_RE`` in
@@ -71,6 +72,8 @@ _WHOLE = {
     "whilst": "while", "amongst": "among", "learnt": "learned",
     "ageing": "aging", "artefact": "artifact", "artefacts": "artifacts",
     "centred": "centered", "centring": "centering",
+    "enrolment": "enrollment", "enrolments": "enrollments",
+    "fulfilment": "fulfillment",
     "catalogue": "catalog", "catalogues": "catalogs", "catalogued": "cataloged",
     "cataloguing": "cataloging", "programme": "program", "programmes": "programs",
     "aluminium": "aluminum", "fulfil": "fulfill", "fulfils": "fulfills",
