@@ -35,7 +35,8 @@ Design notes:
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
 - **A kept deletion is not a drop.** When another parent deleted a file
-  outright since ``B`` (not renamed it) and the file is absent from ``M``,
+  outright since ``B`` (not renamed it, with renames found down to 30%
+  similarity, so a heavily edited rename still counts as one) and the file is absent from ``M``,
   the merge resolved a modify/delete conflict by keeping the deletion, so the
   lines this parent added to that file are not reported. A file the merge
   alone deleted, while both parents still have it, is still reported, and so
@@ -87,6 +88,8 @@ _DEFAULT_GLOBS = "*.md *.qmd"
 _DEFAULT_MIN_LENGTH = 20
 _DEFAULT_FAIL = False
 _DEFAULT_SIMILARITY = 0.6
+# Rename-detection threshold for "this parent deleted the file" (see check_merge).
+_DELETION_RENAME_THRESHOLD = "30%"
 
 # Blobs larger than this are not read when searching M's tree for moved
 # content: a multi-megabyte file is data or generated output, not prose a
@@ -247,9 +250,16 @@ def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold:
     return False
 
 
-def _exists(commit: str, path: str, cwd: Optional[str]) -> bool:
-    """True when ``path`` is in ``commit``'s tree."""
-    return bool(_git(["rev-parse", "--verify", "--quiet", f"{commit}:{path}"], cwd=cwd))
+def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:
+    """Whether ``path`` is in ``commit``'s tree, or None when git fails.
+
+    ``ls-tree`` prints nothing and exits 0 for an absent path, so a git
+    failure stays distinguishable from absence and cannot arm the skip.
+    """
+    out = _git(["ls-tree", "--name-only", "-z", commit, "--", path], cwd=cwd)
+    if out is None:
+        return None
+    return path in out.split("\0")
 
 
 def list_merges(base: str, head: str, cwd: Optional[str] = None) -> Optional[List[List[str]]]:
@@ -277,13 +287,17 @@ def check_merge(
     base = base_out.strip()
     subject = (_git(["log", "-1", "--format=%s", merge], cwd=cwd) or "").strip()
 
-    # Paths each parent deleted outright since the base. `-M` reports a rename
-    # as R, not D, so a renamed file is not a deletion here.
+    # Paths each parent deleted outright since the base. Rename detection
+    # reports a rename as R, not D, so a renamed file is not a deletion here.
+    # The threshold sits below git's default 50% on purpose: a rename edited
+    # past it would read as a deletion and arm the skip below, hiding a drop,
+    # while a spurious pairing only keeps the path reported.
     deleted_by: List[Set[str]] = []
     for parent in parents:
         names = _git(
             ["diff", "--no-color", "--no-ext-diff", "--name-only", "-z",
-             "--diff-filter=D", "-M", base, parent, "--", *globs],
+             "--diff-filter=D", f"--find-renames={_DELETION_RENAME_THRESHOLD}",
+             base, parent, "--", *globs],
             cwd=cwd,
         )
         if names is None:
@@ -311,7 +325,10 @@ def check_merge(
                     candidates.append(norm)
             if not candidates:
                 continue
-            if (not _exists(merge, path, cwd)
+            in_merge = _exists(merge, path, cwd)
+            if in_merge is None:
+                return None
+            if (not in_merge
                     and any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
                             if j != i)):
                 # Another parent deleted this file and the merge kept the
