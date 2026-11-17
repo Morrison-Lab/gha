@@ -15,7 +15,7 @@
 #   .github/ci-image/tlmgr-packages.txt  extra LaTeX packages, one per line
 #   .github/ci-image/test.sh             run in the new image; a failure or no
 #                                        test.sh keeps the old image, unless
-#                                        REPO_CI_NO_TEST=1 (build untested)
+#                                        REPO_CI_NO_TEST=1 and no test.sh
 #
 # Run it on cf463-02 with Apptainer (a private repository needs git
 # credentials), and rerun it whenever any of those files changes. The default
@@ -41,7 +41,7 @@ esac
 image_dir="$(cd "$image_dir" && pwd)"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+trap 'rm -rf "$work" "${tmp_image:-}"' EXIT
 
 src="$work/$repo"
 git clone --quiet "https://github.com/Morrison-Lab/$repo.git" "$src"
@@ -84,8 +84,8 @@ else
   exit 1
 fi
 
-# $image_dir is on NFS, so a mv from local disk is a copy that can be cut
-# short. Copy to a temporary name beside the image, then rename it in place.
-cp "$repo-ci.sif" "$image_dir/.$repo-ci.sif.new"
-mv "$image_dir/.$repo-ci.sif.new" "$image_dir/$repo-ci.sif"
+# On NFS a mv from local disk is a copy that can be cut short: copy first.
+tmp_image="$(mktemp "$image_dir/.$repo-ci.sif.XXXXXX")"
+install -m 644 "$repo-ci.sif" "$tmp_image"
+mv "$tmp_image" "$image_dir/$repo-ci.sif"
 echo "Built $image_dir/$repo-ci.sif from $repo $sha"
