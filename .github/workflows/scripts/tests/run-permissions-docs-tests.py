@@ -61,7 +61,9 @@ BEGIN = "<!--readonly-workflows:begin-->"
 END = "<!--readonly-workflows:end-->"
 
 DEFAULT_WORKFLOWS_DIR = ".github/workflows"
-DEFAULT_DOCS = ("README.md", "website/permissions.qmd")
+# website/permissions.qmd inserts a list generated from the same workflows
+# at render time (gha#1862), so it has no hand-kept list to check.
+DEFAULT_DOCS = ("README.md",)
 
 # A permission value that does not require the caller to grant anything beyond
 # the read-only default token.

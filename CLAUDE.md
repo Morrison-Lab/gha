@@ -284,9 +284,11 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
 Model a new diff-scoped check on `check-exm-figures` or `check-tree-lists` (composite action, script, tests, reusable workflow, example stub, reference page).
 A new check also has to appear in these lists, or CI fails (gha#1264):
 
-- the read-only capability lists in `README.md` and `website/permissions.qmd`;
-- the `@v3` lists in `CLAUDE.md` and `README.md` (two), and the table rows in `README.md` and `website/workflows.qmd`
-  (`website/versioning.qmd` inserts lists generated from the example stubs at render time, and `website/workflows.qmd` links to it, gha#1862);
+- the read-only capability list in `README.md`
+  (`website/permissions.qmd` inserts one generated from the workflows' `permissions:` blocks, gha#1862);
+- the `@v3` lists in `CLAUDE.md` and `README.md` (two), and the table row in `README.md`
+  (`website/versioning.qmd` and `website/workflows.qmd` insert lists and the catalog table generated from the example stubs,
+  the workflows, and the reference pages at render time, gha#1862);
 - `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
 
 `.github/dependabot.yml` covers every `check-*` directory by glob, so a check named `check-...` needs no line there.
@@ -1577,17 +1579,17 @@ governing principle -- which is the evidence that the rule was right and only
 its stated scope was too narrow.
 
 **Adding a new `workflow_call` input to an existing reusable workflow** needs
-its own doc sync at three sites beyond the workflow file itself, or the input
+its own doc sync at two sites beyond the workflow file itself, or the input
 is invisible to a consumer skimming the docs:
 
 1. **`README.md`**'s per-workflow table row's "Key inputs" cell.
-2. **`website/workflows.qmd`**'s equivalent table row -- a separate table, not
-   generated from `README.md`, so it drifts independently.
-3. **`website/reference/<name>.qmd`**'s Inputs table, plus a commented usage
+2. **`website/reference/<name>.qmd`**'s Inputs table, plus a commented usage
    line in its `## Example` block.
 
+`website/workflows.qmd`'s table is generated from the workflow's own
+`workflow_call` inputs at render time, so it needs no edit (gha#1862).
 Grep the repo for the workflow's filename (e.g. `claude-code-review.yml`)
-across `README.md`, `website/workflows.qmd`, and `website/reference/` rather
+across `README.md` and `website/reference/` rather
 than assuming only one needs the update. Caught across four review rounds on
 gha#161 -- the fix for round 2's finding (missing composite) surfaced round
 3's finding (docs out of sync), whose fix left one more untouched table row

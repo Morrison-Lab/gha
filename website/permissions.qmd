@@ -10,64 +10,10 @@ already include the right `permissions:` blocks; copy them as-is.
 
 ## Per-workflow grants
 
-- <!--readonly-workflows:begin-->`annotation-gate`, `check-ai-tells`,
-  `check-code-messages`, `check-bibliography-dois`,
-  `check-code-similarity`, `check-dependency-graph`, `check-duplicate-roxygen`,
-  `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-informal-definitions`, `check-junk-files`,
-  `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`,
-  `check-self-credits`,
-  `check-one-div-per-subfile`, `check-heading-levels`,
-  `check-heading-titles`, `check-title-references`, `check-self-reference`,
-  `check-page-length`, `check-heading-siblings`,
-  `check-figure-placement`, `check-div-ids`,
-  `check-multipart-exercises`, `check-rubric-checklists`,
-  `check-python-qmd-chunks`,
-  `check-single-ask-parts`,
-  `check-split-solutions`, `check-restated-results`,
-`check-results-in-remarks`, `check-result-definition-links`,
-`check-corollary-sources`,
-`check-definition-expectation`,
-`check-extracted-lemmas`,
-  `check-definition-equations`, `check-hybrid-sentences`,
-  `check-format-output-files`,
-  `check-def-title-synonyms`, `check-def-wiktionary`,
-  `check-bare-yes-no`, `check-code-fold`, `check-serial-comma`,
-`check-exercise-background`,
-`check-exercise-question-paragraph`,
-`check-exercise-ends-with-task`,
-`check-removed-content`,
-  `check-key-equations-displayed`, `check-definite-antecedents`,
-  `check-pr-concerns`,
-  `check-pr-size`,
-  `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`,
-  `check-static-figures`, `check-function-graphs`, `check-axis-titles`,
-  `check-visualization-figures`, `check-geometric-figures`,
-  `check-tree-lists`, `check-search-shortcut`,
-  `check-self-contained-captions`,
-  `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`,
-  `check-solution-citations`,
-  `check-exercise-before-result`,
-  `check-term-links`, `check-paired-file-change`,
-  `check-local-macros`, `check-fform-paren`, `check-macro-expansions`,
-  `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`,
-  `check-math-definitions`,
-  `check-merge-drops`, `check-note-sheet-rows`,
-  `check-new-line-breaks`, `check-news`,
-  `check-non-standard-chars`, `check-one-function-per-file`,
-  `check-orphaned-images`, `check-phi`,
-  `check-python-package`, `check-quarto-book`, `check-quarto-links`,
-  `check-quarto-manuscript`, `check-quarto-prose`, `check-quarto-website`,
-  `check-r-package`, `check-repo-hygiene`, `check-secrets`, `check-source-overlap`,
-  `check-typed-output`, `check-typos`,
-  `cursor-code-review`, `lint-changed-files`,
-  `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
-  `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `student-qmd`,
-  `test-coverage`, `version-check`<!--readonly-workflows:end--> need only
+- {{< capability-list readonly >}} need only
   `contents: read` (the default), so no `permissions:` block is needed.
-  This list is checked against the workflows' own `permissions:` blocks by
-  `.github/workflows/scripts/tests/run-permissions-docs-tests.py`; keep the
-  markers around it.
+  This list is generated from the workflows' own `permissions:` blocks
+  when the site renders.
 - `check-links` opens an issue on `main` failures, so grant `issues: write`,
   `pull-requests: read`, `contents: read`.
 - `summary` comments on issues, so grant `issues: write`, `contents: read`.
