@@ -53,6 +53,13 @@ on:
           the file checked out (see submodules). Empty skips the rule.
         type: string
         default: ''
+      letters:
+        description: >-
+          Space-separated letters or Greek commands (for example `J`). When
+          set, only these are flagged, in either mode; deprecated macros
+          still are. Empty flags what `mode` says.
+        type: string
+        default: ''
       submodules:
         description: >-
           Passed to actions/checkout as its submodules input ('true',
@@ -85,6 +92,7 @@ jobs:
           fail: ${{ inputs.fail }}
           mode: ${{ inputs.mode }}
           deprecated-files: ${{ inputs.deprecated-files }}
+          letters: ${{ inputs.letters }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there is no base to diff against, so the check is skipped.
           # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip

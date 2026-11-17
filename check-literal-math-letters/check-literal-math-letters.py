@@ -75,6 +75,11 @@ Configuration (environment variables, set by the composite action):
   LML_FAIL          "true" => exit 1 on a finding; default "false" => annotate
                     with warnings only.
   LML_WHOLE_TREE    "true" => scan every tracked matching file in full.
+  LML_LETTERS       Space-separated letters or Greek commands (``J``,
+                    ``\theta``). When set, only these are flagged, in either
+                    mode, so a caller can block one letter whose macro is
+                    certain (``J`` for ``\objfn``) without the noise of the
+                    rest. Deprecated macros are still flagged.
 """
 
 import os
@@ -145,6 +150,7 @@ LATIN_SUGGESTIONS = {
     "n": r"\nobs if this is the number of observations",
     "L": r"\loss if this is the loss function",
     "e": r"\euler (or \e{...} for a power) if this is Euler's number",
+    "J": r"\objfn (or \objfnf{...} for its value) if this is an objective or cost function",
 }
 GREEK_SUGGESTIONS = {
     "theta": r"\param if this is a generic parameter",
@@ -226,6 +232,11 @@ UNICODE_GREEK = {
 # suggestion above, not every single letter, so index letters such as `k` and
 # `p` pass. Off by default; set by LML_MODE=known.
 KNOWN_ONLY = False
+
+# Letters-only mode: when non-empty, only these tokens (``J``, ``\theta``)
+# are reported, whatever the mode; deprecated macros still are. Set by
+# LML_LETTERS.
+ONLY_LETTERS: Set[str] = set()
 
 # Macros the library marks "deprecated, use \x" in interpretations.tsv:
 # name (no backslash) -> replacement (with backslash). Loaded from
@@ -707,6 +718,24 @@ class Report(NamedTuple):
     skipped: bool
 
 
+def _kept(token: str) -> bool:
+    if token.startswith("\\") and token[1:] in DEPRECATED:
+        return True
+    return token in ONLY_LETTERS
+
+
+def restrict_to_letters(findings: List[Finding]) -> List[Finding]:
+    """Drop the tokens ``ONLY_LETTERS`` does not name; unchanged when it is empty."""
+    if not ONLY_LETTERS:
+        return findings
+    kept: List[Finding] = []
+    for finding in findings:
+        tokens = tuple(t for t in finding.tokens if _kept(t))
+        if tokens:
+            kept.append(Finding(finding.line, tokens))
+    return kept
+
+
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
               whole_tree: bool) -> Report:
     """Scan the added lines since ``base_ref``, or every line when whole-tree."""
@@ -746,7 +775,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         lines += len(content) if keep is None else len(keep)
         file_findings, file_spans = scan_file(content)
         spans += file_spans
-        for finding in file_findings:
+        for finding in restrict_to_letters(file_findings):
             if keep is None or finding.line in keep:
                 findings.append((rel, finding))
     return Report(findings, files, lines, spans, False)
@@ -768,6 +797,11 @@ def main() -> int:
     KNOWN_ONLY = mode == "known"
     for path in os.environ.get("LML_DEPRECATED_FILES", "").split():
         DEPRECATED.update(load_deprecated(path))
+    ONLY_LETTERS.clear()
+    ONLY_LETTERS.update(os.environ.get("LML_LETTERS", "").split())
+    if ONLY_LETTERS:
+        # The named letters are flagged whether or not they have a macro.
+        KNOWN_ONLY = False
 
     report = run_check(base_ref, globs, ignores, whole_tree)
 

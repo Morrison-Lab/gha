@@ -405,6 +405,66 @@ def test_main_warns_by_default_and_fails_on_request(repo, monkeypatch, capsys):
     assert "::error file=a.qmd,line=1::" in capsys.readouterr().out
 
 
+# -- letters-only mode (lds objective J) ----------------------------------------
+
+@pytest.fixture
+def letters_env(repo, monkeypatch):
+    monkeypatch.setattr(lml, "ONLY_LETTERS", set())
+    monkeypatch.setattr(lml, "KNOWN_ONLY", False)
+    monkeypatch.setenv("LML_WHOLE_TREE", "true")
+    monkeypatch.setenv("LML_GLOBS", "*.qmd")
+    monkeypatch.setenv("LML_FAIL", "true")
+    return repo
+
+
+def test_letters_flags_only_the_named_letter(letters_env, monkeypatch, capsys):
+    (letters_env / "a.qmd").write_text(
+        "$y_i + J(\\param)$\n$y_i + k$\n$\\objfnf{\\param}$\n")
+    _commit(letters_env, "base")
+    monkeypatch.setenv("LML_LETTERS", "J")
+    assert lml.main() == 1
+    out = capsys.readouterr().out
+    assert "::error file=a.qmd,line=1::" in out
+    assert r"J -> \objfn" in out
+    assert "y -> " not in out
+    assert "line=2" not in out and "line=3" not in out
+
+
+def test_letters_overrides_known_mode(letters_env, monkeypatch, capsys):
+    (letters_env / "a.qmd").write_text("$\\alpha + y$\n")
+    _commit(letters_env, "base")
+    monkeypatch.setenv("LML_MODE", "known")
+    monkeypatch.setenv("LML_LETTERS", "\\alpha")
+    assert lml.main() == 1
+    out = capsys.readouterr().out
+    assert r"\alpha" in out and "y -> " not in out
+
+
+def test_letters_still_flags_deprecated_macros(letters_env, monkeypatch, capsys):
+    monkeypatch.setitem(lml.DEPRECATED, "truemeanfn", r"\truemean")
+    (letters_env / "a.qmd").write_text("$\\truemeanfn + y$\n")
+    _commit(letters_env, "base")
+    monkeypatch.setenv("LML_LETTERS", "J")
+    assert lml.main() == 1
+    assert r"\truemeanfn is deprecated" in capsys.readouterr().out
+
+
+def test_empty_letters_leaves_every_letter_flagged(letters_env, monkeypatch, capsys):
+    (letters_env / "a.qmd").write_text("$y + J$\n")
+    _commit(letters_env, "base")
+    monkeypatch.setenv("LML_LETTERS", "")
+    assert lml.main() == 1
+    out = capsys.readouterr().out
+    assert "y -> " in out and "J -> " in out
+
+
+@pytest.mark.parametrize("path", [_DIR / "action.yml",
+                                  _DIR.parent / ".github" / "workflows"
+                                  / "check-literal-math-letters.yml"])
+def test_letters_default_is_empty(path):
+    assert _yaml_default(path, "letters") == ""
+
+
 # -- defaults declared in three places must agree --------------------------------
 
 def _yaml_default(path: Path, key: str):
