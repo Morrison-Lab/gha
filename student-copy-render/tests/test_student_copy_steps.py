@@ -82,7 +82,7 @@ def test_failures_fail_the_line(checkout: Path) -> None:
 
 @pytest.mark.parametrize("env, word", [
     ({"SC_CHECK": ""}, "check is required"), ({"SC_CHECK": "a\nb"}, "one line"),
-    ({"SC_PARALLEL": "0"}, "parallel"), ({"SC_PARALLEL": "x"}, "parallel"), ({"SC_PARALLEL": "\u00b2"}, "parallel"),
+    ({"SC_PARALLEL": "0"}, "parallel"), ({"SC_PARALLEL": "x"}, "parallel"), ({"SC_PARALLEL": "\u00b2"}, "parallel"), ({"SC_PARALLEL": "10000"}, "1 to 9999"),
     ({"SC_DOCUMENTS": "/etc/list"}, "relative path"), ({"SC_FRAGMENTS": "../list"}, "relative path"),
     ({"SC_FRAGMENT_GLOB": "a;rm -rf b"}, "fragment-glob"), ({"SC_FRAGMENT_GLOB": "../../*"}, "fragment-glob"),
     ({"SC_FRAGMENT_GLOB": "-la"}, "fragment-glob"), ({"SC_FRAGMENTS": "-n"}, "relative path"), ({"SC_DOCUMENTS": ""}, "relative path"),

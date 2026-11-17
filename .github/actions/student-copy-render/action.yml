@@ -13,10 +13,10 @@ inputs:
     description: "`all` (every `fragment-glob` match), or a list file relative to `working-directory` of questions to render alone."
     default: all
   fragment-glob:
-    description: The questions that `all` in `fragments` renders.
+    description: The questions that `all` in `fragments` renders; one that matches nothing fails the job.
     default: exercises/*/_exr-*.qmd
   parallel:
-    description: Questions rendered at once after the first.
+    description: Questions rendered at once after the first, from 1 to 9999.
     default: '4'
   head:
     description: Passed to condor-batch.

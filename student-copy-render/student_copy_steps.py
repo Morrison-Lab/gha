@@ -21,7 +21,7 @@ def build(env: dict[str, str]) -> list[str]:
         fail("check must be one line; condor-batch runs each line in its own shell")
     parallel_text = env.get("SC_PARALLEL", "4").strip() or "4"
     if not (parallel_text.isascii() and parallel_text.isdigit() and len(parallel_text) < 5) or int(parallel_text) < 1:
-        fail(f"parallel must be a whole number of at least 1, not {parallel_text!r}")
+        fail(f"parallel must be a whole number from 1 to 9999, not {parallel_text!r}")
     documents = env.get("SC_DOCUMENTS", "all").strip()
     if documents == "all":
         renders = ["quarto render", "quarto render --profile solution"]
