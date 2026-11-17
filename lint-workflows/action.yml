@@ -13,6 +13,8 @@ inputs:
     description: >-
       Root path (relative to the caller repo) to audit. zizmor collects both
       workflows and composite actions under it, respecting .gitignore.
+      In a repository with submodules, only the files git tracks are
+      audited, so a submodule's workflows are skipped (gha#2079).
     default: '.'
   actionlint-version:
     description: actionlint release tag to install (e.g. "v1.7.12").
@@ -112,12 +114,39 @@ runs:
         AUDIT_PATH: ${{ inputs.path }}
         PEDANTIC: ${{ inputs.pedantic }}
       run: |
-        set +e
+        cd "$AUDIT_PATH"
+        args=()
         if [ "$PEDANTIC" = "true" ]; then
-          zizmor --pedantic "$AUDIT_PATH"
-        else
-          zizmor "$AUDIT_PATH"
+          args+=(--pedantic)
         fi
+        # A submodule's working tree can be left populated on a reused
+        # self-hosted workspace even when this job's checkout did not ask
+        # for submodules, and auditing "." would then report findings in
+        # another repository's workflows (gha#2079). So in a repository
+        # with submodules, audit only the files git tracks here, which
+        # leaves out everything inside a submodule.
+        inputs=(.)
+        if [ -f .gitmodules ] && git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+          mapfile -t inputs < <(git ls-files -- \
+            ':(glob).github/workflows/*.yml' ':(glob).github/workflows/*.yaml' \
+            ':(glob)**/action.yml' ':(glob)**/action.yaml')
+          # Explicit file inputs do not discover a config file the way a
+          # directory input does, so name it.
+          for cfg in .github/zizmor.yml .github/zizmor.yaml zizmor.yml zizmor.yaml; do
+            if [ -f "$cfg" ]; then
+              args+=(--config "$cfg")
+              break
+            fi
+          done
+          if [ "${#inputs[@]}" -eq 0 ]; then
+            echo "No tracked workflows or actions to audit."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Auditing ${#inputs[@]} tracked file(s); submodule contents are skipped."
+        fi
+        set +e
+        zizmor "${args[@]}" "${inputs[@]}"
         status=$?
         set -e
         # zizmor exits non-zero on findings (as well as on tool errors); a

@@ -680,6 +680,29 @@ jobs:
           git -C _ci-lint-workflows-clean config user.name "CI"
           git -C _ci-lint-workflows-clean add -A
           git -C _ci-lint-workflows-clean commit -q -m fixture
+
+          # gha#2079: a repository whose submodule holds a flawed workflow.
+          # The submodule's working tree is populated, as a reused
+          # self-hosted workspace leaves it, and the audit must skip it.
+          # The -flawed-own copy also tracks a flawed workflow of its own,
+          # which the audit must still find.
+          for name in submodule-clean submodule-flawed-own; do
+            dir="_ci-lint-workflows-$name"
+            mkdir -p "$dir/.github/workflows"
+            cp _ci-lint-workflows-clean/.github/workflows/good.yml "$dir/.github/workflows/"
+            git -C "$dir" init -q
+            git -C "$dir" config user.email "ci@example.com" # phi-allow (synthetic fixture address, not real PHI)
+            git -C "$dir" config user.name "CI"
+            git -C "$dir" -c protocol.file.allow=always submodule add -q \
+              "$PWD/_ci-lint-workflows-flawed" vendored
+            test -f "$dir/vendored/.github/workflows/bad.yml"
+          done
+          cp _ci-lint-workflows-flawed/.github/workflows/bad.yml \
+            _ci-lint-workflows-submodule-flawed-own/.github/workflows/
+          for name in submodule-clean submodule-flawed-own; do
+            git -C "_ci-lint-workflows-$name" add -A
+            git -C "_ci-lint-workflows-$name" commit -q -m fixture
+          done
       - name: Exercise lint-workflows on the flawed fixture (fail=false)
         id: flawed-warn
         uses: ./lint-workflows
@@ -735,6 +758,33 @@ jobs:
           fi
           if [[ "$ZIZMOR_FOUND" != "false" ]]; then
             echo "::error::expected zizmor-found=false on the clean fixture, got '$ZIZMOR_FOUND'"
+            exit 1
+          fi
+      - name: Exercise lint-workflows on a repo whose submodule is flawed
+        id: submodule-clean
+        uses: ./lint-workflows
+        with:
+          path: _ci-lint-workflows-submodule-clean
+          fail: 'false'
+      - name: Exercise lint-workflows on a flawed repo that also has a submodule
+        id: submodule-flawed-own
+        uses: ./lint-workflows
+        with:
+          path: _ci-lint-workflows-submodule-flawed-own
+          fail: 'false'
+      - name: Assert zizmor skips the submodule but not the repo's own files
+        shell: bash
+        env:
+          SKIPPED: ${{ steps.submodule-clean.outputs.zizmor-found }}
+          OWN: ${{ steps.submodule-flawed-own.outputs.zizmor-found }}
+        run: |
+          set -euo pipefail
+          if [[ "$SKIPPED" != "false" ]]; then
+            echo "::error::expected zizmor-found=false when only the submodule is flawed, got '$SKIPPED'"
+            exit 1
+          fi
+          if [[ "$OWN" != "true" ]]; then
+            echo "::error::expected zizmor-found=true for the repo's own flawed workflow, got '$OWN'"
             exit 1
           fi
       - name: Audit repository workflows with actionlint
