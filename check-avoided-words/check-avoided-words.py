@@ -201,44 +201,11 @@ NOTATION_WRITE_RE = re.compile(
     r"(?:for|to\s+(?:mean|denote|stand\s+for))\b"
     r"|(?:is|are|be|been)\s+written\s+(?:as\s+)?\$)"
 )
-# British spellings (gha#2095): the notes use American spelling. An explicit
-# list, never a bare "-ise" pattern, which would flag "otherwise", "noise",
-# "exercise" and "precise". "analyses" passes: it is also the plural noun.
-_IS_STEMS = (
-    "optim|minim|maxim|normal|standard|regular|general|character|summar|"
-    "visual|initial|organ|recogn|real|parameter|parametr|emphas|random|"
-    "vector|discret|linear|penal|util|special|token|factor|memor|theor|"
-    "hypothes|symbol|critic|apolog|priorit|final|custom|local|capital|"
-    "central|stabil|harmon|synchron|author|sanit|serial|polar|modern|"
-    "rational|familiar|conceptual|contextual|operational|orthogonal|"
-    "diagonal|marginal|binar|dichotom|winsor|lemmat|anonym|digit|categor|"
-    "item|individual|personal|neutral|nominal|equal|scrutin|sympath"
-)
-BRITISH_RE = re.compile(
-    r"(?i)\b(?:"
-    r"(?:colo|behavio|favo|hono|labo|neighbo|flavo|humo|rumo|vapo|harbo|"
-    r"armo|endeavo|savo|odo|vigo|rigo|tumo|fervo|paro|clamo|cando|splendo)"
-    r"ur(?:s|ed|ing|ful|less|al|ally|ite|ites|able|ably|hood|hoods|map|maps|"
-    r"bar|bars|scale|scales|blind|ation|ations)?"
-    r"|(?:" + _IS_STEMS + r")is(?:e|es|ed|ing|er|ers|able|ation|ations|"
-    r"ational)"
-    r"|(?:ana|para|cata|dia|electro|hydro)lys(?:e|ed|ing|er|ers)"
-    r"|(?:centi|milli|kilo|nano|micro)?metres?|centre(?:s|d)?|centring"
-    r"|litres?|fibres?|theatres?|spectres?|calibres?|sombre|lustre"
-    r"|manoeuvr(?:e|es|ed|ing)"
-    r"|(?:model|label|travel|cancel|signal|level|tunnel|fuel|total|channel|"
-    r"counsel|marshal|dial|pencil|quarrel)l(?:ed|ing|er|ers)"
-    r"|fulfil(?:s|ment)?|enrol(?:s|ment|ments)?|skilful(?:ly)?|wilful(?:ly)?"
-    r"|instalments?|jewellery"
-    r"|defences?|offences?|licences?|pretences?"
-    r"|anaemi[ac]|haem\w*|oesophag\w*|foet(?:us|uses|al)|paediatric\w*"
-    r"|orthopaedic\w*|leukaemia|oestrogen|diarrhoea|encyclopaedi\w*"
-    r"|grey(?:s|ed|er|est|ish|scale)?|whilst|amongst|learnt|per\s+cent"
-    r"|judgements?|acknowledgements?|ageing|artefacts?|catalogu(?:e|es|ed|ing)"
-    r"|programmes?|sceptic(?:al|ism|s)?|aluminium|cheques?|tyres?"
-    r"|mould(?:s|ed|ing|y)?|plough(?:s|ed|ing)?|focuss(?:ed|es|ing)"
-    r")\b"
-)
+# British spellings (gha#2095): the word list lives in check-common/spelling.py,
+# which diffscope also uses to treat a spelling-only change as unchanged. The
+# engine above has put check-common on sys.path.
+from spelling import BRITISH_RE  # noqa: E402
+
 # Spans that keep their own spelling: quoted text and cited titles (quotes,
 # italics), link targets and bare URLs, crossrefs and citation keys, ids and
 # attribute blocks, and inline math.

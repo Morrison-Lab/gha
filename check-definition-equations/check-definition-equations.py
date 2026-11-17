@@ -239,9 +239,15 @@ def check_file(path: str, lines: List[str],
 # -- Git plumbing ------------------------------------------------------------
 
 def parse_diff(diff: str) -> Dict[str, Set[int]]:
-    """Added, non-blank line numbers per path."""
+    """Added, non-blank line numbers per path.
+
+    A line whose only change is British to American spelling is not added
+    (gha#2095); a moved line still is.
+    """
     added, _deleted = diffscope.parse_diff(diff)
-    return {path: {n for n, text in numbered.items() if text.strip()}
+    spelling = diffscope.spelling_only_lines(diff)
+    return {path: {n for n, text in numbered.items()
+                   if text.strip() and n not in spelling.get(path, set())}
             for path, numbered in added.items()}
 
 

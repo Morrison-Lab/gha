@@ -564,6 +564,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `.github/actions/student-copy-render` runs a grading repository's student-copy check as one such job, with its lines from `student-copy-render/`.
 - `check-common/` (Python, stdlib only, gha#1856) is not a check: it holds `diffscope.py`, the one copy of the diff-scoping helpers.
   Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
+  `spelling.py` beside it holds the British spelling list and its American forms (gha#2095):
+  `check-avoided-words` flags the list, and `parse_diff` adds each deleted line's American respellings to the deleted set,
+  so a line whose only change is a spelling fix reads as moved in every check that uses the moved-line test.
+  A check that judges moved lines too drops spelling-only lines with `diffscope.spelling_only_lines`, as `check-definition-equations` does.
   `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
   Each of those keeps its own fence state.
   Its code-span pattern, `CODE_SPAN_RE`, closes a span only on a backtick run of the same length.
