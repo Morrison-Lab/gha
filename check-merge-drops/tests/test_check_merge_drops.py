@@ -568,7 +568,7 @@ def test_rename_limit_does_not_turn_a_rename_into_a_deletion(tmp_path):
     assert [d.path for d in drops] == ["chapter.qmd"]
 
 
-@pytest.mark.parametrize("failing", ["exists", "deletion-list"])
+@pytest.mark.parametrize("failing", ["exists", "deletion-list", "moved"])
 def test_a_git_failure_marks_the_merge_unreadable(tmp_path, monkeypatch, failing):
     base = _modify_delete_merge(tmp_path)
     _git(tmp_path, "rm", "-q", "chapter.qmd")
@@ -577,7 +577,8 @@ def test_a_git_failure_marks_the_merge_unreadable(tmp_path, monkeypatch, failing
     if failing == "exists":
         monkeypatch.setattr(cmd, "_exists", lambda *a, **k: None)
     else:
+        flag = "--diff-filter=D" if failing == "deletion-list" else "--diff-filter=R"
         monkeypatch.setattr(cmd, "_git", lambda args, cwd=None: (
-            None if "--diff-filter=D" in args else real(args, cwd=cwd)))
+            None if flag in args else real(args, cwd=cwd)))
     drops, _, unreadable = _find(tmp_path, base)
     assert drops == [] and len(unreadable) == 1

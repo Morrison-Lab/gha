@@ -341,6 +341,7 @@ def check_merge(
         )
         if diff is None:
             return None
+        moved: Optional[Set[str]] = None
         for path, lines in parse_added_lines(diff).items():
             if diffscope.ignored(path, ignores):
                 continue
@@ -353,20 +354,21 @@ def check_merge(
                     candidates.append(norm)
             if not candidates:
                 continue
-            in_merge = _exists(merge, path, cwd)
-            if in_merge is None:
-                return None
-            if (not in_merge
-                    and any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
-                            if j != i)):
-                # Another parent deleted this file and the merge kept the
-                # deletion: a modify/delete conflict resolved as delete --
-                # unless the merge itself moved this parent's copy elsewhere.
-                moved = _moved_by_merge(parent, merge, cwd)
-                if moved is None:
+            if any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
+                   if j != i):
+                # Another parent deleted this file. If the merge kept the
+                # deletion (a modify/delete conflict resolved as delete), skip
+                # it -- unless the merge itself moved this parent's copy.
+                in_merge = _exists(merge, path, cwd)
+                if in_merge is None:
                     return None
-                if path not in moved:
-                    continue
+                if not in_merge:
+                    if moved is None:
+                        moved = _moved_by_merge(parent, merge, cwd)
+                        if moved is None:
+                            return None
+                    if path not in moved:
+                        continue
             same_file = index.at_path(merge, path)
             missing = [c for c in candidates
                        if c not in same_file.flat
