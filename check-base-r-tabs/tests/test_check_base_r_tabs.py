@@ -192,6 +192,7 @@ def yaml_default(path: Path, name: str) -> str:
 
 @pytest.mark.parametrize("path", [
     _DIR / "action.yml",
+    _DIR.parent / ".github" / "workflows" / "check-base-r-tabs.yml",
 ])
 def test_defaults_agree(path):
     assert yaml_default(path, "globs") == cbr.DEFAULT_GLOBS
