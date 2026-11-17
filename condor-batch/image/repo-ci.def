@@ -43,8 +43,8 @@ From: lds-ci.sif
     export DEBIAN_FRONTEND=noninteractive
     export LC_ALL=C.UTF-8
     # Comments and blank lines in the package lists are skipped.
-    extra_apt=$(sed -e 's/#.*//' /opt/repo/apt-packages.txt | xargs)
-    extra_tlmgr=$(sed -e 's/#.*//' /opt/repo/tlmgr-packages.txt | xargs)
+    extra_apt=$(tr -d '\r' < /opt/repo/apt-packages.txt | sed -e 's/#.*//' | xargs)
+    extra_tlmgr=$(tr -d '\r' < /opt/repo/tlmgr-packages.txt | sed -e 's/#.*//' | xargs)
     apt-get update
     # shellcheck disable=SC2086 # word-split on purpose: one package per word
     apt-get install -y --no-install-recommends poppler-utils $extra_apt
@@ -56,6 +56,8 @@ From: lds-ci.sif
         export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
         # A lockfile's R version can be newer than the R 4.5 in lds-ci.sif
         # (lds-ci.def); renv then warns and restores the locked package versions.
+        # Packages the lockfile records from CRAN come from R_REPO; renv fetches
+        # one from another source, such as GitHub, from that source directly.
         Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/repo/renv.lock", library = "/opt/repo-library", prompt = FALSE)'
     fi
     chmod -R a+rX /opt/repo-library /opt/repo

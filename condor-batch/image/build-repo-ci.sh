@@ -87,5 +87,8 @@ else
   exit 1
 fi
 
-mv "$repo-ci.sif" "$image_dir/$repo-ci.sif"
+# $image_dir is on NFS, so a mv from local disk is a copy that can be cut
+# short. Copy to a temporary name beside the image, then rename it in place.
+cp "$repo-ci.sif" "$image_dir/.$repo-ci.sif.new"
+mv "$image_dir/.$repo-ci.sif.new" "$image_dir/$repo-ci.sif"
 echo "Built $image_dir/$repo-ci.sif from $repo $sha"
