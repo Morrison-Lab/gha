@@ -7727,7 +7727,7 @@
     "href": "reference/check-iterate-subscripts.html",
     "title": "check-iterate-subscripts.yml",
     "section": "",
-    "text": "Diff-scoped check that flags an iterate written with a subscript, such as \\vcoef_t or \\vcoef_{t+1}. The lab’s notation rule writes an iteration index in a parenthesized superscript, as \\iterpoint{\\vcoef}{\\iter} (psw chapters/notation/delimiters-and-scripts.qmd, from psw#543). The check keeps the mismatch from coming back after a notes repository converts its existing pages (lds#2435).\nThe check flags a configured symbol followed by _ and an iteration index on a line a pull request adds, in .qmd, .Rmd and .md files. The index is bare (\\vcoef_t) or braced (\\vcoef_{t}, \\vcoef_{t-1}, \\vcoef_{\\iter+1}). Each finding reports the file, the line, and the suggestion \\vcoef_{t+1} -&gt; \\iterpoint{\\vcoef}{t+1}.",
+    "text": "Diff-scoped check that flags an iterate written with a subscript, such as \\vcoef_t or \\vcoef_{t+1}. The lab’s notation rule writes an iteration index in a parenthesized superscript, as \\iterpoint{\\vcoef}{\\iter} (psw chapters/notation/delimiters-and-scripts.qmd, from psw#543). The check keeps the mismatch from coming back after a notes repository converts its existing pages (Morrison-Lab/lds#2435, a private repository).\nThe check flags a configured symbol that has an iteration index as its subscript, on a line a pull request adds, in .qmd, .Rmd, and .md files. The index is bare (\\vcoef_t) or braced (\\vcoef_{t}, \\vcoef_{t-1}, \\vcoef_{\\iter+1}). Each finding reports the file, the line, and the suggestion \\vcoef_{t+1} -&gt; \\iterpoint{\\vcoef}{t+1}.",
     "crumbs": [
       "Overview",
       "Reference",
