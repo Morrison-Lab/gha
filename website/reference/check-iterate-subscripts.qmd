@@ -11,7 +11,7 @@ as `\iterpoint{\vcoef}{\iter}`
 [psw#543](https://github.com/Morrison-Lab/psw/issues/543)).
 The check keeps the mismatch from coming back after a notes repository
 converts its existing pages
-([lds#2435](https://github.com/Morrison-Lab/lds/issues/2435)).
+(Morrison-Lab/lds#2435, a private repository).
 
 The check flags a configured symbol that has an iteration index
 as its subscript,

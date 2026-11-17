@@ -1,5 +1,5 @@
 - **`check-iterate-subscripts`**
-  ([lds#2435](https://github.com/Morrison-Lab/lds/issues/2435)):
+  (Morrison-Lab/lds#2435, a private repository):
   add a diff-scoped composite action and reusable workflow
   that fails a pull request that adds an iterate written with a subscript,
   such as `\vcoef_t` or `\vcoef_{t+1}`,
