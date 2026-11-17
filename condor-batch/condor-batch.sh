@@ -27,6 +27,8 @@
 # Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu; a space- or
 # comma-separated list of host or host:port entries spreads runs over the heads
 # and falls back to the next one when a head does not answer ssh),
+# CONDOR_FALLBACK_HEAD (heads tried only after every CONDOR_HEAD head, never
+# chosen by the spreading; default none),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID, attempt and job, or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
@@ -133,8 +135,13 @@ ssh_opts=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o IdentitiesOnly
 # host or host:port. Each run starts at head (run number mod count), spreading
 # runs over the heads, and takes the first head that answers ssh; none answering
 # is exit 70. One head is used as given, with no extra ssh call.
+# CONDOR_FALLBACK_HEAD lists heads tried only after every CONDOR_HEAD head,
+# never chosen by the spreading: a head whose queue is often long stays usable
+# without costing every run that starts there an idle limit (gha#2091).
 read -ra head_list <<< "${heads_in//,/ }"
 [ "${#head_list[@]}" -gt 0 ] || { echo "CONDOR_HEAD names no head" >&2; exit 64; }
+fallback_in="${CONDOR_FALLBACK_HEAD:-}"
+read -ra fallback_list <<< "${fallback_in//,/ }"
 wait_min="${CONDOR_WAIT_MINUTES:-}"
 case "$wait_min" in
   '') wait_min=. ;;
@@ -153,16 +160,23 @@ esac
 base_run="$run" try="${CONDOR_HEAD_TRY:-1}"
 case "$try" in ''|*[!0-9]*) try=1 ;; esac
 [ "$try" -le 1 ] || run="$run-h$try"
-head_entry="${head_list[0]}" rest=()
-if [ "${#head_list[@]}" -gt 1 ]; then
-  start=0
-  if [ "$try" -le 1 ]; then
-    run_num="${run//[^0-9]/}"
-    start=$(( 10#${run_num:-0} % ${#head_list[@]} ))
-  fi
+start=0
+if [ "$try" -le 1 ]; then
+  run_num="${run//[^0-9]/}"
+  start=$(( 10#${run_num:-0} % ${#head_list[@]} ))
+fi
+order=()
+for offset in $(seq 0 $(( ${#head_list[@]} - 1 ))); do
+  order+=("${head_list[$(( (start + offset) % ${#head_list[@]} ))]}")
+done
+# A fallback head already in CONDOR_HEAD is not tried twice.
+for candidate in ${fallback_list[@]+"${fallback_list[@]}"}; do
+  case " ${order[*]} " in *" $candidate "*) ;; *) order+=("$candidate") ;; esac
+done
+head_entry="${order[0]}" rest=()
+if [ "${#order[@]}" -gt 1 ]; then
   head_entry=
-  for offset in $(seq 0 $(( ${#head_list[@]} - 1 ))); do
-    candidate="${head_list[$(( (start + offset) % ${#head_list[@]} ))]}"
+  for candidate in "${order[@]}"; do
     if [ -n "$head_entry" ]; then rest+=("$candidate"); continue; fi
     cport=(); [[ "$candidate" != *:* ]] || cport=(-p "${candidate##*:}")
     if ssh "${ssh_opts[@]}" ${cport[@]+"${cport[@]}"} -o ConnectTimeout=15 "${candidate%%:*}" true; then
@@ -403,7 +417,7 @@ if [ "$rc" -eq 73 ]; then
   if [ "${#rest[@]}" -gt 0 ]; then
     rm -rf "$pack_dir"
     echo "head $head_entry did not start the job; trying ${rest[*]}" >&2
-    exec env CONDOR_HEAD="${rest[*]}" CONDOR_HEAD_TRY=$((try + 1)) RUN_ID="$base_run" \
+    exec env CONDOR_HEAD="${rest[*]}" CONDOR_FALLBACK_HEAD= CONDOR_HEAD_TRY=$((try + 1)) RUN_ID="$base_run" \
       bash "$0" "$checkout" "$steps"
   fi
   echo "no cluster head started the job within $idle_min minutes" >&2
