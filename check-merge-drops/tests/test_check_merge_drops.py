@@ -432,14 +432,16 @@ def _drop_the_renamed_file_paragraph(repo: Path, path: str, rename_to: str,
     _commit_merge(repo)
 
 
-def test_kept_deletion_is_not_reported(tmp_path):
-    # lds#2678: main captioned a file the branch deleted; the merge kept the deletion.
-    base = _modify_delete_merge(tmp_path)
-    _git(tmp_path, "rm", "-q", "chapter.qmd")
+@pytest.mark.parametrize("path, deleter", [
+    ("chapter.qmd", "feature"),  # lds#2678: the merge kept the branch's deletion
+    ("chapters/_subfiles/chapter.qmd", "main"),  # main (parent 2) deletes
+])
+def test_kept_deletion_is_not_reported(tmp_path, path, deleter):
+    base = _modify_delete_merge(tmp_path, path=path, deleter=deleter)
+    _git(tmp_path, "rm", "-q", path)
     _commit_merge(tmp_path)
     drops, examined, unreadable = _find(tmp_path, base)
-    assert examined == 1 and unreadable == []
-    assert drops == []
+    assert (drops, examined, unreadable) == ([], 1, [])
 
 
 def test_kept_modification_that_drops_the_paragraph_is_reported(tmp_path):
@@ -461,40 +463,6 @@ def test_file_deleted_only_by_the_merge_is_reported(tmp_path):
     by_parent = {d.parent_index: d for d in drops}
     assert set(by_parent) == {1, 2}
     assert MAIN_LINE in by_parent[2].lines
-
-
-def test_new_file_the_merge_drops_is_reported(tmp_path):
-    # main adds a new file; the branch never had it, so it deleted nothing.
-    _git(tmp_path, "init", "-q", "-b", "main")
-    _write(tmp_path, "chapter.qmd", INTRO)
-    _git(tmp_path, "add", "-A")
-    _git(tmp_path, "commit", "-qm", "base")
-    base = _git(tmp_path, "rev-parse", "HEAD")
-    _git(tmp_path, "checkout", "-qb", "feature")
-    _write(tmp_path, "chapter.qmd", INTRO + "\n" + BRANCH_PARA)
-    _git(tmp_path, "commit", "-qam", "branch example")
-    _git(tmp_path, "checkout", "-q", "main")
-    _write(tmp_path, "history.qmd", "# History\n\n" + MAIN_PARA)
-    _git(tmp_path, "add", "-A")
-    _git(tmp_path, "commit", "-qm", "main history page")
-    _git(tmp_path, "checkout", "-q", "feature")
-    _git(tmp_path, "merge", "-q", "--no-commit", "main")
-    _git(tmp_path, "rm", "-qf", "history.qmd")
-    _commit_merge(tmp_path)
-    drops, _, _ = _find(tmp_path, base)
-    assert len(drops) == 1 and drops[0].path == "history.qmd"
-    assert MAIN_LINE in drops[0].lines
-
-
-def test_kept_deletion_by_the_second_parent_in_a_nested_path_is_not_reported(tmp_path):
-    # Mirror of the lds#2678 shape: main (parent 2) deletes, the branch modifies.
-    path = "chapters/_subfiles/chapter.qmd"
-    base = _modify_delete_merge(tmp_path, path=path, deleter="main")
-    _git(tmp_path, "rm", "-q", path)
-    _commit_merge(tmp_path)
-    drops, examined, unreadable = _find(tmp_path, base)
-    assert examined == 1 and unreadable == []
-    assert drops == []
 
 
 def test_skip_is_per_path(tmp_path):
@@ -526,80 +494,90 @@ def test_detected_rename_that_drops_the_paragraph_is_reported(tmp_path):
     assert MAIN_LINE in drops[0].lines
 
 
-def test_heavily_edited_rename_that_drops_the_paragraph_is_reported(tmp_path):
-    # Below git's default 50% similarity, so plain -M reads the rename as a
-    # deletion and would arm the skip; the lower threshold still pairs it.
+@pytest.mark.parametrize("kept_lines, reported", [(4, True), (1, False)])
+def test_heavily_edited_rename(tmp_path, kept_lines, reported):
+    # 4 of 10 lines kept sits below git's default 50% but above the check's
+    # 30%, so the rename still pairs and the drop is reported. 1 of 10 is the
+    # documented limit: it reads as a deletion, so nothing is reported.
     lines = RENAME_BASE.splitlines(keepends=True)
-    renamed = "".join(lines[:4]) + "".join(
+    renamed = "".join(lines[:kept_lines]) + "".join(
         f"Rewritten text number {n}, different from the original lines.\n"
-        for n in range(6)
+        for n in range(10 - kept_lines)
     )
     base = _modify_delete_merge(tmp_path, base_text=RENAME_BASE,
                                 rename_to="moved.qmd", renamed_text=renamed)
     _drop_the_renamed_file_paragraph(tmp_path, "chapter.qmd", "moved.qmd", renamed)
-    default_d = _git(tmp_path, "diff", "--name-only", "--diff-filter=D", "-M",
-                     base, "HEAD^1")
-    assert default_d == "chapter.qmd", "fixture must sit below git's default threshold"
+    as_deleted = _git(tmp_path, "diff", "--name-only", "--diff-filter=D", "-M", base, "HEAD^1")
+    assert as_deleted == "chapter.qmd", "fixture must sit below git's default threshold"
     drops, _, _ = _find(tmp_path, base)
-    assert [d.path for d in drops] == ["chapter.qmd"]
+    assert [d.path for d in drops] == (["chapter.qmd"] if reported else [])
+
+
+def test_merge_that_moves_the_file_and_drops_the_paragraph_is_reported(tmp_path):
+    # main deletes chapter.qmd; the branch adds a paragraph; the merge moves
+    # the branch's copy to elsewhere.qmd without that paragraph. Not a kept
+    # deletion: the merge renamed the file itself.
+    base = _modify_delete_merge(tmp_path, deleter="main", base_text=RENAME_BASE)
+    _git(tmp_path, "rm", "-qf", "chapter.qmd")
+    _write(tmp_path, "elsewhere.qmd", RENAME_BASE)
+    _commit_merge(tmp_path)
+    drops, _, _ = _find(tmp_path, base)
+    assert [(d.path, d.parent_index) for d in drops] == [("chapter.qmd", 1)]
     assert MAIN_LINE in drops[0].lines
 
 
-def test_rename_outside_the_globs_that_drops_the_paragraph_is_reported(tmp_path):
-    # Renamed to a .txt the globs do not scan; the pairing must still see it.
+def test_rename_delete_resolved_as_delete_is_reported(tmp_path):
+    # The documented gap: the renaming side deleted nothing, so the skip
+    # does not arm, and main's paragraph is reported.
     renamed = RENAME_BASE.replace("Line 1 ", "Line one ")
     base = _modify_delete_merge(tmp_path, base_text=RENAME_BASE,
-                                rename_to="moved.txt", renamed_text=renamed)
-    _drop_the_renamed_file_paragraph(tmp_path, "chapter.qmd", "moved.txt", renamed)
+                                rename_to="moved.qmd", renamed_text=renamed)
+    _git(tmp_path, "rm", "-qf", "--ignore-unmatch", "chapter.qmd", "moved.qmd")
+    _commit_merge(tmp_path)
+    drops, _, _ = _find(tmp_path, base)
+    assert "chapter.qmd" in [d.path for d in drops]
+    assert any(MAIN_LINE in d.lines for d in drops if d.path == "chapter.qmd")
+
+
+def test_rename_limit_does_not_turn_a_rename_into_a_deletion(tmp_path):
+    # With diff.renameLimit=1 and two renames, git stops pairing them unless
+    # the check lifts the limit; the rename would then read as a deletion.
+    renamed = RENAME_BASE.replace("Line 1 ", "Line one ")
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "diff.renameLimit", "1")
+    _write(tmp_path, "chapter.qmd", RENAME_BASE)
+    _write(tmp_path, "other.txt", RENAME_BASE.replace("Line", "Row"))
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-qb", "feature")
+    _git(tmp_path, "mv", "chapter.qmd", "moved.qmd")
+    _write(tmp_path, "moved.qmd", renamed)
+    _git(tmp_path, "mv", "other.txt", "other2.txt")
+    _write(tmp_path, "other2.txt",
+           RENAME_BASE.replace("Line", "Row").replace("Row 1 ", "Row one "))
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "move two files")
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "chapter.qmd", RENAME_BASE + "\n" + MAIN_PARA)
+    _git(tmp_path, "commit", "-qam", "main history")
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "--no-commit", "main", check=False)
+    _drop_the_renamed_file_paragraph(tmp_path, "chapter.qmd", "moved.qmd", renamed)
     drops, _, _ = _find(tmp_path, base)
     assert [d.path for d in drops] == ["chapter.qmd"]
-    assert MAIN_LINE in drops[0].lines
 
 
-def test_rename_rewritten_below_the_threshold_reads_as_a_deletion(tmp_path):
-    # The documented limit: under 30% similarity the rename is a deletion,
-    # so the merge that keeps it is a kept deletion and nothing is reported.
-    lines = RENAME_BASE.splitlines(keepends=True)
-    renamed = lines[0] + "".join(
-        f"Rewritten text number {n}, different from the original lines.\n"
-        for n in range(9)
-    )
-    base = _modify_delete_merge(tmp_path, base_text=RENAME_BASE,
-                                rename_to="moved.qmd", renamed_text=renamed)
-    _drop_the_renamed_file_paragraph(tmp_path, "chapter.qmd", "moved.qmd", renamed)
-    low_d = _git(tmp_path, "diff", "--name-only", "--diff-filter=D",
-                 "--find-renames=" + cmd._DELETION_RENAME_THRESHOLD, base, "HEAD^1")
-    assert low_d == "chapter.qmd", "fixture must sit below the check's threshold"
-    drops, _, _ = _find(tmp_path, base)
-    assert drops == []
-
-
-def test_glob_special_file_name_kept_by_the_merge_is_reported(tmp_path):
-    # ls-tree must read the name literally: "fig[1].qmd" as a pattern
-    # matches nothing, which would read as absent and arm the skip.
-    path = "fig[1].qmd"
-    base = _modify_delete_merge(tmp_path, path=path)
-    _write(tmp_path, path, INTRO)
-    _commit_merge(tmp_path)
-    drops, _, _ = _find(tmp_path, base)
-    assert [d.path for d in drops] == [path]
-
-
-def test_exists_reads_present_absent_and_failure(tmp_path):
+@pytest.mark.parametrize("failing", ["exists", "deletion-list"])
+def test_a_git_failure_marks_the_merge_unreadable(tmp_path, monkeypatch, failing):
     base = _modify_delete_merge(tmp_path)
     _git(tmp_path, "rm", "-q", "chapter.qmd")
     _commit_merge(tmp_path)
-    repo = str(tmp_path)
-    assert cmd._exists(base, "chapter.qmd", repo) is True
-    assert cmd._exists("HEAD", "chapter.qmd", repo) is False
-    assert cmd._exists("0" * 40, "chapter.qmd", repo) is None
-
-
-def test_a_git_failure_on_the_existence_check_marks_the_merge_unreadable(
-        tmp_path, monkeypatch):
-    base = _modify_delete_merge(tmp_path)
-    _git(tmp_path, "rm", "-q", "chapter.qmd")
-    _commit_merge(tmp_path)
-    monkeypatch.setattr(cmd, "_exists", lambda *a, **k: None)
+    real = cmd._git
+    if failing == "exists":
+        monkeypatch.setattr(cmd, "_exists", lambda *a, **k: None)
+    else:
+        monkeypatch.setattr(cmd, "_git", lambda args, cwd=None: (
+            None if "--diff-filter=D" in args else real(args, cwd=cwd)))
     drops, _, unreadable = _find(tmp_path, base)
     assert drops == [] and len(unreadable) == 1

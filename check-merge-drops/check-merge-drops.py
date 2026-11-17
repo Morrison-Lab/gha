@@ -40,7 +40,9 @@ Design notes:
   added to that file are not reported. A file the merge alone deleted, while
   both parents still have it, is still reported, and so is a file one side
   newly added (the other side never had it to delete). Renames are found
-  down to 30% similarity, to any name, so a renamed file is not a deletion.
+  down to 30% similarity, to any name, so a renamed file is not a deletion,
+  and a file the merge itself moved away from this parent's copy is still
+  checked.
   Two limits: a rename rewritten below 30% reads as a deletion, so a drop
   from it is not reported; and a rename/delete conflict resolved as delete
   is still reported, since the renaming side deleted nothing.
@@ -266,6 +268,25 @@ def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:
     return path in out.split("\0")
 
 
+def _moved_by_merge(parent: str, merge: str, cwd: Optional[str]) -> Optional[Set[str]]:
+    """Paths of ``parent`` that ``merge`` renamed, or None when git fails.
+
+    Uses the same rename threshold and limit as the deletion list, so a file
+    the merge moved (and perhaps trimmed) is not taken for a kept deletion.
+    """
+    out = _git(
+        ["diff", "--no-color", "--no-ext-diff", "--name-status", "-z", "-l0",
+         "--diff-filter=R", f"--find-renames={_DELETION_RENAME_THRESHOLD}",
+         parent, merge],
+        cwd=cwd,
+    )
+    if out is None:
+        return None
+    fields = out.split("\0")
+    # Each record is "R<score>", old path, new path.
+    return {fields[k + 1] for k in range(0, len(fields) - 2, 3) if fields[k].startswith("R")}
+
+
 def list_merges(base: str, head: str, cwd: Optional[str] = None) -> Optional[List[List[str]]]:
     """``[[merge, parent1, parent2, ...], ...]`` for merges in base..head, oldest first."""
     out = _git(["rev-list", "--reverse", "--merges", "--parents", f"{base}..{head}"], cwd=cwd)
@@ -297,11 +318,12 @@ def check_merge(
     # past it would read as a deletion and arm the skip below, hiding a drop,
     # while a spurious pairing only keeps the path reported. No pathspec:
     # git prunes by pathspec before pairing renames, so a rename to a name
-    # outside ``globs`` would otherwise read as a deletion.
+    # outside ``globs`` would otherwise read as a deletion. ``-l0`` lifts
+    # diff.renameLimit, past which git silently stops pairing renames.
     deleted_by: List[Set[str]] = []
     for parent in parents:
         names = _git(
-            ["diff", "--no-color", "--no-ext-diff", "--name-only", "-z",
+            ["diff", "--no-color", "--no-ext-diff", "--name-only", "-z", "-l0",
              "--diff-filter=D", f"--find-renames={_DELETION_RENAME_THRESHOLD}",
              base, parent],
             cwd=cwd,
@@ -338,8 +360,13 @@ def check_merge(
                     and any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
                             if j != i)):
                 # Another parent deleted this file and the merge kept the
-                # deletion: a modify/delete conflict resolved as delete.
-                continue
+                # deletion: a modify/delete conflict resolved as delete --
+                # unless the merge itself moved this parent's copy elsewhere.
+                moved = _moved_by_merge(parent, merge, cwd)
+                if moved is None:
+                    return None
+                if path not in moved:
+                    continue
             same_file = index.at_path(merge, path)
             missing = [c for c in candidates
                        if c not in same_file.flat
