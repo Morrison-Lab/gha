@@ -5,7 +5,7 @@ From: lds-ci.sif
 # through condor-batch: lds-ci.sif plus what a student-copy check needs, plus
 # whatever the repository itself declares. build-repo-ci.sh builds it as
 # <repo>-ci.sif from a checkout of the repository, so no repository needs a
-# recipe of its own here (it replaces mlg-ci.def, the first per-repository copy).
+# recipe of its own here.
 #
 # What it adds to lds-ci.sif:
 #
@@ -54,10 +54,8 @@ From: lds-ci.sif
         export R_LIBS_SITE=/opt/repo-library:/usr/local/lib/R/site-library:/usr/lib/R/site-library
         export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
         export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
-        # A lockfile's R version can be newer than the R 4.5 in lds-ci.sif
-        # (lds-ci.def); renv then warns and restores the locked package versions.
-        # Packages the lockfile records from CRAN come from R_REPO; renv fetches
-        # one from another source, such as GitHub, from that source directly.
+        # renv warns, and restores anyway, when the lockfile's R is newer than
+        # lds-ci.sif's R 4.5; it fetches non-CRAN sources (GitHub) directly.
         Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/repo/renv.lock", library = "/opt/repo-library", prompt = FALSE)'
     fi
     chmod -R a+rX /opt/repo-library /opt/repo

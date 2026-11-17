@@ -13,24 +13,17 @@
 #   renv.lock                            restored into the image, when present
 #   .github/ci-image/apt-packages.txt    extra apt packages, one per line
 #   .github/ci-image/tlmgr-packages.txt  extra LaTeX packages, one per line
-#   .github/ci-image/test.sh             run inside the new image after the
-#                                        build, from the checkout; a failure,
-#                                        or no test.sh, fails the build and
-#                                        keeps the old image (REPO_CI_NO_TEST=1
-#                                        builds without one)
+#   .github/ci-image/test.sh             run in the new image; a failure or no
+#                                        test.sh keeps the old image, unless
+#                                        REPO_CI_NO_TEST=1 (build untested)
 #
-# Run it on cf463-02 with Apptainer. A private repository needs git
-# credentials for github.com. Rerun it whenever any of those files changes;
-# the image is stale otherwise. A condor-batch job that lands on a CSCI
-# desktop-pool head reads the image from the runner (the action's image-file
-# input), which is the default image-dir. A job on a CSE cluster head reads
-# /cluster/home/morri313/ci/image/<repo>-ci.sif instead, and cf463-02 cannot
-# see /cluster, so copy the finished image there from a machine that mounts it.
-#
-# /opt/TinyTeX is read-only in a job, so Quarto cannot install a missing LaTeX
-# package at render time; a test.sh that renders makes such a package fail the
-# build here instead of a CI run. If it does, list the package in the
-# repository's tlmgr-packages.txt and rebuild.
+# Run it on cf463-02 with Apptainer (a private repository needs git
+# credentials), and rerun it whenever any of those files changes. The default
+# image-dir is the copy a CSCI desktop-pool head reads (the action's image-file
+# input); a CSE cluster head reads /cluster/home/morri313/ci/image/<repo>-ci.sif,
+# which cf463-02 cannot see, so copy the image there from a machine that mounts
+# it. A test.sh that renders catches a LaTeX package missing from the image
+# (repo-ci.def says why); list it in tlmgr-packages.txt and rebuild.
 set -euo pipefail
 
 repo="${1:?usage: build-repo-ci.sh <repo> [ref] [image-dir]}"
@@ -38,6 +31,10 @@ ref="${2:-main}"
 image_dir="${3:-/home/morri313/ci/image}"
 case "$repo" in
   *[!A-Za-z0-9._-]* | '' | .* ) echo "build-repo-ci.sh: bad repository name: $repo" >&2; exit 64 ;;
+  lds ) echo "build-repo-ci.sh: lds-ci.sif is the base image; build it from lds-ci.def instead" >&2; exit 64 ;;
+esac
+case "$ref" in
+  -* ) echo "build-repo-ci.sh: bad ref: $ref" >&2; exit 64 ;;
 esac
 # Resolve image-dir now: the script cd's into a temp directory below, where a
 # relative path would no longer name it.
