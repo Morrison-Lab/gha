@@ -309,7 +309,9 @@ def recently_finished_heads(base, repo, token, names, hours, now=None):
     listed, a page or two a day, not every run in the repository.
     """
     now = now or datetime.datetime.now(datetime.timezone.utc)
-    since = (now - datetime.timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # A re-run keeps its original created_at, so the creation window reaches a
+    # day further back than the finish window and grows with it.
+    since = (now - datetime.timedelta(hours=hours + 24)).strftime("%Y-%m-%dT%H:%M:%SZ")
     recent = (now - datetime.timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
     heads = {}
     for workflow in paged(f"{base}/repos/{repo}/actions/workflows", token, "workflows"):
