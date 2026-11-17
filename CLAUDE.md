@@ -561,6 +561,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   A repository that needs its own render image uses `image/repo-ci.def` through `image/build-repo-ci.sh <repo>`,
   and declares what differs in its own `.github/ci-image/` (`apt-packages.txt`, `tlmgr-packages.txt`, and the required `test.sh`),
   rather than gaining a recipe here (gha#2064).
+  `.github/actions/student-copy-render` runs a grading repository's student-copy check as one such job, with its lines from `student-copy-render/`.
 - `check-common/` (Python, stdlib only, gha#1856) is not a check: it holds `diffscope.py`, the one copy of the diff-scoping helpers.
   Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
   `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
