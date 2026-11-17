@@ -417,6 +417,7 @@ def test_linpred_score_takes_the_allow_comment():
     ("Use your judgement.", "judgement"),
     ("It holds, whilst the other fails.", "whilst"),
     ("A speed in metres per second.", "metres"),
+    ("* The colour is *new*.", "colour"),
 ])
 def test_british_forms(text, phrase):
     assert found(text) == {1: ("british", phrase)}
