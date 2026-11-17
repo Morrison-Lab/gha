@@ -99,7 +99,7 @@ def test_fixture() -> None:
                            "[web](https://example.org) and [root](/x.qmd) miss. | "
                            "`globs`, `fail` |"), rows[4]
         # No reference page: no link, and the workflow's name.
-        assert rows[5] == "| `check-gamma.yml` | Gamma (reusable) | `globs`, `fail` |", rows[4]
+        assert rows[5] == "| `check-gamma.yml` | Gamma (reusable) | `globs`, `fail` |", rows[5]
         assert "internal" not in out["workflows-table.md"]
 
 

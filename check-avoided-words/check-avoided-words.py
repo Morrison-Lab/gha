@@ -3,7 +3,7 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Ten rules; the first three each have a source that was read (psw#418),
+Eleven rules; the first three each have a source that was read (psw#418),
 and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402,
 gha#1568):
 
@@ -68,6 +68,14 @@ gha#1568):
   "multivariate normal", "bivariate normal", "normally distributed" and
   "normal random variable" and "normal random vector". Not "normal equations", normal vectors or normal
   subgroups. Warn-only while the rule is new (psw#510, gha#1570).
+
+- **"denote", not "write", for notation**: "write $X$ for", "writes $X$ for",
+  "writing $X$ for" (and "... to mean", "to denote", "to stand for"), and
+  "is written $X$" or "are written as $X$". Name notation with "let $X$
+  denote ..." or "$X$ denotes ..."; "write" names a physical act (Ezra,
+  2026-11-16; psw#671). "Write the sum as $...$" (express) and "write
+  `\predval`" (typing a macro, in a code span) pass. Fails by default, like
+  the other rules: only added lines are read, so legacy uses do not trip it.
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
@@ -176,6 +184,15 @@ _LP_SCORE = (
 LINPRED_SCORE_RE = re.compile(
     r"(?i)^(?!.*#def-score)(?=.*" + _LP_CONTEXT + r").*?" + _LP_SCORE
 )
+# "write" as the verb that names notation (Ezra, 2026-11-16; psw#671): a math
+# span right after write/writes/writing and then "for" (or "to mean/denote/
+# stand for"), or a passive "is/are/be/been written (as) $". The math span may
+# not hold a dollar sign, so the match never spans two spans.
+NOTATION_WRITE_RE = re.compile(
+    r"(?<![\w-])(?P<phrase>(?i:writ(?:e|es|ing))\s+\$[^$]+\$\s+"
+    r"(?:for|to\s+(?:mean|denote|stand\s+for))\b"
+    r"|(?:is|are|be|been)\s+written\s+(?:as\s+)?\$)"
+)
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
 # failing check; since gha#1473 every rule fails by default).
 ALWAYS_FAIL = frozenset({"parenref", "thing", "vague"})
@@ -225,6 +242,11 @@ RULES = (
      'as "If you use a language other than R, ...", and say what a reader '
      "who skips it loses or does instead (psw#490, psw#493). A deliberate "
      "use takes the check-avoided-words allow comment."),
+    ("notation-write", NOTATION_WRITE_RE,
+     'Name notation with "denote", as in "let $L$ denote the number" or '
+     '"$L$ denotes the number", not "write $L$ for the number"; "write" names '
+     "a physical act (Ezra, 2026-11-16; psw#671). A deliberate use takes the "
+     "check-avoided-words allow comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '

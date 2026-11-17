@@ -1,0 +1,73 @@
+Bootstrap: localimage
+From: lds-ci.sif
+
+# One render image recipe for any repository whose CI renders on the clusters
+# through condor-batch: lds-ci.sif plus what a student-copy check needs, plus
+# whatever the repository itself declares. build-repo-ci.sh builds it as
+# <repo>-ci.sif from a checkout of the repository, so no repository needs a
+# recipe of its own here.
+#
+# What it adds to lds-ci.sif:
+#
+# - poppler-utils, which a student-copy check (tools/check_student_copy.py in
+#   mlg and mcsg) uses to read the PDFs (pdftotext, pdftoppm);
+# - nameref and xpatch, LaTeX packages a Quarto PDF render installs at render
+#   time, which it cannot do in a job because /opt/TinyTeX is read-only there
+#   (gha#2012; koma-script is in lds-ci.sif already);
+# - the repository's renv library, restored from its renv.lock into
+#   /opt/repo-library, when it has a renv.lock (an empty file means none). A
+#   render copies only its working directory in and the output paths out, so
+#   the library has to live in the image; restoring it into the cluster home
+#   would break WWU CS IT rule 4 (the home quota is 5 GB);
+# - the apt and LaTeX packages listed in the repository's
+#   .github/ci-image/apt-packages.txt and tlmgr-packages.txt, one per line.
+#
+# renv's autoloader is turned off at run time: a repository's .Rprofile that
+# sources renv/activate.R would otherwise look for a project library the job's
+# working directory does not hold and try to bootstrap renv from the network.
+
+%files
+    renv.lock /opt/repo/renv.lock
+    apt-packages.txt /opt/repo/apt-packages.txt
+    tlmgr-packages.txt /opt/repo/tlmgr-packages.txt
+
+%environment
+    # R_LIBS_SITE replaces R's default site libraries rather than adding to
+    # them, so name lds-ci.sif's too: knitr and rmarkdown live there, and a
+    # repository with no renv.lock leaves /opt/repo-library empty.
+    export R_LIBS_SITE=/opt/repo-library:/usr/local/lib/R/site-library:/usr/lib/R/site-library
+    export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    # Comments and blank lines in the package lists are skipped.
+    extra_apt=$(tr -d '\r' < /opt/repo/apt-packages.txt | sed -e 's/#.*//' | xargs)
+    extra_tlmgr=$(tr -d '\r' < /opt/repo/tlmgr-packages.txt | sed -e 's/#.*//' | xargs)
+    apt-get update
+    # shellcheck disable=SC2086 # word-split on purpose: one package per word
+    apt-get install -y --no-install-recommends poppler-utils $extra_apt
+
+    mkdir -p /opt/repo-library
+    if [ -s /opt/repo/renv.lock ]; then
+        export R_LIBS_SITE=/opt/repo-library:/usr/local/lib/R/site-library:/usr/lib/R/site-library
+        export R_REPO="https://packagemanager.posit.co/cran/__linux__/noble/latest"
+        export RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+        # renv warns, and restores anyway, when the lockfile's R is newer than
+        # lds-ci.sif's R 4.5; it fetches non-CRAN sources (GitHub) directly.
+        Rscript -e 'options(repos = c(CRAN = Sys.getenv("R_REPO")), Ncpus = 4L, HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os))); install.packages("renv"); renv::restore(lockfile = "/opt/repo/renv.lock", library = "/opt/repo-library", prompt = FALSE)'
+    fi
+    chmod -R a+rX /opt/repo-library /opt/repo
+
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr option repository https://tlnet.yihui.org
+    # shellcheck disable=SC2086
+    /opt/TinyTeX/bin/x86_64-linux/tlmgr install nameref xpatch $extra_tlmgr
+    chmod -R a+rX /opt/TinyTeX
+
+%test
+    set -e
+    pdftotext -v
+    pdftoppm -v
+    for f in scrartcl.cls nameref.sty xpatch.sty; do test -n "$(kpsewhich "$f")"; done
+    Rscript -e 'library(knitr); library(rmarkdown)'
