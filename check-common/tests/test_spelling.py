@@ -1,4 +1,4 @@
-"""Unit tests for check-common/spelling.py, the shared British word list (gha#2095)."""
+"""Unit tests for check-common/spelling.py and the spelling-only exemption (gha#2095)."""
 
 import sys
 from pathlib import Path
@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import diffscope  # noqa: E402
 import spelling  # noqa: E402
 
 
@@ -40,3 +41,23 @@ def test_american_variants_keeps_or_respells_code_spans():
         "the color is set by `colour = x`",
     }
     assert spelling.american_variants("no British word here") == set()
+
+
+def _diff(old, new):
+    return f"--- a/a.qmd\n+++ b/a.qmd\n@@ -1 +1 @@\n-{old}\n+{new}\n"
+
+
+def test_a_spelling_only_change_reads_as_moved():
+    _added, deleted = diffscope.parse_diff(_diff("A coloured map.", "A colored map."))
+    assert "A colored map." in deleted
+
+
+def test_a_spelling_change_with_another_edit_is_still_added():
+    _added, deleted = diffscope.parse_diff(_diff("A coloured map.", "Just a colored map."))
+    assert "Just a colored map." not in deleted
+
+
+def test_spelling_only_lines_leaves_out_a_pure_move():
+    diff = ("--- a/a.qmd\n+++ b/a.qmd\n@@ -1,2 +1,2 @@\n"
+            "-A coloured map.\n-Same line.\n+A colored map.\n+Same line.\n")
+    assert diffscope.spelling_only_lines(diff) == {"a.qmd": {1}}

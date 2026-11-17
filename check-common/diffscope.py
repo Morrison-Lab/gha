@@ -16,7 +16,15 @@ Stdlib only, like the checks that import it.
 import os
 import re
 import subprocess
+import sys
 from typing import Dict, List, Optional, Set, Tuple
+
+# A check may load this file by path rather than through sys.path, so put this
+# directory on the path before importing its sibling.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from spelling import american_variants  # noqa: E402
 
 
 # Settings a caller's git config could hold that change what ``parse_diff``
@@ -104,6 +112,9 @@ def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
     Hunk header counts decide where a hunk ends, so an added line that begins
     with two plus signs is never mistaken for a ``+++`` file header.
     Take the diff with ``-U0``: a context line advances no line counter.
+    Each deleted text is also recorded in its American spelling, so an added
+    line whose only change is British to American spelling reads as moved
+    (gha#2095).
     """
     added: Dict[str, Dict[int, str]] = {}
     deleted: Set[str] = set()
@@ -118,6 +129,10 @@ def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
                 new_left -= 1
             elif line.startswith("-"):
                 deleted.add(line[1:])
+                # A line whose only change is British to American spelling is
+                # not new (gha#2095): its American form counts as deleted too,
+                # so the moved-line test passes it.
+                deleted.update(american_variants(line[1:]))
                 old_left -= 1
             continue
         if line.startswith("+++ "):
@@ -132,6 +147,38 @@ def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
             new_line = int(m.group(2))
             new_left = int(m.group(3)) if m.group(3) is not None else 1
     return added, deleted
+
+
+def spelling_only_lines(diff: str) -> Dict[str, Set[int]]:
+    """Added line numbers whose only change is British to American spelling.
+
+    For a check that judges every added line, moved ones included, but should
+    still pass a spelling fix (gha#2095).
+    """
+    added, deleted = parse_diff(diff)
+    raw = set(_deleted_texts(diff))
+    only = deleted - raw
+    return {path: {n for n, text in lines.items() if text in only}
+            for path, lines in added.items()}
+
+
+def _deleted_texts(diff: str) -> List[str]:
+    """The deleted lines of a ``-U0`` diff, as written, by the hunk counts."""
+    out: List[str] = []
+    old_left = new_left = 0
+    for line in diff.splitlines():
+        if old_left > 0 or new_left > 0:
+            if line.startswith("+"):
+                new_left -= 1
+            elif line.startswith("-"):
+                out.append(line[1:])
+                old_left -= 1
+            continue
+        m = _HUNK_RE.match(line)
+        if m:
+            old_left = int(m.group(1)) if m.group(1) is not None else 1
+            new_left = int(m.group(3)) if m.group(3) is not None else 1
+    return out
 
 
 def parse_renames(status: str) -> List[Tuple[str, str]]:
