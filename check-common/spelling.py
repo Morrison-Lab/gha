@@ -36,8 +36,8 @@ _LL_STEMS = (
     "counsel|marshal|dial|pencil|quarrel"
 )
 
-BRITISH_RE = re.compile(
-    r"(?i)\b(?:"
+_CORE = (
+    r"(?:"
     r"(?:" + _OUR_STEMS + r")"
     r"ur(?:s|ed|ing|ful|less|al|ally|ite|ites|able|ably|hood|hoods|map|maps|"
     r"bar|bars|scale|scales|blind|ation|ations)?"
@@ -57,8 +57,13 @@ BRITISH_RE = re.compile(
     r"|judgements?|acknowledgements?|ageing|artefacts?|catalogu(?:e|es|ed|ing)"
     r"|programmes?|sceptic(?:al|ism|s)?|aluminium|cheques?|tyres?"
     r"|mould(?:s|ed|ing|y)?|plough(?:s|ed|ing)?|focuss(?:ed|es|ing)"
-    r")\b"
+    r")"
 )
+# A prefix keeps the spelling of the word it is on: unlabelled, recoloured.
+_PREFIXES = "un|re|mis|non|pre|over|under|sub|de"
+_CORE_RE = re.compile(r"(?i)" + _CORE)
+_PREFIX_RE = re.compile(r"(?i)^(" + _PREFIXES + r")(-?)(.+)$")
+BRITISH_RE = re.compile(r"(?i)\b(?:(?:" + _PREFIXES + r")-?)?" + _CORE + r"\b")
 
 # Whole words whose American form no suffix rule gives.
 _WHOLE = {
@@ -90,6 +95,9 @@ _WHOLE = {
 def americanize(word: str) -> str:
     """The American spelling of a word ``BRITISH_RE`` matches, in its case."""
     low = word.lower()
+    split = _PREFIX_RE.match(word)
+    if not _CORE_RE.fullmatch(low) and split and _CORE_RE.fullmatch(split.group(3)):
+        return split.group(1) + split.group(2) + americanize(split.group(3))
     if low in _WHOLE:
         new = _WHOLE[low]
     else:
