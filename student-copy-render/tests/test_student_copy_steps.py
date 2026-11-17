@@ -84,6 +84,7 @@ def test_failures_fail_the_line(checkout: Path) -> None:
     ({"SC_CHECK": "c", "SC_DOCUMENTS": "/etc/list"}, "relative path"),
     ({"SC_CHECK": "c", "SC_FRAGMENTS": "../list"}, "relative path"),
     ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "a;rm -rf b"}, "fragment-glob"),
+    ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "../../*"}, "fragment-glob"),
 ])
 def test_bad_inputs_are_refused(tmp_path: Path, env: dict[str, str], word: str) -> None:
     result = write_steps(tmp_path, **env)
