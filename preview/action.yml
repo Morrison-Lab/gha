@@ -247,7 +247,7 @@ inputs:
       Empty sends jobs to csci-head,
       spread with the csci-lab desktop pool (port 922) when `cluster-image-file` is set,
       since that pool has no cluster home to read `cluster-image` from (gha#1518),
-      and tries cse-head only after those, because its queue often holds a job for hours (gha#2091).
+      and tries cse-head only after those heads, because its queue often holds a job for hours (gha#2091).
     default: ''
   cluster-image:
     description: Apptainer image on the cluster home that `cluster-render` runs in (`condor-batch` `image`).

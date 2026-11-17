@@ -131,8 +131,11 @@ def test_no_r_packages_plans_no_install_step(tmp_path):
     assert "R_LIBS" not in lines[0]
 
 
-TWO_HEADS = "cse-head.cluster.cs.wwu.edu csci-head.cluster.cs.wwu.edu"
-THREE_HEADS = TWO_HEADS + " csci-lab-head.cs.wwu.edu:922"
+# gha#2091: cse-head's queue often holds a job for hours, so it is only the
+# fallback, never chosen by the spreading.
+ONE_HEAD = "csci-head.cluster.cs.wwu.edu"
+TWO_HEADS = ONE_HEAD + " csci-lab-head.cs.wwu.edu:922"
+FALLBACK = "cse-head.cluster.cs.wwu.edu"
 
 
 def test_an_empty_cluster_head_spreads_over_the_heads_the_image_reaches():
@@ -141,10 +144,13 @@ def test_an_empty_cluster_head_spreads_over_the_heads_the_image_reaches():
     action = yaml.safe_load((REPO_ROOT / "preview" / "action.yml").read_text(encoding="utf-8"))
     assert action["inputs"]["cluster-head"]["default"] == ""
     steps = {s.get("name"): s for s in action["runs"]["steps"]}
-    head = steps["Render Quarto site on the cluster"]["with"]["head"]
-    assert head == (
+    render = steps["Render Quarto site on the cluster"]["with"]
+    assert render["head"] == (
         "${{ inputs.cluster-head || (inputs.cluster-image-file != '' && "
-        f"'{THREE_HEADS}' || '{TWO_HEADS}') }}}}"
+        f"'{TWO_HEADS}' || '{ONE_HEAD}') }}}}"
+    )
+    assert render["fallback-head"] == (
+        f"${{{{ inputs.cluster-head == '' && '{FALLBACK}' || '' }}}}"
     )
 
 
