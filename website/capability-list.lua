@@ -10,7 +10,7 @@
 local NAMED = { ["workflows-table"] = true, readonly = true }
 
 return {
-  ["capability-list"] = function(args)
+  ["capability-list"] = function(args, kwargs, meta, raw_args, context)
     local arg = pandoc.utils.stringify(args[1] or "")
     local stem
     if arg:match("^v%d+$") then
@@ -28,6 +28,12 @@ return {
     end
     local content = file:read("a")
     file:close()
-    return pandoc.read(content, "markdown").blocks
+    local blocks = pandoc.read(content, "markdown").blocks
+    -- Inside a sentence, such as a list item's text, a block would break
+    -- the paragraph, so hand back the inlines.
+    if context == "inline" then
+      return pandoc.utils.blocks_to_inlines(blocks)
+    end
+    return blocks
   end,
 }
