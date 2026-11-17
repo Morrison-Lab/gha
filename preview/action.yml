@@ -300,6 +300,15 @@ outputs:
 runs:
   using: composite
   steps:
+    # CI rendering on the self-hosted runners (cf463-01, cf463-02) and on
+    # Ezra's Mac is banned (Ezra, 2026-11-17; gha#2108). A self-hosted runner
+    # may only submit the render to the cluster, so fail before any setup.
+    - name: Refuse a render on a self-hosted runner
+      if: github.event.action != 'closed' && runner.environment == 'self-hosted' && inputs.cluster-render != 'true'
+      shell: bash
+      run: |
+        echo "::error::CI rendering on self-hosted runners is banned (gha#2108). Set cluster-render: true, or run this job on a GitHub-hosted runner."
+        exit 1
     - name: Check out repository
       if: github.event.action != 'closed'
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -805,6 +814,7 @@ runs:
         steps: ${{ steps.cluster-plan.outputs.steps }}
         output: ${{ inputs.path }}/${{ inputs.output-dir }},${{ inputs.path }}/_freeze,${{ inputs.path }}/.quarto,_quarto_preview_render.log
         idle-minutes: ${{ inputs.cluster-idle-minutes }}
+        allow-local-fallback: 'false'
 
     - name: Verify render warnings and forbidden log patterns
       if: github.event.action != 'closed'

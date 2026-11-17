@@ -1,0 +1,1 @@
+- CI rendering on self-hosted runners (cf463-01, cf463-02, Ezra's Mac) is banned: `preview` and `quarto-publish` fail on a self-hosted runner unless `cluster-render` is on, the render composites no longer fall back to rendering on the runner (new `condor-batch` input `allow-local-fallback`), and the equation-render crawl skips on self-hosted runners (#2108).

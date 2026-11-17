@@ -561,7 +561,7 @@ def test_cancelled_run_removes_its_cluster_job_and_directory(tmp_path):
 ACTION = Path(__file__).resolve().parents[2] / ".github/actions/condor-batch/action.yml"
 
 
-def _run_action(tmp_path: Path, script_rc: int):
+def _run_action(tmp_path: Path, script_rc: int, **extra):
     import yaml
 
     action = yaml.safe_load(ACTION.read_text())
@@ -584,6 +584,7 @@ def _run_action(tmp_path: Path, script_rc: int):
         "RUNNER_ENVIRONMENT": "self-hosted",
         "RENDER_SLOTS": "1",
         "RENDER_SLOT_DIR": str(tmp_path / "slots"),
+        **extra,
     }
     # GitHub runs `shell: bash` as this command line, with errexit on.
     cmd = ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", run]
@@ -598,6 +599,16 @@ def test_composite_reruns_locally_only_for_infrastructure_codes(tmp_path):
         code, ran_locally = _run_action(case_dir, rc)
         assert (code, ran_locally) == (final, reruns), rc
 
+
+
+def test_composite_never_runs_locally_when_fallback_is_disabled(tmp_path):
+    # gha#2108: a render composite passes allow-local-fallback 'false', so a
+    # cluster failure fails the step instead of rendering on the runner.
+    for rc, final in [(70, 1), (71, 1), (0, 0), (2, 2)]:
+        case_dir = tmp_path / str(rc)
+        case_dir.mkdir()
+        code, ran_locally = _run_action(case_dir, rc, ALLOW_LOCAL_FALLBACK="false")
+        assert (code, ran_locally) == (final, False), rc
 
 def test_head_list_is_spread_by_run_number(tmp_path):
     for run, expected in (("42", "a.example"), ("43", "b.example")):
