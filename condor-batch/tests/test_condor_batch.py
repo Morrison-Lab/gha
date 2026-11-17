@@ -17,7 +17,9 @@ SSH_STUB = """\
 echo "ssh $*" >> "$STUB_LOG"
 [ -z "${STUB_SSH_RC:-}" ] || exit "$STUB_SSH_RC"
 case " $* " in *" ${STUB_SSH_FAIL_HOST:-none-} "*) exit 255 ;; esac
-while [ $# -gt 0 ] && [ "$1" != bash ] && [ "$1" != true ]; do shift; done
+host=
+while [ $# -gt 0 ] && [ "$1" != bash ] && [ "$1" != true ]; do host="$1"; shift; done
+export STUB_HOST="$host"
 [ "${1:-}" != true ] || exit 0
 # Real ssh joins its arguments into one command string that the remote shell
 # splits again, so an empty argument vanishes; eval reproduces that.
@@ -62,6 +64,12 @@ RM_STUB = 'echo "condor_rm $*" >> "$STUB_LOG"\n'
 
 Q_STUB = """\
 echo "condor_q $*" >> "$STUB_LOG"
+case " $* " in *" -af ClusterId "*)
+  # The head probe: STUB_IDLE="host=count ..." gives each head's idle jobs.
+  [ "$STUB_HOST" != "${STUB_Q_FAIL_HOST:-none-}" ] || exit 1
+  for kv in ${STUB_IDLE:-}; do [ "${kv%%=*}" != "$STUB_HOST" ] || seq 1 "${kv#*=}"; done
+  exit 0 ;;
+esac
 case " $* " in *" -af JobStatus "*)
   # STUB_Q_STATUSES gives one status per call, in order; then STUB_Q_STATUS.
   n=$(cat "$STUB_LOG.qn" 2>/dev/null || echo 0); echo $((n + 1)) > "$STUB_LOG.qn"
@@ -75,6 +83,14 @@ echo "analysis of $*: no machine matches the requirements"
 
 STATUS_STUB = """\
 echo "condor_status $*" >> "$STUB_LOG"
+case " $* " in *" -af Cpus Memory Disk "*)
+  # The head probe: STUB_SLOTS="host:cpus:mb:kib ..." gives each unclaimed slot.
+  for slot in ${STUB_SLOTS:-}; do
+    IFS=: read -r h c m d <<< "$slot"
+    [ "$h" != "$STUB_HOST" ] || echo "$c $m $d"
+  done
+  exit 0 ;;
+esac
 echo "pool totals: 0 machines available"
 """
 
@@ -122,6 +138,12 @@ def _run(tmp_path: Path, steps: list[str], **extra_env: str):
 
 def _count(calls: list[str], prefix: str) -> int:
     return sum(line.startswith(prefix) for line in calls)
+
+
+def _submits(calls: list[str]) -> list[str]:
+    """The ssh calls that submit a job; the head probes set ConnectTimeout."""
+    return [c for c in calls
+            if c.startswith("ssh ") and " bash " in c and "ConnectTimeout" not in c]
 
 
 def test_five_steps_make_exactly_one_submission(tmp_path):
@@ -584,7 +606,7 @@ def test_head_list_is_spread_by_run_number(tmp_path):
             case_dir, ["a", "b"], STUB_RV="0", RUN_ID=run,
             CONDOR_HEAD="a.example,b.example",
         )
-        submit_ssh = [c for c in calls if c.startswith("ssh ") and " bash " in c]
+        submit_ssh = [c for c in _submits(calls) if " -- " in c and "/ci/" in c]
         assert len(submit_ssh) == 1
         assert expected in submit_ssh[0], (run, submit_ssh)
 
@@ -598,7 +620,7 @@ def test_fallback_head_is_never_chosen_by_the_spreading(tmp_path):
             case_dir, ["a", "b"], STUB_RV="0", RUN_ID=run,
             CONDOR_HEAD="a.example", CONDOR_FALLBACK_HEAD="z.example",
         )
-        submit_ssh = [c for c in calls if c.startswith("ssh ") and " bash " in c]
+        submit_ssh = [c for c in _submits(calls) if " -- " in c and "/ci/" in c]
         assert len(submit_ssh) == 1
         assert "a.example" in submit_ssh[0], (run, submit_ssh)
 
@@ -612,7 +634,7 @@ def test_fallback_head_takes_a_job_idle_everywhere_else(tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     assert _count(calls, "condor_submit") == 2
-    submits = [c for c in calls if c.startswith("ssh ") and " bash " in c and "-- " in c]
+    submits = [c for c in _submits(calls) if "/ci/" in c]
     assert "a.example" in submits[0] and "z.example" in submits[-1], submits
     assert "head a.example did not start the job; trying z.example" in proc.stderr
 
@@ -647,7 +669,7 @@ def test_unreachable_head_falls_back_to_the_next(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert "a.example did not answer" in proc.stderr
     assert _count(calls, "condor_submit") == 1
-    assert any("b.example bash" in c for c in calls)
+    assert any("b.example bash" in c for c in _submits(calls))
 
 
 def test_a_job_idle_on_one_head_moves_to_the_next(tmp_path):
@@ -659,7 +681,7 @@ def test_a_job_idle_on_one_head_moves_to_the_next(tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     assert _count(calls, "condor_submit") == 2
-    submits = [c for c in calls if c.startswith("ssh ") and " bash " in c and "-- " in c]
+    submits = [c for c in _submits(calls) if "/ci/" in c]
     assert "a.example" in submits[0] and "b.example" in submits[-1], submits
     assert "head a.example did not start the job; trying b.example" in proc.stderr
     assert any("b.example:" in c and "/42-h2/" in c for c in calls), calls
@@ -786,7 +808,7 @@ def test_unreachable_desktop_head_falls_back_with_its_port_probed(tmp_path):
         CONDOR_HEAD="a.example desk.example:922", CONDOR_DESKTOP_HEADS="desk.example",
     )
     assert proc.returncode == 0, proc.stderr
-    probe = next(c for c in calls if c.endswith(" true") and "desk.example" in c)
+    probe = next(c for c in calls if "ConnectTimeout" in c and "desk.example" in c)
     assert "-p 922" in probe, probe
 
 
@@ -886,3 +908,91 @@ def test_jobs_of_one_run_get_different_run_directories(tmp_path):
         assert len(copied) == 1
         dirs.add(copied[0].rsplit(":", 1)[1].split("/ci/", 1)[1])
     assert len(dirs) == 2, dirs
+
+
+# gha#2093: with several heads, each head's queue decides the order.
+SLOT = "8:16384:52428800"  # 2 copies of the default 4 CPU, 8GB, 20GB request
+
+
+def _head_run(tmp_path: Path, **extra_env: str):
+    return _run(tmp_path, ["a", "b"], STUB_RV="0", **extra_env)
+
+
+def test_a_head_with_room_is_chosen_over_the_spread_order(tmp_path):
+    # Run 42 starts the spread at a.example, but only b.example has room.
+    proc, calls = _head_run(
+        tmp_path, CONDOR_HEAD="a.example b.example",
+        STUB_IDLE="a.example=5", STUB_SLOTS=f"b.example:{SLOT}",
+    )
+    assert proc.returncode == 0, proc.stderr
+    submits = [c for c in _submits(calls) if "/ci/" in c]
+    assert len(submits) == 1 and "b.example" in submits[0], submits
+    assert "head a.example: 5 idle job(s) in the queue; 0 copies" in proc.stderr
+    assert "head b.example: 0 idle job(s) in the queue; 2 copies" in proc.stderr
+    assert "chose head b.example (order: b.example a.example)" in proc.stderr
+
+
+def test_fit_counts_copies_of_the_request_not_free_slots(tmp_path):
+    # b.example has more free slots, but none fits 4 CPUs; a.example's one
+    # slot fits two copies against one idle job.
+    proc, _ = _head_run(
+        tmp_path, RUN_ID="43", CONDOR_HEAD="a.example b.example",
+        STUB_IDLE="a.example=1",
+        STUB_SLOTS=f"a.example:{SLOT} b.example:2:65536:99999999 b.example:3:65536:99999999",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "head b.example: 0 idle job(s) in the queue; 0 copies" in proc.stderr
+    assert "chose head a.example (order: a.example b.example)" in proc.stderr
+
+
+def test_a_bare_memory_request_is_read_as_megabytes(tmp_path):
+    proc, _ = _head_run(
+        tmp_path, CONDOR_HEAD="a.example b.example", REQUEST_MEMORY="16384",
+        STUB_SLOTS=f"b.example:{SLOT}",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "head b.example: 0 idle job(s) in the queue; 1 copies" in proc.stderr
+
+
+def test_more_room_wins_and_ties_keep_the_order(tmp_path):
+    proc, _ = _head_run(
+        tmp_path, CONDOR_HEAD="a.example b.example c.example",
+        STUB_SLOTS=f"a.example:{SLOT} b.example:{SLOT} b.example:{SLOT} c.example:{SLOT}",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "(order: b.example a.example c.example)" in proc.stderr
+
+
+def test_a_fallback_head_with_room_goes_first(tmp_path):
+    proc, calls = _head_run(
+        tmp_path, CONDOR_HEAD="a.example", CONDOR_FALLBACK_HEAD="z.example",
+        STUB_SLOTS=f"z.example:{SLOT}",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "chose head z.example (order: z.example a.example)" in proc.stderr
+
+
+def test_without_room_anywhere_the_fallback_stays_last(tmp_path):
+    proc, _ = _head_run(
+        tmp_path, CONDOR_HEAD="a.example", CONDOR_FALLBACK_HEAD="z.example",
+        STUB_IDLE="z.example=3", STUB_SLOTS=f"z.example:{SLOT}",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "chose head a.example (order: a.example z.example)" in proc.stderr
+
+
+def test_a_head_whose_queue_cannot_be_read_keeps_its_place(tmp_path):
+    proc, _ = _head_run(
+        tmp_path, CONDOR_HEAD="a.example b.example c.example",
+        STUB_Q_FAIL_HOST="a.example", STUB_SLOTS=f"c.example:{SLOT}",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "head a.example: queue could not be read" in proc.stderr
+    assert "(order: c.example a.example b.example)" in proc.stderr
+
+
+def test_one_head_is_not_probed(tmp_path):
+    proc, calls = _head_run(tmp_path, CONDOR_HEAD="a.example")
+    assert proc.returncode == 0, proc.stderr
+    assert not any("-af ClusterId" in c for c in calls)
+    assert "chose head" not in proc.stderr

@@ -10,6 +10,8 @@ inputs:
     description: >-
       Cluster head node, or a space- or comma-separated list of heads, each
       host or host:port (csci-lab-head.cs.wwu.edu:922): runs are spread over them and fall back to the next head that answers ssh.
+      With more than one head (counting `fallback-head`), each is first asked for its idle jobs and for how
+      many copies of the job fit in its unclaimed slots, and heads with more room than waiting jobs go first (gha#2093).
     default: cse-head.cluster.cs.wwu.edu
   fallback-head:
     description: >-
@@ -17,6 +19,7 @@ inputs:
       failed to answer ssh or to start the job within `idle-minutes`. They
       are never chosen by the spreading, so a head whose queue is often long
       stays usable without delaying the runs that would start there (gha#2091).
+      A fallback head that reports more room than waiting jobs still goes first (gha#2093).
     default: ''
   working-directory:
     description: Checkout to copy to the cluster.
