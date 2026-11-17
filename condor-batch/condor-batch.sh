@@ -71,8 +71,10 @@
 #
 # CONDOR_IDLE_MINUTES (default none: no limit) limits how long the job may sit
 # idle in the queue. When it has not started by then, the same diagnostics are
-# printed, the job is removed and the script exits 70, so the runner runs the
-# steps instead. A job that has started is left alone, under
+# printed, the job and its run directory are removed, and the job is submitted
+# to the next head of CONDOR_HEAD that answers ssh, with the same limit; when
+# no head starts it, the script exits 70, so the runner runs the steps instead
+# (gha#2087). Every run logs the head and how long the job sat in the queue. A job that has started is left alone, under
 # CONDOR_WAIT_MINUTES, which still counts from submission. Unlike a total wait
 # limit, this never cuts off a long job that is running (gha#2085).
 #
@@ -144,17 +146,27 @@ case "$idle_min" in
   *[!0-9]*) echo "CONDOR_IDLE_MINUTES must be a positive whole number of minutes: $idle_min" >&2; exit 64 ;;
   *) [ "$((10#$idle_min))" -gt 0 ] || { echo "CONDOR_IDLE_MINUTES must be a positive whole number of minutes: $idle_min" >&2; exit 64; } ;;
 esac
-head_entry="${head_list[0]}"
+# A job that does not start within CONDOR_IDLE_MINUTES on one head is moved to
+# the next head in this order (gha#2087): the script runs itself again with the
+# untried heads, in order (CONDOR_HEAD_TRY > 1), and a run directory of its own.
+base_run="$run" try="${CONDOR_HEAD_TRY:-1}"
+case "$try" in ''|*[!0-9]*) try=1 ;; esac
+[ "$try" -le 1 ] || run="$run-h$try"
+head_entry="${head_list[0]}" rest=()
 if [ "${#head_list[@]}" -gt 1 ]; then
-  run_num="${run//[^0-9]/}"
-  start=$(( 10#${run_num:-0} % ${#head_list[@]} ))
+  start=0
+  if [ "$try" -le 1 ]; then
+    run_num="${run//[^0-9]/}"
+    start=$(( 10#${run_num:-0} % ${#head_list[@]} ))
+  fi
   head_entry=
   for offset in $(seq 0 $(( ${#head_list[@]} - 1 ))); do
     candidate="${head_list[$(( (start + offset) % ${#head_list[@]} ))]}"
+    if [ -n "$head_entry" ]; then rest+=("$candidate"); continue; fi
     cport=(); [[ "$candidate" != *:* ]] || cport=(-p "${candidate##*:}")
     if ssh "${ssh_opts[@]}" ${cport[@]+"${cport[@]}"} -o ConnectTimeout=15 "${candidate%%:*}" true; then
       head_entry="$candidate"
-      break
+      continue
     fi
     echo "head $candidate did not answer ssh; trying the next" >&2
   done
@@ -322,12 +334,26 @@ if [ "$waited" -ge 0 ]; then
 fi
 [ ! -f out.log ] || cat out.log
 [ ! -f err.log ] || cat err.log >&2
+# Record how long the job sat in the queue, from the submit (000) and first
+# execute (001) events of condor.log, so the heads can be ranked by how soon
+# they start a job (gha#2087). A log in another date format is skipped.
+if [ -f condor.log ]; then
+  t0=$(sed -n 's/^000 ([^)]*) \([0-9-]* [0-9:]*\) .*/\1/p' condor.log | head -n 1)
+  t1=$(sed -n 's/^001 ([^)]*) \([0-9-]* [0-9:]*\) .*/\1/p' condor.log | head -n 1)
+  s0=$(date -d "$t0" +%s 2>/dev/null) || s0=
+  s1=$(date -d "$t1" +%s 2>/dev/null) || s1=
+  if [ -n "$t0" ] && [ -n "$s0" ] && [ -n "$t1" ] && [ -n "$s1" ]; then
+    echo "condor-batch: head $(hostname) started the job after $((s1 - s0)) s in the queue" >&2
+  elif [ -n "$t0" ]; then
+    echo "condor-batch: head $(hostname) did not start the job" >&2
+  fi
+fi
 rv=
 [ ! -f condor.log ] || rv=$(sed -n 's/.*return value \([0-9]*\)).*/\1/p' condor.log | tail -1)
 if [ -n "$rv" ]; then
   # A returned path is fetched by the runner, which then removes the directory.
   [ "$out" != . ] || { cd / && rm -rf "$dir" || echo "could not remove $dir" >&2; }
-  case "$rv" in 70|71|255) exit 1 ;; esac
+  case "$rv" in 70|71|73|255) exit 1 ;; esac
   exit "$rv"
 fi
 if [ -n "$late" ] && [ -s .cluster-id ]; then
@@ -347,6 +373,11 @@ if [ -n "$late" ] && [ -s .cluster-id ]; then
     tail -n 25 condor.log || true
   } 2>&1 | head -n 150 >&2 || true
   condor_rm "$cluster_id" || true
+  # A job that never started left nothing worth reading here, and the runner
+  # may now try the next head (exit 73, internal to this script, gha#2087).
+  case "$late" in
+    "did not start"*) cd / && rm -rf "$dir"; exit 73 ;;
+  esac
 fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
 exit 70
@@ -365,4 +396,16 @@ if [ -n "${CONDOR_OUTPUT:-}" ] && [ "$rc" -ne 70 ] && [ "$rc" -ne 255 ]; then
 fi
 trap - TERM INT HUP
 [ "$rc" -ne 255 ] || { echo "ssh to the cluster head failed" >&2; exit 70; }
+if [ "$rc" -eq 73 ]; then
+  # The job did not start on this head: try the untried heads in order, each
+  # with the same idle limit, before the runner takes over (gha#2087).
+  if [ "${#rest[@]}" -gt 0 ]; then
+    rm -rf "$pack_dir"
+    echo "head $head_entry did not start the job; trying ${rest[*]}" >&2
+    exec env CONDOR_HEAD="${rest[*]}" CONDOR_HEAD_TRY=$((try + 1)) RUN_ID="$base_run" \
+      bash "$0" "$checkout" "$steps"
+  fi
+  echo "no cluster head started the job within $idle_min minutes" >&2
+  exit 70
+fi
 exit "$rc"
