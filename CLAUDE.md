@@ -2136,10 +2136,10 @@ dropping the f-form condition, dropping the moved-line exemption, never
 opening a code fence, and treating a missing macros file as readable.
 
 `check-iterate-subscripts/tests/test_check_iterate_subscripts.py` is a pytest suite over
-the flagged forms (bare and braced indices, `t`, `t-1`, `\iter+1`, both default symbols),
+the flagged forms (a bare index, a braced index, `t`, `t-1`, `\iter+1`, both default symbols),
 the unflagged ones (`\iterpoint`, a number index, `k` by default, a coordinate such as `{t,j}`, a longer macro name, an escaped backslash),
 the skips (fences, spans, comments, front matter, the `allow` comment), the diff scoping with moved lines,
-`main()`'s blocking default and its `CIS_FAIL=false` warn mode, and the defaults the script, `action.yml` and the reusable workflow must agree on.
+`main()`'s blocking default, its `CIS_FAIL=false` warn mode, and the defaults the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `iterate-subscripts` job in `_selftest.yml`, followed by real
 `uses: ./check-iterate-subscripts` calls over a staged page.
 

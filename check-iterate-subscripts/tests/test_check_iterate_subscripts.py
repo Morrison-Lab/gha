@@ -138,7 +138,7 @@ def test_allow_comment_on_the_line_or_the_line_before():
 
 def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", "-C", str(repo), "-c", "user.name=t",
-                    "-c", "user.email=t@example.com", *args],
+                    "-c", "user.email=t@example.com", *args],  # phi-allow
                    check=True, capture_output=True)
 
 

@@ -13,9 +13,10 @@ The check keeps the mismatch from coming back after a notes repository
 converts its existing pages
 ([lds#2435](https://github.com/Morrison-Lab/lds/issues/2435)).
 
-The check flags a configured symbol followed by `_` and an iteration index
+The check flags a configured symbol that has an iteration index
+as its subscript,
 on a line a pull request adds,
-in `.qmd`, `.Rmd` and `.md` files.
+in `.qmd`, `.Rmd`, and `.md` files.
 The index is bare (`\vcoef_t`) or braced (`\vcoef_{t}`, `\vcoef_{t-1}`,
 `\vcoef_{\iter+1}`).
 Each finding reports the file, the line,
