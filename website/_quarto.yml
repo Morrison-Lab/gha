@@ -110,6 +110,7 @@ website:
           - reference/check-tree-lists.qmd
           - reference/check-search-shortcut.qmd
           - reference/check-visualization-figures.qmd
+          - reference/check-geometric-figures.qmd
           - reference/check-self-contained-captions.qmd
           - reference/check-def-title-synonyms.qmd
           - reference/check-def-wiktionary.qmd
