@@ -90,6 +90,18 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   `Write the sum as $S$` and `write $X$ in terms of $Y$` pass.
   Source: psw's rule on the verb for each step (Ezra, 2026-11-16; psw#671).
   This rule fails by default, as the other rules do.
+- **British spellings.**
+  "Colour", "behaviour", "neighbour", "normalise", "analyse", "centre",
+  "modelling", "labelled", "grey", "judgement", and the rest of an explicit list.
+  Use the American spelling, as the notes do.
+  The list names each word or stem, so "otherwise", "noise",
+  "exercise", and the plural noun "analyses" pass.
+  Quoted text, italic text such as a cited title, link targets, URLs,
+  crossrefs, citation keys, ids, attribute blocks, inline math,
+  and blockquote lines are skipped, so `colour =` in R code
+  and a British book title pass.
+  Source: Ezra, 2026-11-17 (gha#2095).
+  This rule fails by default, as the other rules do.
 
 The other rules fail by default; set `fail` to false to make them warn.
 
