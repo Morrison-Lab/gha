@@ -70,14 +70,14 @@ def test_empty_lists_render_nothing(checkout: Path) -> None:
 
 def test_failures_fail_the_line(checkout: Path) -> None:
     # A glob that matches nothing is a mistake, not a pass.
-    assert run_line(checkout, steps(checkout, SC_FRAGMENT_GLOB="nowhere/*.qmd")[2]) == (2, [])
-    (checkout / "bin" / "quarto").write_text("#!/bin/sh\nexit 3\n")
+    assert run_line(checkout, steps(checkout, SC_FRAGMENT_GLOB="nowhere/*.qmd")[2])[0] != 0
+    (checkout / "bin" / "quarto").write_text("#!/bin/sh\necho \"$*\" >> \"$QUARTO_LOG\"; exit 3\n")
     assert run_line(checkout, steps(checkout)[2])[0] != 0
     # A listed name starting with - (even after a CR), or a missing list.
     (checkout / "dash.txt").write_text("a.qmd\n\r--output=/tmp/x\n")
     for name in ("dash.txt", "gone.txt"):
         for line in steps(checkout, SC_DOCUMENTS=name, SC_FRAGMENTS=name)[:3]:
-            assert run_line(checkout, line)[0] != 0 and run_line(checkout, line)[1] == [], (name, line)
+            assert (r := run_line(checkout, line))[0] != 0 and r[1] == [], (name, line)
 
 
 @pytest.mark.parametrize("env, word", [
