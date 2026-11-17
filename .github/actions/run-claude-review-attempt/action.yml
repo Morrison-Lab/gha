@@ -828,7 +828,10 @@ runs:
           `#def-`, `#thm-`, `#lem-`, `#cor-` or `#prp-` div; an alias stays in
           the same div. (3) An example follows each abstract definition or
           result. (4) No forward references: a term is defined before it is
-          used. (5) Every technical term is linked at first use in each div,
+          used. An exercise (`#exr-`) that asks for a result, placed before
+          the theorem-type div that restates it, is not a forward reference:
+          psw's "Writing for teaching" puts the exercise and its solution
+          first, so a reader meets the question before the answer. (5) Every technical term is linked at first use in each div,
           and prerequisites are linked to the Morrison-Lab mds (math), pds
           (probability) or sds (statistics) notes, never restated. (6) Math
           uses the semantic macros from `Morrison-Lab/macros`: no literal
@@ -912,7 +915,14 @@ runs:
           another result's proof; name the type you would
           use and why. Report as blocking a result that the page states
           twice, under two ids or two types, with both `path:line`
-          anchors. The `check-corollary-sources` check covers a
+          anchors. A solution (`#sol-`) that first derives a result and
+          the theorem-type div that restates it after the exercise and
+          solution are not a duplicate: psw's "Writing for teaching"
+          requires that order. The solution shows the working, and the
+          theorem div states the result so a reader can cite it, with a
+          proof that stands alone and may also cite the exercise. Report
+          the restatement as a finding only when its proof merely points
+          back at the solution, or when it has no solution before it. The `check-corollary-sources` check covers a
           corollary that names no earlier result, so do not repeat it.
 
           **Watch for AI hallucinations.** This diff may be partly
