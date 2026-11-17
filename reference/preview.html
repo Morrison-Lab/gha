@@ -1456,108 +1456,114 @@ cookieconsent.run({
 <td>The same image on the runner, for heads without the cluster home. Empty falls back to the caller’s <code>CI_CLUSTER_IMAGE_FILE</code> Actions variable.</td>
 </tr>
 <tr class="even">
+<td><code>cluster-idle-minutes</code></td>
+<td>string</td>
+<td><code>'20'</code></td>
+<td>Minutes the cluster job may wait in the queue before it starts. A job still idle then is removed and the render runs on the runner; a job that has started is never cut off. Empty waits as long as the queue takes.</td>
+</tr>
+<tr class="odd">
 <td><code>extra-preview-labels</code></td>
 <td>string</td>
 <td><code>'[]'</code></td>
 <td>JSON array string of additional PR label names that trigger a preview re-render on add or remove (e.g.&nbsp;<code>'["preview:tracked-changes"]'</code>), beyond the built-in set (<code>clear freezer</code>, <code>preview:pdf</code>, <code>preview:docx</code>, <code>preview:revealjs</code>, <code>preview:runner</code>). Any other label event gets a concurrency group of its own, so it neither starts a build nor cancels one; a caller needs no workflow-level <code>concurrency</code> group (gha#1998).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>fail-on-render-warning</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Fail the build if Quarto emits any render warnings (<code>WARN</code> in the render log).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>forbid-log-patterns</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Newline-separated fixed string patterns that fail the build if found in the render log (e.g.&nbsp;missing listing files).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>post-build-command</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Shell command run in the build job after the site is rendered and uploaded (working directory <code>path</code>, site in <code>$OUTPUT_DIR</code>), so checks that read the site need no second runner wait.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>post-build-continue-on-error</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>A failing <code>post-build-command</code> does not fail the job or hold back the deploy (the step is still marked failed).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>timezone</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>IANA time zone (e.g.&nbsp;<code>America/Los_Angeles</code>) exported as <code>TZ</code> for the render and later steps, so <code>date: last-modified</code> stamps are not in UTC. Empty leaves the runner’s time zone unchanged. A value containing a newline or <code>=</code> is rejected.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>timeout-minutes</code></td>
 <td>number</td>
 <td><code>45</code></td>
 <td>Timeout, in minutes, for the render (<code>build</code> job). The default is the hang ceiling, not a budget; raise it for a site whose full render (every page in every format) takes longer. A caller cannot set <code>timeout-minutes</code> on a job that uses <code>uses:</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>detect-changed-chapters</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Compare this run’s render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by <code>changed-chapters-banner</code> and <code>highlight-changes</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>changed-chapters-banner</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Add a banner to the preview home page naming the chapters that differ from the published render.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>highlight-changes</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Highlight added and modified text in the rendered HTML chapters that differ from the published render.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>changed-chapters-glob</code></td>
 <td>string</td>
 <td><code>'chapters/*.html'</code></td>
 <td>Glob, relative to the rendered site root, selecting the files the comparison treats as chapters.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>deployed-branch</code></td>
 <td>string</td>
 <td><code>'gh-pages'</code></td>
 <td>Branch holding the published render to compare against.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>deployed-subdir</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Path prefix, within the deployed branch, at which the published site root lives. Defaults to the branch root.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>changed-chapters-normalize-patterns</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>max-elements-for-pairwise</code></td>
 <td>string</td>
 <td><code>'500'</code></td>
 <td>Maximum candidate elements per page for pairwise SequenceMatcher diffing; exceeding this skips element-level diffing to prevent quadratic runtime.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>banner-index</code></td>
 <td>string</td>
 <td><code>'index.html'</code></td>
 <td>Home page the banner is inserted into, relative to the rendered site root.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>docx-tracked-changes</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Generate Word DOCX documents with tracked changes against the published version on the deployed branch.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>docx-tracked-changes-glob</code></td>
 <td>string</td>
 <td><code>'chapters/*.docx'</code></td>
