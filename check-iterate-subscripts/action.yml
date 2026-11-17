@@ -1,0 +1,76 @@
+name: Check iterates written with a subscript
+description: >-
+  Diff-scoped check that flags an iterate written with a subscript, such as
+  `\vcoef_t` or `\vcoef_{t+1}`, where the lab's notation rule asks for
+  `\iterpoint{\vcoef}{\iter}` (an iteration index in a parenthesized
+  superscript), in `.qmd`, `.Rmd` and `.md` files. The symbols and the index
+  letters are inputs. A number index such as `\vcoef_0` and a symbol or index
+  not listed pass. Skips code fences and spans, HTML comments and front matter.
+  Scoped to lines a diff adds (an added line whose exact text was also deleted
+  in the same diff counts as moved). Blocks by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every subscripted iterate the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  symbols:
+    description: >-
+      Space- or comma-separated macro names, without the backslash, whose
+      subscripted use is an iterate.
+    default: 'vcoef steplen'
+  indices:
+    description: >-
+      Space- or comma-separated iteration-index letters or macros. An index is
+      one of these with an optional `+` or `-` and a number. Add `k` where a
+      page uses it for an iteration and not for a coordinate.
+    default: 't \iter'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a subscripted iterate is found (else non-blocking).
+      Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check iterates written with a subscript
+      shell: bash
+      env:
+        CIS_BASE_REF: ${{ inputs.base-ref }}
+        CIS_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CIS_SYMBOLS: ${{ inputs.symbols }}
+        CIS_INDICES: ${{ inputs.indices }}
+        CIS_GLOBS: ${{ inputs.globs }}
+        CIS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CIS_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-iterate-subscripts.py"
