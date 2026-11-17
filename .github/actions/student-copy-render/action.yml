@@ -8,7 +8,7 @@ inputs:
     description: The check command, one line, run after every render.
     required: true
   documents:
-    description: "`all` (a bare `quarto render` per profile), or a list file in the checkout, one document per line."
+    description: "`all` (a bare `quarto render` per profile), or a list file in the checkout, one document per line. An empty value is refused."
     default: all
   fragments:
     description: "`all` (every `fragment-glob` match), or a list file in the checkout of questions to render alone."

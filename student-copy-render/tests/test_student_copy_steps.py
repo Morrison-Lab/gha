@@ -76,6 +76,30 @@ def test_failures_fail_the_line(checkout: Path) -> None:
     assert run_line(checkout, steps(checkout)[2])[0] != 0
 
 
+def test_list_names_are_lines_not_words_and_crlf_is_dropped(checkout: Path) -> None:
+    (checkout / "Homework/my hw.qmd").write_text("x\n")
+    (checkout / "docs.txt").write_text("Homework/my hw.qmd\r\n")
+    (checkout / "frags.txt").write_text(f"{FRAGMENTS[0]}\r\nexercises/it's.qmd\r\n")
+    lines = steps(checkout, SC_DOCUMENTS="docs.txt", SC_FRAGMENTS="frags.txt")
+    assert run_line(checkout, lines[0]) == (0, ["render Homework/my hw.qmd"])
+    rc, calls = run_line(checkout, lines[2])
+    assert rc == 0 and sorted(calls) == sorted([f"render {FRAGMENTS[0]} --to html", "render exercises/it's.qmd --to html"])
+
+
+def test_a_name_starting_with_a_dash_fails_the_line(checkout: Path) -> None:
+    (checkout / "list.txt").write_text("--output=/tmp/x\n")
+    lines = steps(checkout, SC_DOCUMENTS="list.txt", SC_FRAGMENTS="list.txt")
+    for line in lines[:3]:
+        assert run_line(checkout, line) == (1, [])
+
+
+def test_a_missing_list_file_fails_the_line(checkout: Path) -> None:
+    lines = steps(checkout, SC_DOCUMENTS="gone.txt", SC_FRAGMENTS="gone.txt")
+    for line in lines[:3]:
+        rc, calls = run_line(checkout, line)
+        assert rc != 0 and calls == []
+
+
 @pytest.mark.parametrize("env, word", [
     ({}, "check is required"),
     ({"SC_CHECK": "a\nb"}, "one line"),
@@ -85,6 +109,10 @@ def test_failures_fail_the_line(checkout: Path) -> None:
     ({"SC_CHECK": "c", "SC_FRAGMENTS": "../list"}, "relative path"),
     ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "a;rm -rf b"}, "fragment-glob"),
     ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "../../*"}, "fragment-glob"),
+    ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "-la"}, "fragment-glob"),
+    ({"SC_CHECK": "c", "SC_FRAGMENTS": "-n"}, "relative path"),
+    ({"SC_CHECK": "c", "SC_DOCUMENTS": ""}, "relative path"),
+    ({"SC_CHECK": "c", "SC_FRAGMENTS": " "}, "relative path"),
 ])
 def test_bad_inputs_are_refused(tmp_path: Path, env: dict[str, str], word: str) -> None:
     result = write_steps(tmp_path, **env)

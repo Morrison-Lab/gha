@@ -21,13 +21,16 @@ def build(env: dict[str, str]) -> list[str]:
     parallel_text = env.get("SC_PARALLEL", "4").strip() or "4"
     if not parallel_text.isdigit() or int(parallel_text) < 1:
         fail(f"parallel must be a whole number of at least 1, not {parallel_text!r}")
-    documents = env.get("SC_DOCUMENTS", "all").strip() or "all"
+    # An empty value (an expression that came out blank) is refused, not read as `all`.
+    documents = env.get("SC_DOCUMENTS", "all").strip()
     if documents == "all":
         renders = ["quarto render", "quarto render --profile solution"]
     else:
         path = list_path("documents", documents)
-        renders = [f"xargs -r -a {path} -I{{}} quarto render {{}}{p}" for p in ("", " --profile solution")]
-    fragments = env.get("SC_FRAGMENTS", "all").strip() or "all"
+        guard = (f'set -euo pipefail; if grep -q "^-" {path}; then echo "A document to render starts with -: rename it." >&2; exit 1; fi; ')
+        renders = [f"{guard}tr -d '\\r' < {path} | xargs -r -d '\\n' -I{{}} quarto render {{}}{p}"
+                   for p in ("", " --profile solution")]
+    fragments = env.get("SC_FRAGMENTS", "all").strip()
     glob = env.get("SC_FRAGMENT_GLOB", "exercises/*/_exr-*.qmd").strip()
     return [*renders, fragment_line(fragments, glob, int(parallel_text)), check]
 
