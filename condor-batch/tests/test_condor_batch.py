@@ -628,6 +628,22 @@ def test_no_head_starting_the_job_falls_back_to_the_runner(tmp_path):
     assert not any(p.name.startswith("42") for p in (tmp_path / "ci").iterdir())
 
 
+def test_an_idle_job_with_output_still_moves_to_the_next_head(tmp_path):
+    # The first head removed its run directory, so there is nothing to fetch
+    # there; the output comes back from the head that ran the job.
+    made = _site_stub(tmp_path)
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example b.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUSES="1 2",
+        STUB_RV="0", STUB_RV_FROM_WAIT="2", CONDOR_OUTPUT="_site", STUB_MADE=made,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_submit") == 2
+    assert "could not bring" not in proc.stderr
+    assert not any("a.example:" in c and "output.tar.gz" in c for c in calls), calls
+    assert (tmp_path / "checkout" / "_site" / "index.html").read_text() == "built"
+
+
 def test_a_step_exiting_73_is_not_read_as_an_idle_job(tmp_path):
     proc, calls = _run(
         tmp_path, ["a", "b"], CONDOR_HEAD="a.example b.example", STUB_RV="73",

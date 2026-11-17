@@ -74,7 +74,8 @@
 # printed, the job and its run directory are removed, and the job is submitted
 # to the next head of CONDOR_HEAD that answers ssh, with the same limit; when
 # no head starts it, the script exits 70, so the runner runs the steps instead
-# (gha#2087). Every run logs the head and how long the job sat in the queue. A job that has started is left alone, under
+# (gha#2087). Every run logs the head and how long the job sat in the queue.
+# A job that has started is left alone, under
 # CONDOR_WAIT_MINUTES, which still counts from submission. Unlike a total wait
 # limit, this never cuts off a long job that is running (gha#2085).
 #
@@ -382,7 +383,7 @@ fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
 exit 70
 REMOTE
-if [ -n "${CONDOR_OUTPUT:-}" ] && [ "$rc" -ne 70 ] && [ "$rc" -ne 255 ]; then
+if [ -n "${CONDOR_OUTPUT:-}" ] && [ "$rc" -ne 70 ] && [ "$rc" -ne 73 ] && [ "$rc" -ne 255 ]; then
   fetch_rc=0
   rsync -a -e "ssh ${ssh_opts[*]}" "$head_host:$root/$run/output.tar.gz" "$pack_dir/output.tar.gz" || fetch_rc=$?
   if [ "$fetch_rc" = 0 ]; then
