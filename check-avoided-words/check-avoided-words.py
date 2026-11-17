@@ -243,7 +243,7 @@ BRITISH_RE = re.compile(
 # italics), link targets and bare URLs, crossrefs and citation keys, ids and
 # attribute blocks, and inline math.
 _BRITISH_MASK_RE = re.compile(
-    '"[^"]*"|“[^”]*”|‘[^’]*’'
+    '"[^"]*"|\u201c[^\u201d]*\u201d|\u2018[^\u2019]*\u2019'
     r"|(?<![\w*])\*(?!\*)[^*]+\*(?!\*)|(?<![\w_])_(?!_)[^_]+_(?!\w)"
     r"|\]\([^)]*\)|https?://\S+|@[\w:.\-]+|#[\w\-]+|\{[^}]*\}|\$[^$]*\$"
 )
