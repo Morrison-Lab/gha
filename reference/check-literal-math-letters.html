@@ -1414,7 +1414,7 @@ cookieconsent.run({
 <td><code>mode</code></td>
 <td>string</td>
 <td><code>'all'</code></td>
-<td><code>all</code> flags every standalone letter. <code>known</code> flags only a letter or Greek command that has a semantic macro (<code>y</code>, <code>Y</code>, <code>x</code>, <code>X</code>, <code>n</code>, <code>L</code>, <code>e</code>, <code>\theta</code>, <code>\beta</code>, <code>\varepsilon</code>, <code>\mu</code>), so index letters pass.</td>
+<td><code>all</code> flags every standalone letter. <code>known</code> flags only a letter or Greek command that has a semantic macro (<code>y</code>, <code>Y</code>, <code>x</code>, <code>X</code>, <code>n</code>, <code>L</code>, <code>e</code>, <code>J</code>, <code>\theta</code>, <code>\beta</code>, <code>\varepsilon</code>, <code>\mu</code>), so index letters pass.</td>
 </tr>
 <tr class="odd">
 <td><code>deprecated-files</code></td>
@@ -1423,12 +1423,18 @@ cookieconsent.run({
 <td>Space-separated interpretation files (for example <code>latex-macros/interpretations.tsv</code>). A row saying <code>deprecated, use \x</code> marks that macro deprecated, and a use on an added line is flagged.</td>
 </tr>
 <tr class="even">
+<td><code>letters</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Space-separated letters or Greek commands (for example <code>J</code>). When set, only the named letters are flagged, in either mode, so a caller can block one letter whose macro is certain, such as <code>J</code> for <code>\objfn</code>, with <code>fail: true</code>. Deprecated macros are still flagged.</td>
+</tr>
+<tr class="odd">
 <td><code>submodules</code></td>
 <td>string</td>
 <td><code>'false'</code></td>
 <td>Passed to <code>actions/checkout</code>, so a macros submodule is available for <code>deprecated-files</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
@@ -1466,7 +1472,8 @@ cookieconsent.run({
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block instead of warn (defaults to false)</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   whole-tree: true                       # scan every line, not just a PR's additions</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   letters: 'J'                           # flag only these letters (with fail: true, a block)</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner               # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-literal-math-letters.yml"><code>examples/check-literal-math-letters.yml</code></a> for the full caller stub.</p>
 
 

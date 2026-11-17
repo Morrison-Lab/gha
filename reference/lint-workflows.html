@@ -1321,7 +1321,7 @@ cookieconsent.run({
 <td><code>path</code></td>
 <td>string</td>
 <td><code>'.'</code></td>
-<td>Root path (relative to the caller repo) to audit. zizmor collects both workflows and composite actions under it, respecting <code>.gitignore</code>.</td>
+<td>Root path (relative to the caller repo) to audit. zizmor collects both workflows and composite actions under it, respecting <code>.gitignore</code>; in a repository with submodules it audits only the files git tracks there, so a submodule’s workflows are skipped.</td>
 </tr>
 <tr class="even">
 <td><code>actionlint-version</code></td>
