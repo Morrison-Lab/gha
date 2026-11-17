@@ -7,7 +7,7 @@ frozen pre-``2.0.0`` snapshot (see ``CLAUDE.md``'s "About this repo"
 section). That fact is restated, by hand, in several separate places: this
 file's own opening paragraph, ``README.md``'s ``## Versioning`` section *and*
 its nested ``### Pinning third-party actions`` subsection, and
-``website/versioning.qmd`` / ``website/workflows.qmd``. Nothing keeps those
+``website/versioning.qmd``. Nothing keeps those
 restatements in sync with each other or with reality, and it has drifted on
 four separate occasions (gha#181, gha#374, gha#728 rounds 1 and 2) -- see
 gha#730, which this script closes.
@@ -102,7 +102,6 @@ REGIONS: list[tuple[str, str | None, str]] = [
     ("README.md", "## Versioning", "### Advancing a major tag"),
     ("README.md", "### Pinning third-party actions", "### Job timeouts"),
     ("website/versioning.qmd", None, "## Widening permissions is a breaking change"),
-    ("website/workflows.qmd", "## Versioning {#versioning}", "## Quality checks {#quality-checks}"),
     ("CLAUDE.md", "## About this repo", "### Layout"),
 ]
 
