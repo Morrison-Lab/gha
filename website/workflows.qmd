@@ -74,6 +74,7 @@ input tables and a copy-paste example.
 | [`check-restated-results.yml`](reference/check-restated-results.qmd) | Diff-scoped, warn-only heuristic check that flags a derivation solution (`#sol-` whose exercise asks to derive, prove, show or solve and whose solution displays an equation) when a PR edits it and no `#thm-`, `#lem-`, `#cor-` or `#prp-` div restates the result after the exercise | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-results-in-remarks.yml`](reference/check-results-in-remarks.qmd) | Diff-scoped, warn-only heuristic check that flags a remark div (`#rem-`) that a PR edits and that displays an equation and states a claim ("equals", "is at least", "for all", "holds"); a result belongs in a `#thm-`, `#lem-`, `#cor-` or `#prp-` div | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-result-definition-links.yml`](reference/check-result-definition-links.qmd) | Diff-scoped, warn-only check that flags a result div (`#thm-`, `#lem-`, `#cor-`, `#prp-`) that a PR edits and that links no definition (an `@def-` cross-reference or a link to a `#def-` anchor) | `globs`, `paths-ignore`, `fail`, `whole-tree` |
+| [`check-corollary-sources.yml`](reference/check-corollary-sources.qmd) | Diff-scoped, warn-only check that flags a corollary div (`#cor-`) that a PR edits and that names no earlier result (an `@thm-`, `@lem-`, `@cor-`, or `@prp-` cross-reference, or a link to such an anchor) in its statement or its proof | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-definition-expectation.yml`](reference/check-definition-expectation.qmd) | Diff-scoped, warn-only heuristic check that flags a definition div (`#def-`) that a PR edits and that writes a probability-weighted sum or integral with no expectation operator; define the quantity as an expectation where one fits | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-extracted-lemmas.yml`](reference/check-extracted-lemmas.qmd) | Diff-scoped, failing-by-default heuristic check that flags a solution or proof that states a general fact ("for any", "for every" or "for all" before a kind of mathematical object, with math) when a PR edits it and it cites no `#thm-`, `#lem-`, `#cor-` or `#prp-` result | `globs`, `paths-ignore`, `fail`, `whole-tree` |
 | [`check-definition-equations.yml`](reference/check-definition-equations.qmd) | Diff-scoped check that flags a definition div (`#def-`) that a PR edits and that shows more than the equation linking the defined symbol to its definitional expression: a chain of equalities, several display equations, or prose stating an equivalence; equalities and equivalences belong in a result | `globs`, `paths-ignore`, `fail`, `whole-tree` |
@@ -174,80 +175,12 @@ because a pull request from a fork can run arbitrary code on it
 `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`
 change cut `@v2`, so any capability pinned there has picked up no fixes since -
 including non-breaking ones, like `cleanup-pr-previews`'s `compact-history`
-input, which does not exist at `@v1` at all. **Pin `preview.yml`,
-`preview-deploy.yml`, and `quarto-publish.yml` to
-`@v2`**; `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
-`lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
-`lint-changed-files.yml`,
-`check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
-`lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`,
-`check-formatting.yml`, `claude-manage-project.yml`,
-`r-cmd-check.yml`,
-`check-code-similarity.yml`, and
-`check-one-function-per-file.yml`
-only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
-`check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-math-definitions.yml`,
-`check-merge-drops.yml`, `check-orphaned-images.yml`,
-`check-python-package.yml`, `check-quarto-book.yml`,
-`check-quarto-links.yml`,
-`check-source-overlap.yml`,
-`check-quarto-manuscript.yml`, `check-quarto-prose.yml`, `check-quarto-website.yml`,
-`check-r-package.yml`, `check-repo-hygiene.yml`,
-`check-typed-output.yml`,
-`check-informal-definitions.yml`, `check-literal-math-letters.yml`,
-`check-wikipedia-further-reading.yml`, `check-redundant-citations.yml`, `check-self-credits.yml`,
-`check-one-div-per-subfile.yml`, `check-heading-levels.yml`,
-`check-heading-titles.yml`, `check-title-references.yml`,
-`check-self-reference.yml`, `check-div-ids.yml`,
-`check-page-length.yml`, `check-heading-siblings.yml`, `check-figure-placement.yml`,
-`check-code-messages.yml`, `check-multipart-exercises.yml`,
-`check-rubric-checklists.yml`, `check-python-qmd-chunks.yml`,
-`check-single-ask-parts.yml`, `check-split-solutions.yml`,
-`check-restated-results.yml`,
-`check-results-in-remarks.yml`, `check-result-definition-links.yml`,
-`check-definition-expectation.yml`,
-`check-extracted-lemmas.yml`, `check-definition-equations.yml`,
-`check-hybrid-sentences.yml`,
-`check-format-output-files.yml`,
-`check-caller-permissions.yml`, `check-exm-figures.yml`, `check-contour-3d.yml`,
-`check-static-figures.yml`,
-`check-function-graphs.yml`,
-`check-visualization-figures.yml`, `check-geometric-figures.yml`,
-`check-axis-titles.yml`,
-`check-tree-lists.yml`, `check-search-shortcut.yml`, `check-self-contained-captions.yml`,
-`check-def-commentary.yml`, `check-unexplained-contrasts.yml`, `check-unexplained-choices.yml`,
-`check-solution-citations.yml`,
-`check-exercise-before-result.yml`,
-`check-pr-concerns.yml`, `cancel-superseded.yml`,
-`check-pr-size.yml`,
-`check-def-title-synonyms.yml`,
-`check-def-wiktionary.yml`,
-`check-bare-yes-no.yml`, `check-code-fold.yml`,
-`check-serial-comma.yml`,
-`check-exercise-background.yml`,
-`check-exercise-question-paragraph.yml`,
-`check-exercise-ends-with-task.yml`,
-`check-removed-content.yml`,
-`check-key-equations-displayed.yml`,
-`check-note-sheet-rows.yml`, `check-definite-antecedents.yml`,
-`check-term-links.yml`, `check-paired-file-change.yml`,
-`annotation-gate.yml`,
-`annotation-gate-run.yml`,
-`check-local-macros.yml`, `check-fform-paren.yml`,
-`check-macro-expansions.yml`, `check-write-idiom.yml`,
-`check-avoided-words.yml`, `check-proof-statements.yml`, `check-gradient-lhs.yml`,
-`check-dependency-graph.yml`,
-`cleanup-pr-previews.yml`,
-`opposition-research.yml`,
-`report-main-failure.yml`, `triage-backlog.yml`,
-`student-qmd.yml`, `summary.yml`, `update-quarto-extensions.yml`, and
-`update-snapshots.yml`
-only ever shipped at `@v3` (or moved to `@v3` for
-`cleanup-pr-previews.yml`, `summary.yml`,
-`sync-shared-fragments.yml`, and
-`update-snapshots.yml`).
+input, which does not exist at `@v1` at all.
+
+[Versioning](versioning.qmd) lists the tag each capability pins,
+generated from its stub in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples).
+
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
 the `gh-pages` branch instead - required if the same repo also uses the
@@ -282,8 +215,10 @@ pin to `@v2`.
 (added in [gha#382](https://github.com/Morrison-Lab/gha/issues/382));
 pin to `@v2`.
 `bump-submodule.yml` and `sync-shared-fragments.yml` were
-audited in the same pass and found unchanged since the freeze, so `@v1` remains
-current for them. `check-news.yml` was initially grouped with them, but later
+audited in the same pass and found unchanged since the freeze, so `@v1` stayed
+current for them then;
+`sync-shared-fragments.yml` has since moved to `@v3`.
+`check-news.yml` was initially grouped with them, but later
 gained the configurable `no-changelog-label` input at
 [gha#143](https://github.com/Morrison-Lab/gha/issues/143) - pin it to `@v2` too.
 The stubs in

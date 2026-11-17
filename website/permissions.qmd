@@ -26,6 +26,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-single-ask-parts`,
   `check-split-solutions`, `check-restated-results`,
 `check-results-in-remarks`, `check-result-definition-links`,
+`check-corollary-sources`,
 `check-definition-expectation`,
 `check-extracted-lemmas`,
   `check-definition-equations`, `check-hybrid-sentences`,

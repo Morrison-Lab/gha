@@ -471,7 +471,9 @@ runs:
         FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
         SETUP_JULIA: ${{ inputs.setup-julia }}
-      run: bash "$GITHUB_ACTION_PATH/render-site.sh"
+        # A slot caps the renders running at once on a self-hosted host (gha#2062).
+        SLOT_SCRIPT: ${{ github.action_path }}/../scripts/with-render-slot.sh
+      run: bash "$SLOT_SCRIPT" bash "$GITHUB_ACTION_PATH/render-site.sh"
 
     # The job has no runner environment, so the render's inputs travel as
     # assignments on the command line, quoted with printf %q.
