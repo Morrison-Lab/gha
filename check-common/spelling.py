@@ -2,10 +2,9 @@
 """British spellings and their American forms (gha#2095).
 
 One copy of the word list: ``check-avoided-words`` flags ``BRITISH_RE`` in
-prose, and ``diffscope.parse_diff`` uses ``americanize_line`` so that a line
-whose only change is British to American spelling counts as unchanged, not
-added.  Without that, a spelling fix makes every other diff-scoped check
-re-read the whole line and reflag what it already carried.
+prose, and the American forms let the diff-scoped checks treat a line whose
+only change is British to American spelling as unchanged (gha#2098), so a
+spelling fix does not make them reflag what the line already carried.
 
 The list is explicit, never a bare "-ise" pattern, which would flag
 "otherwise", "noise", "exercise" and "precise".  "analyses" passes: it is
