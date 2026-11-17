@@ -1607,6 +1607,15 @@ jobs:
           fail: 'true'
           whole-tree: 'true'
           globs: 'website/reference/*.qmd'
+      # The staged page's only letters are y and i, so naming J alone leaves
+      # nothing to flag; were `letters` dropped, the call would fail.
+      - name: Check again with letters naming only J
+        uses: ./check-literal-math-letters
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: '_ci-literal-math/*.qmd'
+          letters: 'J'
       - name: Remove the staged page
         if: always()
         shell: bash
