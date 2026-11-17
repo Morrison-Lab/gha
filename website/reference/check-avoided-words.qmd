@@ -93,7 +93,7 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
 - **British spellings.**
   "Colour", "behaviour", "neighbour", "normalise", "analyse", "centre",
   "modelling", "labelled", "grey", "judgement", and the rest of an explicit list.
-  Write the American spelling, as the notes do.
+  Use the American spelling, as the notes do.
   The list names each word or stem, so "otherwise", "noise",
   "exercise", and the plural noun "analyses" pass.
   Quoted text, italic text such as a cited title, link targets, URLs,
