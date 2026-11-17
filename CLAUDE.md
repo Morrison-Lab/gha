@@ -550,6 +550,11 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
   It loads `check-write-idiom`'s engine (`scan_markdown`, `run_check` and `main` take a scanner, env prefix and wording) instead of copying it, so the diff model and Markdown masking (added lines only, moved lines exempt, skip-not-fall-back, warn-only by default) live in one place, and its env vars use the `CAW_` prefix.
   Keep the three directories together: `check-avoided-words/check-avoided-words.py` finds the engine at `../check-write-idiom/check-write-idiom.py`, which takes its git and diff helpers from `../check-common/diffscope.py` (gha#1856).
+- `condor-batch/` holds `condor-batch.sh`, which `.github/actions/condor-batch` runs to send a job's steps to the WWU CS clusters as one HTCondor job,
+  and `image/`, the Apptainer recipes those jobs run in.
+  A repository that needs its own render image uses `image/repo-ci.def` through `image/build-repo-ci.sh <repo>`,
+  and declares what differs in its own `.github/ci-image/` (`apt-packages.txt`, `tlmgr-packages.txt`, and the required `test.sh`),
+  rather than gaining a recipe here (gha#2064).
 - `check-common/` (Python, stdlib only, gha#1856) is not a check: it holds `diffscope.py`, the one copy of the diff-scoping helpers.
   Those are the git calls, the `-U0` diff parser, and the rename and ignore handling.
   `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
