@@ -4,13 +4,13 @@ description: >-
   through condor-batch (which falls back to the runner), with lines from student-copy-render/student_copy_steps.py.
 inputs:
   check:
-    description: The check command, one line, run after every render.
+    description: The check command, one line, run after all the renders.
     required: true
   documents:
-    description: "`all` (a bare `quarto render` per profile), or a list file in the checkout, one document per line. An empty value is refused."
+    description: "`all` (a bare `quarto render` per profile), or a list file relative to `working-directory`, one document per line. An empty value is refused."
     default: all
   fragments:
-    description: "`all` (every `fragment-glob` match), or a list file in the checkout of questions to render alone."
+    description: "`all` (every `fragment-glob` match), or a list file relative to `working-directory` of questions to render alone."
     default: all
   fragment-glob:
     description: The questions that `all` in `fragments` renders.

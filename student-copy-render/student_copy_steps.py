@@ -10,6 +10,7 @@ import os
 from fail import fail
 from fragment_line import fragment_line
 from list_path import list_path
+from read_names import read_names
 
 
 def build(env: dict[str, str]) -> list[str]:
@@ -26,9 +27,8 @@ def build(env: dict[str, str]) -> list[str]:
     if documents == "all":
         renders = ["quarto render", "quarto render --profile solution"]
     else:
-        path = list_path("documents", documents)
-        guard = (f'set -euo pipefail; if grep -q "^-" {path}; then echo "A document to render starts with -: rename it." >&2; exit 1; fi; ')
-        renders = [f"{guard}tr -d '\\r' < {path} | xargs -r -d '\\n' -I{{}} quarto render {{}}{p}"
+        read = read_names(f"cat -- {list_path('documents', documents)}", "document to render")
+        renders = [f'{read}printf "%s" "$files" | xargs -r -d "\\n" -I{{}} quarto render {{}}{p}'
                    for p in ("", " --profile solution")]
     fragments = env.get("SC_FRAGMENTS", "all").strip()
     glob = env.get("SC_FRAGMENT_GLOB", "exercises/*/_exr-*.qmd").strip()

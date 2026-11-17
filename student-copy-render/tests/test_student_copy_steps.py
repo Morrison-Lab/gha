@@ -53,9 +53,9 @@ def test_all_writes_both_profiles_fragments_and_check(checkout: Path) -> None:
 
 
 def test_lists_render_only_what_they_name(checkout: Path) -> None:
-    # Spaces in the list's name and a line's, a quote, and CRLF endings: each line is one name.
+    # Spaces, a quote, CRLF endings and a blank line: each nonblank line is one name.
     (checkout / "my docs.txt").write_text("Homework/my hw.qmd\r\n")
-    (checkout / "frags.txt").write_text(f"{FRAGMENTS[2]}\r\nexercises/it's.qmd\r\n")
+    (checkout / "frags.txt").write_text(f"{FRAGMENTS[2]}\r\n\r\nexercises/it's.qmd\r\n")
     lines = steps(checkout, SC_DOCUMENTS="my docs.txt", SC_FRAGMENTS="frags.txt")
     assert run_line(checkout, lines[0]) == (0, ["render Homework/my hw.qmd"])
     assert run_line(checkout, lines[1]) == (0, ["render Homework/my hw.qmd --profile solution"])
@@ -73,28 +73,22 @@ def test_failures_fail_the_line(checkout: Path) -> None:
     assert run_line(checkout, steps(checkout, SC_FRAGMENT_GLOB="nowhere/*.qmd")[2]) == (2, [])
     (checkout / "bin" / "quarto").write_text("#!/bin/sh\nexit 3\n")
     assert run_line(checkout, steps(checkout)[2])[0] != 0
-    # A listed name starting with - (it would reach quarto as an option), or a missing list.
-    (checkout / "dash.txt").write_text("--output=/tmp/x\n")
+    # A listed name starting with - (even after a CR), or a missing list.
+    (checkout / "dash.txt").write_text("a.qmd\n\r--output=/tmp/x\n")
     for name in ("dash.txt", "gone.txt"):
         for line in steps(checkout, SC_DOCUMENTS=name, SC_FRAGMENTS=name)[:3]:
             assert run_line(checkout, line)[0] != 0 and run_line(checkout, line)[1] == [], (name, line)
 
 
 @pytest.mark.parametrize("env, word", [
-    ({}, "check is required"),
-    ({"SC_CHECK": "a\nb"}, "one line"),
-    ({"SC_CHECK": "c", "SC_PARALLEL": "0"}, "parallel"),
-    ({"SC_CHECK": "c", "SC_PARALLEL": "x"}, "parallel"),
-    ({"SC_CHECK": "c", "SC_DOCUMENTS": "/etc/list"}, "relative path"),
-    ({"SC_CHECK": "c", "SC_FRAGMENTS": "../list"}, "relative path"),
-    ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "a;rm -rf b"}, "fragment-glob"),
-    ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "../../*"}, "fragment-glob"),
-    ({"SC_CHECK": "c", "SC_FRAGMENT_GLOB": "-la"}, "fragment-glob"),
-    ({"SC_CHECK": "c", "SC_FRAGMENTS": "-n"}, "relative path"),
-    ({"SC_CHECK": "c", "SC_DOCUMENTS": ""}, "relative path"),
+    ({"SC_CHECK": ""}, "check is required"), ({"SC_CHECK": "a\nb"}, "one line"),
+    ({"SC_PARALLEL": "0"}, "parallel"), ({"SC_PARALLEL": "x"}, "parallel"),
+    ({"SC_DOCUMENTS": "/etc/list"}, "relative path"), ({"SC_FRAGMENTS": "../list"}, "relative path"),
+    ({"SC_FRAGMENT_GLOB": "a;rm -rf b"}, "fragment-glob"), ({"SC_FRAGMENT_GLOB": "../../*"}, "fragment-glob"),
+    ({"SC_FRAGMENT_GLOB": "-la"}, "fragment-glob"), ({"SC_FRAGMENTS": "-n"}, "relative path"), ({"SC_DOCUMENTS": ""}, "relative path"),
 ])
 def test_bad_inputs_are_refused(tmp_path: Path, env: dict[str, str], word: str) -> None:
-    result = write_steps(tmp_path, **env)
+    result = write_steps(tmp_path, **{"SC_CHECK": "c", **env})
     assert result.returncode == 64 and word in result.stderr
 
 
