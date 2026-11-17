@@ -1310,6 +1310,7 @@ cookieconsent.run({
 <li>MathJax itself failing to load or initialize (a CDN hiccup, a blocked host, a broken script path) on a page that references it – caught separately from the two cases above, since a page where MathJax never ran would otherwise show zero error nodes and read as a false pass.</li>
 </ul>
 <p>It runs independently of <code>preview-deploy.yml</code> – both trigger on the same build completion, but this one downloads the artifact directly rather than depending on the deploy, so it needs no <code>gh-pages</code> write access and no live preview URL.</p>
+<p>On a self-hosted runner the crawl does not run. The job passes with only a notice, so a green check there means the equations were not examined. The crawl starts headless Chromium renderers, and CI rendering is banned on the self-hosted runners (<a href="https://github.com/Morrison-Lab/gha/issues/2108">#2108</a>). Run the job on a GitHub-hosted runner to check equations.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
