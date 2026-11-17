@@ -153,6 +153,13 @@ on:
         description: The same image on the runner, for heads without the cluster home. Empty falls back to the caller's `CI_CLUSTER_IMAGE_FILE` variable.
         type: string
         default: ''
+      cluster-idle-minutes:
+        description: >-
+          Minutes the cluster job may wait in the queue before it starts. A job
+          still idle then is removed and the render runs on the runner (gha#2085);
+          a job that has started is never cut off. Empty waits as long as the queue takes.
+        type: string
+        default: '20'
       extra-preview-labels:
         description: >-
           JSON array string of additional PR label names that trigger a preview
@@ -366,6 +373,7 @@ jobs:
           cluster-head: ${{ inputs.cluster-head }}
           cluster-image: ${{ inputs.cluster-image || vars.CI_CLUSTER_IMAGE }}
           cluster-image-file: ${{ inputs.cluster-image-file || vars.CI_CLUSTER_IMAGE_FILE }}
+          cluster-idle-minutes: ${{ inputs.cluster-idle-minutes }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           timezone: ${{ inputs.timezone }}

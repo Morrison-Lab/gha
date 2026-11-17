@@ -254,6 +254,14 @@ inputs:
   cluster-image-file:
     description: The same image on the runner, for heads without the cluster home (`condor-batch` `image-file`).
     default: ''
+  cluster-idle-minutes:
+    description: >-
+      Minutes the cluster job may wait in the queue before it starts
+      (`condor-batch` `idle-minutes`). A job still idle then is removed and the
+      render runs on the runner, so a busy pool costs this long rather than
+      the whole job timeout (gha#2085). A job that has started is never cut
+      off. Empty waits as long as the queue takes.
+    default: '20'
 outputs:
   changed-chapters:
     description: >-
@@ -794,6 +802,7 @@ runs:
         image-file: ${{ inputs.cluster-image-file }}
         steps: ${{ steps.cluster-plan.outputs.steps }}
         output: ${{ inputs.path }}/${{ inputs.output-dir }},${{ inputs.path }}/_freeze,${{ inputs.path }}/.quarto,_quarto_preview_render.log
+        idle-minutes: ${{ inputs.cluster-idle-minutes }}
 
     - name: Verify render warnings and forbidden log patterns
       if: github.event.action != 'closed'

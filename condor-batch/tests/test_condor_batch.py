@@ -57,6 +57,7 @@ RM_STUB = 'echo "condor_rm $*" >> "$STUB_LOG"\n'
 
 Q_STUB = """\
 echo "condor_q $*" >> "$STUB_LOG"
+case " $* " in *" -af JobStatus "*) echo "${STUB_Q_STATUS-2}"; exit "${STUB_Q_RC:-0}" ;; esac
 echo "analysis of $*: no machine matches the requirements"
 [ -z "${STUB_Q_LINES:-}" ] || seq 1 "$STUB_Q_LINES"
 [ -z "${STUB_Q_RC:-}" ] || exit "$STUB_Q_RC"
@@ -309,6 +310,77 @@ def test_wait_limit_does_not_remove_a_job_that_ended_without_a_value(tmp_path):
     assert proc.returncode == 70
     assert _count(calls, "condor_rm") == 0
     assert "did not end within" not in proc.stderr
+
+
+def test_a_job_still_idle_after_the_idle_limit_is_explained_and_removed(tmp_path):
+    # gha#2085: the job never started, so the runner takes over after the
+    # idle limit instead of waiting until the job timeout.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1",
+        STUB_Q_STATUS="1",
+    )
+    assert proc.returncode == 70
+    assert "condor_wait -wait 1200 condor.log" in calls
+    assert "condor_q 77 -af JobStatus" in calls
+    assert calls.index("condor_q -better-analyze 77") < calls.index("condor_rm 77")
+    assert _count(calls, "condor_wait") == 1
+    assert "did not start within 20 minutes" in proc.stderr
+    assert "no machine matches the requirements" in proc.stderr
+
+
+def test_a_job_that_started_is_not_removed_by_the_idle_limit(tmp_path):
+    # Running (JobStatus 2) when the idle limit passes: wait on, unbounded.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1",
+        STUB_Q_STATUS="2", STUB_RV="0",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "condor_wait -wait 1200 condor.log" in calls
+    assert "condor_wait condor.log" in calls
+    assert _count(calls, "condor_rm") == 0
+
+
+def test_an_unknown_job_status_does_not_remove_the_job(tmp_path):
+    # condor_q failing says nothing about the job, so it is not removed.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1",
+        STUB_Q_RC="3", STUB_Q_STATUS="", STUB_RV="0",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_rm") == 0
+
+
+def test_the_wait_limit_still_counts_from_submission(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", CONDOR_WAIT_MINUTES="90",
+        STUB_WAIT_RC="1", STUB_Q_STATUS="2",
+    )
+    assert proc.returncode == 70
+    assert "condor_wait -wait 4200 condor.log" in calls
+    assert "condor_rm 77" in calls
+    assert "did not end within 90 minutes" in proc.stderr
+
+
+def test_a_job_that_ends_inside_the_idle_window_is_waited_for_once(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_wait") == 1
+    assert _count(calls, "condor_q") == 0
+
+
+def test_no_idle_limit_by_default(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert calls.count("condor_wait condor.log") == 1
+
+
+def test_malformed_idle_limit_is_refused(tmp_path):
+    for bad in ["0", "-5", "1.5", "ten"]:
+        sub = tmp_path / bad.replace(".", "_")
+        sub.mkdir()
+        proc, calls = _run(sub, ["a", "b"], CONDOR_IDLE_MINUTES=bad)
+        assert proc.returncode == 64, bad
+        assert calls == [], bad
 
 
 def test_malformed_wait_limit_is_refused(tmp_path):
