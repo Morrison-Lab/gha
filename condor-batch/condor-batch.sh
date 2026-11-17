@@ -176,24 +176,9 @@ done
 for candidate in ${fallback_list[@]+"${fallback_list[@]}"}; do
   case " ${order[*]} " in *" $candidate "*) ;; *) order+=("$candidate") ;; esac
 done
-# A request size as HTCondor reads it: a bare number is MB for memory and KiB
-# for disk; K, M, G and T suffixes (with or without B or iB) are binary units.
-# Prints the size in the given unit (1 = KiB, 1024 = MiB), or 0 when it cannot
-# be read, which leaves that resource out of the fit.
-request_size() {
-  local value="${1// /}" bare_kib="$2" unit_kib="$3" num suffix kib
-  value="${value^^}"
-  [[ "$value" =~ ^([0-9]+)([KMGT]?)I?B?$ ]] || { echo 0; return; }
-  num="${BASH_REMATCH[1]}" suffix="${BASH_REMATCH[2]}"
-  case "$suffix" in
-    '') kib=$(( 10#$num * bare_kib )) ;;
-    K) kib=$(( 10#$num )) ;;
-    M) kib=$(( 10#$num * 1024 )) ;;
-    G) kib=$(( 10#$num * 1024 * 1024 )) ;;
-    T) kib=$(( 10#$num * 1024 * 1024 * 1024 )) ;;
-  esac
-  echo $(( kib / unit_kib ))
-}
+# request_size (sourced): a request size such as 8GB in KiB or MiB.
+# shellcheck source=condor-batch/request-size.sh
+source "$(dirname "${BASH_SOURCE[0]}")/request-size.sh"
 # With more than one head, each is asked, in parallel and within
 # CONDOR_PROBE_SECONDS (default 60), how many jobs sit idle in its queue and how
 # many copies of this job fit in its unclaimed slots (gha#2093). Free slots
