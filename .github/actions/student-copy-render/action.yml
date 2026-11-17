@@ -1,8 +1,7 @@
 name: Render and check a student copy on the cluster
 description: >-
-  Render the student copy, the answer key and each question alone, then run the repository's
-  check, as ONE HTCondor job through condor-batch (which falls back to the runner).
-  The step lines come from student-copy-render/student_copy_steps.py.
+  Render the student copy, the answer key and each question alone, then run the check, as ONE HTCondor job
+  through condor-batch (which falls back to the runner), with lines from student-copy-render/student_copy_steps.py.
 inputs:
   check:
     description: The check command, one line, run after every render.
@@ -22,9 +21,6 @@ inputs:
   head:
     description: Passed to condor-batch.
     default: csci-lab-head.cs.wwu.edu:922
-  image:
-    description: Passed to condor-batch.
-    default: ''
   image-file:
     description: Passed to condor-batch, such as the <repo>-ci.sif that build-repo-ci.sh builds.
     default: ''
@@ -64,7 +60,6 @@ runs:
       with:
         steps: ${{ steps.build.outputs.steps }}
         head: ${{ inputs.head }}
-        image: ${{ inputs.image }}
         image-file: ${{ inputs.image-file }}
         output: ${{ inputs.output }}
         wait-minutes: ${{ inputs.wait-minutes }}

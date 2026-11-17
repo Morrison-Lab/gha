@@ -988,13 +988,9 @@ jobs:
           set -euo pipefail
           fx="$RUNNER_TEMP/sc-fixture"
           mkdir -p "$fx/exercises/logic" "$fx/bin"
-          : > "$fx/exercises/logic/_exr-a.qmd"
-          : > "$fx/exercises/logic/_exr-b.qmd"
+          touch "$fx/exercises/logic/_exr-a.qmd" "$fx/exercises/logic/_exr-b.qmd"
           echo Homework/hw1.qmd > "$fx/docs.txt"
-          {
-            echo '#!/bin/sh'
-            echo "echo \"\$*\" >> '$fx/quarto.log'"
-          } > "$fx/bin/quarto"
+          printf '#!/bin/sh\necho "$*" >> %s\n' "'$fx/quarto.log'" > "$fx/bin/quarto"
           chmod +x "$fx/bin/quarto"
           echo "$fx/bin" >> "$GITHUB_PATH"
           echo "FX=$fx" >> "$GITHUB_ENV"
@@ -1008,12 +1004,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat "$FX/quarto.log"
-          grep -qx 'render Homework/hw1.qmd' "$FX/quarto.log"
-          grep -qx 'render Homework/hw1.qmd --profile solution' "$FX/quarto.log"
-          grep -qx 'render exercises/logic/_exr-a.qmd --to html' "$FX/quarto.log"
-          grep -qx 'render exercises/logic/_exr-b.qmd --to html' "$FX/quarto.log"
-          test "$(wc -l < "$FX/quarto.log")" -eq 4
+          printf 'render %s\n' Homework/hw1.qmd 'Homework/hw1.qmd --profile solution' \
+            'exercises/logic/_exr-a.qmd --to html' 'exercises/logic/_exr-b.qmd --to html' \
+            | diff - "$FX/quarto.log"
           grep -qx checked "$FX/check.out"
   condor-batch-cluster:
     if: github.event.repository.private && vars.CI_RUNNER && github.event.pull_request.head.repo.full_name == github.repository
