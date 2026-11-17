@@ -67,6 +67,7 @@ echo "condor_q $*" >> "$STUB_LOG"
 case " $* " in *" -af ClusterId "*)
   # The head probe: STUB_IDLE="host=count ..." gives each head's idle jobs.
   [ "$STUB_HOST" != "${STUB_Q_FAIL_HOST:-none-}" ] || exit 1
+  [ "$STUB_HOST" != "${STUB_Q_SLOW_HOST:-none-}" ] || sleep 5
   for kv in ${STUB_IDLE:-}; do [ "${kv%%=*}" != "$STUB_HOST" ] || seq 1 "${kv#*=}"; done
   exit 0 ;;
 esac
@@ -996,3 +997,14 @@ def test_one_head_is_not_probed(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert not any("-af ClusterId" in c for c in calls)
     assert "chose head" not in proc.stderr
+
+
+def test_a_head_that_reports_too_slowly_keeps_its_place(tmp_path):
+    proc, _ = _head_run(
+        tmp_path, CONDOR_HEAD="a.example b.example c.example",
+        CONDOR_PROBE_SECONDS="1", STUB_Q_SLOW_HOST="a.example",
+        STUB_SLOTS=f"c.example:{SLOT}",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "head a.example did not report within 1s" in proc.stderr
+    assert "(order: c.example a.example b.example)" in proc.stderr

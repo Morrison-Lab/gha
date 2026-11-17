@@ -185,8 +185,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/request-size.sh"
 # alone mislead: cse-head had 28 of 108 unclaimed on 2026-11-17 and still held
 # jobs for hours, because they did not fit the request. Heads where more copies
 # fit than jobs wait go first, by that margin; the rest keep the order above.
-# A head whose queue cannot be read keeps its place, and one that does not
-# answer ssh is dropped.
+# A head whose queue cannot be read, or that does not report in time, keeps
+# its place, and one that does not answer ssh is dropped.
 head_entry="${order[0]}" rest=()
 if [ "${#order[@]}" -gt 1 ]; then
   probe_cpus="${REQUEST_CPUS:-4}"; [[ "$probe_cpus" =~ ^[0-9]+$ ]] || probe_cpus=0
@@ -217,7 +217,13 @@ PROBE
   ranked=() unranked=()
   for i in "${!order[@]}"; do
     candidate="${order[$i]}"
-    if ! wait "$(cat "$probe_dir/$i.pid")"; then
+    status=0; wait "$(cat "$probe_dir/$i.pid")" || status=$?
+    if [ "$status" -eq 124 ]; then
+      # timeout killed a probe that may only be slow: keep the head's place.
+      echo "head $candidate did not report within ${probe_secs}s; keeping its place in the order" >&2
+      unranked+=("$candidate")
+      continue
+    elif [ "$status" -ne 0 ]; then
       echo "head $candidate did not answer ssh; skipping it" >&2
       continue
     fi
