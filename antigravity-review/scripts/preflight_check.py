@@ -84,11 +84,11 @@ def extract_workflow_inputs(workflow_path: str) -> list[str]:
 def get_doc_search_target(doc_content: str, doc_filename: str) -> str:
     """Extract search target for doc checking.
 
-    For summary table documents (README.md, website/workflows.qmd), scopes
-    matching to the antigravity-code-review.yml table row line so shared
-    input names are not falsely satisfied by sibling workflow rows.
+    For the README.md summary table, scopes matching to the
+    antigravity-code-review.yml table row line so shared input names are
+    not falsely satisfied by sibling workflow rows.
     """
-    if doc_filename in ("README.md", "workflows.qmd"):
+    if doc_filename == "README.md":
         for line in doc_content.splitlines():
             if "antigravity-code-review.yml" in line:
                 return line
@@ -99,7 +99,9 @@ def check_action_docs_sync() -> bool:
     """Ensure inputs in .github/workflows/antigravity-code-review.yml are documented in:
     1. website/reference/antigravity-code-review.qmd
     2. README.md
-    3. website/workflows.qmd
+
+    website/workflows.qmd is not checked: its table is generated from the
+    workflow's own inputs at render time (gha#1862).
     """
     passed = True
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -107,7 +109,6 @@ def check_action_docs_sync() -> bool:
     doc_paths = [
         os.path.join(repo_root, "website", "reference", "antigravity-code-review.qmd"),
         os.path.join(repo_root, "README.md"),
-        os.path.join(repo_root, "website", "workflows.qmd"),
     ]
 
     if not os.path.isfile(workflow_path):
