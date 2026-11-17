@@ -34,6 +34,18 @@ Design notes:
   exact matches only). Unrelated lines from other parents or the merge base
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
+- **A kept deletion is not a drop.** When another parent deleted a file
+  outright since ``B`` and the file is absent from ``M``, the merge resolved
+  a modify/delete conflict by keeping the deletion, so the lines this parent
+  added to that file are not reported. A file the merge alone deleted, while
+  both parents still have it, is still reported, and so is a file one side
+  newly added (the other side never had it to delete). Renames are found
+  down to 30% similarity, to any name, so a renamed file is not a deletion,
+  and a file the merge itself moved away from this parent's copy is still
+  checked.
+  Two limits: a rename rewritten below 30% reads as a deletion, so a drop
+  from it is not reported; and a rename/delete conflict resolved as delete
+  is still reported, since the renaming side deleted nothing.
 - **Short and blank lines are skipped** (``MERGE_DROPS_MIN_LENGTH``, default
   20 characters after normalisation): fences, list markers, ``---``, closing
   ``:::`` and similar boilerplate recur everywhere and would add noise
@@ -81,6 +93,8 @@ _DEFAULT_GLOBS = "*.md *.qmd"
 _DEFAULT_MIN_LENGTH = 20
 _DEFAULT_FAIL = False
 _DEFAULT_SIMILARITY = 0.6
+# Rename-detection threshold for "this parent deleted the file" (see check_merge).
+_DELETION_RENAME_THRESHOLD = "30%"
 
 # Blobs larger than this are not read when searching M's tree for moved
 # content: a multi-megabyte file is data or generated output, not prose a
@@ -241,6 +255,38 @@ def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold:
     return False
 
 
+def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:
+    """Whether ``path`` is in ``commit``'s tree, or None when git fails.
+
+    ``ls-tree`` prints nothing and exits 0 for an absent path, so a git
+    failure stays distinguishable from absence and cannot arm the skip.
+    """
+    out = _git(["--literal-pathspecs", "ls-tree", "--name-only", "-z", commit, "--", path],
+               cwd=cwd)
+    if out is None:
+        return None
+    return path in out.split("\0")
+
+
+def _moved_by_merge(parent: str, merge: str, cwd: Optional[str]) -> Optional[Set[str]]:
+    """Paths of ``parent`` that ``merge`` renamed, or None when git fails.
+
+    Uses the same rename threshold and limit as the deletion list, so a file
+    the merge moved (and perhaps trimmed) is not taken for a kept deletion.
+    """
+    out = _git(
+        ["diff", "--no-color", "--no-ext-diff", "--name-status", "-z", "-l0",
+         "--diff-filter=R", f"--find-renames={_DELETION_RENAME_THRESHOLD}",
+         parent, merge],
+        cwd=cwd,
+    )
+    if out is None:
+        return None
+    fields = out.split("\0")
+    # Each record is "R<score>", old path, new path.
+    return {fields[k + 1] for k in range(0, len(fields) - 2, 3) if fields[k].startswith("R")}
+
+
 def list_merges(base: str, head: str, cwd: Optional[str] = None) -> Optional[List[List[str]]]:
     """``[[merge, parent1, parent2, ...], ...]`` for merges in base..head, oldest first."""
     out = _git(["rev-list", "--reverse", "--merges", "--parents", f"{base}..{head}"], cwd=cwd)
@@ -266,6 +312,26 @@ def check_merge(
     base = base_out.strip()
     subject = (_git(["log", "-1", "--format=%s", merge], cwd=cwd) or "").strip()
 
+    # Paths each parent deleted outright since the base. Rename detection
+    # reports a rename as R, not D, so a renamed file is not a deletion here.
+    # The threshold sits below git's default 50% on purpose: a rename edited
+    # past it would read as a deletion and arm the skip below, hiding a drop,
+    # while a spurious pairing only keeps the path reported. No pathspec:
+    # git prunes by pathspec before pairing renames, so a rename to a name
+    # outside ``globs`` would otherwise read as a deletion. ``-l0`` lifts
+    # diff.renameLimit, past which git silently stops pairing renames.
+    deleted_by: List[Set[str]] = []
+    for parent in parents:
+        names = _git(
+            ["diff", "--no-color", "--no-ext-diff", "--name-only", "-z", "-l0",
+             "--diff-filter=D", f"--find-renames={_DELETION_RENAME_THRESHOLD}",
+             base, parent],
+            cwd=cwd,
+        )
+        if names is None:
+            return None
+        deleted_by.append({n for n in names.split("\0") if n})
+
     drops: List[Drop] = []
     resolution_cache: Dict[str, Set[str]] = {}
     for i, parent in enumerate(parents, start=1):
@@ -275,6 +341,7 @@ def check_merge(
         )
         if diff is None:
             return None
+        moved: Optional[Set[str]] = None
         for path, lines in parse_added_lines(diff).items():
             if diffscope.ignored(path, ignores):
                 continue
@@ -287,6 +354,21 @@ def check_merge(
                     candidates.append(norm)
             if not candidates:
                 continue
+            if any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
+                   if j != i):
+                # Another parent deleted this file. If the merge kept the
+                # deletion (a modify/delete conflict resolved as delete), skip
+                # it -- unless the merge itself moved this parent's copy.
+                in_merge = _exists(merge, path, cwd)
+                if in_merge is None:
+                    return None
+                if not in_merge:
+                    if moved is None:
+                        moved = _moved_by_merge(parent, merge, cwd)
+                        if moved is None:
+                            return None
+                    if path not in moved:
+                        continue
             same_file = index.at_path(merge, path)
             missing = [c for c in candidates
                        if c not in same_file.flat
