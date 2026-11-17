@@ -11,6 +11,13 @@ inputs:
       Cluster head node, or a space- or comma-separated list of heads, each
       host or host:port (csci-lab-head.cs.wwu.edu:922): runs are spread over them and fall back to the next head that answers ssh.
     default: cse-head.cluster.cs.wwu.edu
+  fallback-head:
+    description: >-
+      Heads, in the same form as `head`, tried only after every `head` has
+      failed to answer ssh or to start the job within `idle-minutes`. They
+      are never chosen by the spreading, so a head whose queue is often long
+      stays usable without delaying the runs that would start there (gha#2091).
+    default: ''
   working-directory:
     description: Checkout to copy to the cluster.
     default: .
@@ -42,6 +49,13 @@ inputs:
       before the fallback can run (gha#2037). Empty waits as long as the job
       takes.
     default: ''
+  idle-minutes:
+    description: >-
+      Longest time, in whole minutes, the cluster job may sit idle in the
+      queue. A job that has not started by then is removed and the steps run
+      on the runner; a job that has started is left alone (gha#2085). Empty
+      waits for the job to start as long as it takes.
+    default: ''
 runs:
   using: composite
   steps:
@@ -50,10 +64,12 @@ runs:
       env:
         STEPS: ${{ inputs.steps }}
         CONDOR_HEAD: ${{ inputs.head }}
+        CONDOR_FALLBACK_HEAD: ${{ inputs.fallback-head }}
         CONDOR_IMAGE: ${{ inputs.image }}
         CONDOR_IMAGE_FILE: ${{ inputs.image-file }}
         CONDOR_OUTPUT: ${{ inputs.output }}
         CONDOR_WAIT_MINUTES: ${{ inputs.wait-minutes }}
+        CONDOR_IDLE_MINUTES: ${{ inputs.idle-minutes }}
         WORKDIR: ${{ inputs.working-directory }}
         SCRIPT: ${{ github.action_path }}/../../../condor-batch/condor-batch.sh
         SLOT_SCRIPT: ${{ github.action_path }}/../../../scripts/with-render-slot.sh

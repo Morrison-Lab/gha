@@ -40,12 +40,17 @@ echo "1 job(s) submitted to cluster 77."
 cp .condor.sub "$STUB_LOG.sub"
 cp .condor-run.sh "$STUB_LOG.run"
 tar -tzf checkout.tar.gz > "$STUB_LOG.tar"
+if [ -n "${STUB_QUEUE_LOG:-}" ]; then
+  echo "000 (077.000.000) 2026-11-17 10:00:00 Job submitted from host: <1.2.3.4>" >> condor.log
+  echo "001 (077.000.000) 2026-11-17 10:03:20 Job executing on host: <5.6.7.8>" >> condor.log
+fi
 """
 
 WAIT_STUB = """\
 echo "condor_wait $*" >> "$STUB_LOG"
 [ -z "${STUB_WAIT_SLEEP:-}" ] || sleep "$STUB_WAIT_SLEEP"
-if [ -n "${STUB_RV:-}" ]; then
+w=$(cat "$STUB_LOG.wn" 2>/dev/null || echo 0); w=$((w + 1)); echo "$w" > "$STUB_LOG.wn"
+if [ -n "${STUB_RV:-}" ] && [ "$w" -ge "${STUB_RV_FROM_WAIT:-1}" ]; then
   echo "004 (1.0) Job terminated. (1) Normal termination (return value $STUB_RV)" >> condor.log
 fi
 [ -z "${STUB_MADE:-}" ] || tar -czf output.tar.gz -C "$STUB_MADE" _site
@@ -57,6 +62,12 @@ RM_STUB = 'echo "condor_rm $*" >> "$STUB_LOG"\n'
 
 Q_STUB = """\
 echo "condor_q $*" >> "$STUB_LOG"
+case " $* " in *" -af JobStatus "*)
+  # STUB_Q_STATUSES gives one status per call, in order; then STUB_Q_STATUS.
+  n=$(cat "$STUB_LOG.qn" 2>/dev/null || echo 0); echo $((n + 1)) > "$STUB_LOG.qn"
+  read -ra seq <<< "${STUB_Q_STATUSES:-}"
+  echo "${seq[$n]-${STUB_Q_STATUS-2}}"; exit "${STUB_Q_RC:-0}" ;;
+esac
 echo "analysis of $*: no machine matches the requirements"
 [ -z "${STUB_Q_LINES:-}" ] || seq 1 "$STUB_Q_LINES"
 [ -z "${STUB_Q_RC:-}" ] || exit "$STUB_Q_RC"
@@ -311,6 +322,77 @@ def test_wait_limit_does_not_remove_a_job_that_ended_without_a_value(tmp_path):
     assert "did not end within" not in proc.stderr
 
 
+def test_a_job_still_idle_after_the_idle_limit_is_explained_and_removed(tmp_path):
+    # gha#2085: the job never started, so the runner takes over after the
+    # idle limit instead of waiting until the job timeout.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1",
+        STUB_Q_STATUS="1",
+    )
+    assert proc.returncode == 70
+    assert "condor_wait -wait 1200 condor.log" in calls
+    assert "condor_q 77 -af JobStatus" in calls
+    assert calls.index("condor_q -better-analyze 77") < calls.index("condor_rm 77")
+    assert _count(calls, "condor_wait") == 1
+    assert "did not start within 20 minutes" in proc.stderr
+    assert "no machine matches the requirements" in proc.stderr
+
+
+def test_a_job_that_started_is_not_removed_by_the_idle_limit(tmp_path):
+    # Running (JobStatus 2) when the idle limit passes: wait on, unbounded.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1",
+        STUB_Q_STATUS="2", STUB_RV="0",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "condor_wait -wait 1200 condor.log" in calls
+    assert "condor_wait condor.log" in calls
+    assert _count(calls, "condor_rm") == 0
+
+
+def test_an_unknown_job_status_does_not_remove_the_job(tmp_path):
+    # condor_q failing says nothing about the job, so it is not removed.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1",
+        STUB_Q_RC="3", STUB_Q_STATUS="", STUB_RV="0",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_rm") == 0
+
+
+def test_the_wait_limit_still_counts_from_submission(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", CONDOR_WAIT_MINUTES="90",
+        STUB_WAIT_RC="1", STUB_Q_STATUS="2",
+    )
+    assert proc.returncode == 70
+    assert "condor_wait -wait 4200 condor.log" in calls
+    assert "condor_rm 77" in calls
+    assert "did not end within 90 minutes" in proc.stderr
+
+
+def test_a_job_that_ends_inside_the_idle_window_is_waited_for_once(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], CONDOR_IDLE_MINUTES="20", STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_wait") == 1
+    assert _count(calls, "condor_q") == 0
+
+
+def test_no_idle_limit_by_default(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert calls.count("condor_wait condor.log") == 1
+
+
+def test_malformed_idle_limit_is_refused(tmp_path):
+    for bad in ["0", "-5", "1.5", "ten"]:
+        sub = tmp_path / bad.replace(".", "_")
+        sub.mkdir()
+        proc, calls = _run(sub, ["a", "b"], CONDOR_IDLE_MINUTES=bad)
+        assert proc.returncode == 64, bad
+        assert calls == [], bad
+
+
 def test_malformed_wait_limit_is_refused(tmp_path):
     for bad in ["0", "00", "000", "-5", "1.5", "ten", "15 "]:
         sub = tmp_path / bad.replace(" ", "_").replace(".", "_")
@@ -507,6 +589,56 @@ def test_head_list_is_spread_by_run_number(tmp_path):
         assert expected in submit_ssh[0], (run, submit_ssh)
 
 
+def test_fallback_head_is_never_chosen_by_the_spreading(tmp_path):
+    # gha#2091: whatever the run number, the job starts on a CONDOR_HEAD head.
+    for run in ("42", "43"):
+        case_dir = tmp_path / run
+        case_dir.mkdir()
+        _, calls = _run(
+            case_dir, ["a", "b"], STUB_RV="0", RUN_ID=run,
+            CONDOR_HEAD="a.example", CONDOR_FALLBACK_HEAD="z.example",
+        )
+        submit_ssh = [c for c in calls if c.startswith("ssh ") and " bash " in c]
+        assert len(submit_ssh) == 1
+        assert "a.example" in submit_ssh[0], (run, submit_ssh)
+
+
+def test_fallback_head_takes_a_job_idle_everywhere_else(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example",
+        CONDOR_FALLBACK_HEAD="z.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUSES="1 2",
+        STUB_RV="0", STUB_RV_FROM_WAIT="2",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_submit") == 2
+    submits = [c for c in calls if c.startswith("ssh ") and " bash " in c and "-- " in c]
+    assert "a.example" in submits[0] and "z.example" in submits[-1], submits
+    assert "head a.example did not start the job; trying z.example" in proc.stderr
+
+
+def test_fallback_head_is_tried_once(tmp_path):
+    # The retry gets the untried heads as CONDOR_HEAD and no fallback, so the
+    # fallback head is not appended a second time.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example",
+        CONDOR_FALLBACK_HEAD="z.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUS="1",
+    )
+    assert proc.returncode == 70
+    assert _count(calls, "condor_submit") == 2
+
+
+def test_fallback_head_already_listed_is_not_tried_twice(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example z.example",
+        CONDOR_FALLBACK_HEAD="z.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUS="1",
+    )
+    assert proc.returncode == 70
+    assert _count(calls, "condor_submit") == 2
+
+
 def test_unreachable_head_falls_back_to_the_next(tmp_path):
     proc, calls = _run(
         tmp_path, ["a", "b"], STUB_RV="0", STUB_SSH_FAIL_HOST="a.example",
@@ -516,6 +648,64 @@ def test_unreachable_head_falls_back_to_the_next(tmp_path):
     assert "a.example did not answer" in proc.stderr
     assert _count(calls, "condor_submit") == 1
     assert any("b.example bash" in c for c in calls)
+
+
+def test_a_job_idle_on_one_head_moves_to_the_next(tmp_path):
+    # gha#2087: idle on a.example, started on b.example.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example b.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUSES="1 2",
+        STUB_RV="0", STUB_RV_FROM_WAIT="2",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_submit") == 2
+    submits = [c for c in calls if c.startswith("ssh ") and " bash " in c and "-- " in c]
+    assert "a.example" in submits[0] and "b.example" in submits[-1], submits
+    assert "head a.example did not start the job; trying b.example" in proc.stderr
+    assert any("b.example:" in c and "/42-h2/" in c for c in calls), calls
+    assert not (tmp_path / "ci" / "42").exists()
+
+
+def test_no_head_starting_the_job_falls_back_to_the_runner(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example b.example c.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUS="1",
+    )
+    assert proc.returncode == 70
+    assert _count(calls, "condor_submit") == 3
+    assert calls.count("condor_rm 77") == 3
+    assert "no cluster head started the job within 20 minutes" in proc.stderr
+    assert not any(p.name.startswith("42") for p in (tmp_path / "ci").iterdir())
+
+
+def test_an_idle_job_with_output_still_moves_to_the_next_head(tmp_path):
+    # The first head removed its run directory, so there is nothing to fetch
+    # there; the output comes back from the head that ran the job.
+    made = _site_stub(tmp_path)
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example b.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUSES="1 2",
+        STUB_RV="0", STUB_RV_FROM_WAIT="2", CONDOR_OUTPUT="_site", STUB_MADE=made,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_submit") == 2
+    assert "could not bring" not in proc.stderr
+    assert not any("a.example:" in c and "output.tar.gz" in c for c in calls), calls
+    assert (tmp_path / "checkout" / "_site" / "index.html").read_text() == "built"
+
+
+def test_a_step_exiting_73_is_not_read_as_an_idle_job(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example b.example", STUB_RV="73",
+    )
+    assert proc.returncode == 1
+    assert _count(calls, "condor_submit") == 1
+
+
+def test_queue_time_is_logged_with_the_head(tmp_path):
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="0", STUB_QUEUE_LOG="1")
+    assert proc.returncode == 0, proc.stderr
+    assert "started the job after 200 s in the queue" in proc.stderr
 
 
 def test_no_head_answering_exits_70(tmp_path):
