@@ -65,6 +65,17 @@ on:
           any `head-sha`.
         type: boolean
         default: false
+      repair-workflows:
+        description: >-
+          With `all-runs`, newline-separated names of workflows whose re-run
+          may never start a gate. See the `annotation-gate` action's input of
+          the same name (gha#2077). Empty turns it off.
+        type: string
+        default: 'Claude Code Review'
+      repair-hours:
+        description: How far back `repair-workflows` looks, in hours.
+        type: string
+        default: '3'
       levels:
         description: Comma list of annotation levels to enforce (notice, warning, failure).
         type: string
@@ -103,5 +114,7 @@ jobs:
           all-runs: ${{ inputs.all-runs }}
           defer-while-running: ${{ inputs.defer-while-running }}
           backfill: ${{ inputs.backfill }}
+          repair-workflows: ${{ inputs.repair-workflows }}
+          repair-hours: ${{ inputs.repair-hours }}
           levels: ${{ inputs.levels }}
           allow-patterns: ${{ inputs.allow-patterns }}
