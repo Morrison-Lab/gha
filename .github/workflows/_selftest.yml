@@ -5623,6 +5623,130 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-fform-paren || true
           rm -rf _ci-fform-paren
+  # check-iterate-subscripts is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-iterate-subscripts@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the scanner and both scopes; the composite calls below prove
+  # action.yml wires each input through to the script.
+  iterate-subscripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-iterate-subscripts unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-iterate-subscripts/tests/ -v
+      # This PR's own added lines must carry no subscripted iterate.
+      - name: Check this PR's added lines
+        uses: ./check-iterate-subscripts
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Stage a page that writes a subscripted iterate, then assert that the
+      # blocking call really fails.
+      - name: Stage a page using a subscripted iterate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-iterate-subscripts
+          printf '%s\n' 'Step $\vcoef_{t+1}$ here.' > _ci-iterate-subscripts/page.qmd
+          git add -f _ci-iterate-subscripts/page.qmd
+      # Warn-only on request: the same page must not fail the job.
+      - name: Check the staged page, warn-only when asked
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'false'
+          whole-tree: 'true'
+      - name: Check the staged page, expecting a failure
+        id: iterate-subscripts-expected-failure
+        continue-on-error: true
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.iterate-subscripts-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-iterate-subscripts to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-iterate-subscripts failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the working-tree-aware scope examines it and the call must fail. Were
+      # base-ref dropped, the call would skip and pass, so this failure proves
+      # base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: iterate-subscripts-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'true'
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.iterate-subscripts-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (warning, exit 0). Were
+      # the skip a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'true'
+          base-ref: ''
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          paths-ignore: '_ci-iterate-subscripts'
+      - name: Check again with globs excluding the page
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Check again with a symbol list that omits the symbol
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          symbols: 'vw'
+      - name: Check again with an index list that omits the index
+        uses: ./check-iterate-subscripts
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          indices: 'k'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-iterate-subscripts || true
+          rm -rf _ci-iterate-subscripts
   # check-macro-expansions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-macro-expansions@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit

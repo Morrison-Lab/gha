@@ -1,0 +1,119 @@
+---
+title: "check-iterate-subscripts.yml"
+---
+
+Diff-scoped check that flags an iterate written with a subscript,
+such as `\vcoef_t` or `\vcoef_{t+1}`.
+The lab's notation rule writes an iteration index
+in a parenthesized superscript,
+as `\iterpoint{\vcoef}{\iter}`
+(psw `chapters/notation/delimiters-and-scripts.qmd`, from
+[psw#543](https://github.com/Morrison-Lab/psw/issues/543)).
+The check keeps the mismatch from coming back after a notes repository
+converts its existing pages
+(Morrison-Lab/lds#2435, a private repository).
+
+The check flags a configured symbol that has an iteration index
+as its subscript,
+on a line a pull request adds,
+in `.qmd`, `.Rmd`, and `.md` files.
+The index is bare (`\vcoef_t`) or braced (`\vcoef_{t}`, `\vcoef_{t-1}`,
+`\vcoef_{\iter+1}`).
+Each finding reports the file, the line,
+and the suggestion `\vcoef_{t+1} -> \iterpoint{\vcoef}{t+1}`.
+
+## Symbols and indices
+
+The `symbols` input names the macros whose subscripted use is an iterate,
+without the backslash (default `vcoef steplen`).
+The `indices` input names the index letters or macros (default `t \iter`).
+An index is one of them with an optional `+` or `-` and a number.
+
+The check does not flag:
+
+- an index that is a number alone, such as `\vcoef_0`,
+  because a true parameter has that name;
+- an index letter not in `indices`, such as `\vcoef_k` by default,
+  because `k` often names a coordinate;
+  add `k` to `indices` where a page uses it for an iteration;
+- a symbol not in `symbols`;
+- the conforming `\iterpoint{\vcoef}{\iter}`;
+- a code fence or code span, an HTML comment, or YAML front matter;
+- a line carrying, or following, `<!-- check-iterate-subscripts: allow -->`.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing pages never block,
+and a page converts when someone edits it.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose,
+for example to count the subscripted iterates a repository still carries.
+
+Every run prints how many lines and files it examined.
+
+## Limitations
+
+- A use split across lines
+  (the symbol at the end of one line, `_t` at the start of the next)
+  is not found.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `symbols`        | string  | `'vcoef steplen'` | Space- or comma-separated macro names, without the backslash, whose subscripted use is an iterate. |
+| `indices`        | string  | `'t \iter'` | Space- or comma-separated iteration-index letters or macros. Add `k` where a page uses it for an iteration and not for a coordinate. |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `true`  | Fail the workflow when a subscripted iterate is found. Set `false` to warn only. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-iterate-subscripts.yml in your repo.
+# Diff-scoped check: flags an iterate written with a subscript, such as
+# `\vcoef_t` or `\vcoef_{t+1}`, on lines a PR adds, and suggests
+# `\iterpoint{\vcoef}{\iter}` (an iteration index in a parenthesized superscript).
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check iterates written with a subscript
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-iterate-subscripts.yml@v3
+    # with:
+    #   symbols: 'vcoef steplen'                # macro names whose subscripted use is an iterate
+    #   indices: 't \iter'                      # index letters or macros; add k where it is an iteration
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-iterate-subscripts.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-iterate-subscripts.yml)
+for the full caller stub.
