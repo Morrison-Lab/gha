@@ -294,35 +294,17 @@ queue 1
 SUB
 condor_submit .condor.sub | tee .submit.out
 sed -n 's/.*submitted to cluster \([0-9][0-9]*\)\..*/\1/p' .submit.out > .cluster-id
-# Say why the job is still queued or running before it is removed: the queue
-# entry and the run directory are gone by the time anyone looks (gha#2041).
-# Each command is bounded and may fail without stopping the others.
-diagnose() {
-  {
-    echo "--- condor_q -better-analyze $1"
-    timeout 60 condor_q -better-analyze "$1" || true
-    echo "--- condor_status -total"
-    timeout 30 condor_status -total || true
-    echo "--- tail of condor.log"
-    tail -n 25 condor.log || true
-  } 2>&1 | head -n 150 >&2 || true
-}
-wait_rc=0 wait_args=() waited=0
+wait_rc=0 wait_args=() waited=0 late=
 if [ "$idle_min" != . ] && [ -s .cluster-id ]; then
-  # A job still idle (JobStatus 1) after the idle limit is removed, so the
-  # runner takes over; one that started is waited for as usual (gha#2085).
+  # A job still idle (JobStatus 1) after the idle limit is removed below, so
+  # the runner takes over; one that started is waited for as usual (gha#2085).
   waited=$((10#$idle_min * 60))
   idle_rc=0
   condor_wait -wait "$waited" condor.log || idle_rc=$?
   if [ "$idle_rc" -ne 0 ]; then
-    cluster_id=$(cat .cluster-id)
-    status=$(timeout 60 condor_q "$cluster_id" -af JobStatus 2>/dev/null | head -n 1) || true
+    status=$(timeout 60 condor_q "$(cat .cluster-id)" -af JobStatus 2>/dev/null | head -n 1) || true
     if [ "$status" = 1 ]; then
-      echo "job did not start within $idle_min minutes; removing cluster $cluster_id" >&2
-      diagnose "$cluster_id"
-      condor_rm "$cluster_id" || true
-      echo "job did not end normally: see $dir/condor.log" >&2
-      exit 70
+      late="did not start within $idle_min minutes" wait_rc=$idle_rc waited=-1
     fi
   else
     # The job ended inside the idle window: skip the second wait.
@@ -336,6 +318,7 @@ if [ "$waited" -ge 0 ]; then
     wait_args=(-wait "$left")
   fi
   condor_wait ${wait_args[@]+"${wait_args[@]}"} condor.log || wait_rc=$?
+  [ "$wait_min" = . ] || [ "$wait_rc" -eq 0 ] || late="did not end within $wait_min minutes"
 fi
 [ ! -f out.log ] || cat out.log
 [ ! -f err.log ] || cat err.log >&2
@@ -347,12 +330,22 @@ if [ -n "$rv" ]; then
   case "$rv" in 70|71|255) exit 1 ;; esac
   exit "$rv"
 fi
-if [ "$wait_min" != . ] && [ "$wait_rc" -ne 0 ] && [ -s .cluster-id ]; then
-  # A job still idle or running after the limit would hold the slot and the
+if [ -n "$late" ] && [ -s .cluster-id ]; then
+  # A job still idle or running after a limit would hold the slot and the
   # run directory; remove it, and the runner reruns the steps.
   cluster_id=$(cat .cluster-id)
-  echo "job did not end within $wait_min minutes; removing cluster $cluster_id" >&2
-  diagnose "$cluster_id"
+  echo "job $late; removing cluster $cluster_id" >&2
+  # Say why the job is still queued or running before it is removed: the queue
+  # entry and the run directory are gone by the time anyone looks (gha#2041).
+  # Each command is bounded and may fail without stopping the others.
+  {
+    echo "--- condor_q -better-analyze $cluster_id"
+    timeout 60 condor_q -better-analyze "$cluster_id" || true
+    echo "--- condor_status -total"
+    timeout 30 condor_status -total || true
+    echo "--- tail of condor.log"
+    tail -n 25 condor.log || true
+  } 2>&1 | head -n 150 >&2 || true
   condor_rm "$cluster_id" || true
 fi
 echo "job did not end normally (condor_wait status $wait_rc): see $dir/condor.log" >&2
