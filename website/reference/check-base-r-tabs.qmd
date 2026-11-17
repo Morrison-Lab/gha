@@ -1,0 +1,39 @@
+---
+title: "check-base-r-tabs.yml"
+---
+
+Diff-scoped check that fails when a pull request adds or edits a `panel-tabset`
+that has an "R (tidymodels)" tab and no base R tab.
+The lab's rule is to write a lab's R code with tidymodels,
+or to show tidymodels and base R side by side.
+A textbook lab such as ISL's writes its R code in base R,
+so a lab that adapts one keeps the book's base R code
+beside the tidymodels version
+(Ezra, 2026-11-17, Morrison-Lab/lds#2708).
+
+A base R tab is a tab heading that reads exactly
+"R", "Base R", "R (base)", or "R (base R)".
+Headings in code fences, and headings below the tab level, are not tabs.
+A tabset whose R code has no base R counterpart opts out with
+`<!-- base-r-tab: none: reason -->` inside the tabset; the reason is required.
+
+A tabset is checked only when the pull request adds a line inside it,
+so an untouched tabset is never reflagged.
+With no base ref the check skips instead of scanning the whole tree;
+`whole-tree` measures a corpus.
+
+## Usage
+
+Copy
+[`examples/check-base-r-tabs.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-base-r-tabs.yml)
+to `.github/workflows/` in your repository.
+
+## Inputs
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
+| `fail` | `true` | Fail the workflow on a finding instead of warning |
+| `whole-tree` | `false` | Scan every tabset, not only those a PR touches |
+| `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |
+| `python-version` | `3.x` | Python version to set up |

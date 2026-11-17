@@ -28,7 +28,9 @@
 # comma-separated list of host or host:port entries spreads runs over the heads
 # and falls back to the next one when a head does not answer ssh),
 # CONDOR_FALLBACK_HEAD (heads tried only after every CONDOR_HEAD head, never
-# chosen by the spreading; default none),
+# chosen by the spreading; default none), CONDOR_PROBE_SECONDS (default 60:
+# how long each head may take to report its idle jobs and the unclaimed slots
+# that fit the request, when there is more than one head to choose from),
 # CONDOR_SSH_KEY (default ~/.ssh/id_ed25519_condor), CLUSTER_CI_ROOT
 # (default /cluster/research-groups/morrison/lds-ci), RUN_ID (default GITHUB_RUN_ID, attempt and job, or the
 # time), MIN_STEPS, REQUEST_CPUS (default 4), REQUEST_MEMORY (default 8GB),
@@ -133,8 +135,9 @@ fi
 ssh_opts=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes -i "$key")
 # CONDOR_HEAD may list several heads, separated by spaces or commas, each as
 # host or host:port. Each run starts at head (run number mod count), spreading
-# runs over the heads, and takes the first head that answers ssh; none answering
-# is exit 70. One head is used as given, with no extra ssh call.
+# runs over the heads; that order is then refined by each head's queue (below),
+# and a head that does not answer ssh is skipped; none answering is exit 70.
+# One head is used as given, with no extra ssh call.
 # CONDOR_FALLBACK_HEAD lists heads tried only after every CONDOR_HEAD head,
 # never chosen by the spreading: a head whose queue is often long stays usable
 # without costing every run that starts there an idle limit (gha#2091).
@@ -173,19 +176,79 @@ done
 for candidate in ${fallback_list[@]+"${fallback_list[@]}"}; do
   case " ${order[*]} " in *" $candidate "*) ;; *) order+=("$candidate") ;; esac
 done
+# request_size (sourced): a request size such as 8GB in KiB or MiB.
+# shellcheck source=condor-batch/request-size.sh
+source "$(dirname "${BASH_SOURCE[0]}")/request-size.sh"
+# With more than one head, each is asked, in parallel and within
+# CONDOR_PROBE_SECONDS (default 60), how many jobs sit idle in its queue and how
+# many copies of this job fit in its unclaimed slots (gha#2093). Free slots
+# alone mislead: cse-head had 28 of 108 unclaimed on 2026-11-17 and still held
+# jobs for hours, because they did not fit the request. Heads where more copies
+# fit than jobs wait go first, by that margin; the rest keep the order above.
+# A head whose queue cannot be read, or that does not report in time, keeps
+# its place, and one that does not answer ssh is dropped.
 head_entry="${order[0]}" rest=()
 if [ "${#order[@]}" -gt 1 ]; then
-  head_entry=
-  for candidate in "${order[@]}"; do
-    if [ -n "$head_entry" ]; then rest+=("$candidate"); continue; fi
+  probe_cpus="${REQUEST_CPUS:-4}"; [[ "$probe_cpus" =~ ^[0-9]+$ ]] || probe_cpus=0
+  probe_mem=$(request_size "${REQUEST_MEMORY:-8GB}" 1024 1024)
+  probe_disk=$(request_size "${REQUEST_DISK:-20GB}" 1 1)
+  probe_secs="${CONDOR_PROBE_SECONDS:-60}"; [[ "$probe_secs" =~ ^[0-9]+$ ]] || probe_secs=60
+  probe_dir=$(mktemp -d)
+  limit=(); command -v timeout >/dev/null && limit=(timeout "$probe_secs")
+  for i in "${!order[@]}"; do
+    candidate="${order[$i]}"
     cport=(); [[ "$candidate" != *:* ]] || cport=(-p "${candidate##*:}")
-    if ssh "${ssh_opts[@]}" ${cport[@]+"${cport[@]}"} -o ConnectTimeout=15 "${candidate%%:*}" true; then
-      head_entry="$candidate"
+    ${limit[@]+"${limit[@]}"} ssh "${ssh_opts[@]}" ${cport[@]+"${cport[@]}"} -o ConnectTimeout=15 "${candidate%%:*}" \
+      bash -s -- "$probe_cpus" "$probe_mem" "$probe_disk" > "$probe_dir/$i" 2>/dev/null <<'PROBE' &
+set -o pipefail
+idle=$(condor_q -allusers -constraint 'JobStatus == 1' -af ClusterId | wc -l) || exit 0
+fit=$(condor_status -constraint 'State == "Unclaimed"' -af Cpus Memory Disk |
+  awk -v c="$1" -v m="$2" -v d="$3" '
+    { n = -1
+      if (c > 0) { k = int($1 / c); n = k }
+      if (m > 0) { k = int($2 / m); if (n < 0 || k < n) n = k }
+      if (d > 0) { k = int($3 / d); if (n < 0 || k < n) n = k }
+      if (n > 0) total += n }
+    END { print total + 0 }') || exit 0
+echo "condor-queue $idle $fit"
+PROBE
+    echo $! > "$probe_dir/$i.pid"
+  done
+  ranked=() unranked=()
+  for i in "${!order[@]}"; do
+    candidate="${order[$i]}"
+    status=0; wait "$(cat "$probe_dir/$i.pid")" || status=$?
+    if [ "$status" -eq 124 ]; then
+      # timeout killed a probe that may only be slow: keep the head's place.
+      echo "head $candidate did not report within ${probe_secs}s; keeping its place in the order" >&2
+      unranked+=("$candidate")
+      continue
+    elif [ "$status" -ne 0 ]; then
+      echo "head $candidate did not answer ssh; skipping it" >&2
       continue
     fi
-    echo "head $candidate did not answer ssh; trying the next" >&2
+    read -r tag idle fit _ < "$probe_dir/$i" || tag=
+    if [ "$tag" != condor-queue ] || [[ ! "$idle$fit" =~ ^[0-9]+$ ]]; then
+      echo "head $candidate: queue could not be read; keeping its place in the order" >&2
+      unranked+=("$candidate")
+      continue
+    fi
+    echo "head $candidate: $idle idle job(s) in the queue; $fit copies of this job fit in unclaimed slots" >&2
+    if [ "$fit" -gt "$idle" ]; then
+      ranked+=("$(( fit - idle )) $i $candidate")
+    else
+      unranked+=("$candidate")
+    fi
   done
-  [ -n "$head_entry" ] || { echo "no cluster head answered ssh" >&2; exit 70; }
+  rm -rf "$probe_dir"
+  chosen=()
+  if [ "${#ranked[@]}" -gt 0 ]; then
+    while read -r _ _ candidate; do chosen+=("$candidate"); done < <(printf '%s\n' "${ranked[@]}" | sort -k1,1nr -k2,2n)
+  fi
+  chosen+=(${unranked[@]+"${unranked[@]}"})
+  [ "${#chosen[@]}" -gt 0 ] || { echo "no cluster head answered ssh" >&2; exit 70; }
+  head_entry="${chosen[0]}" rest=("${chosen[@]:1}")
+  echo "chose head $head_entry (order: ${chosen[*]})" >&2
 fi
 head_host="${head_entry%%:*}"
 [[ "$head_entry" != *:* ]] || ssh_opts+=(-p "${head_entry##*:}")

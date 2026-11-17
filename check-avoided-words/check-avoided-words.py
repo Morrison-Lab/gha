@@ -3,7 +3,7 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Eleven rules; the first three each have a source that was read (psw#418),
+Twelve rules; the first three each have a source that was read (psw#418),
 and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402,
 gha#1568):
 
@@ -76,6 +76,14 @@ gha#1568):
   2026-11-16; psw#671). "Write the sum as $...$" (express) and "write
   `\predval`" (typing a macro, in a code span) pass. Fails by default, like
   the other rules: only added lines are read, so legacy uses do not trip it.
+
+- **British spellings**: "colour", "behaviour", "normalise", "analyse",
+  "centre", "modelling", "labelled" and the rest of an explicit list. The
+  notes use American spelling (Ezra, 2026-11-17; gha#2095). Quoted and
+  italic text (quotations and cited titles), link targets, URLs,
+  crossrefs and citation keys, ids and attribute blocks, inline math and
+  blockquote lines are skipped, besides the code the engine masks, so
+  ``colour =`` in R and a British book title pass.
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
@@ -193,6 +201,28 @@ NOTATION_WRITE_RE = re.compile(
     r"(?:for|to\s+(?:mean|denote|stand\s+for))\b"
     r"|(?:is|are|be|been)\s+written\s+(?:as\s+)?\$)"
 )
+# British spellings (gha#2095): the word list lives in check-common/spelling.py,
+# which diffscope also uses to treat a spelling-only change as unchanged. The
+# engine above has put check-common on sys.path.
+from spelling import BRITISH_RE  # noqa: E402
+
+# Spans that keep their own spelling: quoted text and cited titles (quotes,
+# italics), link targets and bare URLs, crossrefs and citation keys, ids and
+# attribute blocks, and inline math.
+_BRITISH_MASK_RE = re.compile(
+    '"[^"]*"|\u201c[^\u201d]*\u201d|\u2018[^\u2019]*\u2019'
+    r"|(?<![\w*])\*(?=\S)(?!\*)[^*]+\*(?!\*)|(?<![\w_])_(?!_)[^_]+_(?!\w)"
+    r"|\]\([^)]*\)|https?://\S+|@[\w:.\-]+|#[\w\-]+|\{[^}]*\}|\$[^$]*\$"
+)
+
+
+def _mask_british(masked: str) -> str:
+    """Blank what a British spelling may appear in legitimately."""
+    if masked.lstrip().startswith(">"):
+        return ""
+    return _BRITISH_MASK_RE.sub(lambda m: " " * len(m.group(0)), masked)
+
+
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
 # failing check; since gha#1473 every rule fails by default).
 ALWAYS_FAIL = frozenset({"parenref", "thing", "vague"})
@@ -247,12 +277,21 @@ RULES = (
      '"$L$ denotes the number", not "write $L$ for the number"; "write" names '
      "a physical act (Ezra, 2026-11-16; psw#671). A deliberate use takes the "
      "check-avoided-words allow comment."),
+    ("british", BRITISH_RE,
+     "Use American spelling, as the notes do: color, behavior, normalize, "
+     "analyze, center, modeling, labeled (Ezra, 2026-11-17; gha#2095). Quoted "
+     "text, italic titles, code, links and math are skipped; any other "
+     "deliberate use takes the check-avoided-words allow comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '
      "(Ezra, 2026-11-02; gha#1402). A deliberate use takes the "
      "check-avoided-words allow comment."),
 )
+
+
+# Rule-specific masking applied before a rule's pattern runs.
+_PREMASK = {"british": _mask_british}
 
 
 class Finding(NamedTuple):
@@ -265,7 +304,7 @@ def _find(masked: str) -> List[Tuple[str, str]]:
     """``(rule, phrase)`` for the first match of each rule on a masked line."""
     out = []
     for rule, pattern, _message in RULES:
-        hit = pattern.search(masked)
+        hit = pattern.search(_PREMASK.get(rule, str)(masked))
         if hit:
             phrase = hit.group("phrase") if "phrase" in pattern.groupindex else hit.group(0)
             out.append((rule, phrase.strip()))
