@@ -100,12 +100,30 @@ def workflow_inputs(workflow: pathlib.Path) -> list[str]:
     return [name for name in inputs if name not in COMMON_INPUTS]
 
 
+# A Markdown link target with no scheme and not rooted at `/`.
+RELATIVE_LINK = re.compile(r"\]\((?![a-zA-Z][a-zA-Z0-9+.-]*:|/)([^)\s]+)\)")
+
+
+def rebase_links(text: str, name: str) -> str:
+    """Point a reference page's relative links at the same targets from `website/`.
+
+    A purpose copied from `reference/<name>.qmd` keeps that page's links,
+    which resolve from `reference/` there but from `website/` in the table.
+    """
+    def fix(match: re.Match) -> str:
+        target = match.group(1)
+        if target.startswith("#"):
+            return f"](reference/{name}.qmd{target})"
+        return f"](reference/{target})"
+    return RELATIVE_LINK.sub(fix, text)
+
+
 def table_row(name: str, repo_root: pathlib.Path) -> str:
     workflow = repo_root / ".github" / "workflows" / f"{name}.yml"
     page = repo_root / "website" / "reference" / f"{name}.qmd"
     if page.is_file():
         link = f"[`{name}.yml`](reference/{name}.qmd)"
-        text = purpose(page)
+        text = rebase_links(purpose(page), name)
     else:
         link = f"`{name}.yml`"
         doc = permissions.load_yaml(workflow)

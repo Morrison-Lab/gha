@@ -52,6 +52,7 @@ def build(root: pathlib.Path) -> None:
         "check-alpha": ("v3", "read", "Alpha (reusable)"),
         "check-beta": ("v2", "write", "Beta (reusable)"),
         "check-gamma": ("v3", "read", "Gamma (reusable)"),
+        "check-delta": ("v3", "read", "Delta (reusable)"),
     }
     for name, (tag, perm, title) in caps.items():
         (root / ".github" / "workflows" / f"{name}.yml").write_text(
@@ -66,6 +67,10 @@ def build(root: pathlib.Path) -> None:
     (root / "website" / "reference" / "check-beta.qmd").write_text(
         '---\ntitle: "check-beta.yml"\n---\n\n## Heading\n\n'
         "Flag a beta, e.g. this one. Second sentence.\n")
+    (root / "website" / "reference" / "check-delta.qmd").write_text(
+        '---\ntitle: "check-delta.yml"\n---\n\n'
+        "Flag what [beta](check-beta.qmd), [this](#use), [up](../index.qmd), "
+        "[web](https://example.org) and [root](/x.qmd) miss.\n")
 
 
 def test_fixture() -> None:
@@ -73,20 +78,28 @@ def test_fixture() -> None:
         root = pathlib.Path(tmp)
         build(root)
         out = gen.generate(root)
-        assert out["tag-v3.md"] == "`check-alpha.yml`, `check-gamma.yml`\n", out["tag-v3.md"]
+        assert out["tag-v3.md"] == ("`check-alpha.yml`, `check-delta.yml`, "
+                                    "`check-gamma.yml`\n"), out["tag-v3.md"]
         assert out["tag-v2.md"] == "`check-beta.yml`\n", out["tag-v2.md"]
-        assert out["readonly.md"] == "`check-alpha`, `check-gamma`\n", out["readonly.md"]
+        assert out["readonly.md"] == ("`check-alpha`, `check-delta`, "
+                                      "`check-gamma`\n"), out["readonly.md"]
         rows = out["workflows-table.md"].splitlines()
         assert rows[0] == "| Workflow | Purpose | Key inputs |"
-        assert len(rows) == 5, rows
+        assert len(rows) == 6, rows
         # The description wins over the body, and a pipe is escaped.
         assert rows[2] == ("| [`check-alpha.yml`](reference/check-alpha.qmd) | "
                            "Flag an alpha \\| with a pipe. | `globs`, `fail` |"), rows[2]
         # No description: the first sentence, past a heading and an abbreviation.
         assert rows[3] == ("| [`check-beta.yml`](reference/check-beta.qmd) | "
                            "Flag a beta, e.g. this one. | `globs`, `fail` |"), rows[3]
+        # Relative links resolve from website/, not from reference/.
+        assert rows[4] == ("| [`check-delta.yml`](reference/check-delta.qmd) | "
+                           "Flag what [beta](reference/check-beta.qmd), "
+                           "[this](reference/check-delta.qmd#use), [up](reference/../index.qmd), "
+                           "[web](https://example.org) and [root](/x.qmd) miss. | "
+                           "`globs`, `fail` |"), rows[4]
         # No reference page: no link, and the workflow's name.
-        assert rows[4] == "| `check-gamma.yml` | Gamma (reusable) | `globs`, `fail` |", rows[4]
+        assert rows[5] == "| `check-gamma.yml` | Gamma (reusable) | `globs`, `fail` |", rows[4]
         assert "internal" not in out["workflows-table.md"]
 
 

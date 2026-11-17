@@ -287,7 +287,7 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 - the read-only capability lists in `README.md` and `website/permissions.qmd`;
 - the `@v3` lists in `CLAUDE.md` and `README.md` (two), and the table row in `README.md`
   (`website/versioning.qmd` and `website/workflows.qmd` insert lists and the catalog table generated from the example stubs,
-  the workflows and the reference pages at render time, gha#1862);
+  the workflows, and the reference pages at render time, gha#1862);
 - `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
 
 `.github/dependabot.yml` covers every `check-*` directory by glob, so a check named `check-...` needs no line there.
