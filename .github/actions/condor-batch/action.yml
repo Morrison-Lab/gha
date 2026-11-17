@@ -11,6 +11,13 @@ inputs:
       Cluster head node, or a space- or comma-separated list of heads, each
       host or host:port (csci-lab-head.cs.wwu.edu:922): runs are spread over them and fall back to the next head that answers ssh.
     default: cse-head.cluster.cs.wwu.edu
+  fallback-head:
+    description: >-
+      Heads, in the same form as `head`, tried only after every `head` has
+      failed to answer ssh or to start the job within `idle-minutes`. They
+      are never chosen by the spreading, so a head whose queue is often long
+      stays usable without delaying the runs that would start there (gha#2091).
+    default: ''
   working-directory:
     description: Checkout to copy to the cluster.
     default: .
@@ -57,6 +64,7 @@ runs:
       env:
         STEPS: ${{ inputs.steps }}
         CONDOR_HEAD: ${{ inputs.head }}
+        CONDOR_FALLBACK_HEAD: ${{ inputs.fallback-head }}
         CONDOR_IMAGE: ${{ inputs.image }}
         CONDOR_IMAGE_FILE: ${{ inputs.image-file }}
         CONDOR_OUTPUT: ${{ inputs.output }}

@@ -589,6 +589,56 @@ def test_head_list_is_spread_by_run_number(tmp_path):
         assert expected in submit_ssh[0], (run, submit_ssh)
 
 
+def test_fallback_head_is_never_chosen_by_the_spreading(tmp_path):
+    # gha#2091: whatever the run number, the job starts on a CONDOR_HEAD head.
+    for run in ("42", "43"):
+        case_dir = tmp_path / run
+        case_dir.mkdir()
+        _, calls = _run(
+            case_dir, ["a", "b"], STUB_RV="0", RUN_ID=run,
+            CONDOR_HEAD="a.example", CONDOR_FALLBACK_HEAD="z.example",
+        )
+        submit_ssh = [c for c in calls if c.startswith("ssh ") and " bash " in c]
+        assert len(submit_ssh) == 1
+        assert "a.example" in submit_ssh[0], (run, submit_ssh)
+
+
+def test_fallback_head_takes_a_job_idle_everywhere_else(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example",
+        CONDOR_FALLBACK_HEAD="z.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUSES="1 2",
+        STUB_RV="0", STUB_RV_FROM_WAIT="2",
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_submit") == 2
+    submits = [c for c in calls if c.startswith("ssh ") and " bash " in c and "-- " in c]
+    assert "a.example" in submits[0] and "z.example" in submits[-1], submits
+    assert "head a.example did not start the job; trying z.example" in proc.stderr
+
+
+def test_fallback_head_is_tried_once(tmp_path):
+    # The retry gets the untried heads as CONDOR_HEAD and no fallback, so the
+    # fallback head is not appended a second time.
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example",
+        CONDOR_FALLBACK_HEAD="z.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUS="1",
+    )
+    assert proc.returncode == 70
+    assert _count(calls, "condor_submit") == 2
+
+
+def test_fallback_head_already_listed_is_not_tried_twice(tmp_path):
+    proc, calls = _run(
+        tmp_path, ["a", "b"], CONDOR_HEAD="a.example z.example",
+        CONDOR_FALLBACK_HEAD="z.example",
+        CONDOR_IDLE_MINUTES="20", STUB_WAIT_RC="1", STUB_Q_STATUS="1",
+    )
+    assert proc.returncode == 70
+    assert _count(calls, "condor_submit") == 2
+
+
 def test_unreachable_head_falls_back_to_the_next(tmp_path):
     proc, calls = _run(
         tmp_path, ["a", "b"], STUB_RV="0", STUB_SSH_FAIL_HOST="a.example",
