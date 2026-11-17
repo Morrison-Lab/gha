@@ -180,6 +180,10 @@ class TestUpdateQuartoExtensionsLogic(unittest.TestCase):
         self.assertIn("div-anchors", uqe.DEFAULT_EXTENSION_REPOS)
         self.assertIn("equation-anchors", uqe.DEFAULT_EXTENSION_REPOS)
         self.assertIn("revealjs-html-links", uqe.DEFAULT_EXTENSION_REPOS)
+        self.assertEqual(
+            uqe.DEFAULT_EXTENSION_REPOS.get("answer-space"),
+            "Morrison-Lab/answer-space",
+        )
         self.assertNotIn("callouty-theorem", uqe.DEFAULT_EXTENSION_REPOS)
 
     def test_discovery_flat_and_nested_layouts(self):

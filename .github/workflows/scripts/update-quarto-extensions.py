@@ -33,6 +33,7 @@ DEFAULT_EXTENSION_REPOS: Dict[str, str] = {
     "equation-anchors": "d-morrison/equation-anchors",
     "slidebreak": "Morrison-Lab/slidebreak",
     "revealjs-html-links": "d-morrison/revealjs-html-links",
+    "answer-space": "Morrison-Lab/answer-space",
 }
 
 SEMVER_PATTERN = re.compile(
