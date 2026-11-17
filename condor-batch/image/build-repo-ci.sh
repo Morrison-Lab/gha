@@ -74,7 +74,7 @@ if [ -f "$src/.github/ci-image/test.sh" ]; then
   apptainer exec --containall --bind "$src:/work" --bind "$work/tmp:/tmp" \
     --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp \
     --env TEXMFVAR=/tmp --env TEXMFCACHE=/tmp \
-    "$repo-ci.sif" bash .github/ci-image/test.sh
+    "$repo-ci.sif" bash -eo pipefail .github/ci-image/test.sh
 elif [ "${REPO_CI_NO_TEST:-}" = 1 ]; then
   echo "::warning::$repo has no .github/ci-image/test.sh; REPO_CI_NO_TEST=1, so the image was not test-rendered."
 else
