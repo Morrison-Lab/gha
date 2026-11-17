@@ -34,6 +34,12 @@ Design notes:
   exact matches only). Unrelated lines from other parents or the merge base
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
+- **A kept deletion is not a drop.** When another parent deleted a file
+  outright since ``B`` (not renamed it) and the file is absent from ``M``,
+  the merge resolved a modify/delete conflict by keeping the deletion, so the
+  lines this parent added to that file are not reported. A file the merge
+  alone deleted, while both parents still have it, is still reported, and so
+  is a file one side newly added (the other side never had it to delete).
 - **Short and blank lines are skipped** (``MERGE_DROPS_MIN_LENGTH``, default
   20 characters after normalisation): fences, list markers, ``---``, closing
   ``:::`` and similar boilerplate recur everywhere and would add noise
@@ -241,6 +247,11 @@ def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold:
     return False
 
 
+def _exists(commit: str, path: str, cwd: Optional[str]) -> bool:
+    """True when ``path`` is in ``commit``'s tree."""
+    return bool(_git(["rev-parse", "--verify", "--quiet", f"{commit}:{path}"], cwd=cwd))
+
+
 def list_merges(base: str, head: str, cwd: Optional[str] = None) -> Optional[List[List[str]]]:
     """``[[merge, parent1, parent2, ...], ...]`` for merges in base..head, oldest first."""
     out = _git(["rev-list", "--reverse", "--merges", "--parents", f"{base}..{head}"], cwd=cwd)
@@ -266,6 +277,19 @@ def check_merge(
     base = base_out.strip()
     subject = (_git(["log", "-1", "--format=%s", merge], cwd=cwd) or "").strip()
 
+    # Paths each parent deleted outright since the base. `-M` reports a rename
+    # as R, not D, so a renamed file is not a deletion here.
+    deleted_by: List[Set[str]] = []
+    for parent in parents:
+        names = _git(
+            ["diff", "--no-color", "--no-ext-diff", "--name-only", "-z",
+             "--diff-filter=D", "-M", base, parent, "--", *globs],
+            cwd=cwd,
+        )
+        if names is None:
+            return None
+        deleted_by.append({n for n in names.split("\0") if n})
+
     drops: List[Drop] = []
     resolution_cache: Dict[str, Set[str]] = {}
     for i, parent in enumerate(parents, start=1):
@@ -286,6 +310,12 @@ def check_merge(
                     seen.add(norm)
                     candidates.append(norm)
             if not candidates:
+                continue
+            if (not _exists(merge, path, cwd)
+                    and any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
+                            if j != i)):
+                # Another parent deleted this file and the merge kept the
+                # deletion: a modify/delete conflict resolved as delete.
                 continue
             same_file = index.at_path(merge, path)
             missing = [c for c in candidates

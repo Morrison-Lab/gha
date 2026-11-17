@@ -376,3 +376,83 @@ def test_paragraph_split_into_bullets_is_not_reported(tmp_path):
     drops, examined, unreadable = _find(tmp_path, base)
     assert examined == 1 and unreadable == []
     assert drops == []
+
+
+# ── a kept deletion (modify/delete resolved as delete) ───────────────────────
+
+def _modify_delete_merge(repo: Path) -> str:
+    """The branch deletes chapter.qmd; main adds a paragraph to it; start the merge.
+
+    Returns the base commit. Leaves the repo mid-merge on ``feature`` with a
+    modify/delete conflict on ``chapter.qmd``.
+    """
+    _git(repo, "init", "-q", "-b", "main")
+    _write(repo, "chapter.qmd", INTRO)
+    _write(repo, "notes.md", "# Notes\n\nNothing here yet, just a placeholder line.\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-qb", "feature")
+    _git(repo, "rm", "-q", "chapter.qmd")
+    _git(repo, "commit", "-qm", "move the chapter elsewhere")
+    _git(repo, "checkout", "-q", "main")
+    _write(repo, "chapter.qmd", INTRO + "\n" + MAIN_PARA)
+    _git(repo, "commit", "-qam", "main history")
+    _git(repo, "checkout", "-q", "feature")
+    _git(repo, "merge", "-q", "main", check=False)  # modify/delete, by construction
+    assert "chapter.qmd" in _git(repo, "diff", "--name-only", "--diff-filter=U")
+    return base
+
+
+def test_kept_deletion_is_not_reported(tmp_path):
+    # lds#2678: main captioned a file the branch deleted; the merge kept the deletion.
+    base = _modify_delete_merge(tmp_path)
+    _git(tmp_path, "rm", "-q", "chapter.qmd")
+    _commit_merge(tmp_path)
+    drops, examined, unreadable = _find(tmp_path, base)
+    assert examined == 1 and unreadable == []
+    assert drops == []
+
+
+def test_kept_modification_that_drops_the_paragraph_is_reported(tmp_path):
+    # Same conflict, resolved by keeping the file but without main's paragraph.
+    base = _modify_delete_merge(tmp_path)
+    _write(tmp_path, "chapter.qmd", INTRO)
+    _commit_merge(tmp_path)
+    drops, _, _ = _find(tmp_path, base)
+    assert len(drops) == 1 and drops[0].path == "chapter.qmd"
+    assert MAIN_LINE in drops[0].lines
+
+
+def test_file_deleted_only_by_the_merge_is_reported(tmp_path):
+    # Both parents still have chapter.qmd; the merge alone deletes it.
+    base = _conflicting_merge(tmp_path)
+    _git(tmp_path, "rm", "-qf", "chapter.qmd")
+    _commit_merge(tmp_path)
+    drops, _, _ = _find(tmp_path, base)
+    by_parent = {d.parent_index: d for d in drops}
+    assert set(by_parent) == {1, 2}
+    assert MAIN_LINE in by_parent[2].lines
+
+
+def test_new_file_the_merge_drops_is_reported(tmp_path):
+    # main adds a new file; the branch never had it, so it deleted nothing.
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "chapter.qmd", INTRO)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-qb", "feature")
+    _write(tmp_path, "chapter.qmd", INTRO + "\n" + BRANCH_PARA)
+    _git(tmp_path, "commit", "-qam", "branch example")
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "history.qmd", "# History\n\n" + MAIN_PARA)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "main history page")
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "--no-commit", "main")
+    _git(tmp_path, "rm", "-qf", "history.qmd")
+    _commit_merge(tmp_path)
+    drops, _, _ = _find(tmp_path, base)
+    assert len(drops) == 1 and drops[0].path == "history.qmd"
+    assert MAIN_LINE in drops[0].lines
