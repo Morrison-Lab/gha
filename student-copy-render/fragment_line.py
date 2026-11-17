@@ -11,7 +11,7 @@ GLOB_RE = re.compile(r"^[A-Za-z0-9_./*?\[\]!-]+$")
 
 def fragment_line(fragments: str, glob: str, parallel: int) -> str:
     if fragments == "all":
-        if not GLOB_RE.match(glob) or glob.startswith(("/", "-")) or ".." in glob.split("/"):
+        if not GLOB_RE.fullmatch(glob) or glob.startswith(("/", "-")) or ".." in glob.split("/"):
             fail(f"fragment-glob must be a relative path inside the checkout of letters, digits and _ . / * ? [ ] ! -, not {glob!r}")
         listing = f"ls -1d -- {glob}"
     else:

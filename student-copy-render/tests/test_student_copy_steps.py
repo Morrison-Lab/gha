@@ -38,7 +38,7 @@ def checkout(tmp_path: Path) -> Path:
 def run_line(checkout: Path, line: str) -> tuple[int, list[str]]:
     log = checkout / "quarto.log"
     log.unlink(missing_ok=True)
-    env = {"PATH": f"{checkout / 'bin'}:{os.environ['PATH']}", "QUARTO_LOG": str(log)}
+    env = {"PATH": f"{checkout / 'bin'}:{os.environ['PATH']}", "QUARTO_LOG": str(log), "LC_ALL": "C"}
     rc = subprocess.run(["bash", "-c", line], cwd=checkout, env=env, check=False).returncode
     return rc, log.read_text().splitlines() if log.exists() else []
 
@@ -86,6 +86,7 @@ def test_failures_fail_the_line(checkout: Path) -> None:
     ({"SC_DOCUMENTS": "/etc/list"}, "relative path"), ({"SC_FRAGMENTS": "../list"}, "relative path"),
     ({"SC_FRAGMENT_GLOB": "a;rm -rf b"}, "fragment-glob"), ({"SC_FRAGMENT_GLOB": "../../*"}, "fragment-glob"),
     ({"SC_FRAGMENT_GLOB": "-la"}, "fragment-glob"), ({"SC_FRAGMENTS": "-n"}, "relative path"), ({"SC_DOCUMENTS": ""}, "relative path"),
+    ({"SC_CHECK": "a\rb"}, "one line"), ({"SC_FRAGMENT_GLOB": "a%b;c"}, "a%25b"),
 ])
 def test_bad_inputs_are_refused(tmp_path: Path, env: dict[str, str], word: str) -> None:
     result = write_steps(tmp_path, **{"SC_CHECK": "c", **env})

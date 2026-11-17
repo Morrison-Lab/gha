@@ -17,12 +17,11 @@ def build(env: dict[str, str]) -> list[str]:
     check = env.get("SC_CHECK", "").strip()
     if not check:
         fail("check is required")
-    if "\n" in check:
+    if "\n" in check or "\r" in check:
         fail("check must be one line; condor-batch runs each line in its own shell")
     parallel_text = env.get("SC_PARALLEL", "4").strip() or "4"
     if not (parallel_text.isascii() and parallel_text.isdigit() and len(parallel_text) < 5) or int(parallel_text) < 1:
         fail(f"parallel must be a whole number of at least 1, not {parallel_text!r}")
-    # An empty value (an expression that came out blank) is refused, not read as `all`.
     documents = env.get("SC_DOCUMENTS", "all").strip()
     if documents == "all":
         renders = ["quarto render", "quarto render --profile solution"]
