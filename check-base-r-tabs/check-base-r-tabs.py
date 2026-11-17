@@ -40,12 +40,12 @@ from typing import Dict, List, Optional, Set, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
+from mdmask import FENCE_RE  # noqa: E402
 
 DEFAULT_GLOBS = "*.qmd"
 ADVICE = ("add a base R tab (headed \"R\") beside the tidymodels tab, "
           "following the source lab's base R code where there is one")
 
-FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 DIV_OPEN_RE = re.compile(r"^[ \t]*(:{3,})[ \t]*(\S.*)$")
 DIV_CLOSE_RE = re.compile(r"^[ \t]*(:{3,})[ \t]*$")
 TABSET_RE = re.compile(r"(^|[\s{])\.panel-tabset([\s}]|$)")
@@ -171,9 +171,13 @@ def main() -> int:
     whole = _flag("CBR_WHOLE_TREE", False)
     wanted = wanted_lines(base_ref, globs, whole)
     if wanted is None:
-        level = "::warning::" if base_ref else ""
-        print(f"{level}Skipping the base R tab check for this run "
-              f"({'could not diff against ' + repr(base_ref) if base_ref else 'no base-ref given'}).")
+        if base_ref:
+            level = "::warning::"
+            reason = f"could not diff against {base_ref!r}"
+        else:
+            level = ""
+            reason = "no base-ref given"
+        print(f"{level}Skipping the base R tab check for this run ({reason}).")
         return 0
     severity = "error" if fail else "warning"
     findings = 0
