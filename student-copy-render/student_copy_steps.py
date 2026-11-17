@@ -20,7 +20,7 @@ def build(env: dict[str, str]) -> list[str]:
     if "\n" in check:
         fail("check must be one line; condor-batch runs each line in its own shell")
     parallel_text = env.get("SC_PARALLEL", "4").strip() or "4"
-    if not parallel_text.isdigit() or int(parallel_text) < 1:
+    if not (parallel_text.isascii() and parallel_text.isdigit() and len(parallel_text) < 5) or int(parallel_text) < 1:
         fail(f"parallel must be a whole number of at least 1, not {parallel_text!r}")
     # An empty value (an expression that came out blank) is refused, not read as `all`.
     documents = env.get("SC_DOCUMENTS", "all").strip()

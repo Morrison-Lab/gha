@@ -4,5 +4,5 @@ import sys
 
 
 def fail(message: str) -> None:
-    print(f"::error::student-copy-render: {message}", file=sys.stderr)
+    print(f"::error::student-copy-render: {message.replace('%', '%25')}", file=sys.stderr)
     raise SystemExit(64)

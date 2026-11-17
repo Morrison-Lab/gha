@@ -54,11 +54,11 @@ def test_all_writes_both_profiles_fragments_and_check(checkout: Path) -> None:
 
 def test_lists_render_only_what_they_name(checkout: Path) -> None:
     # Spaces, a quote, CRLF endings and a blank line: each nonblank line is one name.
-    (checkout / "my docs.txt").write_text("Homework/my hw.qmd\r\n")
+    (checkout / "my docs.txt").write_text("Homework/my hw.qmd\r\nHomework/hw1.qmd\r\n")
     (checkout / "frags.txt").write_text(f"{FRAGMENTS[2]}\r\n\r\nexercises/it's.qmd\r\n")
     lines = steps(checkout, SC_DOCUMENTS="my docs.txt", SC_FRAGMENTS="frags.txt")
-    assert run_line(checkout, lines[0]) == (0, ["render Homework/my hw.qmd"])
-    assert run_line(checkout, lines[1]) == (0, ["render Homework/my hw.qmd --profile solution"])
+    assert run_line(checkout, lines[0]) == (0, ["render Homework/my hw.qmd", "render Homework/hw1.qmd"])
+    assert run_line(checkout, lines[1]) == (0, [f"render Homework/{n} --profile solution" for n in ("my hw.qmd", "hw1.qmd")])
     assert run_line(checkout, lines[2]) == (0, [f"render {FRAGMENTS[2]} --to html", "render exercises/it's.qmd --to html"])
 
 
@@ -82,7 +82,7 @@ def test_failures_fail_the_line(checkout: Path) -> None:
 
 @pytest.mark.parametrize("env, word", [
     ({"SC_CHECK": ""}, "check is required"), ({"SC_CHECK": "a\nb"}, "one line"),
-    ({"SC_PARALLEL": "0"}, "parallel"), ({"SC_PARALLEL": "x"}, "parallel"),
+    ({"SC_PARALLEL": "0"}, "parallel"), ({"SC_PARALLEL": "x"}, "parallel"), ({"SC_PARALLEL": "\u00b2"}, "parallel"),
     ({"SC_DOCUMENTS": "/etc/list"}, "relative path"), ({"SC_FRAGMENTS": "../list"}, "relative path"),
     ({"SC_FRAGMENT_GLOB": "a;rm -rf b"}, "fragment-glob"), ({"SC_FRAGMENT_GLOB": "../../*"}, "fragment-glob"),
     ({"SC_FRAGMENT_GLOB": "-la"}, "fragment-glob"), ({"SC_FRAGMENTS": "-n"}, "relative path"), ({"SC_DOCUMENTS": ""}, "relative path"),
