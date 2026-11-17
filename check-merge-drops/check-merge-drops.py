@@ -35,12 +35,15 @@ Design notes:
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
 - **A kept deletion is not a drop.** When another parent deleted a file
-  outright since ``B`` (not renamed it, with renames found down to 30%
-  similarity, so a heavily edited rename still counts as one) and the file is absent from ``M``,
-  the merge resolved a modify/delete conflict by keeping the deletion, so the
-  lines this parent added to that file are not reported. A file the merge
-  alone deleted, while both parents still have it, is still reported, and so
-  is a file one side newly added (the other side never had it to delete).
+  outright since ``B`` and the file is absent from ``M``, the merge resolved
+  a modify/delete conflict by keeping the deletion, so the lines this parent
+  added to that file are not reported. A file the merge alone deleted, while
+  both parents still have it, is still reported, and so is a file one side
+  newly added (the other side never had it to delete). Renames are found
+  down to 30% similarity, to any name, so a renamed file is not a deletion.
+  Two limits: a rename rewritten below 30% reads as a deletion, so a drop
+  from it is not reported; and a rename/delete conflict resolved as delete
+  is still reported, since the renaming side deleted nothing.
 - **Short and blank lines are skipped** (``MERGE_DROPS_MIN_LENGTH``, default
   20 characters after normalisation): fences, list markers, ``---``, closing
   ``:::`` and similar boilerplate recur everywhere and would add noise
@@ -256,7 +259,8 @@ def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:
     ``ls-tree`` prints nothing and exits 0 for an absent path, so a git
     failure stays distinguishable from absence and cannot arm the skip.
     """
-    out = _git(["ls-tree", "--name-only", "-z", commit, "--", path], cwd=cwd)
+    out = _git(["--literal-pathspecs", "ls-tree", "--name-only", "-z", commit, "--", path],
+               cwd=cwd)
     if out is None:
         return None
     return path in out.split("\0")
@@ -291,13 +295,15 @@ def check_merge(
     # reports a rename as R, not D, so a renamed file is not a deletion here.
     # The threshold sits below git's default 50% on purpose: a rename edited
     # past it would read as a deletion and arm the skip below, hiding a drop,
-    # while a spurious pairing only keeps the path reported.
+    # while a spurious pairing only keeps the path reported. No pathspec:
+    # git prunes by pathspec before pairing renames, so a rename to a name
+    # outside ``globs`` would otherwise read as a deletion.
     deleted_by: List[Set[str]] = []
     for parent in parents:
         names = _git(
             ["diff", "--no-color", "--no-ext-diff", "--name-only", "-z",
              "--diff-filter=D", f"--find-renames={_DELETION_RENAME_THRESHOLD}",
-             base, parent, "--", *globs],
+             base, parent],
             cwd=cwd,
         )
         if names is None:

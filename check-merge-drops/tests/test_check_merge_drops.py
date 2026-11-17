@@ -501,7 +501,6 @@ def test_skip_is_per_path(tmp_path):
     # The merge keeps one file's deletion and also drops a file nobody deleted.
     base = _modify_delete_merge(tmp_path)
     _git(tmp_path, "rm", "-q", "chapter.qmd")
-    _git(tmp_path, "checkout", "-q", "main", "--", "notes.md")
     _git(tmp_path, "commit", "-qm", "Merge main into feature")
     _git(tmp_path, "checkout", "-q", "main")
     _write(tmp_path, "notes.md", "# Notes\n\n" + MAIN_PARA)
@@ -509,7 +508,8 @@ def test_skip_is_per_path(tmp_path):
     _git(tmp_path, "checkout", "-q", "feature")
     _git(tmp_path, "merge", "-q", "--no-commit", "-s", "ours", "main")
     _commit_merge(tmp_path)
-    drops, _, _ = _find(tmp_path, base)
+    drops, examined, unreadable = _find(tmp_path, base)
+    assert examined == 2 and unreadable == []
     assert [d.path for d in drops] == ["notes.md"]
     assert MAIN_LINE in drops[0].lines
 
@@ -543,3 +543,63 @@ def test_heavily_edited_rename_that_drops_the_paragraph_is_reported(tmp_path):
     drops, _, _ = _find(tmp_path, base)
     assert [d.path for d in drops] == ["chapter.qmd"]
     assert MAIN_LINE in drops[0].lines
+
+
+def test_rename_outside_the_globs_that_drops_the_paragraph_is_reported(tmp_path):
+    # Renamed to a .txt the globs do not scan; the pairing must still see it.
+    renamed = RENAME_BASE.replace("Line 1 ", "Line one ")
+    base = _modify_delete_merge(tmp_path, base_text=RENAME_BASE,
+                                rename_to="moved.txt", renamed_text=renamed)
+    _drop_the_renamed_file_paragraph(tmp_path, "chapter.qmd", "moved.txt", renamed)
+    drops, _, _ = _find(tmp_path, base)
+    assert [d.path for d in drops] == ["chapter.qmd"]
+    assert MAIN_LINE in drops[0].lines
+
+
+def test_rename_rewritten_below_the_threshold_reads_as_a_deletion(tmp_path):
+    # The documented limit: under 30% similarity the rename is a deletion,
+    # so the merge that keeps it is a kept deletion and nothing is reported.
+    lines = RENAME_BASE.splitlines(keepends=True)
+    renamed = lines[0] + "".join(
+        f"Rewritten text number {n}, different from the original lines.\n"
+        for n in range(9)
+    )
+    base = _modify_delete_merge(tmp_path, base_text=RENAME_BASE,
+                                rename_to="moved.qmd", renamed_text=renamed)
+    _drop_the_renamed_file_paragraph(tmp_path, "chapter.qmd", "moved.qmd", renamed)
+    low_d = _git(tmp_path, "diff", "--name-only", "--diff-filter=D",
+                 "--find-renames=" + cmd._DELETION_RENAME_THRESHOLD, base, "HEAD^1")
+    assert low_d == "chapter.qmd", "fixture must sit below the check's threshold"
+    drops, _, _ = _find(tmp_path, base)
+    assert drops == []
+
+
+def test_glob_special_file_name_kept_by_the_merge_is_reported(tmp_path):
+    # ls-tree must read the name literally: "fig[1].qmd" as a pattern
+    # matches nothing, which would read as absent and arm the skip.
+    path = "fig[1].qmd"
+    base = _modify_delete_merge(tmp_path, path=path)
+    _write(tmp_path, path, INTRO)
+    _commit_merge(tmp_path)
+    drops, _, _ = _find(tmp_path, base)
+    assert [d.path for d in drops] == [path]
+
+
+def test_exists_reads_present_absent_and_failure(tmp_path):
+    base = _modify_delete_merge(tmp_path)
+    _git(tmp_path, "rm", "-q", "chapter.qmd")
+    _commit_merge(tmp_path)
+    repo = str(tmp_path)
+    assert cmd._exists(base, "chapter.qmd", repo) is True
+    assert cmd._exists("HEAD", "chapter.qmd", repo) is False
+    assert cmd._exists("0" * 40, "chapter.qmd", repo) is None
+
+
+def test_a_git_failure_on_the_existence_check_marks_the_merge_unreadable(
+        tmp_path, monkeypatch):
+    base = _modify_delete_merge(tmp_path)
+    _git(tmp_path, "rm", "-q", "chapter.qmd")
+    _commit_merge(tmp_path)
+    monkeypatch.setattr(cmd, "_exists", lambda *a, **k: None)
+    drops, _, unreadable = _find(tmp_path, base)
+    assert drops == [] and len(unreadable) == 1
