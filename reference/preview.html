@@ -1441,7 +1441,7 @@ cookieconsent.run({
 <td><code>cluster-head</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Cluster head, or a space- or comma-separated list, for <code>cluster-render</code>. Empty sends jobs to <code>csci-head.cluster.cs.wwu.edu</code>, spread with the csci-lab desktop pool (<code>csci-lab-head.cs.wwu.edu:922</code>) when <code>cluster-image-file</code> is set, because that pool has no cluster home to read <code>cluster-image</code> from, and tries <code>cse-head.cluster.cs.wwu.edu</code> only after those heads, because its queue often holds a job for hours (gha#2091).</td>
+<td>Cluster head, or a space- or comma-separated list, for <code>cluster-render</code>. Empty sends jobs to <code>csci-head.cluster.cs.wwu.edu</code>, spread with the csci-lab desktop pool (<code>csci-lab-head.cs.wwu.edu:922</code>) when <code>cluster-image-file</code> is set, because that pool has no cluster home to read <code>cluster-image</code> from, and tries <code>cse-head.cluster.cs.wwu.edu</code> only after those heads, because its queue often holds a job for hours (gha#2091). Before each submit, every head reports its idle jobs and how many copies of the job fit in its unclaimed slots, and a head with more room than waiting jobs goes first, cse-head included (gha#2093).</td>
 </tr>
 <tr class="even">
 <td><code>cluster-image</code></td>
