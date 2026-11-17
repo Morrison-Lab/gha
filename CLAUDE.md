@@ -284,7 +284,8 @@ only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summar
 Model a new diff-scoped check on `check-exm-figures` or `check-tree-lists` (composite action, script, tests, reusable workflow, example stub, reference page).
 A new check also has to appear in these lists, or CI fails (gha#1264):
 
-- the read-only capability lists in `README.md` and `website/permissions.qmd`;
+- the read-only capability list in `README.md`
+  (`website/permissions.qmd` inserts one generated from the workflows' `permissions:` blocks, gha#1862);
 - the `@v3` lists in `CLAUDE.md` and `README.md` (two), and the table row in `README.md`
   (`website/versioning.qmd` and `website/workflows.qmd` insert lists and the catalog table generated from the example stubs,
   the workflows, and the reference pages at render time, gha#1862);
