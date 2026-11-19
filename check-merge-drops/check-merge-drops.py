@@ -35,13 +35,14 @@ Design notes:
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
 - **A line the merge kept a longer version of is not a drop.** When a longer
-  line of ``M``'s copy of the same file holds every word of one side's line,
-  in order (a list the other side extended by one item, say), the merge
-  superseded that line and nothing was lost. The longer line must be one
-  another parent added to that file since ``B``, or one the resolution
-  wrote; an unchanged line elsewhere in the file never counts. A line of
-  fewer than four words is never exempt this way, since a short word run
-  turns up inside unrelated longer lines by chance.
+  line of ``M``'s copy of the same file is one side's line with a single
+  run of words inserted (a list the other side extended by one item, say),
+  the merge superseded that line and nothing was lost. The longer line must
+  be one another parent added since ``B`` in a hunk at the same place in
+  the file, and the inserted run must hold no negation such as "not";
+  resolution lines and unchanged lines never count. A line of fewer than
+  four words is never exempt this way, since a short word run turns up
+  inside unrelated longer lines by chance.
 - **A kept deletion is not a drop.** When another parent deleted a file
   outright since ``B`` and the file is absent from ``M``, the merge resolved
   a modify/delete conflict by keeping the deletion, so the lines this parent
@@ -105,6 +106,14 @@ _DEFAULT_SIMILARITY = 0.6
 _DELETION_RENAME_THRESHOLD = "30%"
 # Fewest words a dropped line needs before a longer kept line can supersede it.
 _SUPERSET_MIN_WORDS = 4
+# Words that flip a line's meaning when inserted into it, so an insertion
+# holding one never supersedes the shorter line.
+_NEGATIONS = frozenset({
+    "not", "no", "never", "none", "nor", "cannot", "without", "neither",
+    "don't", "doesn't", "didn't", "isn't", "aren't", "wasn't", "weren't",
+    "won't", "wouldn't", "shouldn't", "can't", "couldn't", "mustn't",
+    "hasn't", "haven't", "hadn't", "!", "!=", "~",
+})
 
 # Blobs larger than this are not read when searching M's tree for moved
 # content: a multi-megabyte file is data or generated output, not prose a
@@ -172,6 +181,71 @@ def parse_added_lines(diff: str) -> Dict[str, List[str]]:
         if path is not None and line.startswith("+"):
             added.setdefault(path, []).append(line[1:])
     return added
+
+
+_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@")
+
+
+class Hunk(NamedTuple):
+    """One ``-U0`` hunk: the pre-image lines it replaces and the lines it adds."""
+
+    old_start: int  # first replaced pre-image line (or the line before an insertion)
+    old_end: int    # last replaced pre-image line (== old_start for an insertion)
+    added: List[str]
+
+
+def parse_added_hunks(diff: str) -> Dict[str, List[Hunk]]:
+    """Map each post-image path in a ``-U0`` ``git diff`` to its hunks.
+
+    Uses the same header rules as :func:`parse_added_lines`; each hunk also
+    records which pre-image lines it replaced, so two parents' edits to the
+    same place in the merge base can be paired.
+    """
+    hunks: Dict[str, List[Hunk]] = {}
+    path: Optional[str] = None
+    in_header = False
+    current: Optional[Hunk] = None
+    for line in diff.splitlines():
+        if line.startswith("diff --git "):
+            in_header, path, current = True, None, None
+            continue
+        if in_header:
+            if line.startswith("+++ "):
+                target = line[4:]
+                path = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
+            if not line.startswith("@@"):
+                continue
+            in_header = False
+        if line.startswith("@@"):
+            match = _HUNK_RE.match(line)
+            current = None
+            if match and path is not None:
+                start = int(match.group(1))
+                count = 1 if match.group(2) is None else int(match.group(2))
+                current = Hunk(start, start + max(count, 1) - 1, [])
+                hunks.setdefault(path, []).append(current)
+            continue
+        if current is not None and line.startswith("+"):
+            current.added.append(line[1:])
+    return hunks
+
+
+def _hunks_touch(a: Hunk, b: Hunk) -> bool:
+    """True when two hunks replace overlapping or adjacent pre-image lines."""
+    return a.old_start <= b.old_end + 1 and b.old_start <= a.old_end + 1
+
+
+def _counterparts(own: List[Hunk], others: List[Hunk], kept: FrozenSet[str]) -> Set[str]:
+    """Kept lines another parent added in a hunk at the same place as ``own``.
+
+    These are the only lines that can supersede a dropped line: another
+    parent's edit of the same merge-base lines, which the merge kept.
+    """
+    lines: Set[str] = set()
+    for other in others:
+        if any(_hunks_touch(mine, other) for mine in own):
+            lines.update(normalise(raw) for raw in other.added)
+    return lines & kept
 
 
 # ── the check ───────────────────────────────────────────────────────────────
@@ -266,31 +340,49 @@ def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold:
 
 
 def has_superset(line: str, others: Union[Set[str], FrozenSet[str]]) -> bool:
-    """True when a longer line in ``others`` holds every word of ``line``, in order.
+    """True when a line in ``others`` is ``line`` with one run of words inserted.
 
     One side's line can be superseded by the other side's longer version of
     it, such as a list the other side extended by one item. The longer line
     keeps every word of the shorter one, so nothing was lost.
 
-    The caller passes only lines the merge kept that another parent added
-    or the resolution wrote, never the whole file: an unchanged line
-    elsewhere in the file says nothing about this one. A line shorter than
-    ``_SUPERSET_MIN_WORDS`` words is never exempt, because a short word run
-    turns up inside unrelated longer lines by chance.
+    Three limits keep it from hiding a real drop:
+
+    - The caller passes only lines another parent added in a hunk that
+      overlaps or adjoins this line's hunk in the merge base, never the
+      whole file.
+    - The longer line must be this line with ONE contiguous run of words
+      inserted (``line`` = a prefix plus a suffix of ``other``), as when a
+      list gains an item, and that run must hold no negating word, so
+      "must pass" is not superseded by "must not pass".
+    - A line shorter than ``_SUPERSET_MIN_WORDS`` words is never exempt.
     """
     words = line.split()
-    if len(words) < _SUPERSET_MIN_WORDS:
+    n = len(words)
+    if n < _SUPERSET_MIN_WORDS:
         return False
     for other in others:
         other_words = other.split()
-        if len(other_words) <= len(words):
+        extra = len(other_words) - n
+        if extra <= 0:
             continue
-        # Exact ordered-subsequence test: each word must appear after the
-        # previous one's match. ``in`` on an iterator consumes it.
-        remaining = iter(other_words)
-        if all(word in remaining for word in words):
-            return True
+        # Longest shared prefix; the rest of ``line`` must then be a suffix.
+        prefix = 0
+        while prefix < n and words[prefix] == other_words[prefix]:
+            prefix += 1
+        # Any split point k <= prefix works when words[k:] ends ``other``.
+        for k in range(prefix + 1):
+            if other_words[k + extra:] == words[k:]:
+                inserted = other_words[k:k + extra]
+                if not any(w in _NEGATIONS or _bare_word(w) in _NEGATIONS
+                           for w in inserted):
+                    return True
     return False
+
+
+def _bare_word(word: str) -> str:
+    """Lower-case ``word`` with surrounding punctuation and markup removed."""
+    return word.strip("`*_.,;:!?()[]{}\"'").lower()
 
 
 def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:
@@ -370,10 +462,10 @@ def check_merge(
             return None
         deleted_by.append({n for n in names.split("\0") if n})
 
-    # Lines each parent added since the base, by path. A dropped line's
-    # superseding version must come from another parent's additions (or the
-    # resolution), so it is collected for every parent before any is checked.
-    added_by: List[Dict[str, List[str]]] = []
+    # Hunks each parent added since the base, by path. A dropped line's
+    # superseding version must come from another parent's hunk at the same
+    # place in the base, so every parent's hunks are read before any check.
+    hunks_by: List[Dict[str, List[Hunk]]] = []
     for parent in parents:
         diff = _git(
             ["diff", "--no-color", "--no-ext-diff", "-U0", "-M", base, parent, "--", *globs],
@@ -381,22 +473,25 @@ def check_merge(
         )
         if diff is None:
             return None
-        added_by.append(parse_added_lines(diff))
+        hunks_by.append(parse_added_hunks(diff))
 
     drops: List[Drop] = []
     resolution_cache: Dict[str, Set[str]] = {}
     for i, parent in enumerate(parents, start=1):
         moved: Optional[Set[str]] = None
-        for path, lines in added_by[i - 1].items():
+        for path, own_hunks in hunks_by[i - 1].items():
             if diffscope.ignored(path, ignores):
                 continue
             candidates: List[str] = []
-            seen: Set[str] = set()
-            for raw in lines:
-                norm = normalise(raw)
-                if len(norm) >= min_length and norm not in seen:
-                    seen.add(norm)
-                    candidates.append(norm)
+            hunks_of: Dict[str, List[Hunk]] = {}
+            for hunk in own_hunks:
+                for raw in hunk.added:
+                    norm = normalise(raw)
+                    if len(norm) < min_length:
+                        continue
+                    if norm not in hunks_of:
+                        candidates.append(norm)
+                    hunks_of.setdefault(norm, []).append(hunk)
             if not candidates:
                 continue
             if any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
@@ -427,19 +522,14 @@ def check_merge(
                     parent_lines.update(index.at_path(p, path).lines)
                 resolution_cache[path] = same_file.lines - parent_lines
             resolution_lines = resolution_cache[path]
-            # Kept lines another parent added to this file, plus the
-            # resolution's own lines: the only places a superseding version
-            # of a dropped line can come from.
-            counterparts = set(resolution_lines)
-            for j, other_added in enumerate(added_by, start=1):
-                if j != i:
-                    counterparts.update(normalise(raw) for raw in other_added.get(path, ()))
-            counterparts &= same_file.lines
+            other_hunks = [h for j, by_path in enumerate(hunks_by, start=1)
+                           if j != i for h in by_path.get(path, ())]
             missing = [c for c in missing
                        if c not in anywhere
                        and unbullet_line(c) not in anywhere_unbulleted
                        and not has_near_twin(c, resolution_lines, similarity)
-                       and not has_superset(c, counterparts)]
+                       and not has_superset(
+                           c, _counterparts(hunks_of[c], other_hunks, same_file.lines))]
             if missing:
                 drops.append(Drop(merge, subject, i, parent, path, missing))
     return drops

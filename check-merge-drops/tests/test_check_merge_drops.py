@@ -389,12 +389,39 @@ def test_short_dropped_line_is_never_superseded(tmp_path):
     assert [d.lines for d in drops] == [[dropped]]
 
 
-def test_has_superset_is_an_exact_ordered_subsequence_test():
-    """A repeated word must not hide a valid match, nor allow an out-of-order one."""
-    # Greedy block matching takes "b c d" first and misses the a-b-c-d order.
-    assert cmd.has_superset("a b c d", {"b c d a b x c y d"})
+def test_has_superset_allows_one_contiguous_insertion():
+    """The dropped words must be a prefix plus a suffix of the longer line."""
+    assert cmd.has_superset("a b c d", {"a b x c d"})
+    assert cmd.has_superset("a b c d", {"x y a b c d"})
+    assert cmd.has_superset("a b c d", {"a b c d x y"})
+    # Two separate insertions can change the meaning between them.
+    assert not cmd.has_superset("a b c d", {"a x b c y d"})
     assert not cmd.has_superset("a b c d", {"d c b a x y"})
     assert not cmd.has_superset("a b c d", {"a b c d"})  # not strictly longer
+
+
+def test_has_superset_rejects_an_inserted_negation():
+    """An inserted negation reverses the line, so the longer line does not cover it."""
+    assert not cmd.has_superset("The check must pass here", {"The check must not pass here"})
+    assert not cmd.has_superset("Run the step with the cache", {"Run the step, never with the cache"})
+
+
+FILLER = [f"Unchanged filler line number {n} of the notes." for n in range(1, 9)]
+
+
+def test_longer_line_in_another_hunk_does_not_supersede(tmp_path):
+    """A longer line the other side added far away is not a counterpart."""
+    dropped = "Checkers alpha beta gamma delta"
+    top, rest = FILLER[:2], FILLER[2:]
+    base = _keep_feature_merge(
+        tmp_path,
+        base_text="\n".join(["# Notes", *top, *rest]) + "\n",
+        # Both sides retitle the page, so the merge conflicts and keeps one side.
+        main_text="\n".join(["# Notes (main)", *top, dropped, *rest]) + "\n",
+        feature_text="\n".join(["# Notes (feature)", *top, *rest, "Checkers alpha beta extra gamma delta"]) + "\n",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [[dropped]]
 
 
 def test_octopus_merge_three_parents_drops_reported(tmp_path):
