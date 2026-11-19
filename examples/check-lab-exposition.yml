@@ -1,5 +1,5 @@
 # Copy to .github/workflows/check-lab-exposition.yml in your repo.
-# Diff-scoped check: flags a definition, result or remark div that a PR adds to
+# Diff-scoped check: flags a definition, result, or remark div that a PR adds to
 # a lab page (or to a file a lab page includes). Move it to the exposition page
 # and link it from the lab, or add <!-- lab-exposition-ok: reason -->.
 # Blocking by default.

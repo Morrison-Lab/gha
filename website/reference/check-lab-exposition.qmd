@@ -42,7 +42,7 @@ With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.
 Set `whole-tree: true` to scan every lab page on purpose,
 which lists the labs that break the rule.
-Every run prints how many lab pages, files and exposition divs it examined.
+Every run prints how many lab pages, files, and exposition divs it examined.
 
 ## Inputs
 
@@ -64,7 +64,7 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 
 ```yaml
 # Copy to .github/workflows/check-lab-exposition.yml in your repo.
-# Diff-scoped check: flags a definition, result or remark div that a PR adds to
+# Diff-scoped check: flags a definition, result, or remark div that a PR adds to
 # a lab page (or to a file a lab page includes). Move it to the exposition page
 # and link it from the lab, or add <!-- lab-exposition-ok: reason -->.
 # Blocking by default.
