@@ -6066,6 +6066,124 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-precedence-parens || true
           rm -rf _ci-precedence-parens
+  # check-r-head is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-r-head@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the scanner and both scopes; the composite calls below prove
+  # action.yml wires each input through to the script.
+  r-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-r-head unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-r-head/tests/ -v
+      # This PR's own added lines must print no dataset through head().
+      - name: Check this PR's added lines
+        uses: ./check-r-head
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Stage a data subfile whose R chunk prints head(), then assert that the
+      # blocking call really fails.
+      - name: Stage a data subfile printing head()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-r-head
+          fence='```'
+          printf '%s\n' "${fence}{r}" 'head(df)' "$fence" > _ci-r-head/_dat-x.qmd
+          git add -f _ci-r-head/_dat-x.qmd
+      # Warn-only on request: the same page must not fail the job.
+      - name: Check the staged page, warn-only when asked
+        uses: ./check-r-head
+        with:
+          fail: 'false'
+          whole-tree: 'true'
+      - name: Check the staged page, expecting a failure
+        id: r-head-expected-failure
+        continue-on-error: true
+        uses: ./check-r-head
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.r-head-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-r-head to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-r-head failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the diff examines it and the call must fail. Were base-ref dropped, the
+      # call would skip and pass, so this failure proves base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: r-head-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-r-head
+        with:
+          fail: 'true'
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.r-head-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (warning, exit 0). Were
+      # the skip a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-r-head
+        with:
+          fail: 'true'
+          base-ref: ''
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-r-head
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          paths-ignore: '_ci-r-head'
+      - name: Check again with globs excluding the page
+        uses: ./check-r-head
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Check again with data-files not matching the page
+        uses: ./check-r-head
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          data-files: '_data-*'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-r-head || true
+          rm -rf _ci-r-head
   # check-macro-expansions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-macro-expansions@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit
@@ -10946,14 +11064,14 @@ jobs:
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-pr-size/tests/ -v
       # This PR is itself a new check plus its docs, so measure a throwaway
-      # commit of 12 small files instead of the PR: the cap must fail it.
-      - name: Commit a 12-file sweep on a scratch branch
+      # commit of 22 small files instead of the PR: the cap must fail it.
+      - name: Commit a 22-file sweep on a scratch branch
         shell: bash
         run: |
           set -euo pipefail
           git switch -q -c ci-pr-size-sweep
           mkdir -p _ci-pr-size
-          for i in $(seq 1 12); do echo "line $i" > "_ci-pr-size/f$i.txt"; done
+          for i in $(seq 1 22); do echo "line $i" > "_ci-pr-size/f$i.txt"; done
           git add -f _ci-pr-size
           git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "sweep fixture" # phi-allow
       - name: Check the sweep, expecting a failure
@@ -10969,7 +11087,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$OUTCOME" != "failure" ]; then
-            echo "::error::expected check-pr-size to fail on a 12-file sweep, got outcome='$OUTCOME'"
+            echo "::error::expected check-pr-size to fail on a 22-file sweep, got outcome='$OUTCOME'"
             exit 1
           fi
       - name: Check again with the exemption label, expecting a pass
@@ -10981,7 +11099,7 @@ jobs:
         uses: ./check-pr-size
         with:
           base-ref: HEAD^1
-          max-files: '12'
+          max-files: '22'
       - name: Check again with the sweep exempted through paths-ignore
         uses: ./check-pr-size
         with:

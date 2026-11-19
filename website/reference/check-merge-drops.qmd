@@ -37,6 +37,17 @@ Deliberately not reported:
   that is new in the merge (not present in any parent)
   is at least `similarity` alike, word by word.
   Unrelated lines from other parents or the merge base cannot mask a dropped line.
+- **Lines the merge kept a longer version of.**
+  When a longer line of the merge's copy of the same file
+  is a missing line with one run of words inserted,
+  as when one side added an item to a list
+  and the other side's line already had it plus another,
+  the missing line was superseded and is not reported.
+  The longer line must come from another parent's diff hunk
+  at the same place in the file,
+  and the inserted run must hold no negation such as `not`.
+  A missing line of fewer than four words is always reported,
+  since a short run of words turns up inside unrelated longer lines by chance.
 
 The check is **warn-only by default**,
 since a merge can legitimately drop a line the other side superseded.

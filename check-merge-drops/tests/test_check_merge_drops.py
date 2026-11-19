@@ -297,6 +297,132 @@ def test_near_twin_does_not_mask_dropped_line_from_other_branch(tmp_path):
     assert "Branch one adds this unique paragraph about topic one here." in drops[0].lines
 
 
+def _list_merge(tmp_path, main_line: str, feature_line: str) -> str:
+    """Base lists two tools; main and feature each rewrite the list line."""
+    head = "# Tools\n\nThe intro line of the tools page, shared by both sides.\n\n"
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "tools.md", head + "Checkers (`alpha.py`, `beta.py`, `gamma.py`),\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-qb", "feature")
+    _write(tmp_path, "tools.md", head + feature_line + "\n")
+    _git(tmp_path, "commit", "-qam", "feature list")
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "tools.md", head + main_line + "\n")
+    _git(tmp_path, "commit", "-qam", "main list")
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "main", check=False)
+    _git(tmp_path, "checkout", "--ours", "tools.md")
+    _commit_merge(tmp_path)
+    return base
+
+
+def test_line_superseded_by_a_longer_version_is_not_reported(tmp_path):
+    """Main adds one item; the feature side's line already has it plus one more."""
+    base = _list_merge(
+        tmp_path,
+        main_line="Checkers (`alpha.py`, `beta.py`, `order.py`, `gamma.py`),",
+        feature_line="Checkers (`alpha.py`, `beta.py`, `order.py`, `preview.py`, `gamma.py`),",
+    )
+    drops, examined, _ = _find(tmp_path, base, similarity=1.0)
+    assert examined == 1
+    assert drops == []
+
+
+def test_kept_line_missing_a_word_of_the_dropped_line_is_reported(tmp_path):
+    """The kept line lacks the item main added, so main's item was lost."""
+    base = _list_merge(
+        tmp_path,
+        main_line="Checkers (`alpha.py`, `beta.py`, `order.py`, `gamma.py`),",
+        feature_line="Checkers (`alpha.py`, `beta.py`, `preview.py`, `delta.py`, `gamma.py`),",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [["Checkers (`alpha.py`, `beta.py`, `order.py`, `gamma.py`),"]]
+
+
+def _keep_feature_merge(tmp_path, base_text: str, main_text: str, feature_text: str) -> str:
+    """Base, main and feature versions of one file; the merge keeps feature's."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "notes.md", base_text)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-qb", "feature")
+    _write(tmp_path, "notes.md", feature_text)
+    _git(tmp_path, "commit", "-qam", "feature edit")
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "notes.md", main_text)
+    _git(tmp_path, "commit", "-qam", "main edit")
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "main", check=False)
+    _git(tmp_path, "checkout", "--ours", "notes.md")
+    _commit_merge(tmp_path)
+    return base
+
+
+def test_unchanged_longer_line_elsewhere_does_not_supersede(tmp_path):
+    """A base line nobody touched holds the dropped words, but only by chance."""
+    shared = "# Notes\n\nalpha one beta two gamma three delta four epsilon five\n\n"
+    dropped = "alpha beta gamma delta epsilon"
+    base = _keep_feature_merge(
+        tmp_path,
+        base_text=shared + "The closing line, shared by both sides.\n",
+        main_text=shared + dropped + "\n\nThe closing line, shared by both sides.\n",
+        feature_text=shared + "The closing line, edited on the feature side.\n",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [[dropped]]
+
+
+def test_short_dropped_line_is_never_superseded(tmp_path):
+    """Three words recur inside unrelated longer lines, so they are not exempt."""
+    shared = "# Notes\n\nThe opening line, shared by both sides.\n"
+    dropped = "alphabetical betamaxes gammarays"
+    base = _keep_feature_merge(
+        tmp_path,
+        base_text=shared,
+        main_text=shared + dropped + "\n",
+        feature_text=shared + "alphabetical one betamaxes two gammarays three\n",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [[dropped]]
+
+
+def test_has_superset_allows_one_contiguous_insertion():
+    """The dropped words must be a prefix plus a suffix of the longer line."""
+    assert cmd.has_superset("a b c d", {"a b x c d"})
+    assert cmd.has_superset("a b c d", {"x y a b c d"})
+    assert cmd.has_superset("a b c d", {"a b c d x y"})
+    assert not cmd.has_superset("a b c d", {"a x b c y d"})  # two separate insertions
+    assert not cmd.has_superset("a b c d", {"d c b a x y"})
+    assert not cmd.has_superset("a b c d", {"a b c d"})  # not strictly longer
+
+
+def test_has_superset_rejects_an_inserted_negation():
+    """An inserted negation reverses the line, so the longer line does not cover it."""
+    assert not cmd.has_superset("The check must pass here", {"The check must not pass here"})
+    assert not cmd.has_superset("Run the step with the cache", {"Run the step, never with the cache"})
+
+
+FILLER = [f"Unchanged filler line number {n} of the notes." for n in range(1, 9)]
+
+
+def test_longer_line_in_another_hunk_does_not_supersede(tmp_path):
+    """A longer line the other side added far away is not a counterpart."""
+    dropped = "Checkers alpha beta gamma delta"
+    top, rest = FILLER[:2], FILLER[2:]
+    base = _keep_feature_merge(
+        tmp_path,
+        base_text="\n".join(["# Notes", *top, *rest]) + "\n",
+        # Both sides retitle the page, so the merge conflicts and keeps one side.
+        main_text="\n".join(["# Notes (main)", *top, dropped, *rest]) + "\n",
+        feature_text="\n".join(["# Notes (feature)", *top, *rest, "Checkers alpha beta extra gamma delta"]) + "\n",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [[dropped]]
+
+
 def test_octopus_merge_three_parents_drops_reported(tmp_path):
     """An octopus merge attributing drops to parents 2 and 3."""
     _git(tmp_path, "init", "-q", "-b", "main")

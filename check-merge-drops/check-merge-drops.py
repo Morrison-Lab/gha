@@ -34,6 +34,10 @@ Design notes:
   exact matches only). Unrelated lines from other parents or the merge base
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
+- **A line the merge kept a longer version of is not a drop**, when another
+  parent's hunk at the same place in ``B`` added that line with one run of
+  words inserted (a list extended by one item) and the run holds no
+  negation. Lines of fewer than four words are never exempt this way.
 - **A kept deletion is not a drop.** When another parent deleted a file
   outright since ``B`` and the file is absent from ``M``, the merge resolved
   a modify/delete conflict by keeping the deletion, so the lines this parent
@@ -95,6 +99,10 @@ _DEFAULT_FAIL = False
 _DEFAULT_SIMILARITY = 0.6
 # Rename-detection threshold for "this parent deleted the file" (see check_merge).
 _DELETION_RENAME_THRESHOLD = "30%"
+# Fewest words a dropped line needs before a longer kept line can supersede it.
+_SUPERSET_MIN_WORDS = 4
+# Words that flip a line's meaning when inserted (as does any "...n't" word).
+_NEGATIONS = frozenset("not no never none nor cannot without neither ! != ~".split())
 
 # Blobs larger than this are not read when searching M's tree for moved
 # content: a multi-megabyte file is data or generated output, not prose a
@@ -139,29 +147,72 @@ def normalise(line: str) -> str:
 # ── diff parsing ────────────────────────────────────────────────────────────
 
 def parse_added_lines(diff: str) -> Dict[str, List[str]]:
-    """Map each post-image path in a ``git diff`` to the lines it adds.
+    """Map each post-image path in a ``git diff`` to the lines it adds."""
+    return {path: [raw for hunk in hunks for raw in hunk.added]
+            for path, hunks in parse_added_hunks(diff).items()}
 
-    The ``+++`` header is honoured only before a file's first hunk, so an
-    added content line that itself starts with ``++`` plus a space is never
-    mistaken for a new file header.
+
+_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@")
+
+
+class Hunk(NamedTuple):
+    """One ``-U0`` hunk: the pre-image lines it replaces and the lines it adds."""
+
+    old_start: int  # first replaced pre-image line (or the line before an insertion)
+    old_end: int    # last replaced pre-image line (== old_start for an insertion)
+    added: List[str]
+
+
+def parse_added_hunks(diff: str) -> Dict[str, List[Hunk]]:
+    """Map each post-image path in a ``-U0`` ``git diff`` to its hunks.
+
+    Each hunk records which pre-image lines it replaced, so two parents'
+    edits to the same place in the merge base can be paired. The ``+++``
+    header is honoured only before a file's first hunk, so an added content
+    line that itself starts with ``++`` plus a space is never mistaken for a
+    new file header.
     """
-    added: Dict[str, List[str]] = {}
+    hunks: Dict[str, List[Hunk]] = {}
     path: Optional[str] = None
     in_header = False
+    current: Optional[Hunk] = None
     for line in diff.splitlines():
         if line.startswith("diff --git "):
-            in_header, path = True, None
+            in_header, path, current = True, None, None
             continue
         if in_header:
             if line.startswith("+++ "):
                 target = line[4:]
                 path = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
-            elif line.startswith("@@"):
-                in_header = False
+            if not line.startswith("@@"):
+                continue
+            in_header = False
+        if line.startswith("@@"):
+            match = _HUNK_RE.match(line)
+            current = None
+            if match and path is not None:
+                start = int(match.group(1))
+                count = 1 if match.group(2) is None else int(match.group(2))
+                current = Hunk(start, start + max(count, 1) - 1, [])
+                hunks.setdefault(path, []).append(current)
             continue
-        if path is not None and line.startswith("+"):
-            added.setdefault(path, []).append(line[1:])
-    return added
+        if current is not None and line.startswith("+"):
+            current.added.append(line[1:])
+    return hunks
+
+
+def _hunks_touch(a: Hunk, b: Hunk) -> bool:
+    """True when two hunks replace overlapping or adjacent pre-image lines."""
+    return a.old_start <= b.old_end + 1 and b.old_start <= a.old_end + 1
+
+
+def _counterparts(own: List[Hunk], others: List[Hunk], kept: FrozenSet[str]) -> Set[str]:
+    """Kept lines another parent added in a hunk at the same place as ``own``."""
+    lines: Set[str] = set()
+    for other in others:
+        if any(_hunks_touch(mine, other) for mine in own):
+            lines.update(normalise(raw) for raw in other.added)
+    return lines & kept
 
 
 # ── the check ───────────────────────────────────────────────────────────────
@@ -255,6 +306,43 @@ def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold:
     return False
 
 
+def has_superset(line: str, others: Union[Set[str], FrozenSet[str]]) -> bool:
+    """True when a line in ``others`` is ``line`` with one run of words inserted.
+
+    That is, ``line`` is a prefix plus a suffix of the longer line, as when a
+    list gains an item. The run must hold no negation, so "must pass" is not
+    superseded by "must not pass", and a line under ``_SUPERSET_MIN_WORDS``
+    words is never exempt. The caller passes only lines from another
+    parent's hunk at the same place (:func:`_counterparts`).
+    """
+    words = line.split()
+    n = len(words)
+    if n < _SUPERSET_MIN_WORDS:
+        return False
+    for other in others:
+        other_words = other.split()
+        extra = len(other_words) - n
+        if extra <= 0:
+            continue
+        # Longest shared prefix; the rest of ``line`` must then be a suffix.
+        prefix = 0
+        while prefix < n and words[prefix] == other_words[prefix]:
+            prefix += 1
+        # Any split point k <= prefix works when words[k:] ends ``other``.
+        for k in range(prefix + 1):
+            if other_words[k + extra:] == words[k:]:
+                inserted = other_words[k:k + extra]
+                if not any(_negates(w) for w in inserted):
+                    return True
+    return False
+
+
+def _negates(word: str) -> bool:
+    """True when ``word``, stripped of punctuation and markup, is a negation."""
+    bare = word.strip("`*_.,;:!?()[]{}\"'").lower()
+    return word in _NEGATIONS or bare in _NEGATIONS or bare.endswith("n't")
+
+
 def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:
     """Whether ``path`` is in ``commit``'s tree, or None when git fails.
 
@@ -332,26 +420,36 @@ def check_merge(
             return None
         deleted_by.append({n for n in names.split("\0") if n})
 
-    drops: List[Drop] = []
-    resolution_cache: Dict[str, Set[str]] = {}
-    for i, parent in enumerate(parents, start=1):
+    # Hunks each parent added since the base, by path. A dropped line's
+    # superseding version must come from another parent's hunk at the same
+    # place in the base, so every parent's hunks are read before any check.
+    hunks_by: List[Dict[str, List[Hunk]]] = []
+    for parent in parents:
         diff = _git(
             ["diff", "--no-color", "--no-ext-diff", "-U0", "-M", base, parent, "--", *globs],
             cwd=cwd,
         )
         if diff is None:
             return None
+        hunks_by.append(parse_added_hunks(diff))
+
+    drops: List[Drop] = []
+    resolution_cache: Dict[str, Set[str]] = {}
+    for i, parent in enumerate(parents, start=1):
         moved: Optional[Set[str]] = None
-        for path, lines in parse_added_lines(diff).items():
+        for path, own_hunks in hunks_by[i - 1].items():
             if diffscope.ignored(path, ignores):
                 continue
             candidates: List[str] = []
-            seen: Set[str] = set()
-            for raw in lines:
-                norm = normalise(raw)
-                if len(norm) >= min_length and norm not in seen:
-                    seen.add(norm)
-                    candidates.append(norm)
+            hunks_of: Dict[str, List[Hunk]] = {}
+            for hunk in own_hunks:
+                for raw in hunk.added:
+                    norm = normalise(raw)
+                    if len(norm) < min_length:
+                        continue
+                    if norm not in hunks_of:
+                        candidates.append(norm)
+                    hunks_of.setdefault(norm, []).append(hunk)
             if not candidates:
                 continue
             if any(path in deleted for j, deleted in enumerate(deleted_by, start=1)
@@ -382,10 +480,14 @@ def check_merge(
                     parent_lines.update(index.at_path(p, path).lines)
                 resolution_cache[path] = same_file.lines - parent_lines
             resolution_lines = resolution_cache[path]
+            other_hunks = [h for j, by_path in enumerate(hunks_by, start=1)
+                           if j != i for h in by_path.get(path, ())]
             missing = [c for c in missing
                        if c not in anywhere
                        and unbullet_line(c) not in anywhere_unbulleted
-                       and not has_near_twin(c, resolution_lines, similarity)]
+                       and not has_near_twin(c, resolution_lines, similarity)
+                       and not has_superset(
+                           c, _counterparts(hunks_of[c], other_hunks, same_file.lines))]
             if missing:
                 drops.append(Drop(merge, subject, i, parent, path, missing))
     return drops
