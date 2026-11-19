@@ -567,6 +567,32 @@ def test_deprecated_macro_is_flagged_in_either_mode(monkeypatch):
     assert lml.scan_math(r"\truemeanfn + \truemean") == [r"\truemeanfn"]
 
 
+def test_wrapper_macro_is_flagged_in_either_mode(monkeypatch):
+    monkeypatch.setattr(lml, "WRAPPERS", {"vecf"})
+    assert lml.scan_math(r"\vecf{z} + \vdesign") == [r"\vecf", "z"]
+    monkeypatch.setattr(lml, "KNOWN_ONLY", True)
+    assert lml.scan_math(r"\vecf{z} + \vdesign") == [r"\vecf"]
+
+
+def test_wrapper_macro_is_not_flagged_without_the_input():
+    assert r"\vecf" not in lml.scan_math(r"\vecf{z}")
+
+
+def test_wrapper_macro_message_asks_for_a_semantic_macro(monkeypatch):
+    monkeypatch.setattr(lml, "WRAPPERS", {"vecf"})
+    assert "generic wrapper" in lml.format_message((r"\vecf",))
+
+
+def test_letters_still_flags_wrapper_macros(letters_env, monkeypatch, capsys):
+    (letters_env / "a.qmd").write_text("$\\vecf{z} + y$\n")
+    _commit(letters_env, "base")
+    monkeypatch.setenv("LML_LETTERS", "J")
+    monkeypatch.setenv("LML_WRAPPERS", "\\vecf \\vec")
+    assert lml.main() == 1
+    out = capsys.readouterr().out
+    assert r"\vecf is a generic wrapper" in out and "y -> " not in out
+
+
 def test_deprecated_macro_message_names_the_replacement(monkeypatch):
     monkeypatch.setitem(lml.DEPRECATED, "truemeanfn", r"\truemean")
     assert "deprecated -> \\truemean" in lml.format_message((r"\truemeanfn",))

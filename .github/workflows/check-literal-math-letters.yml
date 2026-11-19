@@ -60,6 +60,13 @@ on:
           still are. Empty flags what `mode` says.
         type: string
         default: ''
+      wrappers:
+        description: >-
+          Space-separated generic wrapper macros (for example `\vecf \vec`).
+          A direct use of one is flagged in either mode, whatever `letters`
+          says. Empty skips the rule.
+        type: string
+        default: ''
       submodules:
         description: >-
           Passed to actions/checkout as its submodules input ('true',
@@ -93,6 +100,7 @@ jobs:
           mode: ${{ inputs.mode }}
           deprecated-files: ${{ inputs.deprecated-files }}
           letters: ${{ inputs.letters }}
+          wrappers: ${{ inputs.wrappers }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there is no base to diff against, so the check is skipped.
           # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
