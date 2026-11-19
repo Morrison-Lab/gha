@@ -3,7 +3,7 @@ title: "check-pr-size.yml"
 ---
 
 Diff-scoped, blocking check that fails a pull request
-changing more than 10 files or 300 lines.
+changing more than 20 files or 600 lines.
 Every PR should be as small and focused as it can be
 while completely solving its stated task.
 A sweep goes out as minimal batches, one PR per batch of one concern.

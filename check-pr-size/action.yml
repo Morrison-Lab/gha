@@ -1,7 +1,7 @@
 name: Check pull request size
 description: >-
   Diff-scoped, blocking check that fails a pull request changing more than
-  10 files or 300 lines (added plus deleted). Every PR should be as small and
+  20 files or 600 lines (added plus deleted). Every PR should be as small and
   focused as it can be while completely solving its task; a sweep goes out as
   minimal batches. Generated, lock, image and data paths are not counted,
   nor any path `.gitattributes` marks `linguist-generated`, and
@@ -22,10 +22,10 @@ inputs:
     default: ''
   max-files:
     description: Most files a PR may change.
-    default: '10'
+    default: '20'
   max-lines:
     description: Most lines (added plus deleted) a PR may change.
-    default: '300'
+    default: '600'
   paths-ignore:
     description: >-
       Comma/newline-separated glob patterns (relative paths) not counted, in

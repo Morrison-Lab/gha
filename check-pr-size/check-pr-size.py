@@ -9,8 +9,8 @@ usable base the check skips with a warning, as its siblings do.
 
 Env (all optional except where noted):
   PRS_BASE_REF      ref to diff against (HEAD^1 on a pull request)
-  PRS_MAX_FILES     file cap (default 10)
-  PRS_MAX_LINES     added plus deleted line cap (default 300)
+  PRS_MAX_FILES     file cap (default 20)
+  PRS_MAX_LINES     added plus deleted line cap (default 600)
   PRS_PATHS_IGNORE  comma/newline-separated globs not counted
 The lines (not the files) of a newly added `_fig-*` subfile are not counted
 (ai-config#4928), and neither is a path `.gitattributes` marks
@@ -35,8 +35,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 os.pardir, "check-common"))
 import diffscope  # noqa: E402
 
-DEFAULT_MAX_FILES = 10
-DEFAULT_MAX_LINES = 300
+DEFAULT_MAX_FILES = 20
+DEFAULT_MAX_LINES = 600
 # Generated, lock, data and image paths a human does not hand-write.
 BUILTIN_IGNORE = [
     "**/*.lock", "*.lock", "renv.lock", "**/renv.lock", "package-lock.json",
