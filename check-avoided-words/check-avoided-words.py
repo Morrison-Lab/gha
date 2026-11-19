@@ -11,7 +11,9 @@ gha#1568):
   document, such as "the table above" or "as shown below". Refer to the
   result by its label instead. Source: Google developer documentation style
   guide, word list, entries "above" and "below" ("Don't use to refer to a
-  position in a document").
+  position in a document"). When the noun names code ("the code below",
+  "the chunk above"), the message also says how to label the chunk as a
+  Quarto listing and cite it with ``@lst-`` (lds#2847).
 - **effort words**: ``just``, ``easy``, ``easily``. Source: the same word
   list ("just": "Avoid. Usually, just is a filler word that you can delete
   without affecting your meaning"; "easy, easily": "Try eliminating this
@@ -317,8 +319,21 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
     return [Finding(number, rule, phrase) for number, (rule, phrase) in hits], examined
 
 
+# A position word whose noun names code gets a hint on how to label it
+# (lds#2847): a chunk is labelled as a Quarto listing and cited with @lst-.
+CODE_POSITION_RE = re.compile(r"(?i)\b(?:code|chunk|output)s?\b")
+CODE_POSITION_HINT = (
+    " For code, give the chunk `#| lst-label: lst-<name>` and `#| lst-cap:`, "
+    "or wrap a language tabset in a `::: {#lst-<name>}` div with a caption, "
+    "and cite it as @lst-<name>; a chunk that makes a figure is cited by its "
+    "fig- label instead (lds#2847)."
+)
+
+
 def format_message(finding: Finding) -> str:
     message = {rule: text for rule, _pattern, text in RULES}[finding.rule]
+    if finding.rule == "position" and CODE_POSITION_RE.search(finding.phrase):
+        message += CODE_POSITION_HINT
     return f'"{finding.phrase}": {message}'
 
 

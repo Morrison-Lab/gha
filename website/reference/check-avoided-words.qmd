@@ -14,6 +14,11 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   Source: Google developer documentation style guide, word list, entries
   "above" and "below".
   "A value above the threshold" is a comparison and passes.
+  When the noun names code or a chunk,
+  the message also says to label the chunk with `lst-label` and `lst-cap`,
+  or wrap a language tabset in a `::: {#lst-...}` div,
+  and to cite it with `@lst-`
+  (Morrison-Lab/lds#2847, a private repository).
 - **Effort words.**
   `just`, `easy`, `easily`.
   Source: the same word list.
