@@ -295,8 +295,13 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 A capability with another name and an external `uses:` still does.
 
 A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
-The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub.
+The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub, opened after the slide.
 Until the slide, a caller PR pinned at `@v3` fails `check-caller-permissions` with a 404, because the new workflow does not exist at that tag yet.
+A run that failed that way at startup cannot be re-run after the slide:
+the rerun endpoint answers 403 "This workflow run cannot be retried"
+(measured 2026-11-19 on [pds run 44626577900](https://github.com/Morrison-Lab/pds/actions/runs/44626577900), a gha#2135 caller).
+The agent rules forbid an empty commit or a close and reopen to kick CI,
+so open the caller PRs after the slide, or plan a real follow-up commit for each.
 In lds, a new caller workflow must also be listed under `workflows:` in `annotation-gate.yml`, or `check-orphans` fails.
 sds uses `workflows: ["*"]`.
 The pds, mds, and mcs repos have no gate.
