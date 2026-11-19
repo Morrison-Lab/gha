@@ -123,6 +123,19 @@ def test_a_relation_inside_parentheses_does_not_hide_the_outer_one(macros):
     assert hits(macros, "f(a = b) = f(a = b)") == ["="]
 
 
+def test_left_right_pairs_count_once(macros):
+    # A one-sided or mixed \left...\right pair opens and closes one level,
+    # so the top-level relation after it still splits.
+    assert hits(macros, r"\left\{ a \right. = \left\{ a \right.") == ["="]
+    assert hits(macros, r"\left( 0, 1 \right] = \left( 0, 1 \right]") == ["="]
+    assert hits(macros, r"\left ( a \right ) = \left( a \right)") == ["="]
+
+
+def test_half_open_intervals_balance(macros):
+    assert hits(macros, r"(0, 1] = (0, 1]") == ["="]
+    assert hits(macros, r"[0, 1) = [0, 1)") == ["="]
+
+
 def test_only_neighbouring_sides_are_compared(macros):
     assert hits(macros, r"a = b = a") == []
 
@@ -137,6 +150,8 @@ def test_nested_relations_do_not_split(macros):
     assert hits(macros, r"\Pr(X = x) = p") == []
     assert hits(macros, r"\cb{x : x = 0} = A") == []
     assert hits(macros, r"\paren{a = a} = b") == []
+    assert hits(macros, r"\Pr(X \in [0, 1), Y = Y) = p") == []
+    assert hits(macros, r"\Pr(\left[ 0, 1 \right), Y = Y) = p") == []
     assert hits(macros, r"\begin{cases} a = a \end{cases} = b") == []
 
 
@@ -242,6 +257,14 @@ def test_main_fails_by_default_and_skips_without_macros(repo, monkeypatch, capsy
     monkeypatch.setenv("TE_MACROS_FILE", "missing.qmd")
     assert te.main() == 0
     assert "Skipping" in capsys.readouterr().out
+
+
+def test_main_warns_when_no_base_ref_is_given(repo, monkeypatch, capsys):
+    monkeypatch.setenv("TE_MACROS_FILE", "macros.qmd")
+    monkeypatch.delenv("TE_BASE_REF", raising=False)
+    monkeypatch.delenv("TE_WHOLE_TREE", raising=False)
+    assert te.main() == 0
+    assert "::warning::Skipping" in capsys.readouterr().out
 
 
 # -- defaults agree ------------------------------------------------------------------------

@@ -2,7 +2,7 @@ name: Check equations whose two sides render identically
 description: >-
   Diff-scoped check that expands the shared macros on each side of an
   equality (`=`, `:=`, `=:`, `\coloneqq`, `\eqqcolon`, `\equiv`, `\triangleq`,
-  `\doteq`, an `=` under `\stackrel`/`\overset`, or an argument-free macro
+  `\doteq`, an `=` under `\stackrel`/`\overset`/`\underset`, or an argument-free macro
   such as `\eqdef` that expands to one) in `$...$` and `$$...$$` math, and
   flags the equation when both sides typeset the same glyphs, such as
   `\bform{\matr{A}}{\vx}{\vy} \eqdef \tp{\vx} \matr{A} \vy` where `\bform`

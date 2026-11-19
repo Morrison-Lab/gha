@@ -26,8 +26,9 @@ Which relations are compared: ``=``, ``:=``, ``=:``, ``\coloneqq``,
 ``\eqqcolon``, ``\equiv``, ``\triangleq``, ``\doteq``, an ``=`` under
 ``\stackrel``, ``\overset`` or ``\underset``, and any argument-free macro that
 expands to one of those (``\eqdef``).  Only a relation at the top level of the
-equation is a split point: one inside braces, parentheses, ``\left...\right``
-or an environment other than an alignment (``aligned``, ``align``, ``split``,
+equation is a split point: one inside braces, parentheses, or brackets (in
+any mix, so a half-open interval balances), ``\left...\right`` (the pair
+counted once, whatever its delimiters) or an environment other than an alignment (``aligned``, ``align``, ``split``,
 ``gathered`` and kin) belongs to a subexpression such as ``\Pr(X = x)``.  In an
 alignment, ``&`` is ignored and a row that opens with a relation continues the
 chain of the row before it.  Each pair of neighbouring sides in a chain is
@@ -416,9 +417,21 @@ def split_chains(toks: List[str], macros: Dict[str, Macro]
         if kind in ("begin", "end"):
             i += 1
             continue
-        if t in ("{", "\\left") or t in OPENERS:
+        if t in ("\\left", "\\right"):
+            # The delimiter after \left or \right is part of the same
+            # pair, so it is consumed here rather than counted again:
+            # \left\{ ... \right. and \left( ... \right] each open and
+            # close exactly one level.
+            depth = depth + 1 if t == "\\left" else max(depth - 1, 0)
+            j = min(_skip_space(toks, i + 1) + 1, n)
+            cur().extend(toks[i:j])
+            i = j
+            continue
+        # Parentheses and brackets count as one family, so a half-open
+        # interval such as (0, 1] or [0, 1) still balances.
+        if t in ("{", "[") or t in OPENERS:
             depth += 1
-        elif t in ("}", "\\right") or t in CLOSERS:
+        elif t in ("}", "]") or t in CLOSERS:
             depth = max(depth - 1, 0)
         if depth == 0:
             if t == "&":
@@ -618,9 +631,8 @@ def main() -> int:
     report = run_check(base_ref, globs, ignores, macros, whole_tree)
     if report.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
-        level = "::warning::" if base_ref else ""
         print(
-            f"{level}Skipping the tautological-equation check for this run "
+            f"::warning::Skipping the tautological-equation check for this run "
             f"({reason}; not falling back to a whole-tree scan)."
         )
         return 0

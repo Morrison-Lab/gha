@@ -25,7 +25,8 @@ It then compares what TeX would typeset.
   and an argument-free macro that expands to one of these relations,
   such as `\eqdef`.
 - Only a relation at the top level of the equation splits it.
-  One inside braces, parentheses, `\left...\right`,
+  One inside braces, parentheses, or brackets (in any mix,
+  so a half-open interval such as `[0, 1)` balances), `\left...\right`,
   or an environment other than an alignment belongs to a subexpression,
   so `\Pr(X = x) = p` compares `\Pr(X = x)` with `p`.
 - In an alignment (`aligned`, `align`, `split`, `gathered`, and kin),
