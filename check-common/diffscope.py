@@ -107,7 +107,16 @@ def unquote_git_path(target: str) -> str:
 
 
 # An inline Markdown link, not an image: ``[text](target)``.
-_LINK_RE = re.compile(r"(?<!!)\[([^\[\]]*)\]\([^()\s]*(?:\s+\"[^\"]*\")?\)")
+# The text may hold one level of brackets (a linked image), the destination
+# one level of balanced parentheses (``Closure_(topology)``), and the title
+# may be double-quoted, single-quoted or parenthesized, as CommonMark allows.
+# Each repeated alternative matches disjoint characters, so the pattern cannot
+# backtrack catastrophically.
+_LINK_RE = re.compile(
+    r"(?<!!)\[((?:[^\[\]]|\[[^\[\]]*\])*)\]"
+    r"\((?:[^()\s]|\([^()\s]*\))*"
+    r"(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^()]*\)))?\s*\)"
+)
 
 
 def strip_links(text: str) -> str:
@@ -141,6 +150,10 @@ class DeletedTexts(set):
         for other in others:
             for text in other:
                 self.add(text)
+
+    def __ior__(self, other):
+        self.update(other)
+        return self
 
     def __contains__(self, text):
         if super().__contains__(text):
