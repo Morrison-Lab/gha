@@ -1,7 +1,8 @@
 """Unit tests for check-lab-exposition.
 
 Covers which divs count as exposition, code fences, the exemption comment and
-its reason, include following (nested, escaped, and a lab page's own content
+its reason and where its search stops, include following (nested, escaped, through
+an ignored or exempted include, and a lab page's own content
 against a page that is not a lab), diff scoping (an untouched div is not
 reflagged, an added div or an added include of one is, a moved line is not),
 the skip-not-fallback guard, the exit codes, and the defaults the action, the
@@ -180,6 +181,46 @@ def test_ignored_paths_are_skipped(repo):
     ignores = cle.diffscope.compile_ignores(["ch/_subfiles/**"])
     assert run(whole_tree=True, ignores=ignores).findings == []
 
+
+def test_exemption_stops_at_the_next_include():
+    lines = ["{{< include _subfiles/_a.qmd >}}",
+             "{{< include _subfiles/_b.qmd >}}",
+             "<!-- lab-exposition-ok: b is navigation only -->"]
+    assert not cle.exempt(lines, 1)
+    assert cle.exempt(lines, 2)
+
+
+def test_exemption_stops_at_the_next_div():
+    lines = ["::: {#rem-a}", "A.", ":::", "::: {#rem-b}",
+             "<!-- lab-exposition-ok: reason -->"]
+    assert not cle.exempt(lines, 1)
+
+
+def test_include_of_an_ignored_file_is_not_flagged(repo):
+    page = repo / "ch" / "fit-lab.qmd"
+    page.write_text(page.read_text() + "\n{{< include _subfiles/_wrap.qmd >}}\n")
+    git(repo, "commit", "-qam", "edit")
+    ignores = cle.diffscope.compile_ignores(["ch/_subfiles/_wrap.qmd"])
+    assert run("HEAD~1", ignores=ignores).findings == []
+
+
+def test_includes_are_not_followed_through_an_ignored_file(repo):
+    ignores = cle.diffscope.compile_ignores(["ch/_subfiles/_wrap.qmd"])
+    page = repo / "ch" / "fit-lab.qmd"
+    page.write_text("# Lab\n\n{{< include _subfiles/_wrap.qmd >}}\n")
+    git(repo, "commit", "-qam", "edit")
+    report = run(whole_tree=True, ignores=ignores)
+    assert report.findings == [] and report.files == 1
+
+
+def test_exempted_nested_include_does_not_make_its_wrapper_exposition(repo):
+    wrap = repo / "ch" / "_subfiles" / "_wrap.qmd"
+    wrap.write_text("{{< include _subfiles/_def-old.qmd >}}\n"
+                    "<!-- lab-exposition-ok: the lab points back to it -->\n")
+    page = repo / "ch" / "fit-lab.qmd"
+    page.write_text(page.read_text() + "\n{{< include _subfiles/_wrap.qmd >}}\n")
+    git(repo, "commit", "-qam", "edit")
+    assert run("HEAD~1").findings == []
 
 def test_no_base_skips_rather_than_scanning_everything(repo):
     assert run("").skipped

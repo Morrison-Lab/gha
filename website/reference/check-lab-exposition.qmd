@@ -27,7 +27,12 @@ Within a lab page's content, the check flags:
 A div or include is exempt when its opening line,
 or one of the three lines after it,
 holds `<!-- lab-exposition-ok: reason -->` with a non-empty reason.
+The search stops at the next div opener or include line,
+so one comment exempts only the item it follows.
+An exempted include is not followed when deciding whether a file holds exposition.
 Use `paths-ignore` to exempt whole paths, such as an outtakes directory.
+An ignored file is not scanned, an include of it is not flagged,
+and includes are not followed through it.
 No check can tell an explanation from an instruction,
 so prose exposition outside a div is left to the writer and the reviewer.
 

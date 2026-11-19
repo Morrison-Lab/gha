@@ -26,6 +26,12 @@ What is flagged, within a lab page's content:
 
 A div or include is exempt when its opening line, or one of the three lines
 after it, holds ``<!-- lab-exposition-ok: reason -->`` with a non-empty reason.
+The search stops at the next div opener or include line, so one comment
+exempts only the item it follows.
+
+A path matched by ``CLE_PATHS_IGNORE`` is skipped as a lab page and as an
+included file: its divs are not reported, an include of it is not flagged,
+and includes are not followed through it.
 
 No check can tell an explanation from an instruction, so prose exposition
 outside a div is left to the writer and the reviewer; the psw rule says so.
@@ -78,6 +84,7 @@ INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
 FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
 EXEMPT_RE = re.compile(r"<!--\s*lab-exposition-ok:\s*(?!-->)\S")
 EXEMPT_REACH = 3
+OPENER_RE = re.compile(r"^\s*:{3,}\s*\{")
 
 
 def div_re(prefixes: List[str]) -> "re.Pattern[str]":
@@ -114,8 +121,14 @@ def scan_lines(lines: List[str], pattern: "re.Pattern[str]") -> FileScan:
 
 
 def exempt(lines: List[str], line: int) -> bool:
-    """Whether the opening line or one of the next few lines exempts it."""
-    for text in lines[line - 1: line + EXEMPT_REACH]:
+    """Whether the opening line or one of the next few lines exempts it.
+
+    The search stops at the next div opener or include line, so a comment
+    that belongs to a later item does not exempt this one.
+    """
+    for k, text in enumerate(lines[line - 1: line + EXEMPT_REACH]):
+        if k and (OPENER_RE.match(text) or INCLUDE_RE.search(text)):
+            return False
         if EXEMPT_RE.search(text):
             return True
     return False
@@ -148,8 +161,9 @@ class Report(NamedTuple):
 class Corpus:
     """Reads, scans and caches each file once, and follows includes."""
 
-    def __init__(self, pattern: "re.Pattern[str]"):
+    def __init__(self, pattern: "re.Pattern[str]", ignores: Optional[list] = None):
         self.pattern = pattern
+        self.ignores = ignores or []
         self.lines: Dict[str, List[str]] = {}
         self.scans: Dict[str, FileScan] = {}
 
@@ -168,7 +182,7 @@ class Corpus:
         stack = [page]
         while stack:
             path = stack.pop()
-            if path in out:
+            if path in out or diffscope.ignored(path, self.ignores):
                 continue
             scan = self.scan(path)
             if scan is None:
@@ -184,7 +198,7 @@ class Corpus:
 
     def holds_exposition(self, path: str, page: str, seen: Set[str]) -> bool:
         """Whether the file, or anything it includes, holds an unexempt exposition div."""
-        if path in seen:
+        if path in seen or diffscope.ignored(path, self.ignores):
             return False
         seen.add(path)
         scan = self.scan(path)
@@ -193,7 +207,9 @@ class Corpus:
         lines = self.lines[path]
         if any(not exempt(lines, n) for n, _ in scan.divs):
             return True
-        for _, target in scan.includes:
+        for n, target in scan.includes:
+            if exempt(lines, n):
+                continue
             child = resolve(target, page, path)
             if child is not None and self.holds_exposition(child, page, seen):
                 return True
@@ -223,14 +239,12 @@ def run_check(base_ref: str, pages_globs: List[str], prefixes: List[str],
                        if text.strip() and text not in deleted}
                  for rel, numbered in new.items()}
 
-    corpus = Corpus(div_re(prefixes))
+    corpus = Corpus(div_re(prefixes), ignores)
     findings: Dict[Tuple[str, int], Finding] = {}
     reached: Set[str] = set()
     for page in pages:
         tree = corpus.reach(page)
         for path, includes in tree.items():
-            if diffscope.ignored(path, ignores):
-                continue
             reached.add(path)
             lines = corpus.lines[path]
             keep = None if added is None else added.get(path, set())
