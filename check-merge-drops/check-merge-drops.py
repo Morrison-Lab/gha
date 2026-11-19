@@ -34,15 +34,10 @@ Design notes:
   exact matches only). Unrelated lines from other parents or the merge base
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
-- **A line the merge kept a longer version of is not a drop.** When a longer
-  line of ``M``'s copy of the same file is one side's line with a single
-  run of words inserted (a list the other side extended by one item, say),
-  the merge superseded that line and nothing was lost. The longer line must
-  be one another parent added since ``B`` in a hunk at the same place in
-  the file, and the inserted run must hold no negation such as "not";
-  resolution lines and unchanged lines never count. A line of fewer than
-  four words is never exempt this way, since a short word run turns up
-  inside unrelated longer lines by chance.
+- **A line the merge kept a longer version of is not a drop**, when another
+  parent's hunk at the same place in ``B`` added that line with one run of
+  words inserted (a list extended by one item) and the run holds no
+  negation. Lines of fewer than four words are never exempt this way.
 - **A kept deletion is not a drop.** When another parent deleted a file
   outright since ``B`` and the file is absent from ``M``, the merge resolved
   a modify/delete conflict by keeping the deletion, so the lines this parent
@@ -106,14 +101,8 @@ _DEFAULT_SIMILARITY = 0.6
 _DELETION_RENAME_THRESHOLD = "30%"
 # Fewest words a dropped line needs before a longer kept line can supersede it.
 _SUPERSET_MIN_WORDS = 4
-# Words that flip a line's meaning when inserted into it, so an insertion
-# holding one never supersedes the shorter line.
-_NEGATIONS = frozenset({
-    "not", "no", "never", "none", "nor", "cannot", "without", "neither",
-    "don't", "doesn't", "didn't", "isn't", "aren't", "wasn't", "weren't",
-    "won't", "wouldn't", "shouldn't", "can't", "couldn't", "mustn't",
-    "hasn't", "haven't", "hadn't", "!", "!=", "~",
-})
+# Words that flip a line's meaning when inserted (as does any "...n't" word).
+_NEGATIONS = frozenset("not no never none nor cannot without neither ! != ~".split())
 
 # Blobs larger than this are not read when searching M's tree for moved
 # content: a multi-megabyte file is data or generated output, not prose a
@@ -218,11 +207,7 @@ def _hunks_touch(a: Hunk, b: Hunk) -> bool:
 
 
 def _counterparts(own: List[Hunk], others: List[Hunk], kept: FrozenSet[str]) -> Set[str]:
-    """Kept lines another parent added in a hunk at the same place as ``own``.
-
-    These are the only lines that can supersede a dropped line: another
-    parent's edit of the same merge-base lines, which the merge kept.
-    """
+    """Kept lines another parent added in a hunk at the same place as ``own``."""
     lines: Set[str] = set()
     for other in others:
         if any(_hunks_touch(mine, other) for mine in own):
@@ -324,20 +309,11 @@ def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold:
 def has_superset(line: str, others: Union[Set[str], FrozenSet[str]]) -> bool:
     """True when a line in ``others`` is ``line`` with one run of words inserted.
 
-    One side's line can be superseded by the other side's longer version of
-    it, such as a list the other side extended by one item. The longer line
-    keeps every word of the shorter one, so nothing was lost.
-
-    Three limits keep it from hiding a real drop:
-
-    - The caller passes only lines another parent added in a hunk that
-      overlaps or adjoins this line's hunk in the merge base, never the
-      whole file.
-    - The longer line must be this line with ONE contiguous run of words
-      inserted (``line`` = a prefix plus a suffix of ``other``), as when a
-      list gains an item, and that run must hold no negating word, so
-      "must pass" is not superseded by "must not pass".
-    - A line shorter than ``_SUPERSET_MIN_WORDS`` words is never exempt.
+    That is, ``line`` is a prefix plus a suffix of the longer line, as when a
+    list gains an item. The run must hold no negation, so "must pass" is not
+    superseded by "must not pass", and a line under ``_SUPERSET_MIN_WORDS``
+    words is never exempt. The caller passes only lines from another
+    parent's hunk at the same place (:func:`_counterparts`).
     """
     words = line.split()
     n = len(words)
@@ -356,15 +332,15 @@ def has_superset(line: str, others: Union[Set[str], FrozenSet[str]]) -> bool:
         for k in range(prefix + 1):
             if other_words[k + extra:] == words[k:]:
                 inserted = other_words[k:k + extra]
-                if not any(w in _NEGATIONS or _bare_word(w) in _NEGATIONS
-                           for w in inserted):
+                if not any(_negates(w) for w in inserted):
                     return True
     return False
 
 
-def _bare_word(word: str) -> str:
-    """Lower-case ``word`` with surrounding punctuation and markup removed."""
-    return word.strip("`*_.,;:!?()[]{}\"'").lower()
+def _negates(word: str) -> bool:
+    """True when ``word``, stripped of punctuation and markup, is a negation."""
+    bare = word.strip("`*_.,;:!?()[]{}\"'").lower()
+    return word in _NEGATIONS or bare in _NEGATIONS or bare.endswith("n't")
 
 
 def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:

@@ -394,8 +394,7 @@ def test_has_superset_allows_one_contiguous_insertion():
     assert cmd.has_superset("a b c d", {"a b x c d"})
     assert cmd.has_superset("a b c d", {"x y a b c d"})
     assert cmd.has_superset("a b c d", {"a b c d x y"})
-    # Two separate insertions can change the meaning between them.
-    assert not cmd.has_superset("a b c d", {"a x b c y d"})
+    assert not cmd.has_superset("a b c d", {"a x b c y d"})  # two separate insertions
     assert not cmd.has_superset("a b c d", {"d c b a x y"})
     assert not cmd.has_superset("a b c d", {"a b c d"})  # not strictly longer
 

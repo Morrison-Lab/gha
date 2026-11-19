@@ -43,14 +43,9 @@ Deliberately not reported:
   as when one side added an item to a list
   and the other side's line already had it plus another,
   the missing line was superseded and is not reported.
-  The longer line must be one another parent added
+  The longer line must come from another parent's diff hunk
   at the same place in the file,
-  in a diff hunk that overlaps or adjoins the missing line's hunk.
-  The inserted run must hold no negation such as `not`,
-  so "must pass" is never superseded by "must not pass".
-  A line the resolution wrote,
-  or an unchanged line elsewhere in the file,
-  never counts.
+  and the inserted run must hold no negation such as `not`.
   A missing line of fewer than four words is always reported,
   since a short run of words turns up inside unrelated longer lines by chance.
 
