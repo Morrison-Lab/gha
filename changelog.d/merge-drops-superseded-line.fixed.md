@@ -6,4 +6,4 @@
   and not from the resolution.
   A line is now not a drop when a longer line of the merge's copy of the same
   file holds every one of its words, in order
-  ([lds#2863](https://github.com/Morrison-Lab/lds/pull/2863)).
+  (Morrison-Lab/lds#2863, a private repository the link checker cannot reach).
