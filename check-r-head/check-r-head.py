@@ -99,6 +99,8 @@ R_CHUNK_RE = re.compile(r"^\{\s*[rR](?![\w.])")
 # A fenced div opener (``::: {#dat-auto .x}``) and a bare closer (``:::``).
 DIV_OPEN_RE = re.compile(r"^\s*:{3,}\s*\{([^}]*)\}")
 DIV_CLOSE_RE = re.compile(r"^\s*:{3,}\s*$")
+# A fenced div opened by a bare class name (``::: callout-note``).
+DIV_BARE_OPEN_RE = re.compile(r"^\s*:{3,}\s*[^\s{:]")
 DAT_ID_RE = re.compile(r"(?:^|\s)#dat-")
 
 # The allow comment needs a reason after ``allow:``.
@@ -243,7 +245,8 @@ def prints_head(code: str) -> bool:
     if parts is None or parts[0] != "print":
         return False
     if parts[1].strip():
-        return len(stages) == 1 and is_head(first_argument(parts[1]))
+        # ``print(head(df))`` and ``print(df |> head())`` alike (gha#2125).
+        return len(stages) == 1 and prints_head(first_argument(parts[1]))
     return len(stages) > 1 and is_head(stages[-2])
 
 
@@ -269,16 +272,23 @@ def statements(chunk: List[Tuple[int, str]]) -> List[Statement]:
     for number, raw in chunk:
         line_allows = bool(ALLOW_RE.search(raw))
         stripped = strip_r_line(raw)
-        if not stripped.strip() and depth == 0 and not code:
-            previous_allows = line_allows
+        if not stripped.strip():
+            if code:
+                # A blank or comment-only line inside an open statement
+                # neither ends it nor breaks a trailing-operator continuation.
+                allowed = allowed or line_allows
+                numbers.append(number)
+            else:
+                # A comment-only allow line covers the statement after it.
+                previous_allows = line_allows
             continue
         if not code:
             allowed = previous_allows
+            previous_allows = False
         allowed = allowed or line_allows
         code.append(stripped)
         numbers.append(number)
         depth += depth_change(stripped)
-        previous_allows = line_allows
         if depth > 0 or CONTINUES_RE.search(stripped):
             continue
         for piece in split_top(" ".join(code), re.compile(";")):
@@ -334,6 +344,8 @@ def scan_file(lines: List[str], data_file: bool = False
                 opened = DIV_OPEN_RE.match(raw)
                 if opened:
                     divs.append(bool(DAT_ID_RE.search(opened.group(1))))
+                elif DIV_BARE_OPEN_RE.match(raw):
+                    divs.append(False)
                 elif DIV_CLOSE_RE.match(raw) and divs:
                     divs.pop()
             # HTML comments are tracked so a fence or div inside one opens nothing.

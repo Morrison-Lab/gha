@@ -48,6 +48,8 @@ def found(text: str, data_file: bool = True):
     "print(head(df))",
     "print(head(df), n = 3)",
     "df |> head() |> print()",
+    "print(df |> head())",
+    "print(df %>% head)",
     "  head(df)  # first rows",
     "head( df )",
     "head(df);",
@@ -177,6 +179,12 @@ def test_chunk_in_a_div_nested_in_a_dat_div_is_read():
     assert found(text, data_file=False) == [4]
 
 
+def test_bare_class_div_nested_in_a_dat_div_does_not_close_it():
+    text = "\n".join(["::: {#dat-auto}", ":::: callout-note", "Note",
+                      "::::", chunk("head(df)"), ":::"])
+    assert found(text, data_file=False) == [6]
+
+
 def test_chunk_after_a_dat_div_closes_is_skipped():
     text = "\n".join(["::: {#dat-auto}", "Auto", ":::", chunk("head(df)")])
     assert found(text, data_file=False) == []
@@ -228,6 +236,25 @@ def test_allow_comment_needs_a_reason():
 def test_allow_comment_covers_one_statement_only():
     text = chunk("# check-r-head: allow: demo", "head(df)", "head(df2)")
     assert found(text) == [4]
+
+
+def test_inline_allow_comment_does_not_carry_to_the_next_statement():
+    text = chunk("head(df)  # check-r-head: allow: demo", "head(df2)")
+    assert found(text) == [3]
+
+
+def test_blank_and_comment_lines_keep_an_assignment_open():
+    text = chunk("top <-", "  # keep first rows", "", "  head(df)")
+    assert found(text) == []
+
+
+def test_comment_line_keeps_a_pipeline_open():
+    text = chunk("df |>", "  # keep first rows", "  head()")
+    assert found(text) == [4]
+
+
+def test_print_of_a_nested_call_on_head_is_not_flagged():
+    assert found(chunk("print(nrow(df |> head()))")) == []
 
 
 # -- helpers ----------------------------------------------------------------------

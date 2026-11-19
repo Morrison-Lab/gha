@@ -31,7 +31,8 @@ A top-level R statement whose printed value comes from `head()`:
 - a pipeline whose last stage is `head`,
   as in `df |> head()`, `df %>% head(n = 3)`, or `df %>% head`;
 - the same wrapped in `print()`,
-  as in `print(head(df))` or `df |> head() |> print()`.
+  as in `print(head(df))`, `print(df |> head())`,
+  or `df |> head() |> print()`.
 
 A statement can span lines
 while a bracket is open or a line ends in an operator,
