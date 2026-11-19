@@ -2176,7 +2176,7 @@ CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
 `uses: ./check-precedence-parens` calls over a staged page.
 
 `check-r-head/tests/test_check_r_head.py` is a pytest suite over
-the printing forms (a call, a pipeline ending in `head`, a `print()` wrapper), the non-printing ones (assignments, nested and piped-on uses, braces, `.head()`, comments and strings),
+the printing forms (a call, a pipeline ending in `head`, or a `print()` wrapper), the non-printing ones (assignments, nested and piped-on uses, braces, `.head()`, comments and strings),
 which chunks are read (R info strings, other engines, a longer fence, an HTML comment) and which are in scope (a `_dat-*` file, a `#dat-` div and divs nested in it),
 the allow comment and its required reason,
 the diff scoping (a statement counts when any of its lines is added, and moved lines are exempt),

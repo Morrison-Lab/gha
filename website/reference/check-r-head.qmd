@@ -27,7 +27,7 @@ The check reads, in `.qmd`, `.Rmd`, and `.md` files:
 
 A top-level R statement whose printed value comes from `head()`:
 
-- a call, `head(df)` or `utils::head(df, 3)`;
+- a call: `head(df)` or `utils::head(df, 3)`;
 - a pipeline whose last stage is `head`,
   as in `df |> head()`, `df %>% head(n = 3)`, or `df %>% head`;
 - the same wrapped in `print()`,
@@ -40,7 +40,7 @@ and the finding names the line that holds `head`.
 The check does not flag:
 
 - an R chunk outside a data subfile or a `#dat-` div;
-- an assignment, `top <- head(df)` or `df |> head() -> top`;
+- an assignment: `top <- head(df)` or `df |> head() -> top`;
 - `head()` passed to another call (`nrow(head(df))`)
   or followed by another pipeline stage (`df |> head() |> knitr::kable()`);
 - a statement inside braces, such as a function body or a loop;
