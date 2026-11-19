@@ -297,6 +297,9 @@ A capability with another name and an external `uses:` still does.
 A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
 The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub.
 Until the slide, a caller PR pinned at `@v3` fails `check-caller-permissions` with a 404, because the new workflow does not exist at that tag yet.
+A run that failed that way at startup cannot be re-run after the slide (the rerun endpoint answers 403),
+and an empty commit is not allowed,
+so open the caller PRs after the slide, or plan a real follow-up commit for each (measured 2026-11-19 on the gha#2135 callers).
 In lds, a new caller workflow must also be listed under `workflows:` in `annotation-gate.yml`, or `check-orphans` fails.
 sds uses `workflows: ["*"]`.
 The pds, mds, and mcs repos have no gate.
