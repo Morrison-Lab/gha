@@ -158,29 +158,9 @@ def normalise(line: str) -> str:
 # ── diff parsing ────────────────────────────────────────────────────────────
 
 def parse_added_lines(diff: str) -> Dict[str, List[str]]:
-    """Map each post-image path in a ``git diff`` to the lines it adds.
-
-    The ``+++`` header is honoured only before a file's first hunk, so an
-    added content line that itself starts with ``++`` plus a space is never
-    mistaken for a new file header.
-    """
-    added: Dict[str, List[str]] = {}
-    path: Optional[str] = None
-    in_header = False
-    for line in diff.splitlines():
-        if line.startswith("diff --git "):
-            in_header, path = True, None
-            continue
-        if in_header:
-            if line.startswith("+++ "):
-                target = line[4:]
-                path = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
-            elif line.startswith("@@"):
-                in_header = False
-            continue
-        if path is not None and line.startswith("+"):
-            added.setdefault(path, []).append(line[1:])
-    return added
+    """Map each post-image path in a ``git diff`` to the lines it adds."""
+    return {path: [raw for hunk in hunks for raw in hunk.added]
+            for path, hunks in parse_added_hunks(diff).items()}
 
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@")
@@ -197,9 +177,11 @@ class Hunk(NamedTuple):
 def parse_added_hunks(diff: str) -> Dict[str, List[Hunk]]:
     """Map each post-image path in a ``-U0`` ``git diff`` to its hunks.
 
-    Uses the same header rules as :func:`parse_added_lines`; each hunk also
-    records which pre-image lines it replaced, so two parents' edits to the
-    same place in the merge base can be paired.
+    Each hunk records which pre-image lines it replaced, so two parents'
+    edits to the same place in the merge base can be paired. The ``+++``
+    header is honoured only before a file's first hunk, so an added content
+    line that itself starts with ``++`` plus a space is never mistaken for a
+    new file header.
     """
     hunks: Dict[str, List[Hunk]] = {}
     path: Optional[str] = None
