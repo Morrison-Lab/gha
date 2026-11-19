@@ -275,7 +275,7 @@ while `opposition-research`, `report-main-failure`, `triage-backlog`, `check-dep
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-precedence-parens`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, `sync-shared-fragments`, and `update-snapshots`).
 
@@ -560,6 +560,16 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes the same diff model as `check-iterate-subscripts` (added lines only, moved lines exempt, and skip-not-fall-back), and it blocks by default (`fail: true`).
   It takes its math spans from `check-common/mdmask.py`'s `math_spans`, moved there from `check-macro-expansions`, so keep `check-common` beside it.
   Its env vars use the `CPP_` prefix.
+- `check-r-head/` (Python, stdlib only, gha#2122) flags an R statement that prints a dataset through `head()` in a data div:
+  every `{r}` chunk of a file whose base name matches `data-files` (default `_dat-*`), and every `{r}` chunk inside a `#dat-` div.
+  Ezra's rule (2026-11-19) is "just not to print data in data divs": `head()` anywhere else, or with its result assigned or used, is fine,
+  because `df-print` decides how much of a printed data frame each format shows.
+  It splits each chunk into top-level statements (brackets and braces open a statement, a trailing operator continues it, `;` splits it),
+  and flags one whose last pipeline stage is `head`, or `print()` of it, unless the statement assigns.
+  A statement is reported when a PR adds any of its lines.
+  It takes the same diff model as `check-iterate-subscripts` (moved lines exempt, skip-not-fall-back), and it blocks by default (`fail: true`).
+  It takes its git, diff, and file helpers from `check-common/diffscope.py` and its fence pattern and comment masking from `check-common/mdmask.py`, so keep `check-common` beside it.
+  Its env vars use the `CRH_` prefix.
 - `check-avoided-words/` (Python, stdlib only, psw#418) flags words a style source advises against on a line a PR adds in a `.qmd` or `.md` file:
   `above` or `below` used for a place in the document, `just`, `easy` and `easily`, time-relative words such as `currently` and `recently`, and a generic placeholder set such as `domain A`.
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
@@ -2164,6 +2174,17 @@ the unflagged arrows, an aligned row's leading `\iff`, the skips, the diff scopi
 the blocking default of `main()`, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
 `uses: ./check-precedence-parens` calls over a staged page.
+
+`check-r-head/tests/test_check_r_head.py` is a pytest suite over
+the printing forms (a call, a pipeline ending in `head`, a `print()` wrapper), the non-printing ones (assignments, nested and piped-on uses, braces, `.head()`, comments and strings),
+which chunks are read (R info strings, other engines, a longer fence, an HTML comment) and which are in scope (a `_dat-*` file, a `#dat-` div and divs nested in it),
+the allow comment and its required reason,
+the diff scoping (a statement counts when any of its lines is added, and moved lines are exempt),
+`main()`'s blocking default, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+Seventeen mutations were confirmed to turn a named case red, each on a copy of the package,
+including dropping the reason the allow comment needs, reading `%in%` as a pipe, never closing a div, and testing only the line that holds `head`.
+CI runs it in the `r-head` job in `_selftest.yml`, followed by real
+`uses: ./check-r-head` calls over a staged data subfile.
 
 `check-write-idiom/tests/test_check_write_idiom.py` is a pytest suite over
 the flagged forms (list markers, labels, the three phrases), the unflagged ones

@@ -1,0 +1,129 @@
+---
+title: "check-r-head.yml"
+---
+
+Diff-scoped check that flags an R statement
+printing a dataset through `head()` in a data div,
+such as `head(df)` or `df |> head()`.
+Where a page shows a dataset,
+its R chunk prints the data frame itself,
+and the format's `df-print` decides how much each reader sees:
+`paged` on the website and in the slide decks,
+and `tibble` in the PDF handouts
+([#2122](https://github.com/Morrison-Lab/gha/issues/2122)).
+Elsewhere, `head()` is fine.
+
+## Where it applies
+
+The check reads, in `.qmd`, `.Rmd`, and `.md` files:
+
+- every `{r}` chunk of a data subfile,
+  a file whose base name matches `data-files`
+  (default `_dat-*`, such as `_dat-auto.qmd` or `_dat-auto-preview.qmd`);
+- every `{r}` chunk inside a fenced div whose id starts `#dat-`,
+  in any file.
+
+## What it flags
+
+A top-level R statement whose printed value comes from `head()`:
+
+- a call, `head(df)` or `utils::head(df, 3)`;
+- a pipeline whose last stage is `head`,
+  as in `df |> head()`, `df %>% head(n = 3)`, or `df %>% head`;
+- the same wrapped in `print()`,
+  as in `print(head(df))` or `df |> head() |> print()`.
+
+A statement can span lines
+while a bracket is open or a line ends in an operator,
+and the finding names the line that holds `head`.
+
+The check does not flag:
+
+- an R chunk outside a data subfile or a `#dat-` div;
+- an assignment, `top <- head(df)` or `df |> head() -> top`;
+- `head()` passed to another call (`nrow(head(df))`)
+  or followed by another pipeline stage (`df |> head() |> knitr::kable()`);
+- a statement inside braces, such as a function body or a loop;
+- a method or field, such as `df.head()`, `x$head()`, or `slice_head()`;
+- `head` inside an R comment or a string;
+- a chunk in another engine (`{python}`, `{julia}`),
+  a plain `r` fence, an escaped `{{r}}` chunk,
+  or a chunk shown inside a longer fence;
+- a statement carrying, or following,
+  `# check-r-head: allow: <reason>`.
+  The reason is required.
+
+## Scope
+
+Only statements with a line a pull request adds are reported,
+so existing pages never block.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+
+Every run prints how many lines and files it examined.
+
+## Limitations
+
+- A string that spans lines can hide or invent a `head`.
+- A data div written as an `include` of a file the patterns do not match
+  is read only through the including page's own `#dat-` div,
+  not through the included file.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `data-files`     | string  | `'_dat-*'` | Space- or comma-separated file-name patterns, matched against a file's base name, of data subfiles whose every R chunk is checked. |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `true`  | Fail the workflow when a printed `head()` is found. Set `false` to warn only. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-r-head.yml in your repo.
+# Diff-scoped check: flags an R statement that prints a dataset through head(),
+# such as `head(df)` or `df |> head()`, in a data div (a `_dat-*` subfile or a
+# `#dat-` div), on lines a PR adds. The chunk prints the data frame itself, and
+# the format's df-print decides how much each reader sees.
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check printed head() in data divs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-r-head.yml@v3
+    # with:
+    #   data-files: '_dat-*'                    # base-name patterns of data subfiles
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-r-head.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-r-head.yml)
+for the full caller stub.
