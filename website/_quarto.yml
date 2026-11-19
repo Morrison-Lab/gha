@@ -146,6 +146,7 @@ website:
           - reference/check-fform-paren.qmd
           - reference/check-iterate-subscripts.qmd
           - reference/check-precedence-parens.qmd
+          - reference/check-r-head.qmd
           - reference/check-macro-expansions.qmd
           - reference/check-write-idiom.qmd
           - reference/check-avoided-words.qmd
