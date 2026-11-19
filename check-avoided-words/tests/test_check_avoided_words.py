@@ -241,6 +241,24 @@ def test_message_names_the_alternative_and_the_source():
     assert "psw#418" in message
 
 
+@pytest.mark.parametrize("line", [
+    "The code below finds the eigenvalues.",
+    "Run the chunk above first.",
+    "The output below shows the fit.",
+])
+def test_code_position_message_says_how_to_label_the_listing(line):
+    hits, _ = wi.scan_file([line])
+    assert [h.rule for h in hits] == ["position"]
+    message = wi.format_message(hits[0])
+    assert "lst-label" in message
+    assert "@lst-" in message
+
+
+def test_non_code_position_message_has_no_listing_hint():
+    hits, _ = wi.scan_file(["See the table above."])
+    assert "lst-label" not in wi.format_message(hits[0])
+
+
 # -- skips -------------------------------------------------------------------
 
 def test_code_fence_is_skipped():
