@@ -297,6 +297,50 @@ def test_near_twin_does_not_mask_dropped_line_from_other_branch(tmp_path):
     assert "Branch one adds this unique paragraph about topic one here." in drops[0].lines
 
 
+def _list_merge(tmp_path, main_line: str, feature_line: str) -> str:
+    """Base lists two tools; main and feature each rewrite the list line."""
+    head = "# Tools\n\nThe intro line of the tools page, shared by both sides.\n\n"
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "tools.md", head + "Checkers (`alpha.py`, `beta.py`, `gamma.py`),\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-qb", "feature")
+    _write(tmp_path, "tools.md", head + feature_line + "\n")
+    _git(tmp_path, "commit", "-qam", "feature list")
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "tools.md", head + main_line + "\n")
+    _git(tmp_path, "commit", "-qam", "main list")
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "main", check=False)
+    _git(tmp_path, "checkout", "--ours", "tools.md")
+    _commit_merge(tmp_path)
+    return base
+
+
+def test_line_superseded_by_a_longer_version_is_not_reported(tmp_path):
+    """Main adds one item; the feature side's line already has it plus one more."""
+    base = _list_merge(
+        tmp_path,
+        main_line="Checkers (`alpha.py`, `beta.py`, `order.py`, `gamma.py`),",
+        feature_line="Checkers (`alpha.py`, `beta.py`, `order.py`, `preview.py`, `gamma.py`),",
+    )
+    drops, examined, _ = _find(tmp_path, base, similarity=1.0)
+    assert examined == 1
+    assert drops == []
+
+
+def test_kept_line_missing_a_word_of_the_dropped_line_is_reported(tmp_path):
+    """The kept line lacks the item main added, so main's item was lost."""
+    base = _list_merge(
+        tmp_path,
+        main_line="Checkers (`alpha.py`, `beta.py`, `order.py`, `gamma.py`),",
+        feature_line="Checkers (`alpha.py`, `beta.py`, `preview.py`, `delta.py`, `gamma.py`),",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [["Checkers (`alpha.py`, `beta.py`, `order.py`, `gamma.py`),"]]
+
+
 def test_octopus_merge_three_parents_drops_reported(tmp_path):
     """An octopus merge attributing drops to parents 2 and 3."""
     _git(tmp_path, "init", "-q", "-b", "main")

@@ -8,7 +8,8 @@ description: >-
   string (with line-leading list markers stripped), so content moved to
   another file, rewrapped, or split into bullet list items is not reported;
   a line reworded by the resolution (a close near-twin new to the merge in
-  the same file) is not reported either. Warn-only by default: the report
+  the same file) is not reported either, nor is a line whose every word
+  survives, in order, in a longer line of that file. Warn-only by default: the report
   goes to the job summary, with one warning annotation per affected merge.
 inputs:
   python-version:

@@ -34,6 +34,11 @@ Design notes:
   exact matches only). Unrelated lines from other parents or the merge base
   cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
   has no such near-twin.
+- **A line the merge kept a longer version of is not a drop.** When a longer
+  line of ``M``'s copy of the same file holds every word of one side's line,
+  in order (a list the other side extended by one item, say), the merge
+  superseded that line and nothing was lost. The longer line may come from a
+  parent rather than the resolution.
 - **A kept deletion is not a drop.** When another parent deleted a file
   outright since ``B`` and the file is absent from ``M``, the merge resolved
   a modify/delete conflict by keeping the deletion, so the lines this parent
@@ -255,6 +260,26 @@ def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold:
     return False
 
 
+def has_superset(line: str, others: Union[Set[str], FrozenSet[str]]) -> bool:
+    """True when a longer line in ``others`` holds every word of ``line``, in order.
+
+    One side's line can be superseded by the other side's longer version of
+    it, such as a list the other side extended by one item. The longer line
+    keeps every word of the shorter one, so nothing was lost.
+    """
+    words = line.split()
+    matcher = difflib.SequenceMatcher(autojunk=False)
+    matcher.set_seq2(words)
+    for other in others:
+        other_words = other.split()
+        if len(other_words) <= len(words):
+            continue
+        matcher.set_seq1(other_words)
+        if sum(block.size for block in matcher.get_matching_blocks()) == len(words):
+            return True
+    return False
+
+
 def _exists(commit: str, path: str, cwd: Optional[str]) -> Optional[bool]:
     """Whether ``path`` is in ``commit``'s tree, or None when git fails.
 
@@ -385,7 +410,8 @@ def check_merge(
             missing = [c for c in missing
                        if c not in anywhere
                        and unbullet_line(c) not in anywhere_unbulleted
-                       and not has_near_twin(c, resolution_lines, similarity)]
+                       and not has_near_twin(c, resolution_lines, similarity)
+                       and not has_superset(c, same_file.lines)]
             if missing:
                 drops.append(Drop(merge, subject, i, parent, path, missing))
     return drops
