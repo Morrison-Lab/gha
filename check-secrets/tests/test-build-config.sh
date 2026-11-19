@@ -93,7 +93,34 @@ new_case "no inputs extends the default ruleset"
 run_build
 assert_status 0
 assert_contains "useDefault = true" "default extend"
-assert_not_contains "[[allowlists]]" "no allowlist emitted"
+assert_not_contains "paths = [" "no paths-ignore allowlist emitted"
+assert_not_contains 'regexTarget = "match"' "no allowlist-file allowlist emitted"
+
+# gha#2113: a BibTeX key (such as abramson2021algebra) passed to gha's own
+# exclude-keys / bib-exclude-keys inputs reads to the default generic-api-key
+# rule as a credential, so every config carries a line-targeted allowlist for
+# exactly those YAML keys. The sample lines below use short, low-entropy values
+# on purpose: the secrets selftest scans this file's history, and the lines
+# that carry them start with `for` rather than the allowlisted YAML key.
+new_case "the bibliography exclude-keys allowlist is always emitted"
+run_build
+assert_status 0
+assert_contains 'regexTarget = "line"' "line target"
+bib_regex='^\s*(bib-)?exclude-keys\s*:'
+assert_contains "'''$bib_regex'''," "anchored exclude-keys regex"
+# The regex means the same in PCRE as in Go's RE2, so check what it does and
+# does not suppress against representative lines.
+for line in '      exclude-keys: x' \
+  'bib-exclude-keys: y' '  exclude-keys : a, b'; do
+  printf '%s\n' "$line" | grep -qP -- "$bib_regex" \
+    || fail "should suppress: $line"
+done
+for line in '      api-key: exclude-keys: x' '# see exclude-keys: below' \
+  '      my-exclude-keys: x' '      exclude-keys-extra: x'; do
+  if printf '%s\n' "$line" | grep -qP -- "$bib_regex"; then
+    fail "should NOT suppress: $line"
+  fi
+done
 
 new_case "paths-ignore becomes a paths allowlist, split on commas and newlines"
 run_build SECRETS_PATHS_IGNORE='check-secrets/tests/, one/two

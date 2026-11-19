@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# check-one-function-per-file: allow-multiple
+# (Its four helpers are private to this one script, which the tests in
+# check-secrets/tests/ drive as a unit; splitting them out would only add
+# `source` plumbing.)
 #
 # Write the gitleaks config the scan runs under, to SECRETS_GENERATED_CONFIG.
 #
@@ -140,6 +144,25 @@ if [ -n "$base_config" ]; then
 else
   echo "useDefault = true" >> "$SECRETS_GENERATED_CONFIG"
 fi
+
+# gha's own bibliography checks take `exclude-keys` (and, through the website,
+# book and manuscript checks, `bib-exclude-keys`): a list of BibTeX citation
+# keys. gitleaks' default generic-api-key rule reads `key` plus a high-entropy
+# token such as `abramson2021algebra` as a credential assignment, so every
+# caller passing one failed this scan (gha#2113, csci201 run 44454215761).
+# A citation-key list never holds a credential, so suppress findings on those
+# lines for every caller here rather than in each caller's .gitleaksignore.
+# regexTarget "line" tests the whole line, and the anchor keeps the allowlist
+# to lines that ARE that YAML key, not lines merely mentioning it.
+{
+  echo ""
+  echo "[[allowlists]]"
+  echo 'description = "gha bibliography-check inputs: BibTeX citation keys, not credentials (gha#2113)"'
+  echo 'regexTarget = "line"'
+  echo "regexes = ["
+  echo "  '''^\\s*(bib-)?exclude-keys\\s*:''',"
+  echo "]"
+} >> "$SECRETS_GENERATED_CONFIG"
 
 if [ -n "$paths_ignore" ]; then
   printf '%s' "$paths_ignore" | split_patterns "$work_dir/paths.txt" commas
