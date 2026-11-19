@@ -52,9 +52,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-3d5da8a0c3bc4296215f21ddfe68f596.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-7134d449cefb76948513ebf7ab01abc5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -958,6 +958,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/check-r-head.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-r-head.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-macro-expansions.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-macro-expansions.yml</span></a>
   </div>
@@ -1698,311 +1704,316 @@ cookieconsent.run({
 <td><code>fail</code>, <code>check-junk-files</code>, <code>junk-patterns</code>, <code>junk-paths-ignore</code>, <code>check-secrets</code>, <code>secrets-config</code>, <code>secrets-paths-ignore</code>, <code>check-non-standard-chars</code>, <code>non-standard-chars-extensions</code>, <code>check-new-line-breaks</code>, <code>new-line-breaks-base-ref</code>, <code>new-line-breaks-globs</code>, <code>check-typos</code>, <code>typos-config</code>, <code>typos-base-ref</code>, <code>check-ai-tells</code>, <code>ai-tells-threshold</code>, <code>ai-tells-ignore</code>, <code>lint-yaml</code>, <code>yaml-config-file</code>, <code>yaml-paths-ignore</code>, <code>lint-workflows</code>, <code>workflows-path</code>, <code>lint-markdown</code>, <code>markdown-config-file</code>, <code>markdown-globs</code>, <code>markdown-paths-ignore</code>, <code>markdown-base-ref</code>, <code>lint-qmd</code>, <code>qmd-config-file</code>, <code>qmd-globs</code>, <code>qmd-paths-ignore</code>, <code>check-links</code>, <code>lychee-config</code>, <code>lychee-args</code>, <code>check-quarto-links</code>, <code>quarto-links-paths-ignore</code>, <code>check-orphaned-images</code>, <code>orphaned-images-paths-ignore</code>, <code>orphaned-images-base-ref</code>, <code>orphaned-images-fail</code>, <code>check-typed-output</code>, <code>typed-output-globs</code>, <code>typed-output-paths-ignore</code>, <code>typed-output-diff-scoped</code>, <code>typed-output-base-ref</code>, <code>typed-output-fail</code>, <code>check-informal-definitions</code>, <code>informal-definitions-globs</code>, <code>informal-definitions-paths-ignore</code>, <code>informal-definitions-diff-scoped</code>, <code>informal-definitions-base-ref</code>, <code>informal-definitions-fail</code>, <code>check-bibliography-dois</code>, <code>bib-exclude-keys</code></td>
 </tr>
 <tr class="even">
+<td><a href="./reference/check-r-head.html"><code>check-r-head.yml</code></a></td>
+<td>Diff-scoped check that flags an R statement printing a dataset through <code>head()</code> in a data div, such as <code>head(df)</code> or <code>df \|&gt; head()</code>.</td>
+<td><code>whole-tree</code>, <code>data-files</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
+</tr>
+<tr class="odd">
 <td><a href="./reference/check-r-package.html"><code>check-r-package.yml</code></a></td>
 <td>Bundles the standard check suite for R package repositories (such as <a href="https://github.com/Morrison-Lab/rpt"><code>Morrison-Lab/rpt</code></a>).</td>
 <td><code>fail</code>, <code>check-junk-files</code>, <code>junk-patterns</code>, <code>junk-paths-ignore</code>, <code>check-secrets</code>, <code>secrets-config</code>, <code>secrets-paths-ignore</code>, <code>check-non-standard-chars</code>, <code>non-standard-chars-extensions</code>, <code>check-new-line-breaks</code>, <code>new-line-breaks-base-ref</code>, <code>new-line-breaks-globs</code>, <code>check-typos</code>, <code>typos-config</code>, <code>typos-base-ref</code>, <code>check-ai-tells</code>, <code>ai-tells-threshold</code>, <code>ai-tells-ignore</code>, <code>lint-yaml</code>, <code>yaml-config-file</code>, <code>yaml-paths-ignore</code>, <code>lint-workflows</code>, <code>workflows-path</code>, <code>lint-markdown</code>, <code>markdown-config-file</code>, <code>markdown-globs</code>, <code>markdown-paths-ignore</code>, <code>markdown-base-ref</code>, <code>check-duplicate-roxygen</code>, <code>duplicate-roxygen-path</code>, <code>check-one-function-per-file</code>, <code>one-function-per-file-path</code>, <code>check-extra</code>, <code>extra-check</code>, <code>check-formatting</code>, <code>air-version</code>, <code>air-path</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-redundant-citations.html"><code>check-redundant-citations.yml</code></a></td>
 <td>Diff-scoped, warn-only check that flags a source cited twice in one div or passage.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-removed-content.html"><code>check-removed-content.yml</code></a></td>
 <td>Diff-scoped check that fails a pull request that removes prose which reappears nowhere in the pull request.</td>
 <td><code>globs</code>, <code>min-overlap</code>, <code>min-words</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-repo-hygiene.html"><code>check-repo-hygiene.yml</code></a></td>
 <td>Bundles the standard repository hygiene check suite for Morrison-Lab repositories.</td>
 <td><code>fail</code>, <code>check-junk-files</code>, <code>junk-patterns</code>, <code>junk-paths-ignore</code>, <code>check-secrets</code>, <code>secrets-config</code>, <code>secrets-paths-ignore</code>, <code>check-non-standard-chars</code>, <code>non-standard-chars-extensions</code>, <code>check-new-line-breaks</code>, <code>new-line-breaks-base-ref</code>, <code>new-line-breaks-globs</code>, <code>check-typos</code>, <code>typos-config</code>, <code>typos-base-ref</code>, <code>lint-yaml</code>, <code>yaml-config-file</code>, <code>yaml-paths-ignore</code>, <code>lint-workflows</code>, <code>workflows-path</code>, <code>lint-markdown</code>, <code>markdown-config-file</code>, <code>markdown-globs</code>, <code>markdown-paths-ignore</code>, <code>markdown-base-ref</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-restated-results.html"><code>check-restated-results.yml</code></a></td>
 <td>Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-10-29) that a result first derived in an exercise solution is restated in its own theorem-type div (<code>#thm-</code>, <code>#lem-</code>, <code>#cor-</code> or <code>#prp-</code>) after the exercise.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-result-definition-links.html"><code>check-result-definition-links.yml</code></a></td>
 <td>Diff-scoped, warn-only check for the lab’s rule (Ezra, 2026-11-09) that every result div links at least one definition.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-results-in-remarks.html"><code>check-results-in-remarks.yml</code></a></td>
 <td>Diff-scoped, warn-only heuristic check for the lab’s rule (Ezra, 2026-11-07; psw#512) that a remark holds commentary.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-rubric-checklists.html"><code>check-rubric-checklists.yml</code></a></td>
 <td>Diff-scoped check that warns when a pull request adds or revises a grading rubric that is not written as a checklist.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-search-shortcut.html"><code>check-search-shortcut.yml</code></a></td>
 <td>Blocking check that flags a Quarto site whose search opens on Ctrl/Cmd-F or Ctrl/Cmd-S.</td>
 <td><code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-secrets.html"><code>check-secrets.yml</code></a></td>
 <td>Scan the repository’s git <strong>history</strong> for committed credentials – API tokens, private keys, high-entropy password assignments – using <a href="https://github.com/gitleaks/gitleaks">gitleaks</a>.</td>
 <td><code>version</code>, <code>checksums-sha256</code>, <code>config</code>, <code>paths-ignore</code>, <code>allowlist-file</code>, <code>log-opts</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-self-contained-captions.html"><code>check-self-contained-captions.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a figure or table caption whose first sentence only points to another div.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-self-credits.html"><code>check-self-credits.yml</code></a></td>
 <td>Diff-scoped, warn-only check that flags a formal credit to the group’s own work.</td>
 <td><code>config</code>, <code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-self-reference.html"><code>check-self-reference.yml</code></a></td>
 <td>Diff-scoped check that flags self-referential prose.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-serial-comma.html"><code>check-serial-comma.yml</code></a></td>
 <td>Diff-scoped check that fails when a pull request adds a list of three or more items with no comma before the final “and” or “or”.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-single-ask-parts.html"><code>check-single-ask-parts.yml</code></a></td>
 <td>Diff-scoped check that warns when a pull request adds or revises an exercise part that asks for more than one thing.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-solution-citations.html"><code>check-solution-citations.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a citation of a solution inside a proof or result div.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-source-overlap.html"><code>check-source-overlap.yml</code></a></td>
 <td>Flag paragraphs of Markdown and Quarto prose that copy a reference text, as a guard against unintentional plagiarism by authors and AI agents alike.</td>
 <td><code>corpus-repo</code>, <code>corpus-files</code>, <code>base-ref</code>, <code>paths</code>, <code>paths-ignore</code>, <code>min-run</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-split-solutions.html"><code>check-split-solutions.yml</code></a></td>
 <td>Diff-scoped check that fails a pull request which touches a split exercise whose solution was not split with it.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-static-figures.html"><code>check-static-figures.yml</code></a></td>
 <td>Diff-scoped check that flags an interactive figure with no noninteractive version in static formats.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-term-links.html"><code>check-term-links.yml</code></a></td>
 <td>Diff-scoped, blocking check that every technical term is linked to its definition the first time it appears in each div, or in the prose outside divs between one heading and the next.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>terms-file</code>, <code>terms-from</code>, <code>allow-file</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-title-references.html"><code>check-title-references.yml</code></a></td>
 <td>Diff-scoped check that flags a reference to a section, chapter, or page by its title that does not name the content type.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-tree-lists.html"><code>check-tree-lists.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a tree written only as a nested list.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-typed-output.html"><code>check-typed-output.yml</code></a></td>
 <td>Flags typed (“faked”) code output in Quarto sources.</td>
 <td><code>patterns</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>diff-scoped</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-typos.html"><code>check-typos.yml</code></a></td>
 <td>Diff-scoped spellcheck of the files <a href="./reference/spellcheck.html"><code>spellcheck.yml</code></a> cannot see – a Quarto site’s non-vignette <code>.qmd</code> pages, <code>CONTRIBUTING.md</code>-class Markdown, <code>docs/</code>, YAML, code comments, and repositories that are not R packages – with <a href="https://github.com/crate-ci/typos">crate-ci/typos</a>.</td>
 <td><code>version</code>, <code>checksums-sha256</code>, <code>path</code>, <code>config</code>, <code>globs</code>, <code>paths-ignore</code>, <code>base-ref</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-unexplained-choices.html"><code>check-unexplained-choices.yml</code></a></td>
 <td>Diff-scoped check that fails when a binning choice in code is never explained by the prose around it.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-unexplained-contrasts.html"><code>check-unexplained-contrasts.yml</code></a></td>
 <td>Diff-scoped check that flags a contrast in a definition, remark or note that cites no source.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-visualization-figures.html"><code>check-visualization-figures.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a div that asks for a picture but has no figure.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-wikipedia-further-reading.html"><code>check-wikipedia-further-reading.yml</code></a></td>
 <td>Diff-scoped, blocking check that flags a Wikipedia citation or link in a list item of a Further reading section.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-write-idiom.html"><code>check-write-idiom.yml</code></a></td>
 <td>Diff-scoped, failing-by-default check that flags a line opening with <code>Write the</code>, <code>Write a</code> or <code>Write an</code>.</td>
 <td><code>whole-tree</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
 <td>Run the agent-mode Claude Code bot.</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>use-renv</code>, <code>r-extra-packages</code>, <code>renv-cache-version</code>, <code>checkout-submodules</code>, <code>link-skills</code>, <code>eager-pr</code>, <code>reviewer</code>, <code>review-workflow-file</code>, <code>dispatch-review-on-agent-push</code>, <code>mark-ready-for-review</code>, <code>prompt-addendum</code>, <code>webfetch-allowlist-url</code>, <code>use-ai-config</code>, <code>use-posit-skills</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reference-repos</code>, <code>reference-repos-token</code>, <code>claude-args</code>, <code>report-cost</code>, <code>trusted-bot-logins</code>, <code>dispatch-on-assignee</code>, <code>extra-secret-names</code>, <code>timeout-minutes</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
 <td>Run a read-only Claude review of a pull request (the <code>code-review</code> plugin).</td>
 <td><code>gate-runs-on</code>, <code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>submodule-paths</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>show-full-output</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>report-cost</code>, <code>model</code>, <code>use-ai-config</code>, <code>use-posit-skills</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reference-repos</code>, <code>reference-repos-token</code>, <code>extra-secret-names</code>, <code>timeout-minutes</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/claude-manage-project.html"><code>claude-manage-project.yml</code></a></td>
 <td>Triage a newly-opened issue: apply a priority label, and add the issue to the repository’s project board where the token allows.</td>
 <td><code>prompt-addendum</code>, <code>trusted-bot-logins</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/cleanup-pr-previews.html"><code>cleanup-pr-previews.yml</code></a></td>
 <td>The housekeeping half of the PR-preview family.</td>
 <td><code>preview-dir</code>, <code>compact-history</code>, <code>publish-workflow</code>, <code>wait-for-publish</code>, <code>idle-days</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/cursor-code-review.html"><code>cursor-code-review.yml</code></a></td>
 <td>Queue a <a href="https://cursor.com/docs/bugbot.md">Cursor Bugbot</a> review for a pull request.</td>
 <td><code>pr-number</code>, <code>dry-run</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/gemini.html"><code>gemini.yml</code></a></td>
 <td>Agent-mode Gemini CLI bot.</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>r-extra-packages</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>eager-pr</code>, <code>reviewer</code>, <code>mark-ready-for-review</code>, <code>prompt-addendum</code>, <code>gemini-model</code>, <code>review-workflow-file</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a></td>
 <td>Read-only Gemini PR code review.</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>gemini-model</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/lint-changed-files.html"><code>lint-changed-files.yml</code></a></td>
 <td>Run <a href="https://lintr.r-lib.org/"><code>lintr</code></a> at one of three scopes, selected by the <code>scope</code> input:</td>
 <td><code>scope</code>, <code>path</code>, <code>linter-file</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>apt-packages</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code>, <code>preinstalled-toolchain</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/lint-changed-lines.html"><code>lint-changed-lines.yml</code></a></td>
 <td>Run <a href="https://lintr.r-lib.org/"><code>lintr</code></a> over the R files a pull request changes, but report <strong>only</strong> the lints on lines the PR actually added or modified – not whole changed files.</td>
 <td><code>path</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>apt-packages</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code>, <code>file-pattern</code>, <code>lms-ref</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/lint-markdown.html"><code>lint-markdown.yml</code></a></td>
 <td>Lint tracked Markdown files with <a href="https://github.com/DavidAnson/markdownlint-cli2"><code>markdownlint-cli2</code></a> using a bundled default config (overridable), plus companion checks that flag fenced code blocks longer than a configurable line threshold, list-item merge splices, and blank lines that split a GFM table.</td>
 <td><code>config-file</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>max-code-block-lines</code>, <code>fail-on-long-code-blocks</code>, <code>base-ref</code>, <code>fail-on-item-splices</code>, <code>fail-on-table-splits</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/lint-qmd.html"><code>lint-qmd.yml</code></a></td>
 <td>Lint the prose sections of tracked <code>.qmd</code> Quarto files with <a href="https://github.com/DavidAnson/markdownlint"><code>markdownlint</code></a>.</td>
 <td><code>config-file</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>max-line-length</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/lint-workflows.html"><code>lint-workflows.yml</code></a></td>
 <td>Audit the caller’s GitHub Actions workflows and composite actions with <a href="https://github.com/rhysd/actionlint"><code>actionlint</code></a> (syntax/semantics – unknown keys, bad <code>runs-on</code> labels, invalid expression syntax, shellcheck over <code>run:</code> blocks) and <a href="https://github.com/zizmorcore/zizmor"><code>zizmor</code></a> (security – template-injection sinks, credential persistence, overly broad permissions, unpinned actions).</td>
 <td><code>path</code>, <code>actionlint-version</code>, <code>actionlint-checksum</code>, <code>zizmor-version</code>, <code>pedantic</code>, <code>fail</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/lint-yaml.html"><code>lint-yaml.yml</code></a></td>
 <td>Lint tracked YAML files with <a href="https://yamllint.readthedocs.io/en/stable/"><code>yamllint</code></a> using a bundled default config (overridable), plus a companion check that flags <code>run:</code> script blocks in workflow/action YAML longer than a configurable line threshold, so they get decomposed into a separate script file the way this repo’s own R/Python capabilities already do.</td>
 <td><code>config-file</code>, <code>paths-ignore</code>, <code>fail</code>, <code>max-script-lines</code>, <code>fail-on-long-scripts</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/opencode-code-review.html"><code>opencode-code-review.yml</code></a></td>
 <td>Read-only OpenCode PR code review, run through the <a href="https://opencode.ai">opencode</a> CLI headless.</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>opencode-model</code>, <code>opencode-version</code>, <code>opencode-attempts</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/opposition-research.html"><code>opposition-research.yml</code></a></td>
 <td>Conduct automated opposition research on a competitor product, framework, or repository.</td>
 <td><code>competitor</code>, <code>target-repo</code>, <code>scope-guidance</code>, <code>dry-run</code>, <code>max-issues</code>, <code>labels</code>, <code>model</code>, <code>use-ai-config</code>, <code>timeout-minutes</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
 <td>The build half of the PR-preview family.</td>
 <td><code>path</code>, <code>r-version</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>r-packages</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>setup-julia</code>, <code>preinstalled-toolchain</code>, <code>julia-version</code>, <code>submodules</code>, <code>render-profile</code>, <code>output-dir</code>, <code>formats</code>, <code>skip-docx</code>, <code>skip-formats</code>, <code>incremental</code>, <code>cluster-render</code>, <code>cluster-head</code>, <code>cluster-image</code>, <code>cluster-image-file</code>, <code>cluster-idle-minutes</code>, <code>extra-preview-labels</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>post-build-command</code>, <code>post-build-continue-on-error</code>, <code>timezone</code>, <code>timeout-minutes</code>, <code>detect-changed-chapters</code>, <code>changed-chapters-banner</code>, <code>highlight-changes</code>, <code>changed-chapters-glob</code>, <code>deployed-branch</code>, <code>deployed-subdir</code>, <code>changed-chapters-normalize-patterns</code>, <code>max-elements-for-pairwise</code>, <code>banner-index</code>, <code>docx-tracked-changes</code>, <code>docx-tracked-changes-glob</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
 <td>The deploy half of the PR-preview family.</td>
 <td><code>pages-base-url</code>, <code>pages-base-path</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
 <td>Render a Quarto project and deploy it to the <code>gh-pages</code> branch, which GitHub Pages serves.</td>
 <td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>preinstalled-toolchain</code>, <code>setup-julia</code>, <code>julia-version</code>, <code>apt-packages</code>, <code>output-dir</code>, <code>render-profile</code>, <code>formats</code>, <code>per-file-formats</code>, <code>freeze-cache</code>, <code>incremental-cache</code>, <code>freeze-cache-save-on-failure</code>, <code>deno-v8-options</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>timezone</code>, <code>cluster-render</code>, <code>cluster-head</code>, <code>cluster-image</code>, <code>cluster-image-file</code>, <code>timeout-minutes</code>, <code>checkout-submodules</code>, <code>pre-render-artifact</code>, <code>pre-render-artifact-path</code>, <code>deploy</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/r-cmd-check.html"><code>r-cmd-check.yml</code></a></td>
 <td>Run <a href="https://r-pkgs.org/check.html"><code>R CMD check</code></a> across an OS x R-version matrix, wrapping <a href="https://github.com/r-lib/actions"><code>r-lib/actions</code></a> <code>setup-r</code>, <code>setup-r-dependencies</code>, and <code>check-r-package</code>.</td>
 <td><code>hard</code>, <code>extra-packages</code>, <code>error-on</code>, <code>cran-incoming-remote</code>, <code>force-suggests</code>, <code>stop-on-invalid-numeric-version-inputs</code>, <code>path</code>, <code>config</code>, <code>setup-pandoc</code>, <code>install-quarto</code>, <code>setup-julia</code>, <code>julia-version</code>, <code>julia-project</code>, <code>apt-packages</code>, <code>brew-packages</code>, <code>brew-casks</code>, <code>linux-container</code>, <code>checkout-submodules</code>, <code>timeout-minutes</code>, <code>build-args</code>, <code>upload-snapshots</code>, <code>upload-results</code>, <code>cluster-check</code>, <code>cluster-runs-on</code>, <code>cluster-head</code>, <code>cluster-image</code>, <code>cluster-image-file</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/report-failure.html"><code>report-failure.yml</code></a></td>
 <td>File an issue when a workflow fails, or comment on the issue already open for that failure.</td>
 <td><code>title</code>, <code>body</code>, <code>labels</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/report-main-failure.html"><code>report-main-failure.yml</code></a></td>
 <td>Follow up when a workflow fails on the default branch.</td>
 <td><code>labels</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/request-dependabot-review.html"><code>request-dependabot-review.yml</code></a></td>
 <td>Request review from a configurable list of reviewers when a PR’s author matches a bot actor (Dependabot by default), so scheduled dependency bumps don’t merge without a human look.</td>
 <td><code>reviewers</code>, <code>bot-actor</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/small-model-agent.html"><code>small-model-agent.yml</code></a></td>
 <td>Run a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a pull request, enforcing bounded retries against pre-check repository verification gates (YAML/Markdown linting, PHI tripwire scans) (<a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>, <a href="https://github.com/Morrison-Lab/gha/issues/415">gha#415</a>).</td>
 <td><code>pr-number</code>, <code>endpoint-url</code>, <code>model</code>, <code>max-iterations</code>, <code>setup-r</code>, <code>install-quarto</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>run-gates</code>, <code>dry-run</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/spellcheck.html"><code>spellcheck.yml</code></a></td>
 <td>Spellcheck an R package’s prose with the <a href="https://docs.ropensci.org/spelling/">{spelling}</a> package.</td>
 <td><code>path</code>, <code>exclude</code>, <code>fail</code>, <code>additional-options</code>, <code>install-quarto</code>, <code>preinstalled-toolchain</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/student-qmd.html"><code>student-qmd.yml</code></a></td>
 <td>Writes the <code>.qmd</code> files a course can hand to students, from assessment sources that keep each answer beside its question.</td>
 <td><code>sources</code>, <code>working-directory</code>, <code>output-dir</code>, <code>hidden-classes</code>, <code>answer-profiles</code>, <code>student-profile</code>, <code>drop-render-chunks</code>, <code>prune-macros</code>, <code>drop-front-matter-keys</code>, <code>require-answers</code>, <code>check</code>, <code>render</code>, <code>render-to</code>, <code>index-title</code>, <code>index-back-href</code>, <code>quarto-version</code>, <code>checkout-submodules</code>, <code>artifact-name</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
 <td>Post a Claude summary comment on newly opened issues.</td>
 <td><code>model</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/sync-shared-fragments.html"><code>sync-shared-fragments.yml</code></a></td>
 <td>Vendor a set of files from an upstream repo, pinned to a commit and recorded in a JSON manifest, and open a PR when the copy changes.</td>
 <td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>dest-files</code>, <code>manifest-path</code>, <code>base-branch</code>, <code>pr-branch</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/sync-upstream.html"><code>sync-upstream.yml</code></a></td>
 <td>Merge an upstream repository’s branch into this fork and open a PR when the merge brings changes.</td>
 <td><code>upstream-repo</code>, <code>upstream-branch</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>fail-on-conflict</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/test-coverage.html"><code>test-coverage.yml</code></a></td>
 <td>Measure R-package test coverage with <a href="https://covr.r-lib.org/"><code>{covr}</code></a> and upload the Cobertura report to <a href="https://about.codecov.io/">Codecov</a>.</td>
 <td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>fail-ci-if-error</code>, <code>upload-test-results</code>, <code>examples-coverage</code>, <code>min-coverage</code>, <code>cluster-check</code>, <code>cluster-runs-on</code>, <code>cluster-head</code>, <code>cluster-image</code>, <code>cluster-image-file</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/triage-backlog.html"><code>triage-backlog.yml</code></a></td>
 <td>Backlog triage that labels and never closes.</td>
 <td><code>dry-run</code>, <code>ceiling</code>, <code>limit</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/update-quarto-extensions.html"><code>update-quarto-extensions.yml</code></a></td>
 <td>Update vendored Quarto extensions in-place to upstream semver tags and open or refresh an automation pull request when newer versions are available.</td>
 <td><code>extension-repos</code>, <code>extensions-dir</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>labels</code>, <code>dry-run</code>, <code>allow-local-edits</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/update-snapshots.html"><code>update-snapshots.yml</code></a></td>
 <td>Regenerate <a href="https://testthat.r-lib.org/articles/snapshotting.html">testthat snapshots</a> for an R package: run the test suite, accept the output the code now produces (<code>testthat::snapshot_accept()</code>), re-run the tests, then commit and push the changed files under <code>tests/testthat/_snaps/</code>.</td>
 <td><code>ref</code>, <code>pr-mode</code>, <code>julia</code>, <code>julia-version</code>, <code>julia-project</code>, <code>extra-packages</code>, <code>needs</code>, <code>apt-packages</code>, <code>preinstalled-toolchain</code>, <code>commit-message</code>, <code>committer-name</code>, <code>committer-email</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/version-check.html"><code>version-check.yml</code></a></td>
 <td>Fail a PR whose <code>DESCRIPTION</code> <code>Version:</code> differs from the base branch’s.</td>
 <td><code>description-path</code>, <code>no-version-increment-label</code>, <code>bump-branch</code>, <code>preinstalled-toolchain</code></td>
