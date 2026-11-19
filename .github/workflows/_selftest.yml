@@ -5833,6 +5833,118 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-iterate-subscripts || true
           rm -rf _ci-iterate-subscripts
+  # check-precedence-parens is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-precedence-parens@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the scanner and both scopes; the composite calls below prove
+  # action.yml wires each input through to the script.
+  precedence-parens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-precedence-parens unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-precedence-parens/tests/ -v
+      # This PR's own added lines must carry no implicit precedence.
+      - name: Check this PR's added lines
+        uses: ./check-precedence-parens
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Stage a page that writes an implicit precedence, then assert that the
+      # blocking call really fails.
+      - name: Stage a page with an implicit precedence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-precedence-parens
+          printf '%s\n' 'Union $\set{x : x \in A \lor x \in B}$ here.' > _ci-precedence-parens/page.qmd
+          git add -f _ci-precedence-parens/page.qmd
+      # Warn-only on request: the same page must not fail the job.
+      - name: Check the staged page, warn-only when asked
+        uses: ./check-precedence-parens
+        with:
+          fail: 'false'
+          whole-tree: 'true'
+      - name: Check the staged page, expecting a failure
+        id: precedence-parens-expected-failure
+        continue-on-error: true
+        uses: ./check-precedence-parens
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.precedence-parens-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-precedence-parens to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-precedence-parens failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the working-tree-aware scope examines it and the call must fail. Were
+      # base-ref dropped, the call would skip and pass, so this failure proves
+      # base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: precedence-parens-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-precedence-parens
+        with:
+          fail: 'true'
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.precedence-parens-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (warning, exit 0). Were
+      # the skip a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-precedence-parens
+        with:
+          fail: 'true'
+          base-ref: ''
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-precedence-parens
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          paths-ignore: '_ci-precedence-parens'
+      - name: Check again with globs excluding the page
+        uses: ./check-precedence-parens
+        with:
+          fail: 'true'
+          whole-tree: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-precedence-parens || true
+          rm -rf _ci-precedence-parens
   # check-macro-expansions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-macro-expansions@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit

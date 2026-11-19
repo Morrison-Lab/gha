@@ -179,38 +179,8 @@ def load_expansions(path: str, exclude: Set[str]) -> Optional[List[Expansion]]:
             for key, names in by_body.items()]
 
 
-def _math_spans(line: str, in_display: bool) -> Tuple[List[Tuple[int, int]], bool]:
-    """Character spans of ``line`` that are math, and the display state after it."""
-    spans: List[Tuple[int, int]] = []
-    pos, start = 0, 0 if in_display else None
-    n = len(line)
-    while pos < n:
-        ch = line[pos]
-        if ch == "\\":
-            pos += 2
-            continue
-        if ch == "$":
-            double = line.startswith("$$", pos)
-            if double:
-                if start is not None and in_display:
-                    spans.append((start, pos))
-                    in_display, start = False, None
-                elif start is None:
-                    in_display, start = True, pos + 2
-                pos += 2
-                continue
-            if in_display:
-                pos += 1
-                continue
-            if start is None:
-                start = pos + 1
-            else:
-                spans.append((start, pos))
-                start = None
-        pos += 1
-    if start is not None:
-        spans.append((start, n))  # an unclosed inline $ ends with the line
-    return spans, in_display
+# The math-span scanner lives in check-common (shared with check-precedence-parens).
+_math_spans = mdmask.math_spans
 
 
 def expansion_hits(math: str, expansions: List[Expansion]

@@ -18,7 +18,7 @@ the source line.  Stdlib only.
 """
 
 import re
-from typing import Callable, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 
 # A code fence: three or more backticks or tildes, then the info string's
@@ -104,3 +104,44 @@ def mask_markdown_line(line: str, in_comment: bool) -> Tuple[str, bool]:
     if start >= 0:
         out, in_comment = out[:start], True
     return mask_code_spans(out), in_comment
+
+
+def math_spans(line: str, in_display: bool) -> Tuple[List[Tuple[int, int]], bool]:
+    """Character spans of ``line`` that are math, and the display state after it.
+
+    ``$...$`` is inline math and ``$$...$$`` display math, which may span
+    lines: pass the returned state into the next line's call. A backslash
+    escapes the next character, so a backslash-dollar is not a delimiter, and an
+    unclosed inline ``$`` ends with the line. Moved here from
+    check-macro-expansions so check-precedence-parens shares it.
+    """
+    spans: List[Tuple[int, int]] = []
+    pos, start = 0, 0 if in_display else None
+    n = len(line)
+    while pos < n:
+        ch = line[pos]
+        if ch == "\\":
+            pos += 2
+            continue
+        if ch == "$":
+            double = line.startswith("$$", pos)
+            if double:
+                if start is not None and in_display:
+                    spans.append((start, pos))
+                    in_display, start = False, None
+                elif start is None:
+                    in_display, start = True, pos + 2
+                pos += 2
+                continue
+            if in_display:
+                pos += 1
+                continue
+            if start is None:
+                start = pos + 1
+            else:
+                spans.append((start, pos))
+                start = None
+        pos += 1
+    if start is not None:
+        spans.append((start, n))  # an unclosed inline $ ends with the line
+    return spans, in_display
