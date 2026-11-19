@@ -6304,6 +6304,117 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-macro-expansions || true
           rm -rf _ci-macro-expansions
+  # check-tautological-equations is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-tautological-equations@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the expansion, the split, both scopes and the skips; the composite
+  # calls below prove action.yml wires each input through to the script.
+  tautological-equations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-tautological-equations unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-tautological-equations/tests/ -v
+      # This repo has no latex-macros submodule, so the default macros file is
+      # missing and the call must skip with a warning rather than fail.
+      - name: Check this PR's equations, expecting a skip
+        uses: ./check-tautological-equations
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Stage a macros file and a page whose definition expands to its own
+      # right side, then assert that the blocking call really fails.
+      - name: Stage a macros file and a page with a tautological definition
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-tautological-equations
+          printf '%s\n' '\providecommand{\dprod}[2]{#1 \cdot #2}' > _ci-tautological-equations/macros.qmd
+          printf '%s\n' 'Let $\dprod{x}{y} := x \cdot y$ here.' > _ci-tautological-equations/page.qmd
+          git add -f _ci-tautological-equations/macros.qmd _ci-tautological-equations/page.qmd
+      - name: Check the staged page, warn-only
+        uses: ./check-tautological-equations
+        with:
+          fail: 'false'
+          whole-tree: 'true'
+          macros-file: '_ci-tautological-equations/macros.qmd'
+      - name: Check the staged page, expecting a failure by default
+        id: tautological-equations-expected-failure
+        continue-on-error: true
+        uses: ./check-tautological-equations
+        with:
+          whole-tree: 'true'
+          macros-file: '_ci-tautological-equations/macros.qmd'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.tautological-equations-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-tautological-equations to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the working-tree-aware scope examines it and the call must fail. Were
+      # base-ref dropped, the call would skip and pass.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: tautological-equations-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-tautological-equations
+        with:
+          base-ref: HEAD
+          macros-file: '_ci-tautological-equations/macros.qmd'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.tautological-equations-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (exit 0). Were the skip
+      # a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-tautological-equations
+        with:
+          base-ref: ''
+          macros-file: '_ci-tautological-equations/macros.qmd'
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-tautological-equations
+        with:
+          whole-tree: 'true'
+          macros-file: '_ci-tautological-equations/macros.qmd'
+          paths-ignore: '_ci-tautological-equations/**'
+      - name: Check again with globs excluding the page
+        uses: ./check-tautological-equations
+        with:
+          whole-tree: 'true'
+          macros-file: '_ci-tautological-equations/macros.qmd'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-tautological-equations || true
+          rm -rf _ci-tautological-equations
   # check-write-idiom is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-write-idiom@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit

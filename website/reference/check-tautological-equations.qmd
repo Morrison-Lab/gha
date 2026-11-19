@@ -1,0 +1,124 @@
+---
+title: "check-tautological-equations.yml"
+---
+
+Diff-scoped, blocking check that fails when the two sides of an equality
+render identically once the shared macros are expanded.
+The case that motivated it is
+[Morrison-Lab/mds#835](https://github.com/Morrison-Lab/mds/pull/835),
+which defined a bilinear form as
+`\bform{\matr{A}}{\vx}{\vy} \eqdef \tp{\vx} \matr{A} \vy`.
+The source reads as a definition,
+but `\bform` expands to `\tp{#2} #1 #3`,
+so the reader sees the same glyphs on both sides of the definitional equals.
+
+## What it flags
+
+The check reads the macros file that `macros-file` names
+(by default `latex-macros/macros.qmd`) and expands every macro it defines,
+with its arguments, on each side of an equality.
+It then compares what TeX would typeset.
+
+- These relations are compared:
+  `=`, `:=`, `=:`, `\coloneqq`, `\eqqcolon`, `\equiv`, `\triangleq`,
+  `\doteq`, an `=` under `\stackrel`, `\overset`, or `\underset`,
+  and an argument-free macro that expands to one of these relations,
+  such as `\eqdef`.
+- Only a relation at the top level of the equation splits it.
+  One inside braces, parentheses, or brackets (in any mix,
+  so a half-open interval such as `[0, 1)` balances), `\left...\right`,
+  or an environment other than an alignment belongs to a subexpression,
+  so `\Pr(X = x) = p` compares `\Pr(X = x)` with `p`.
+- In an alignment (`aligned`, `align`, `split`, `gathered`, and kin),
+  `&` is ignored, and a row that opens with a relation
+  continues the chain of the row before it.
+  Each pair of neighbouring sides is compared.
+- Spacing (`\,`, `\quad`, whitespace), sizing (`\left`, `\big`, and kin),
+  empty groups, `\tag`, `\label`, and `\nonumber` are ignored,
+  a group around one token is unwrapped (`x^{2}` is `x^2`),
+  and trailing `.`, `,`, or `;` is dropped.
+
+## What it does not flag
+
+- text outside math;
+- a code fence or code span, an HTML comment, or YAML front matter;
+- math that defines a macro;
+- an equation carrying, or following,
+  `<!-- check-tautological-equations: allow -->`,
+  the opt-out for a deliberate reflexivity example such as `\vx = \vx`.
+
+## Scope
+
+An equation is checked when a pull request adds one of its lines,
+so existing hits are not reflagged on every unrelated edit.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+
+Every run prints how many lines, equations, files, and macros it examined.
+
+## Limitations
+
+- A relation inside a macro's own expansion
+  (a macro that expands to a whole equation) is not split.
+- A side the check cannot expand (a macro with a missing argument,
+  or a recursive macro) is skipped rather than compared.
+- Macros defined in a page rather than in the macros file are not expanded.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `macros-file`    | string  | `'latex-macros/macros.qmd'` | Whitespace-separated paths of macros files whose definitions are expanded. With no readable file the check skips with a warning. |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `submodules`     | string  | `'true'` | Passed to `actions/checkout`, so the `latex-macros` submodule is available. |
+| `submodule-paths` | string  | `''`     | Whitespace-separated submodule paths to initialize instead of `submodules`, for a repository with a private submodule beside the public one this check needs. |
+| `fail`           | boolean | `true` | Fail the workflow when an equation's two sides render identically. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only the equations a PR touches. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-tautological-equations.yml in your repo.
+# Diff-scoped check: expands the shared macros (the latex-macros submodule's macros.qmd) on each side
+# of an equality in math a PR touches, and fails when both sides render identically, such as
+# `\bform{\matr{A}}{\vx}{\vy} \eqdef \tp{\vx} \matr{A} \vy` where `\bform` expands to the right side.
+# Blocking by default. Skips with a warning when the macros file is missing.
+# Mark a deliberate reflexivity example with `<!-- check-tautological-equations: allow -->`.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check tautological equations
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-tautological-equations.yml@v3
+    with:
+      # A manual run has no PR to diff against; make it report the whole tree.
+      whole-tree: ${{ github.event_name == 'workflow_dispatch' }}
+    #   macros-file: 'latex-macros/macros.qmd'  # where the macros are defined
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   submodule-paths: latex-macros           # only this submodule, beside a private one
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-tautological-equations.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-tautological-equations.yml)
+for the full caller stub.
