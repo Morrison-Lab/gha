@@ -341,6 +341,62 @@ def test_kept_line_missing_a_word_of_the_dropped_line_is_reported(tmp_path):
     assert [d.lines for d in drops] == [["Checkers (`alpha.py`, `beta.py`, `order.py`, `gamma.py`),"]]
 
 
+def _keep_feature_merge(tmp_path, base_text: str, main_text: str, feature_text: str) -> str:
+    """Base, main and feature versions of one file; the merge keeps feature's."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "notes.md", base_text)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-qb", "feature")
+    _write(tmp_path, "notes.md", feature_text)
+    _git(tmp_path, "commit", "-qam", "feature edit")
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "notes.md", main_text)
+    _git(tmp_path, "commit", "-qam", "main edit")
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "main", check=False)
+    _git(tmp_path, "checkout", "--ours", "notes.md")
+    _commit_merge(tmp_path)
+    return base
+
+
+def test_unchanged_longer_line_elsewhere_does_not_supersede(tmp_path):
+    """A base line nobody touched holds the dropped words, but only by chance."""
+    shared = "# Notes\n\nalpha one beta two gamma three delta four epsilon five\n\n"
+    dropped = "alpha beta gamma delta epsilon"
+    base = _keep_feature_merge(
+        tmp_path,
+        base_text=shared + "The closing line, shared by both sides.\n",
+        main_text=shared + dropped + "\n\nThe closing line, shared by both sides.\n",
+        feature_text=shared + "The closing line, edited on the feature side.\n",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [[dropped]]
+
+
+def test_short_dropped_line_is_never_superseded(tmp_path):
+    """Three words recur inside unrelated longer lines, so they are not exempt."""
+    shared = "# Notes\n\nThe opening line, shared by both sides.\n"
+    dropped = "alphabetical betamaxes gammarays"
+    base = _keep_feature_merge(
+        tmp_path,
+        base_text=shared,
+        main_text=shared + dropped + "\n",
+        feature_text=shared + "alphabetical one betamaxes two gammarays three\n",
+    )
+    drops, _, _ = _find(tmp_path, base, similarity=1.0)
+    assert [d.lines for d in drops] == [[dropped]]
+
+
+def test_has_superset_is_an_exact_ordered_subsequence_test():
+    """A repeated word must not hide a valid match, nor allow an out-of-order one."""
+    # Greedy block matching takes "b c d" first and misses the a-b-c-d order.
+    assert cmd.has_superset("a b c d", {"b c d a b x c y d"})
+    assert not cmd.has_superset("a b c d", {"d c b a x y"})
+    assert not cmd.has_superset("a b c d", {"a b c d"})  # not strictly longer
+
+
 def test_octopus_merge_three_parents_drops_reported(tmp_path):
     """An octopus merge attributing drops to parents 2 and 3."""
     _git(tmp_path, "init", "-q", "-b", "main")

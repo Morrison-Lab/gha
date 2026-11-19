@@ -4,6 +4,7 @@
   already had that item plus another, keeping the longer line lost nothing,
   yet the check failed the PR, because the longer line came from a parent
   and not from the resolution.
-  A line is now not a drop when a longer line of the merge's copy of the same
-  file holds every one of its words, in order
+  A line of four or more words is now not a drop when a longer line of the
+  merge's copy of the same file, one another parent added or the resolution
+  wrote, holds every one of its words, in order
   (Morrison-Lab/lds#2863, a private repository the link checker cannot reach).

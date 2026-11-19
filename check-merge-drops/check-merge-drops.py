@@ -37,8 +37,11 @@ Design notes:
 - **A line the merge kept a longer version of is not a drop.** When a longer
   line of ``M``'s copy of the same file holds every word of one side's line,
   in order (a list the other side extended by one item, say), the merge
-  superseded that line and nothing was lost. The longer line may come from a
-  parent rather than the resolution.
+  superseded that line and nothing was lost. The longer line must be one
+  another parent added to that file since ``B``, or one the resolution
+  wrote; an unchanged line elsewhere in the file never counts. A line of
+  fewer than four words is never exempt this way, since a short word run
+  turns up inside unrelated longer lines by chance.
 - **A kept deletion is not a drop.** When another parent deleted a file
   outright since ``B`` and the file is absent from ``M``, the merge resolved
   a modify/delete conflict by keeping the deletion, so the lines this parent
@@ -100,6 +103,8 @@ _DEFAULT_FAIL = False
 _DEFAULT_SIMILARITY = 0.6
 # Rename-detection threshold for "this parent deleted the file" (see check_merge).
 _DELETION_RENAME_THRESHOLD = "30%"
+# Fewest words a dropped line needs before a longer kept line can supersede it.
+_SUPERSET_MIN_WORDS = 4
 
 # Blobs larger than this are not read when searching M's tree for moved
 # content: a multi-megabyte file is data or generated output, not prose a
@@ -266,16 +271,24 @@ def has_superset(line: str, others: Union[Set[str], FrozenSet[str]]) -> bool:
     One side's line can be superseded by the other side's longer version of
     it, such as a list the other side extended by one item. The longer line
     keeps every word of the shorter one, so nothing was lost.
+
+    The caller passes only lines the merge kept that another parent added
+    or the resolution wrote, never the whole file: an unchanged line
+    elsewhere in the file says nothing about this one. A line shorter than
+    ``_SUPERSET_MIN_WORDS`` words is never exempt, because a short word run
+    turns up inside unrelated longer lines by chance.
     """
     words = line.split()
-    matcher = difflib.SequenceMatcher(autojunk=False)
-    matcher.set_seq2(words)
+    if len(words) < _SUPERSET_MIN_WORDS:
+        return False
     for other in others:
         other_words = other.split()
         if len(other_words) <= len(words):
             continue
-        matcher.set_seq1(other_words)
-        if sum(block.size for block in matcher.get_matching_blocks()) == len(words):
+        # Exact ordered-subsequence test: each word must appear after the
+        # previous one's match. ``in`` on an iterator consumes it.
+        remaining = iter(other_words)
+        if all(word in remaining for word in words):
             return True
     return False
 
@@ -357,17 +370,24 @@ def check_merge(
             return None
         deleted_by.append({n for n in names.split("\0") if n})
 
-    drops: List[Drop] = []
-    resolution_cache: Dict[str, Set[str]] = {}
-    for i, parent in enumerate(parents, start=1):
+    # Lines each parent added since the base, by path. A dropped line's
+    # superseding version must come from another parent's additions (or the
+    # resolution), so it is collected for every parent before any is checked.
+    added_by: List[Dict[str, List[str]]] = []
+    for parent in parents:
         diff = _git(
             ["diff", "--no-color", "--no-ext-diff", "-U0", "-M", base, parent, "--", *globs],
             cwd=cwd,
         )
         if diff is None:
             return None
+        added_by.append(parse_added_lines(diff))
+
+    drops: List[Drop] = []
+    resolution_cache: Dict[str, Set[str]] = {}
+    for i, parent in enumerate(parents, start=1):
         moved: Optional[Set[str]] = None
-        for path, lines in parse_added_lines(diff).items():
+        for path, lines in added_by[i - 1].items():
             if diffscope.ignored(path, ignores):
                 continue
             candidates: List[str] = []
@@ -407,11 +427,19 @@ def check_merge(
                     parent_lines.update(index.at_path(p, path).lines)
                 resolution_cache[path] = same_file.lines - parent_lines
             resolution_lines = resolution_cache[path]
+            # Kept lines another parent added to this file, plus the
+            # resolution's own lines: the only places a superseding version
+            # of a dropped line can come from.
+            counterparts = set(resolution_lines)
+            for j, other_added in enumerate(added_by, start=1):
+                if j != i:
+                    counterparts.update(normalise(raw) for raw in other_added.get(path, ()))
+            counterparts &= same_file.lines
             missing = [c for c in missing
                        if c not in anywhere
                        and unbullet_line(c) not in anywhere_unbulleted
                        and not has_near_twin(c, resolution_lines, similarity)
-                       and not has_superset(c, same_file.lines)]
+                       and not has_superset(c, counterparts)]
             if missing:
                 drops.append(Drop(merge, subject, i, parent, path, missing))
     return drops

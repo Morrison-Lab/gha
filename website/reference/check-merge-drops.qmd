@@ -43,6 +43,11 @@ Deliberately not reported:
   as when one side added an item to a list
   and the other side's line already had it plus another,
   the missing line was superseded and is not reported.
+  The longer line must be one another parent added to that file,
+  or one the resolution wrote:
+  an unchanged line elsewhere in the file never counts.
+  A missing line of fewer than four words is always reported,
+  since a short run of words turns up inside unrelated longer lines by chance.
 
 The check is **warn-only by default**,
 since a merge can legitimately drop a line the other side superseded.
