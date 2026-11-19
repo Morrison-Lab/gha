@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import diffscope  # noqa: E402
 
@@ -147,3 +149,76 @@ def test_git_paths_of_an_empty_listing_is_empty(tmp_path, monkeypatch):
     _two_file_commit(tmp_path)
     monkeypatch.chdir(tmp_path)
     assert diffscope.git_paths(["ls-files", "--", "*.nothing"]) == []
+
+
+LINK_DIFF = """\
+diff --git a/a.qmd b/a.qmd
+--- a/a.qmd
++++ b/a.qmd
+@@ -1,4 +1,4 @@
+-See the [hyperplane](old.qmd#def-hyperplane) here.
+-A point lies in it.
+-Plot ![a figure](old.png) now.
+-Words that change.
++See the [hyperplane](new.qmd#def-hyperplane) here.
++A [point](vectors.qmd#def-point) lies in it.
++Plot ![a figure](new.png) now.
++Words that changed.
+"""
+
+
+def test_a_line_whose_only_change_is_its_links_is_moved():
+    added, deleted = diffscope.parse_diff(LINK_DIFF)
+    lines = added["a.qmd"]
+    assert lines[1] in deleted  # retargeted link (gha#2133)
+    assert lines[2] in deleted  # existing word wrapped in a link
+    assert lines[3] not in deleted  # an image change is content
+    assert lines[4] not in deleted  # changed prose is new
+
+
+def test_link_free_forms_stay_out_of_the_deleted_set_itself():
+    _, deleted = diffscope.parse_diff(LINK_DIFF)
+    assert "See the hyperplane here." not in set(deleted)
+    assert len(set(deleted)) == 4
+
+
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        # balanced parentheses in the destination
+        (
+            "[closure](https://en.wikipedia.org/wiki/Closure_(topology)) x",
+            "[closure](c.qmd#def-c) x",
+        ),
+        # a single-quoted title
+        ("[term](a.qmd 'title') x", "[term](b.qmd 'title') x"),
+        # a parenthesized title
+        ("[term](a.qmd (title)) x", "[term](b.qmd (title)) x"),
+        # a linked image whose link target moves
+        ("[![alt](img.png)](a.qmd#id)", "[![alt](img.png)](b.qmd#id)"),
+        # two links on one line
+        ("See [a](x.qmd) and [b](y.qmd).", "See [a](z.qmd) and [b](w.qmd)."),
+        # a link unwrapped back to plain prose
+        ("See [x](a.qmd) y.", "See x y."),
+    ],
+)
+def test_link_forms_that_only_relink_are_moved(old, new):
+    deleted = diffscope.DeletedTexts()
+    deleted.add(old)
+    assert new in deleted
+
+
+def test_a_linked_image_with_a_new_image_is_not_moved():
+    deleted = diffscope.DeletedTexts({"[![alt](a.png)](p.qmd)"})
+    assert "[![alt](b.png)](p.qmd)" not in deleted
+
+
+def test_in_place_union_indexes_the_link_free_forms():
+    deleted = diffscope.DeletedTexts()
+    deleted |= {"See [x](a.qmd) y."}
+    assert isinstance(deleted, diffscope.DeletedTexts)
+    assert "See [x](b.qmd) y." in deleted
+
+
+def test_spelling_only_lines_ignores_link_only_changes():
+    assert diffscope.spelling_only_lines(LINK_DIFF) == {"a.qmd": set()}
