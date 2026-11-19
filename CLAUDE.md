@@ -2176,9 +2176,11 @@ CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
 `uses: ./check-precedence-parens` calls over a staged page.
 
 `check-r-head/tests/test_check_r_head.py` is a pytest suite over
-the printing forms (a call, a pipeline ending in `head`, or a `print()` wrapper), the non-printing ones (assignments, nested and piped-on uses, braces, `.head()`, comments and strings),
-which chunks are read (R info strings, other engines, a longer fence, an HTML comment) and which are in scope (a `_dat-*` file, a `#dat-` div and divs nested in it),
-the allow comment and its required reason,
+the printing forms (a call, a pipeline ending in `head`, or a `print()` wrapper),
+the non-printing ones (assignments, uses nested in a call or piped on, braces, `.head()`, comments, and strings),
+which chunks are read (R info strings, other engines, a longer fence, or an HTML comment),
+which are in scope (a `_dat-*` file, a `#dat-` div, or a div nested in one),
+the allow comment, whose reason is required,
 the diff scoping (a statement counts when any of its lines is added, and moved lines are exempt),
 `main()`'s blocking default, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
 Seventeen mutations were confirmed to turn a named case red, each on a copy of the package,
