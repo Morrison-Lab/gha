@@ -29,7 +29,9 @@ or one of the three lines after it,
 holds `<!-- lab-exposition-ok: reason -->` with a non-empty reason.
 The search stops at the next div opener or include line,
 so one comment exempts only the item it follows.
-An exempted include is not followed when deciding whether a file holds exposition.
+An exempted include is not followed,
+so the files it pulls in are not part of the lab page's content
+unless another include reaches them.
 Use `paths-ignore` to exempt whole paths, such as an outtakes directory.
 An ignored file is not scanned, an include of it is not flagged,
 and includes are not followed through it.

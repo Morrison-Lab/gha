@@ -256,3 +256,12 @@ def test_defaults_agree(name, script):
     workflow = _DIR.parent / ".github" / "workflows" / "check-lab-exposition.yml"
     assert _yaml_default(action, name) == script
     assert _yaml_default(workflow, name) == script
+
+
+def test_exempted_include_is_not_followed_in_whole_tree_mode(repo):
+    page = repo / "ch" / "fit-lab.qmd"
+    page.write_text("# Lab\n\n{{< include _subfiles/_wrap.qmd >}}\n"
+                    "<!-- lab-exposition-ok: the lab points back to it -->\n")
+    git(repo, "commit", "-qam", "edit")
+    report = run(whole_tree=True)
+    assert report.findings == [] and report.files == 1

@@ -28,6 +28,8 @@ A div or include is exempt when its opening line, or one of the three lines
 after it, holds ``<!-- lab-exposition-ok: reason -->`` with a non-empty reason.
 The search stops at the next div opener or include line, so one comment
 exempts only the item it follows.
+An exempted include is not followed, so the files it pulls in are not part
+of the lab page's content unless another include reaches them.
 
 A path matched by ``CLE_PATHS_IGNORE`` is skipped as a lab page and as an
 included file: its divs are not reported, an include of it is not flagged,
@@ -187,11 +189,12 @@ class Corpus:
             scan = self.scan(path)
             if scan is None:
                 continue
+            lines = self.lines[path]
             resolved = []
             for line, target in scan.includes:
                 child = resolve(target, page, path)
                 resolved.append((line, target, child))
-                if child is not None:
+                if child is not None and not exempt(lines, line):
                     stack.append(child)
             out[path] = resolved
         return out
