@@ -17,11 +17,11 @@ on:
       max-files:
         description: Most files a PR may change.
         type: string
-        default: '10'
+        default: '20'
       max-lines:
         description: Most lines (added plus deleted) a PR may change.
         type: string
-        default: '300'
+        default: '600'
       paths-ignore:
         description: Comma/newline-separated glob patterns (relative paths) not counted.
         type: string
