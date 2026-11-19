@@ -87,9 +87,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-3d5da8a0c3bc4296215f21ddfe68f596.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-7134d449cefb76948513ebf7ab01abc5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1358,7 +1358,7 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="what-it-flags">What it flags</h2>
 <p>The check reads the macros file (<code>macros-file</code>, default <code>latex-macros/macros.qmd</code>) and expands every macro it defines, with its arguments, on each side of an equality. It then compares what TeX would typeset.</p>
 <ul>
-<li>These relations are compared: <code>=</code>, <code>:=</code>, <code>=:</code>, <code>\coloneqq</code>, <code>\eqqcolon</code>, <code>\equiv</code>, <code>\triangleq</code>, <code>\doteq</code>, an <code>=</code> under <code>\stackrel</code>, <code>\overset</code> or <code>\underset</code>, and an argument-free macro that expands to one of those, such as <code>\eqdef</code>.</li>
+<li>These relations are compared: <code>=</code>, <code>:=</code>, <code>=:</code>, <code>\coloneqq</code>, <code>\eqqcolon</code>, <code>\equiv</code>, <code>\triangleq</code>, <code>\doteq</code>, an <code>=</code> under <code>\stackrel</code>, <code>\overset</code> or <code>\underset</code>, and an argument-free macro that expands to one of these relations, such as <code>\eqdef</code>.</li>
 <li>Only a relation at the top level of the equation splits it. One inside braces, parentheses, <code>\left...\right</code>, or an environment other than an alignment belongs to a subexpression, so <code>\Pr(X = x) = p</code> compares <code>\Pr(X = x)</code> with <code>p</code>.</li>
 <li>In an alignment (<code>aligned</code>, <code>align</code>, <code>split</code>, <code>gathered</code> and kin), <code>&amp;</code> is ignored, and a row that opens with a relation continues the chain of the row before it. Each pair of neighbouring sides is compared.</li>
 <li>Spacing (<code>\,</code>, <code>\quad</code>, whitespace), sizing (<code>\left</code>, <code>\big</code> and kin), empty groups, <code>\tag</code>, <code>\label</code> and <code>\nonumber</code> are ignored, a group around one token is unwrapped (<code>x^{2}</code> is <code>x^2</code>), and trailing <code>.</code>, <code>,</code> or <code>;</code> is dropped.</li>
