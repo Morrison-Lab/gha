@@ -40,7 +40,8 @@ def make_repo(tmp_path, files):
 def run(repo, **env):
     e = {k: v for k, v in os.environ.items() if not k.startswith("PRS_")}
     # The fixtures are sized for caps of 10 files and 300 lines, so pin those
-    # rather than track the default; test_defaults_agree pins the default.
+    # rather than track the default, which
+    # test_defaults_agree_across_script_action_and_workflow pins.
     e.update({"PRS_BASE_REF": "HEAD^1", "PRS_MAX_FILES": "10", "PRS_MAX_LINES": "300"})
     e.update(env)
     p = subprocess.run([sys.executable, str(SCRIPT)], cwd=repo, env=e,

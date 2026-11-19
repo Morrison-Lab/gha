@@ -49,15 +49,15 @@ or a logic word such as `true`, `not`, or `never` is an edit, not a substitution
 so it is measured as usual.
 The check prints the map, so a reviewer sees exactly what was substituted.
 The reusable workflow reads the description live through the API.
-Content PRs keep the 10 file and 300 line caps
+Other PRs keep the 20-file and 600-line caps
 ([ai-config#5129](https://github.com/Morrison-Lab/ai-config/pull/5129)).
 
 ## Inputs
 
 | Input | Default | Meaning |
 | --- | --- | --- |
-| `max-files` | `10` | Most files a PR may change |
-| `max-lines` | `300` | Most added plus deleted lines |
+| `max-files` | `20` | Most files a PR may change |
+| `max-lines` | `600` | Most added plus deleted lines |
 | `paths-ignore` | none | Extra paths not counted (`*`, `?`, `**`) |
 | `exempt-label` | `size-exempt` | Label that lifts the cap, read live through the API |
 | `pr-body` | none | The PR description (composite only; the reusable workflow reads it itself) |
