@@ -1,0 +1,71 @@
+name: Check printed head() in data divs
+description: >-
+  Diff-scoped check that flags an R statement printing a dataset through
+  `head()`, such as `head(df)` or `df |> head()`, inside a data div: every
+  `{r}` chunk of a data subfile (a file named like `_dat-*`) and every `{r}`
+  chunk inside a fenced div whose id starts `#dat-`, in `.qmd`, `.Rmd` and
+  `.md` files. The format's `df-print` decides how much of a data frame each
+  reader sees, so the chunk prints the data frame itself. An assigned or used
+  `head()`, and any `head()` outside a data div, pass. Scoped to lines a diff
+  adds (an added line whose exact text was also deleted in the same diff
+  counts as moved). Blocks by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only statements with a line added since
+      this ref are checked. On a pull request the reusable workflow passes
+      `HEAD^1`, the base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every printed head() the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  data-files:
+    description: >-
+      Space- or comma-separated file-name patterns (`*`, `?`), matched
+      against a file's base name, of data subfiles whose every R chunk is
+      checked. R chunks inside a `#dat-` div are checked in any file.
+    default: '_dat-*'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a printed head() is found (else non-blocking).
+      Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check printed head() in data divs
+      shell: bash
+      env:
+        CRH_BASE_REF: ${{ inputs.base-ref }}
+        CRH_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CRH_DATA_FILES: ${{ inputs.data-files }}
+        CRH_GLOBS: ${{ inputs.globs }}
+        CRH_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CRH_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-r-head.py"

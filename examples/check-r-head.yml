@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-r-head.yml in your repo.
+# Diff-scoped check: flags an R statement that prints a dataset through head(),
+# such as `head(df)` or `df |> head()`, in a data div (a `_dat-*` subfile or a
+# `#dat-` div), on lines a PR adds. The chunk prints the data frame itself, and
+# the format's df-print decides how much each reader sees.
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check printed head() in data divs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-r-head.yml@v3
+    # with:
+    #   data-files: '_dat-*'                    # base-name patterns of data subfiles
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
