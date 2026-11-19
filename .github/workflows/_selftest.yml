@@ -5863,7 +5863,7 @@ jobs:
         uses: ./check-precedence-parens
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
-      # Stage a page that writes a implicit precedence, then assert that the
+      # Stage a page that writes an implicit precedence, then assert that the
       # blocking call really fails.
       - name: Stage a page with an implicit precedence
         shell: bash

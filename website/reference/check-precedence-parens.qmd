@@ -32,7 +32,7 @@ and the operand or the connectives it found.
 
 An operand ends at a connective and at a separator:
 `,`, `;`, `:`, `\colon`, `&`, `\\`, `\quad`, `\qquad`,
-`\text{...}` and the other text commands,
+a text command such as `\text{...}`,
 a quantifier (`\forall`, `\exists`),
 and a definition sign (`\eqdef`, `\coloneqq`, `:=`).
 So the `x` before a set builder's colon is not an operand,

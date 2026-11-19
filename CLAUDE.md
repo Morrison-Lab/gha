@@ -552,12 +552,12 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   A number index (`\vcoef_0`, often a true parameter) and a letter not in `indices` (`k`, often a coordinate) pass, so a caller adds `k` only where a page uses it for an iteration.
   Its env vars use the `CIS_` prefix.
 - `check-precedence-parens/` (Python, stdlib only, Ezra's rule of 2026-11-19) flags math on a line a PR adds that leaves a logical connective's precedence implicit:
-  a relation (`\in`, `=`, `<`, `\equiv`, ...) unparenthesized in an operand of `\land`, `\lor`, `\Rightarrow` or `\Leftrightarrow` (`x \in A \lor x \in B`),
+  a relation (`\in`, `=`, `<`, `\equiv`, ...) unparenthesized in an operand of `\land`, `\lor`, `\Rightarrow`, or `\Leftrightarrow` (`x \in A \lor x \in B`),
   and two kinds of connective at one level, or a repeated implication (`P \land Q \lor R`).
-  It parses each math span into groups (parentheses, brackets, braces, macro arguments) and judges each group alone, so `(x \in A) \lor (x \in B)` passes;
+  It parses each math span into groups (parentheses, brackets, braces, and macro arguments), then judges each group alone, so `(x \in A) \lor (x \in B)` passes;
   separators (`,`, `:`, `&`, `\\`, `\text`, quantifiers, `\eqdef`) end an operand.
-  The single arrows `\to`, `\rightarrow` and `\leftrightarrow` are not connectives, because the notes use them for functions, limits and digraph paths.
-  It takes the same diff model as `check-iterate-subscripts` (added lines only, moved lines exempt, skip-not-fall-back) and blocks by default (`fail: true`).
+  The single arrows `\to`, `\rightarrow`, and `\leftrightarrow` are not connectives, because the notes use them for functions, limits, and digraph paths.
+  It takes the same diff model as `check-iterate-subscripts` (added lines only, moved lines exempt, and skip-not-fall-back), and it blocks by default (`fail: true`).
   It takes its math spans from `check-common/mdmask.py`'s `math_spans`, moved there from `check-macro-expansions`, so keep `check-common` beside it.
   Its env vars use the `CPP_` prefix.
 - `check-avoided-words/` (Python, stdlib only, psw#418) flags words a style source advises against on a line a PR adds in a `.qmd` or `.md` file:
@@ -2159,9 +2159,9 @@ CI runs it in the `iterate-subscripts` job in `_selftest.yml`, followed by real
 `uses: ./check-iterate-subscripts` calls over a staged page.
 
 `check-precedence-parens/tests/test_check_precedence_parens.py` is a pytest suite over
-both rules, the groups and separators that bound an operand (a set-builder colon, a quantifier's comma, `\left( ... \right)`, `\paren{}`, a thin space `\,` that is not a comma),
+both rules, what bounds an operand (a set-builder colon, a quantifier's comma, `\left( ... \right)`, `\paren{}`, a thin space `\,` that is not a comma),
 the unflagged arrows, an aligned row's leading `\iff`, the skips, the diff scoping with moved lines,
-`main()`'s blocking default and warn mode, and the defaults the script, `action.yml`, and the reusable workflow must agree on.
+the blocking default of `main()`, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
 `uses: ./check-precedence-parens` calls over a staged page.
 
