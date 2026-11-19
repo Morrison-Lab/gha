@@ -307,6 +307,16 @@ def recently_finished_heads(base, repo, token, names, hours, now=None):
     never send the `workflow_run` event that starts a gate, so the commit keeps
     the failure its first attempt posted. Only the runs of these workflows are
     listed, a page or two a day, not every run in the repository.
+
+    A first attempt is skipped: its completion sends a `workflow_run` event of
+    its own, so the re-run case above is the one this pass is for. A first
+    attempt can still go ungated when that event is lost or its gate dies (an
+    API 403, a runner failure); the scheduled backfill covers those, as it did
+    before this pass existed. Checking every recently finished head instead
+    cost each gate two or more
+    API calls per head. On Morrison-Lab/lds, where about 60 gates an hour each
+    checked about 70 heads, that used up the repository's hourly
+    `GITHUB_TOKEN` quota within 20 minutes of each reset.
     """
     now = now or datetime.datetime.now(datetime.timezone.utc)
     # A re-run keeps its original created_at, so the creation window reaches a
@@ -318,7 +328,7 @@ def recently_finished_heads(base, repo, token, names, hours, now=None):
         if workflow.get("name") not in names:
             continue
         for run in paged(f"{base}/repos/{repo}/actions/workflows/{workflow['id']}/runs?status=completed&created=>={since}", token, "workflow_runs"):
-            if (run.get("updated_at") or "") >= recent:
+            if (run.get("run_attempt") or 1) > 1 and (run.get("updated_at") or "") >= recent:
                 heads[run["head_sha"]] = True
     return list(heads)
 
