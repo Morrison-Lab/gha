@@ -406,7 +406,8 @@ def split_chains(toks: List[str], macros: Dict[str, Macro]
             env, j = read_group(toks, i + 1)
             name = "".join(env or [])
             if name in ALIGN_ENVS and depth == 0:
-                if name.startswith("alignat") and t == "\\begin":
+                # alignat, alignat*, and alignedat take a {cols} argument.
+                if name.startswith(("alignat", "alignedat")) and t == "\\begin":
                     _, j = read_group(toks, j)
                 i = j
                 continue

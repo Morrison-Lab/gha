@@ -160,6 +160,15 @@ def test_aligned_rows_with_their_own_left_side_start_new_chains(macros):
     assert hits(macros, math) == []
 
 
+@pytest.mark.parametrize("env", ["alignat", "alignat*", "alignedat"])
+def test_alignat_column_count_is_not_a_side(macros, env):
+    # The {cols} argument of alignat and alignedat is not part of the
+    # first side, so x = 2x is clean and x = x is a hit.
+    begin, end = f"\\begin{{{env}}}{{2}}", f"\\end{{{env}}}"
+    assert hits(macros, f"{begin} x &= 2x {end}") == []
+    assert hits(macros, f"{begin} x &= x {end}") == ["="]
+
+
 def test_alpha_x_is_not_alphax(macros):
     assert hits(macros, r"\alpha x = \alphax") == []
 
