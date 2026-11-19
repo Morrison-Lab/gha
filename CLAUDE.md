@@ -586,6 +586,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `spelling.py` beside it holds the British spelling list and its American forms (gha#2095):
   `check-avoided-words` flags the list, and `parse_diff` adds each deleted line's American respellings to the deleted set,
   so a line whose only change is a spelling fix reads as moved in every check that uses the moved-line test.
+  The deleted set is a `DeletedTexts`, whose `in` also passes a line whose only change is to its inline links (gha#2133).
+  A page split repoints `old.qmd#id` links across many lines of old prose,
+  and without this every diff-scoped check judged that prose as new (Morrison-Lab/mds#839: 14 findings, 13 of them old prose).
+  Fix such a moved-line gap here, once, rather than with per-line exemption markers in the consumer.
   A check that judges moved lines too drops spelling-only lines with `diffscope.spelling_only_lines`, as `check-definition-equations` does.
   `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
   Each of those keeps its own fence state.
