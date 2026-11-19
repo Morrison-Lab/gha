@@ -106,6 +106,48 @@ def unquote_git_path(target: str) -> str:
     return out.decode("utf-8", errors="replace")
 
 
+# An inline Markdown link, not an image: ``[text](target)``.
+_LINK_RE = re.compile(r"(?<!!)\[([^\[\]]*)\]\([^()\s]*(?:\s+\"[^\"]*\")?\)")
+
+
+def strip_links(text: str) -> str:
+    """``text`` with each inline link reduced to its link text.
+
+    Images keep their target, since changing an image changes the content.
+    """
+    return _LINK_RE.sub(r"\1", text)
+
+
+class DeletedTexts(set):
+    """The deleted texts of a diff, where membership also passes a line whose
+    only change is to its links (gha#2133).
+
+    Repointing ``old.qmd#id`` to ``new.qmd#id`` after a page split, or wrapping
+    an existing word in a link, leaves the prose as it was, so a diff-scoped
+    check should read the line as moved, not as new text.  The set's own
+    contents stay the deleted texts as written; the link-free forms are kept
+    beside them and consulted only by ``in``.
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._link_free = {strip_links(t) for t in self}
+
+    def add(self, text):
+        super().add(text)
+        self._link_free.add(strip_links(text))
+
+    def update(self, *others):
+        for other in others:
+            for text in other:
+                self.add(text)
+
+    def __contains__(self, text):
+        if super().__contains__(text):
+            return True
+        return isinstance(text, str) and strip_links(text) in self._link_free
+
+
 def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
     """Added ``{path: {line_number: text}}`` and the set of deleted texts.
 
@@ -115,9 +157,11 @@ def parse_diff(diff: str) -> Tuple[Dict[str, Dict[int, str]], Set[str]]:
     Each deleted text is also recorded in its American spelling, so an added
     line whose only change is British to American spelling reads as moved
     (gha#2095).
+    The returned set is a ``DeletedTexts``, so ``text in deleted`` also holds
+    for an added line whose only change is to its links (gha#2133).
     """
     added: Dict[str, Dict[int, str]] = {}
-    deleted: Set[str] = set()
+    deleted: Set[str] = DeletedTexts()
     path: Optional[str] = None
     old_left = new_left = new_line = 0
     for line in diff.splitlines():

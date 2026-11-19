@@ -147,3 +147,38 @@ def test_git_paths_of_an_empty_listing_is_empty(tmp_path, monkeypatch):
     _two_file_commit(tmp_path)
     monkeypatch.chdir(tmp_path)
     assert diffscope.git_paths(["ls-files", "--", "*.nothing"]) == []
+
+
+LINK_DIFF = """\
+diff --git a/a.qmd b/a.qmd
+--- a/a.qmd
++++ b/a.qmd
+@@ -1,4 +1,4 @@
+-See the [hyperplane](old.qmd#def-hyperplane) here.
+-A point lies in it.
+-Plot ![a figure](old.png) now.
+-Words that change.
++See the [hyperplane](new.qmd#def-hyperplane) here.
++A [point](vectors.qmd#def-point) lies in it.
++Plot ![a figure](new.png) now.
++Words that changed.
+"""
+
+
+def test_a_line_whose_only_change_is_its_links_is_moved():
+    added, deleted = diffscope.parse_diff(LINK_DIFF)
+    lines = added["a.qmd"]
+    assert lines[1] in deleted  # retargeted link (gha#2133)
+    assert lines[2] in deleted  # existing word wrapped in a link
+    assert lines[3] not in deleted  # an image change is content
+    assert lines[4] not in deleted  # changed prose is new
+
+
+def test_link_free_forms_stay_out_of_the_deleted_set_itself():
+    _, deleted = diffscope.parse_diff(LINK_DIFF)
+    assert "See the hyperplane here." not in set(deleted)
+    assert len(set(deleted)) == 4
+
+
+def test_spelling_only_lines_ignores_link_only_changes():
+    assert diffscope.spelling_only_lines(LINK_DIFF) == {"a.qmd": set()}
