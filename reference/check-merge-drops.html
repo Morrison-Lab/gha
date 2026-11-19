@@ -87,9 +87,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-7134d449cefb76948513ebf7ab01abc5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-3d5da8a0c3bc4296215f21ddfe68f596.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1321,6 +1321,7 @@ cookieconsent.run({
 <ul>
 <li><strong>Moved, rewrapped, or bullet-split content.</strong> A line is reported only when its text occurs nowhere in the merge’s tree. Whitespace runs are collapsed and line-leading list item markers (<code>-</code>, <code>*</code>, <code>+</code>, <code>1.</code>) are stripped when comparing flattened text, so a paragraph the resolution moved to another file, rewrapped at different line breaks, or split into a bulleted list passes.</li>
 <li><strong>Reworded lines.</strong> When both sides edited the same line and the resolution wrote a third version combining them, neither side’s line survives verbatim, yet nothing was lost. A missing line is not reported when a line in the merge’s copy of the same file that is new in the merge (not present in any parent) is at least <code>similarity</code> alike, word by word. Unrelated lines from other parents or the merge base cannot mask a dropped line.</li>
+<li><strong>Lines the merge kept a longer version of.</strong> When a longer line of the merge’s copy of the same file is a missing line with one run of words inserted, as when one side added an item to a list and the other side’s line already had it plus another, the missing line was superseded and is not reported. The longer line must come from another parent’s diff hunk at the same place in the file, and the inserted run must hold no negation such as <code>not</code>. A missing line of fewer than four words is always reported, since a short run of words turns up inside unrelated longer lines by chance.</li>
 </ul>
 <p>The check is <strong>warn-only by default</strong>, since a merge can legitimately drop a line the other side superseded. The full report, with the dropped lines grouped by merge, parent and file, goes to the job summary, and each affected merge gets one warning annotation. On a pull request the range is the merges the PR adds; on a push it is the merges the push brought in. A squash merge is not a merge commit, so run the check on pull requests to see a branch’s merges before they are squashed.</p>
 <section id="inputs" class="level2">
