@@ -114,8 +114,8 @@ inputs:
       With `all-runs`, newline-separated names of workflows whose re-run may
       never send the `workflow_run` event that starts a gate (a Claude review
       re-run after its 429, gha#2072 and gha#2077). After gating its own commit, a gate that did not
-      defer also gates again each commit where one of these workflows finished
-      in the last `repair-hours` and the commit's newest `annotation-gate`
+      defer also gates again each commit where a re-run (`run_attempt` above 1)
+      of one of these workflows finished in the last `repair-hours` and the commit's newest `annotation-gate`
       check is older. It never fails the gate that called it. Empty turns it off.
     default: ''
   repair-hours:

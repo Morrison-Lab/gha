@@ -189,9 +189,12 @@ event, so the commit kept the failure its first attempt posted
 until the next scheduled backfill, hours later (gha#2077).
 After a gate that did not defer posts its own result,
 it lists the recent runs of the named workflows
-and gates again each commit where one finished
+and gates again each commit where a re-run of one
+(`run_attempt` above 1) finished
 in the last `repair-hours` (default 3)
 and the newest `annotation-gate` check is older.
+A first attempt is skipped, since its own completion gated its commit;
+checking every recent commit used up a busy repository's API quota.
 It never fails the gate that called it.
 
 To gate a commit again without a new commit and without re-running any other

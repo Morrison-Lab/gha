@@ -672,6 +672,16 @@ def test_repair_ignores_a_review_that_finished_before_the_window(monkeypatch):
     assert posted == ["main1"]
 
 
+def test_repair_skips_a_first_attempt(monkeypatch):
+    # A first attempt's completion already started a gate, so the repair
+    # spends no API calls on its commit.
+    now = datetime.datetime.now(datetime.timezone.utc)
+    stamp = lambda minutes: (now - datetime.timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    first = dict(finished_review("pr1", stamp(5)), run_attempt=1)
+    code, posted = repair_mode(monkeypatch, [first], {"pr1": stamp(60)})
+    assert code == 0 and posted == ["main1"]
+
+
 def test_repair_is_off_without_workflow_names(monkeypatch):
     now = datetime.datetime.now(datetime.timezone.utc)
     recent = now.strftime("%Y-%m-%dT%H:%M:%SZ")
