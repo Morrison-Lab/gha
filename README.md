@@ -618,6 +618,9 @@ a regex in the `allowlist-file`
 one regex per line, and a comma there is regex syntax rather than a
 separator, so a `{16,20}` quantifier is safe),
 or a path in `paths-ignore`.
+A line setting the `exclude-keys` or `bib-exclude-keys` input of gha's own
+bibliography checks is always suppressed, since the `generic-api-key` rule
+reads a BibTeX key there as a credential (gha#2113).
 Site-specific credential formats the default ruleset does not know go in a
 gitleaks TOML named by the `config` input (`.gitleaks.toml` by default),
 which the generated config extends rather than replaces.
