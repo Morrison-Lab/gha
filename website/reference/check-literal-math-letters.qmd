@@ -127,6 +127,7 @@ so an allow-list for indices would remove little of the volume.
 | `mode` | string | `'all'` | `all` flags every standalone letter. `known` flags only a letter or Greek command that has a semantic macro (`y`, `Y`, `x`, `X`, `n`, `L`, `e`, `J`, `\theta`, `\beta`, `\varepsilon`, `\mu`), so index letters pass. |
 | `deprecated-files` | string | `''` | Space-separated interpretation files (for example `latex-macros/interpretations.tsv`). A row saying `deprecated, use \x` marks that macro deprecated, and a use on an added line is flagged. |
 | `letters` | string | `''` | Space-separated letters or Greek commands (for example `J`). When set, only the named letters are flagged, in either mode, so a caller can block one letter whose macro is certain, such as `J` for `\objfn`, with `fail: true`. Deprecated macros are still flagged. |
+| `wrappers` | string | `''` | Space-separated generic wrapper macros (for example `\vecf \vec`) that only mark a symbol's type. A direct use of one on an added line is flagged in either mode, whatever `letters` says, because a semantic macro should name the quantity (Morrison-Lab/lds#2881, a private repository, wrote `\vecf{z}`). |
 | `submodules` | string | `'false'` | Passed to `actions/checkout`, so a macros submodule is available for `deprecated-files`. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
 
@@ -161,6 +162,7 @@ jobs:
     #   fail: true                             # block instead of warn (defaults to false)
     #   whole-tree: true                       # scan every line, not just a PR's additions
     #   letters: 'J'                           # flag only these letters (with fail: true, a block)
+    #   wrappers: '\vecf \vec'                 # flag generic wrappers used in place of a semantic macro
     #   runs-on: private-runner               # self-hosted runner label (private repositories only)
 ```
 

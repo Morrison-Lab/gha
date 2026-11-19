@@ -74,6 +74,14 @@ inputs:
       Deprecated macros are still flagged. Empty (the default) flags what
       `mode` says.
     default: ''
+  wrappers:
+    description: >-
+      Space-separated generic wrapper macros (for example `\vecf \vec`) that
+      only mark a symbol's type. A direct use of one on an added line is
+      flagged in either mode, whatever `letters` says, because a semantic
+      macro should name the quantity instead. Empty (the default) skips the
+      rule.
+    default: ''
 runs:
   using: composite
   steps:
@@ -93,4 +101,5 @@ runs:
         LML_MODE: ${{ inputs.mode }}
         LML_DEPRECATED_FILES: ${{ inputs.deprecated-files }}
         LML_LETTERS: ${{ inputs.letters }}
+        LML_WRAPPERS: ${{ inputs.wrappers }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-literal-math-letters.py"
