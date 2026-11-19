@@ -1,0 +1,71 @@
+name: Check lab exposition
+description: >-
+  Diff-scoped check that flags expository content added to a lab page: an
+  opening fence of a definition, theorem, lemma, proposition, corollary,
+  conjecture or remark div in a lab page or in a file it includes, and an
+  added include line whose target holds one. A lab applies what the
+  exposition pages teach (Ezra, 2026-11-19, psw "Keep expository content
+  out of labs"). A lab page is a tracked file the `pages` pathspecs match;
+  includes are followed transitively. `<!-- lab-exposition-ok: reason -->`
+  on the opening line or one of the three after it exempts one item.
+  Scoped to lines a diff adds (an added line whose exact text was also
+  deleted in the same diff counts as moved). Blocking by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every lab that already carries exposition.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every lab page in full instead of only the lines added since
+      base-ref. Use it to list the labs that break the rule; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  pages:
+    description: >-
+      Space-separated git pathspecs of the lab pages. Git pathspecs match
+      at any depth, so this is recursive by default.
+    default: '*-lab.qmd'
+  prefixes:
+    description: >-
+      Space-separated div-id prefixes that count as exposition.
+    default: 'def thm lem prp cor cnj rem'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip, as
+      lab pages and as included files.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a lab page gains exposition (else non-blocking).
+      Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check lab exposition
+      shell: bash
+      env:
+        CLE_BASE_REF: ${{ inputs.base-ref }}
+        CLE_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CLE_PAGES: ${{ inputs.pages }}
+        CLE_PREFIXES: ${{ inputs.prefixes }}
+        CLE_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CLE_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-lab-exposition.py"

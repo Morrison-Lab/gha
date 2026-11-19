@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-lab-exposition.yml in your repo.
+# Diff-scoped check: flags a definition, result or remark div that a PR adds to
+# a lab page (or to a file a lab page includes). Move it to the exposition page
+# and link it from the lab, or add <!-- lab-exposition-ok: reason -->.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check lab exposition
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-lab-exposition.yml@v3
+    # with:
+    #   pages: 'chapters/*-lab.qmd'            # pathspecs of the lab pages
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # list every lab that breaks the rule

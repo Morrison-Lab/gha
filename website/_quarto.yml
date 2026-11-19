@@ -103,6 +103,7 @@ website:
           - reference/check-exercise-before-result.qmd
           - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
+          - reference/check-lab-exposition.qmd
           - reference/check-contour-3d.qmd
           - reference/check-static-figures.qmd
           - reference/check-function-graphs.qmd

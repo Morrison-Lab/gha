@@ -1,0 +1,93 @@
+---
+title: "check-lab-exposition.yml"
+---
+
+Diff-scoped, blocking check that flags expository content added to a lab page.
+A lab applies what the exposition pages teach,
+and introduces no new definitions or results
+(Ezra, 2026-11-19; psw's rule
+[Keep expository content out of labs](https://morrison-lab.github.io/psw/chapters/teaching.html#keep-expository-content-out-of-labs)).
+
+A lab page is a tracked file that the `pages` pathspecs match
+(default `*-lab.qmd`).
+Its content is the page and every file it pulls in through `{{< include >}}`,
+followed transitively.
+An include target resolves against the lab page's directory,
+as Quarto resolves nested includes,
+and then against the including file's directory.
+An escaped include (`{{</* include ... */>}}`) is not followed,
+because Quarto does not expand it.
+
+Within a lab page's content, the check flags:
+
+- the opening fence of a div whose id has one of the `prefixes`
+  (default `def thm lem prp cor cnj rem`), as in `::: {#def-foo}`;
+- an include line whose target, followed transitively, holds such a div.
+
+A div or include is exempt when its opening line,
+or one of the three lines after it,
+holds `<!-- lab-exposition-ok: reason -->` with a non-empty reason.
+Use `paths-ignore` to exempt whole paths, such as an outtakes directory.
+No check can tell an explanation from an instruction,
+so prose exposition outside a div is left to the writer and the reviewer.
+
+## Scope
+
+Only a line that a pull request adds is reported,
+so the labs that already carry exposition are not reflagged on every PR.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every lab page on purpose,
+which lists the labs that break the rule.
+Every run prints how many lab pages, files and exposition divs it examined.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `pages`        | string  | `'*-lab.qmd'` | Space-separated git pathspecs of the lab pages (recursive by default). |
+| `prefixes`     | string  | `'def thm lem prp cor cnj rem'` | Space-separated div-id prefixes that count as exposition. |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip, as lab pages and as included files. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow when a lab page gains exposition. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every lab page in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-lab-exposition.yml in your repo.
+# Diff-scoped check: flags a definition, result or remark div that a PR adds to
+# a lab page (or to a file a lab page includes). Move it to the exposition page
+# and link it from the lab, or add <!-- lab-exposition-ok: reason -->.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check lab exposition
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-lab-exposition.yml@v3
+    # with:
+    #   pages: 'chapters/*-lab.qmd'            # pathspecs of the lab pages
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # list every lab that breaks the rule
+```
+
+See
+[`examples/check-lab-exposition.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-lab-exposition.yml)
+for the full caller stub.
