@@ -87,9 +87,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-3d5da8a0c3bc4296215f21ddfe68f596.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-35e4c420bb330289cbb282607d1cb753.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-7134d449cefb76948513ebf7ab01abc5.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-571acde573a3a9828925b70c56ca5ce3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1308,7 +1308,7 @@ cookieconsent.run({
 <section id="rules" class="level2">
 <h2 class="anchored" data-anchor-id="rules">Rules</h2>
 <ul>
-<li><p><strong>Position words.</strong> <code>above</code> or <code>below</code> used for a place in the document (“the table above”, “as shown below”); refer to the result by its label. Source: Google developer documentation style guide, word list, entries “above” and “below”. “A value above the threshold” is a comparison and passes.</p></li>
+<li><p><strong>Position words.</strong> <code>above</code> or <code>below</code> used for a place in the document (“the table above”, “as shown below”); refer to the result by its label. Source: Google developer documentation style guide, word list, entries “above” and “below”. “A value above the threshold” is a comparison and passes. When the noun names code or a chunk, the message also says to label the chunk with <code>lst-label</code> and <code>lst-cap</code>, or wrap a language tabset in a <code>::: {#lst-...}</code> div, and to cite it with <code>@lst-</code> (Morrison-Lab/lds#2847, a private repository).</p></li>
 <li><p><strong>Effort words.</strong> <code>just</code>, <code>easy</code>, <code>easily</code>. Source: the same word list. <code>just before</code>, <code>just after</code>, <code>just as</code>, <code>just like</code>, <code>just then</code>, <code>just enough</code>, <code>just in time</code>, <code>just once</code> and <code>just now</code> pass.</p></li>
 <li><p><strong>Time-relative words.</strong> <code>currently</code>, <code>recently</code>, <code>nowadays</code>, <code>at present</code>, <code>at the moment</code>, <code>these days</code>. Source: Google, “Timeless documentation”. The guide lists <code>now</code> and <code>new</code> too, but this check does not flag them, because “now we compute” and the term “new observation” are correct uses a regex cannot tell apart. <code>recently</code> is psw’s own extension.</p></li>
 <li><p><strong>Generic placeholders.</strong> A domain, codomain, range or sample space named by a bare capital letter (“domain A”) or by “some” (“some domain”). Name the specific set, such as “the range of X”. Source: psw’s “be as specific as feasible” (psw#427). A regex cannot know whether a specific object exists, so a finding only asks the author to check.</p></li>
