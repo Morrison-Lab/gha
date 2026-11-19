@@ -1,0 +1,64 @@
+name: Check that math parenthesizes around logical connectives
+description: >-
+  Diff-scoped check that flags math leaving the precedence of a logical
+  connective implicit, in `.qmd`, `.Rmd` and `.md` files: a relation such as
+  `\in`, `=` or `<` in an operand of `\land`, `\lor`, `\Rightarrow` or
+  `\Leftrightarrow` (write `(x \in A) \lor (x \in B)`, not
+  `x \in A \lor x \in B`), and two kinds of connective at one level, or a
+  repeated implication, with no parentheses (`P \land Q \lor R`).
+  Skips code fences and spans, HTML comments and front matter.
+  Scoped to lines a diff adds (an added line whose exact text was also deleted
+  in the same diff counts as moved). Blocks by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every implicit precedence the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an implicit precedence is found (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check that math parenthesizes around logical connectives
+      shell: bash
+      env:
+        CPP_BASE_REF: ${{ inputs.base-ref }}
+        CPP_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CPP_GLOBS: ${{ inputs.globs }}
+        CPP_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CPP_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-precedence-parens.py"

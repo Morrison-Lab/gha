@@ -1,0 +1,132 @@
+---
+title: "check-precedence-parens.yml"
+---
+
+Diff-scoped check that flags math leaving the precedence
+of a logical connective implicit.
+The lab's rule is that math we write uses parentheses
+to make operator precedence explicit (Ezra, 2026-11-19),
+so a union is written `\set{x : (x \in A) \lor (x \in B)}`
+and not `\set{x : x \in A \lor x \in B}`.
+
+The check reads `$...$` and `$$...$$` math
+on lines a pull request adds,
+in `.qmd`, `.Rmd`, and `.md` files,
+and has two rules:
+
+- **A relation beside a connective.**
+  An operand of `\land`, `\lor`, `\wedge`, `\vee`, `\implies`, `\iff`,
+  `\Rightarrow`, `\Leftrightarrow`, a long arrow, or a Unicode form of one
+  holds an unparenthesized relation,
+  such as `=`, `<`, `\le`, `\in`, `\notin`, `\subseteq`, `\equiv`, or `\mid`.
+- **Two kinds of connective together.**
+  Two different connectives sit at one level, as in `P \land Q \lor R`,
+  or an implication or biconditional repeats, as in
+  `P \Rightarrow Q \Rightarrow R`, which is not associative.
+  A repeated `\land` or `\lor` passes.
+
+Each finding reports the file, the line,
+and the operand or the connectives it found.
+
+## Operands and groups
+
+An operand ends at a connective and at a separator:
+`,`, `;`, `:`, `\colon`, `&`, `\\`, `\quad`, `\qquad`,
+a text command such as `\text{...}`,
+a quantifier (`\forall`, `\exists`),
+and a definition sign (`\eqdef`, `\coloneqq`, `:=`).
+So the `x` before a set builder's colon is not an operand,
+and a quantifier's domain (`\forall x \in A, P(x)`) ends at its comma.
+
+A group is checked on its own:
+parentheses, brackets, braces, `\{...\}`, angle brackets,
+and a macro argument such as the one `\paren{...}` or `\set{...}` takes.
+The relation inside `(x \in A)` belongs to that group,
+not to the connective outside it.
+Sizing commands (`\left`, `\right`, `\bigl`, ...) are ignored.
+
+The check does not flag:
+
+- the single arrows `\to`, `\rightarrow`, and `\leftrightarrow`,
+  which the notes use for functions, limits, and paths
+  far more than for implication;
+- a connective that opens a clause,
+  such as the `\iff` of an aligned derivation row (`&\iff x \in S`),
+  which joins the row to the one before it;
+- a code fence or code span, an HTML comment, or YAML front matter;
+- a line carrying, or following, `<!-- check-precedence-parens: allow -->`,
+  for example an exercise that shows an ungrouped form on purpose.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing pages never block,
+and a page converts when someone edits it.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose,
+for example to count the implicit precedences a repository still carries.
+
+Every run prints how many lines and files it examined.
+
+## Limitations
+
+- Each line is read on its own,
+  so a group or operand split across lines is checked in pieces.
+- A connective written in words (`\text{ or }`) is a separator,
+  not a connective.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `true`  | Fail the workflow when an implicit precedence is found. Set `false` to warn only. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-precedence-parens.yml in your repo.
+# Diff-scoped check: flags math on lines a PR adds that leaves the precedence
+# of a logical connective implicit, such as `x \in A \lor x \in B` (write
+# `(x \in A) \lor (x \in B)`) or `P \land Q \lor R`.
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check that math parenthesizes around logical connectives
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-precedence-parens.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'mds/**,notes/**'         # skip submodules and known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-precedence-parens.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-precedence-parens.yml)
+for the full caller stub.
