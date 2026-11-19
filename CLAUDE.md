@@ -562,7 +562,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Its env vars use the `CPP_` prefix.
 - `check-r-head/` (Python, stdlib only, gha#2122) flags an R statement that prints a dataset through `head()` in a data div:
   every `{r}` chunk of a file whose base name matches `data-files` (default `_dat-*`), and every `{r}` chunk inside a `#dat-` div.
-  Ezra's rule (2026-11-19) is "just not to print data in data divs": `head()` anywhere else, or with its result assigned or used, is fine,
+  Ezra's rule (2026-11-19) is "just not to print data in data divs": `head()` anywhere else, or with its result assigned or used, is fine, <!-- check-avoided-words: allow -->
   because `df-print` decides how much of a printed data frame each format shows.
   It splits each chunk into top-level statements (brackets and braces open a statement, a trailing operator continues it, `;` splits it),
   and flags one whose last pipeline stage is `head`, or `print()` of it, unless the statement assigns.
