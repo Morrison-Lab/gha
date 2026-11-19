@@ -687,6 +687,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-tautological-equations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-tautological-equations.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/cancel-superseded.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">cancel-superseded.yml</span></a>
   </div>
@@ -1441,12 +1447,18 @@ cookieconsent.run({
 <td>Space-separated letters or Greek commands (for example <code>J</code>). When set, only the named letters are flagged, in either mode, so a caller can block one letter whose macro is certain, such as <code>J</code> for <code>\objfn</code>, with <code>fail: true</code>. Deprecated macros are still flagged.</td>
 </tr>
 <tr class="odd">
+<td><code>wrappers</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Space-separated generic wrapper macros (for example <code>\vecf \vec</code>) that only mark a symbol’s type. A direct use of one on an added line is flagged in either mode, whatever <code>letters</code> says, because a semantic macro should name the quantity (Morrison-Lab/lds#2881, a private repository, wrote <code>\vecf{z}</code>).</td>
+</tr>
+<tr class="even">
 <td><code>submodules</code></td>
 <td>string</td>
 <td><code>'false'</code></td>
 <td>Passed to <code>actions/checkout</code>, so a macros submodule is available for <code>deprecated-files</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
@@ -1485,7 +1497,8 @@ cookieconsent.run({
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block instead of warn (defaults to false)</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   whole-tree: true                       # scan every line, not just a PR's additions</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   letters: 'J'                           # flag only these letters (with fail: true, a block)</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner               # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   wrappers: '\vecf \vec'                 # flag generic wrappers used in place of a semantic macro</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner               # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-literal-math-letters.yml"><code>examples/check-literal-math-letters.yml</code></a> for the full caller stub.</p>
 
 
