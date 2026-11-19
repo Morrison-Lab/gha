@@ -1,6 +1,6 @@
 - `check-tautological-equations`:
-  add a diff-scoped, blocking composite action and reusable workflow that
-  expands the shared macros on each side of an equality in math a pull request
+  add a blocking diff-scoped check (a composite action plus a reusable workflow).
+  It expands the shared macros on each side of an equality in math a pull request
   touches, and fails when both sides render identically.
   Ezra asked for it on 2026-11-19 after
   [Morrison-Lab/mds#835](https://github.com/Morrison-Lab/mds/pull/835)

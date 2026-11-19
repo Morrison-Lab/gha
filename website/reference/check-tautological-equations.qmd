@@ -14,28 +14,28 @@ so the reader sees the same glyphs on both sides of the definitional equals.
 
 ## What it flags
 
-The check reads the macros file (`macros-file`,
-default `latex-macros/macros.qmd`) and expands every macro it defines,
+The check reads the macros file that `macros-file` names
+(by default `latex-macros/macros.qmd`) and expands every macro it defines,
 with its arguments, on each side of an equality.
 It then compares what TeX would typeset.
 
 - These relations are compared:
   `=`, `:=`, `=:`, `\coloneqq`, `\eqqcolon`, `\equiv`, `\triangleq`,
-  `\doteq`, an `=` under `\stackrel`, `\overset` or `\underset`,
+  `\doteq`, an `=` under `\stackrel`, `\overset`, or `\underset`,
   and an argument-free macro that expands to one of these relations,
   such as `\eqdef`.
 - Only a relation at the top level of the equation splits it.
   One inside braces, parentheses, `\left...\right`,
   or an environment other than an alignment belongs to a subexpression,
   so `\Pr(X = x) = p` compares `\Pr(X = x)` with `p`.
-- In an alignment (`aligned`, `align`, `split`, `gathered` and kin),
+- In an alignment (`aligned`, `align`, `split`, `gathered`, and kin),
   `&` is ignored, and a row that opens with a relation
   continues the chain of the row before it.
   Each pair of neighbouring sides is compared.
-- Spacing (`\,`, `\quad`, whitespace), sizing (`\left`, `\big` and kin),
-  empty groups, `\tag`, `\label` and `\nonumber` are ignored,
+- Spacing (`\,`, `\quad`, whitespace), sizing (`\left`, `\big`, and kin),
+  empty groups, `\tag`, `\label`, and `\nonumber` are ignored,
   a group around one token is unwrapped (`x^{2}` is `x^2`),
-  and trailing `.`, `,` or `;` is dropped.
+  and trailing `.`, `,`, or `;` is dropped.
 
 ## What it does not flag
 
@@ -44,7 +44,7 @@ It then compares what TeX would typeset.
 - math that defines a macro;
 - an equation carrying, or following,
   `<!-- check-tautological-equations: allow -->`,
-  the opt-out for a deliberate reflexivity example such as $a = a$.
+  the opt-out for a deliberate reflexivity example such as `\vx = \vx`.
 
 ## Scope
 
@@ -58,7 +58,7 @@ the check skips with a warning.
 It never falls back to a whole-tree scan.
 Set `whole-tree: true` to scan every tracked file in full on purpose.
 
-Every run prints how many lines, equations, files and macros it examined.
+Every run prints how many lines, equations, files, and macros it examined.
 
 ## Limitations
 

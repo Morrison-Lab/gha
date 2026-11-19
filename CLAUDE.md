@@ -564,7 +564,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It expands every macro the macros file defines (`\providecommand`, `\newcommand`, `\renewcommand`, `\def` with parameters, and `\DeclareMathOperator`, multi-line bodies included), splits each equation only at a top-level relation (not inside braces, parentheses, `\left...\right`, or a non-alignment environment), and compares neighbouring sides after dropping spacing, sizing, `\tag`, `\label`, single-token groups, and trailing punctuation.
   An argument-free macro that expands to a relation (`\eqdef`) is a split point, and in an alignment a row opening with a relation continues the previous row's chain.
   It takes the same diff model as `check-macro-expansions`, but an equation is reported when a PR adds any of its lines, and it blocks by default (`fail: true`).
-  Measured 2026-11-19 over lds, mds, pds, sds, mcs and psw: 13 hits in about 57,000 equations, four of them notation tautologies and the rest deliberate reflexivity statements that take `<!-- check-tautological-equations: allow -->`.
+  Measured 2026-11-19 over lds, mds, pds, sds, mcs, and psw: 13 hits in about 57,000 equations, four of them notation tautologies and the rest deliberate reflexivity statements that take `<!-- check-tautological-equations: allow -->`.
   Its env vars use the `TE_` prefix.
 - `check-r-head/` (Python, stdlib only, gha#2122) flags an R statement that prints a dataset through `head()` in a data div:
   every `{r}` chunk of a file whose base name matches `data-files` (default `_dat-*`), and every `{r}` chunk inside a `#dat-` div.
