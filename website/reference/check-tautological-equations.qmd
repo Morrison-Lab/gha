@@ -22,7 +22,8 @@ It then compares what TeX would typeset.
 - These relations are compared:
   `=`, `:=`, `=:`, `\coloneqq`, `\eqqcolon`, `\equiv`, `\triangleq`,
   `\doteq`, an `=` under `\stackrel`, `\overset` or `\underset`,
-  and an argument-free macro that expands to one of those, such as `\eqdef`.
+  and an argument-free macro that expands to one of these relations,
+  such as `\eqdef`.
 - Only a relation at the top level of the equation splits it.
   One inside braces, parentheses, `\left...\right`,
   or an environment other than an alignment belongs to a subexpression,
