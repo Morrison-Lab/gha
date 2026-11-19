@@ -18,7 +18,7 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   the message also says to label the chunk with `lst-label` and `lst-cap`,
   or wrap a language tabset in a `::: {#lst-...}` div,
   and to cite it with `@lst-`
-  ([lds#2847](https://github.com/Morrison-Lab/lds/issues/2847)).
+  (Morrison-Lab/lds#2847, a private repository).
 - **Effort words.**
   `just`, `easy`, `easily`.
   Source: the same word list.
