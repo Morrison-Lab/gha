@@ -275,7 +275,7 @@ while `opposition-research`, `report-main-failure`, `triage-backlog`, `check-dep
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-precedence-parens`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, `sync-shared-fragments`, and `update-snapshots`).
 
@@ -551,6 +551,15 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It blocks by default (`fail: true`), because the rule is deterministic once the `symbols` (default `vcoef steplen`) and `indices` (default `t \iter`) are named.
   A number index (`\vcoef_0`, often a true parameter) and a letter not in `indices` (`k`, often a coordinate) pass, so a caller adds `k` only where a page uses it for an iteration.
   Its env vars use the `CIS_` prefix.
+- `check-precedence-parens/` (Python, stdlib only, Ezra's rule of 2026-11-19) flags math on a line a PR adds that leaves a logical connective's precedence implicit:
+  a relation (`\in`, `=`, `<`, `\equiv`, ...) unparenthesized in an operand of `\land`, `\lor`, `\Rightarrow` or `\Leftrightarrow` (`x \in A \lor x \in B`),
+  and two kinds of connective at one level, or a repeated implication (`P \land Q \lor R`).
+  It parses each math span into groups (parentheses, brackets, braces, macro arguments) and judges each group alone, so `(x \in A) \lor (x \in B)` passes;
+  separators (`,`, `:`, `&`, `\\`, `\text`, quantifiers, `\eqdef`) end an operand.
+  The single arrows `\to`, `\rightarrow` and `\leftrightarrow` are not connectives, because the notes use them for functions, limits and digraph paths.
+  It takes the same diff model as `check-iterate-subscripts` (added lines only, moved lines exempt, skip-not-fall-back) and blocks by default (`fail: true`).
+  It takes its math spans from `check-common/mdmask.py`'s `math_spans`, moved there from `check-macro-expansions`, so keep `check-common` beside it.
+  Its env vars use the `CPP_` prefix.
 - `check-avoided-words/` (Python, stdlib only, psw#418) flags words a style source advises against on a line a PR adds in a `.qmd` or `.md` file:
   `above` or `below` used for a place in the document, `just`, `easy` and `easily`, time-relative words such as `currently` and `recently`, and a generic placeholder set such as `domain A`.
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
@@ -663,7 +672,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
   A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.
-  It takes its diff model and Markdown masking from `check-common`, adds math-span detection, and its env vars use the `CME_` prefix.
+  It takes its diff model and Markdown masking from `check-common`, takes its math spans from `check-common/mdmask.py` (`math_spans`, shared with `check-precedence-parens`), and its env vars use the `CME_` prefix.
   It takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside `check-write-idiom`.
   Measure a repository with `whole-tree: true` before turning `fail` on, and fix or mark the existing hits (`<!-- check-macro-expansions: allow -->`) first.
   `Write $...$ for ...` (notation) and `Write down` pass, as do fences, spans, comments and front matter;
@@ -2148,6 +2157,13 @@ the skips (fences, spans, comments, front matter, the `allow` comment), the diff
 `main()`'s blocking default, its `CIS_FAIL=false` warn mode, and the defaults the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `iterate-subscripts` job in `_selftest.yml`, followed by real
 `uses: ./check-iterate-subscripts` calls over a staged page.
+
+`check-precedence-parens/tests/test_check_precedence_parens.py` is a pytest suite over
+both rules, the groups and separators that bound an operand (a set-builder colon, a quantifier's comma, `\left( ... \right)`, `\paren{}`, a thin space `\,` that is not a comma),
+the unflagged arrows, an aligned row's leading `\iff`, the skips, the diff scoping with moved lines,
+`main()`'s blocking default and warn mode, and the defaults the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
+`uses: ./check-precedence-parens` calls over a staged page.
 
 `check-write-idiom/tests/test_check_write_idiom.py` is a pytest suite over
 the flagged forms (list markers, labels, the three phrases), the unflagged ones
