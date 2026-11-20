@@ -633,6 +633,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-result-titles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-result-titles.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-title-references.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-title-references.yml</span></a>
   </div>
@@ -1349,7 +1355,7 @@ cookieconsent.run({
 <p>Diff-scoped, failing-by-default check that flags a heading a pull request adds to a group of too many sibling headings. Sibling headings are headings of the same level under the same parent heading; the top-level headings of a page are siblings under the page. The lab’s guideline (Ezra, 2026-11-02) is to aim for at most about five and to split or group past seven, so a reader scanning the headings can hold them all in mind. Miller’s <a href="https://en.wikipedia.org/wiki/The_Magical_Number_Seven,_Plus_or_Minus_Two">“magical number seven”</a> and Cowan’s later <a href="https://www.cambridge.org/core/journals/behavioral-and-brain-sciences/article/magical-number-4-in-shortterm-memory-a-reconsideration-of-mental-storage-capacity/44023F1147D4A1D44BDC0AD226838496">estimate of about four chunks</a> motivate the guideline; both concern memory, and a reader can rescan a table of contents, so the check fires at the seven where the guideline says to act, not at five.</p>
 <section id="what-it-measures" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-measures">What it measures</h2>
-<p>The check counts headings on the <em>expanded</em> page, the page’s own text with each <code>{{&lt; include &gt;}}</code> shortcode replaced by the file it names, since a chapter’s headings are often split across subfiles. Headings inside fenced code blocks and HTML comments do not count. A heading’s parent is the nearest earlier heading of a lower level.</p>
+<p>The check counts headings on the <em>expanded</em> page, the page’s own text with each <code>{{&lt; include &gt;}}</code> shortcode replaced by the file it names, since a chapter’s headings are often split across subfiles. Headings inside fenced code blocks and HTML comments do not count. Nor do headings inside fenced divs, which title the div (the <code>####</code> of a definition or exercise) or a tab, not a section. <code>.unnumbered</code> and <code>.unlisted</code> headings are not counted as siblings, but they still act as parents. A heading’s parent is the nearest earlier heading of a lower level. Measured 2026-11-20 with <code>whole-tree: true</code> over lds, skipping div headings took the crowded and lone top-level findings from 186 to 16.</p>
 </section>
 <section id="decision-record" class="level2">
 <h2 class="anchored" data-anchor-id="decision-record">Decision record</h2>
@@ -1358,7 +1364,7 @@ cookieconsent.run({
 <section id="what-it-flags" class="level2">
 <h2 class="anchored" data-anchor-id="what-it-flags">What it flags</h2>
 <p>A group of more than <code>max</code> siblings, when the pull request adds one of its headings to the page or to a file it includes. The finding sits on the first added heading of the group. A group the diff did not add a heading to is not reflagged, so nothing is swept.</p>
-<p>A lone numbered subheading: a numbered heading that is the only numbered heading at its level under its parent heading, such as a lone 1.1 under 1 (Ezra, 2026-11-20). Numbering a single subsection says the parent has parts when it has one. The usual fix is to add another sibling or promote a child, not to remove the singleton. The finding is reported when the pull request adds or changes the lone heading or its parent heading. This rule reads the page’s section outline: headings inside a fenced div title the div or a tab, so they do not count, and <code>.unnumbered</code> and <code>.unlisted</code> headings are not counted as siblings but still act as parents. Set <code>lone: false</code> to turn it off. Measured 2026-11-20 with <code>whole-tree: true</code> over lds: 18 lone subheadings on 12 pages.</p>
+<p>A lone numbered subheading: a numbered heading that is the only numbered heading at its level under its parent heading, such as a lone 1.1 under 1 (Ezra, 2026-11-20). Numbering a single subsection says the parent has parts when it has one. The usual fix is to add another sibling or promote a child, not to remove the singleton. The finding is reported when the pull request adds or changes the lone heading or its parent heading. Set <code>lone: false</code> to turn it off. Measured 2026-11-20 with <code>whole-tree: true</code> over lds: 18 lone subheadings on 12 pages.</p>
 <p><code>&lt;!-- check-heading-siblings: allow --&gt;</code> anywhere in the page’s own file exempts it.</p>
 <p>With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to measure every tracked page in full.</p>
 </section>
