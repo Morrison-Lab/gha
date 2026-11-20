@@ -1,7 +1,7 @@
 name: Check result titles
 description: >-
   Diff-scoped check that flags the title of a result div (a theorem, lemma,
-  proposition, corollary or conjecture) when the diff adds it and it is not a
+  proposition, corollary, or conjecture) when the diff adds it and it is not a
   declarative sentence stating the result (Ezra, 2026-11-20). A customary
   name may come first, followed by a colon. The test is a verb list plus math
   relations, not a parser. Code fences and comments are not counted.

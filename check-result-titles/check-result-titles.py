@@ -4,7 +4,7 @@ r"""
 Flag a result div whose title is not a declarative sentence.
 
 The lab's rule (Ezra, 2026-11-20): the title of a result div (a theorem,
-lemma, proposition, corollary or conjecture) is a declarative sentence that
+lemma, proposition, corollary, or conjecture) is a declarative sentence that
 states the result.
 A result with a customary name may put the name first, followed by a colon,
 as in "Bias-variance decomposition: the expected test error is the variance
@@ -45,7 +45,7 @@ Design notes, in the model of ``check-heading-titles``:
 - **Failing by default** (agents ignore warnings; Ezra, 2026-11-02).
   Measured 2026-11-20 over Morrison-Lab/lds (144 result divs, whole tree):
   the check flagged 67 titles, and each one read by hand was a noun phrase,
-  a gerund phrase or a bare name.
+  a gerund phrase, or a bare name.
 
 Configuration (environment variables, set by the composite action):
   CRT_BASE_REF      Git ref/SHA to diff against. Empty and not whole-tree =>

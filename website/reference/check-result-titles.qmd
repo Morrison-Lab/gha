@@ -4,7 +4,7 @@ title: "check-result-titles.yml"
 
 Diff-scoped check that flags a result div whose title is not a sentence.
 It fails by default, since agents ignore warnings (Ezra, 2026-11-02).
-The title of a theorem, lemma, proposition, corollary or conjecture div
+The title of a theorem, lemma, proposition, corollary, or conjecture div
 is a declarative sentence that states the result (Ezra, 2026-11-20).
 A result with a customary name may put the name first,
 followed by a colon,
@@ -19,7 +19,7 @@ the `title="..."` attribute on its opening fence,
 or else the first heading written directly inside it.
 
 A title counts as a sentence when it holds a finite verb,
-or when its math holds a relation such as `=`, `<`, `\le` or `\in`.
+or when its math holds a relation such as `=`, `<`, `\le`, or `\in`.
 The verb test is a word list, not a parser:
 
 - An auxiliary or copula (`is`, `are`, `has`, `does`, `can`, ...) counts.
@@ -27,10 +27,10 @@ The verb test is a word list, not a parser:
   in its base form or its third-person form
   (`equal`, `equals`, `converges`, `separates`, ...).
 - A word that is more often a noun in a title,
-  such as `estimate`, `bounds`, `squares` or `weights`,
+  such as `estimate`, `bounds`, `squares`, or `weights`,
   does not count, so "Bounds on the leverage" is flagged.
 - The first word of the title never counts.
-- Words after `that`, `which`, `when`, `if` and other clause openers are
+- Words after `that`, `which`, `when`, `if`, and other clause openers are
   dropped first, so a verb in a relative clause,
   as in "Number of models that best subset selection fits",
   does not count.
@@ -40,12 +40,12 @@ Add the verb to `VERB_STEMS` in a pull request here,
 or mark the line with `<!-- check-result-titles: allow: <reason> -->`.
 
 The check does not count
-a title inside a code fence, an HTML comment or the YAML front matter.
+a title inside a code fence, an HTML comment, or the YAML front matter.
 
 Measured on 2026-11-20 over `Morrison-Lab/lds`,
 the check read 144 result titles and flagged 76.
 Each flagged title read by hand was a noun phrase,
-a gerund phrase or a bare name.
+a gerund phrase, or a bare name.
 
 ## Scope
 
