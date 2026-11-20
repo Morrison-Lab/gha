@@ -116,9 +116,19 @@ def test_main_errors_when_no_file_matches_even_warn_only(tmp_path):
     assert result.returncode == 2 and "read nothing" in result.stdout
 
 
-def test_scan_stops_when_a_file_cannot_be_read(tmp_path):
-    with pytest.raises(SystemExit, match="cannot read"):
+def test_scan_exits_2_when_a_file_cannot_be_read(tmp_path, capsys):
+    with pytest.raises(SystemExit) as stop:
         cti.scan([str(tmp_path / "gone.yml")], NEEDLES)
+    assert stop.value.code == 2 and "cannot read this file" in capsys.readouterr().out
+
+
+def test_main_exits_2_outside_a_git_checkout(tmp_path):
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("CTI_", "GITHUB_"))}
+    env.update({"CTI_TEMPLATE": TEMPLATE, "CTI_REPOSITORY": "Acme-Lab/my-site",
+                "GIT_CEILING_DIRECTORIES": str(tmp_path.parent)})
+    result = subprocess.run(["python3", SCRIPT], cwd=tmp_path, env=env,
+                            capture_output=True, text=True)
+    assert result.returncode == 2 and "git ls-files failed" in result.stdout
 
 
 def test_main_reads_files_and_strings_from_the_environment(tmp_path):

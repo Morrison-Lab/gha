@@ -108,7 +108,8 @@ def scan(paths: List[str], needles: List[str]) -> List[Finding]:
     for path in paths:
         lines = diffscope.read_lines(path)
         if lines is None:
-            raise SystemExit("check-template-identity: cannot read '%s'" % path)
+            print("::error file=%s,title=Template identity::cannot read this file" % path)
+            raise SystemExit(2)
         for number, line in enumerate(lines, start=1):
             for needle in find_in_line(line, needles):
                 findings.append(Finding(path, number, needle))
@@ -118,7 +119,8 @@ def scan(paths: List[str], needles: List[str]) -> List[Finding]:
 def tracked_files(globs: List[str]) -> List[str]:
     paths = diffscope.git_paths(["ls-files", "--"] + globs)
     if paths is None:
-        raise SystemExit("check-template-identity: git ls-files failed; run it inside a git checkout")
+        print("::error title=Template identity::git ls-files failed; run it inside a git checkout")
+        raise SystemExit(2)
     return [path for path in paths if os.path.isfile(path)]
 
 
