@@ -560,7 +560,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It anchors on each `<`, `\lt`, `\le`, `\leq`, or `\leqslant`, then looks left for a norm or absolute value (`\norm{}`, `\abs{}`, `\|`, `|`, `\lVert`, `\lvert`, with `\left`, `\right`, sizing, and a subscript) whose content holds a top-level binary minus.
   A bare `|` pairs with the nearest `|` before it at the same group depth, so a conditioning bar earlier in the span does not mislead it.
   A right-hand side holding another norm (the triangle inequality, a Lipschitz bound), a difference whose first operand is a number (a step-size condition `\abs{1 - \steplen} < 1`), and a norm with no difference pass.
-  Measured 2026-11-20 over lds, mds, pds, sds, mcs, and psw: 49 hits, of which 45 are neighborhoods; two of the rest are the ball's own definition, so it blocks by default (`fail: true`).
+  Measured 2026-11-20 over lds, mds, pds, sds, mcs, and psw: 49 hits, of which 45 are neighborhoods.
+  Two of the rest are the ball's own definition, so it blocks by default (`fail: true`).
   The allow comment needs a reason: `<!-- check-ball-neighborhoods: allow: <reason> -->`.
   It takes the same diff model as `check-iterate-subscripts` and its math spans from `check-common/mdmask.py`, so keep `check-common` beside it.
   Its env vars use the `CBN_` prefix.

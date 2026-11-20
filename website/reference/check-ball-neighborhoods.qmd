@@ -51,7 +51,7 @@ Two of the other four are the ball's own definition,
 which takes the allow comment.
 The other two are a bound in a proof
 and a radius check on a specific number.
-That is few enough to block on lines a pull request adds,
+Four exceptions in 49 hits are few enough to block on lines a pull request adds,
 with the allow comment for the rest.
 
 ## Scope
