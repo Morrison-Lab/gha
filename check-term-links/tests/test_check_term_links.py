@@ -62,6 +62,15 @@ def test_unlinked_first_use_in_div_is_flagged():
     assert rules(run_text(page, {"d.qmd": RISK_DEF})) == [("unlinked-first-use", "risk")]
 
 
+def test_findings_say_to_keep_and_link_the_term():
+    # Ezra, 2026-11-20: never delete a flagged term to quiet the check; link it.
+    page = "::: {#exm-a}\n\nThe risk is large. The **frobnication** grows.\n\n:::\n"
+    found = run_text(page, {"d.qmd": RISK_DEF})
+    assert {f.rule for f in found} == {"unlinked-first-use", "no-definition"}
+    for f in found:
+        assert "Never delete or replace the term" in f.message
+
+
 def test_linked_first_use_passes_even_when_a_later_use_is_bare():
     page = "::: {#exm-a}\n\nThe [risk](#def-risk) is large; the risk shrinks.\n\n:::\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []

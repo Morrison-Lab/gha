@@ -36,8 +36,10 @@ on:
         default: 'links checked by hand'
       fail-on-any-5xx:
         description: >-
-          Fail on every 5xx server error. By default a 5xx fails a PR only
-          when the link is on a line the PR adds, and is otherwise a warning.
+          Fail on every 5xx server error and unreachable host (a timeout or
+          a "Connection failed" network error). By default either fails a
+          PR only when the link is on a line the PR adds, and is otherwise
+          a warning.
         type: boolean
         default: false
 
@@ -82,7 +84,8 @@ jobs:
           lychee-args: ${{ inputs.lychee-args }}
           fail: ${{ inputs.fail }}
           fail-if-empty: ${{ inputs.fail-if-empty }}
-          # A 5xx fails a PR only on a line the PR adds (gha#1052). On
+          # A 5xx or unreachable host fails a PR only on a line the PR adds
+          # (gha#1052, gha#2121). On
           # pull_request, HEAD is GitHub's merge ref and HEAD^1 the base tip it
           # was built on (gha#1007). Elsewhere no line is added, so every 5xx
           # is a warning.

@@ -1,0 +1,65 @@
+name: Check neighborhoods written as norm inequalities
+description: >-
+  Diff-scoped check that flags a neighborhood written as an inequality on a
+  distance, such as `\norm{\vx - \vx^*} < \delta` or `\abs{x - c} < \delta`,
+  where the lab's notation rule asks for membership in a ball,
+  `\vx \in \ball{\vx^*}{\delta}`, in `.qmd`, `.Rmd` and `.md` files.
+  A norm with no difference inside, a comparison of two distances (the
+  triangle inequality, a Lipschitz bound), and a difference whose first
+  operand is a number (a step-size condition) pass. Skips code fences and
+  spans, HTML comments and front matter. Scoped to lines a diff adds (an added
+  line whose exact text was also deleted in the same diff counts as moved).
+  Blocks by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every norm inequality the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a neighborhood written as a norm inequality is
+      found (else non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check neighborhoods written as norm inequalities
+      shell: bash
+      env:
+        CBN_BASE_REF: ${{ inputs.base-ref }}
+        CBN_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CBN_GLOBS: ${{ inputs.globs }}
+        CBN_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CBN_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-ball-neighborhoods.py"

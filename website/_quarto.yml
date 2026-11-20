@@ -149,6 +149,7 @@ website:
           - reference/check-local-macros.qmd
           - reference/check-fform-paren.qmd
           - reference/check-iterate-subscripts.qmd
+          - reference/check-ball-neighborhoods.qmd
           - reference/check-precedence-parens.qmd
           - reference/check-r-head.qmd
           - reference/check-macro-expansions.qmd
