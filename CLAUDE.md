@@ -275,7 +275,7 @@ while `opposition-research`, `report-main-failure`, `triage-backlog`, `check-dep
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-lab-exposition`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `check-tautological-equations`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-lab-exposition`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `check-tautological-equations`, `check-citation-authors`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, `sync-shared-fragments`, and `update-snapshots`).
 
@@ -571,6 +571,20 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes the same diff model as `check-macro-expansions`, but an equation is reported when a PR adds any of its lines, and it blocks by default (`fail: true`).
   Measured 2026-11-19 over lds, mds, pds, sds, mcs, and psw: 13 hits in about 57,000 equations, four of them notation tautologies and the rest deliberate reflexivity statements that take `<!-- check-tautological-equations: allow -->`.
   Its env vars use the `TE_` prefix.
+- `check-citation-authors/` (Python, stdlib only, gha#2144, from psw#679) flags an author's surname typed next to a citation of the same source,
+  such as `James et al. [@james2021islr, Figure 6.7]`, where `@james2021islr [Figure 6.7]` already prints the names.
+  A capitalized word within six words before a citation key is flagged when the key starts with that word in lower case,
+  so the match leans on the lab's bib keys starting with the first author's surname.
+  The window reaches back onto the previous line of the paragraph and stops at the previous sentence end;
+  link text and emphasis are blanked first, since a name there is part of a term or title (`[Cook's distance](#def-x)`, `**Cox proportional hazards**`).
+  An author-suppressed `[-@key]`, a crossref, and an email pass.
+  It loads `check-write-idiom`'s engine like `check-avoided-words`, so keep `check-write-idiom` and `check-common` beside it.
+  It is warn-only by default (`fail: false`), as the issue asks, while the false-positive rate is measured.
+  Measured 2026-11-20 over psw, rme, and lds (whole tree): 2, 2, and 190 hits.
+  The ones read by hand were nearly all true, mostly video lists in lds (`Starmer explains [x](url) [@starmer2018x]`);
+  the false ones were a standard's name (`ISO 80000-2:2019 [@iso80000_2_2019]`) and an eponym outside emphasis (`the Elman recurrent layer [@elman1990time]`).
+  The allow comment needs a reason: `<!-- check-citation-authors: allow: <reason> -->`.
+  Its env vars use the `CCA_` prefix.
 - `check-r-head/` (Python, stdlib only, gha#2122) flags an R statement that prints a dataset through `head()` in a data div:
   every `{r}` chunk of a file whose base name matches `data-files` (default `_dat-*`), and every `{r}` chunk inside a `#dat-` div.
   Ezra's rule (2026-11-19) is "just not to print data in data divs": `head()` anywhere else, or with its result assigned or used, is fine, <!-- check-avoided-words: allow -->
@@ -2202,6 +2216,16 @@ Seventeen mutations were confirmed to turn a named case red, each on a copy of t
 including dropping the reason the allow comment needs, reading `%in%` as a pipe, never closing a div, and testing only the line that holds `head`.
 CI runs it in the `r-head` job in `_selftest.yml`, followed by real
 `uses: ./check-r-head` calls over a staged data subfile.
+
+`check-citation-authors/tests/test_check_citation_authors.py` is a pytest suite over
+the flagged forms (`et al.`, several authors, a particle, a possessive, an accent, a hyphenated name, a name on the previous line),
+the unflagged ones (`[-@key]`, crossrefs, emails, link text and emphasis, a name in an earlier sentence or outside the window),
+the skips (fences, spans, comments, front matter, and the allow comment, whose reason is required),
+`main()`'s warn-only default and fail mode, the diff scoping, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+Five mutations were confirmed to turn a case red: dropping the `[-@key]` exemption, the link and emphasis masking,
+the previous-line carry, the `et al.` and initial guards on the sentence end, and the sentence cut itself.
+CI runs it in the `citation-authors` job in `_selftest.yml`, followed by real
+`uses: ./check-citation-authors` calls over a staged page.
 
 `check-write-idiom/tests/test_check_write_idiom.py` is a pytest suite over
 the flagged forms (list markers, labels, the three phrases), the unflagged ones

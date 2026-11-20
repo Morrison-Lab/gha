@@ -1,0 +1,137 @@
+---
+title: "check-citation-authors.yml"
+---
+
+Diff-scoped check that flags an author's surname
+typed next to a citation of the same source.
+An in-text citation, `@key`, already prints the author names,
+so the sentence around it should not type them again
+(psw's [Let the citation name the source](https://morrison-lab.github.io/psw/chapters/citations-evidence.html#let-citation-name-source),
+[#2144](https://github.com/Morrison-Lab/gha/issues/2144)).
+
+Flagged:
+
+```markdown
+The figure follows the layout of a figure in James et al.
+[@james2021islr, Figure 6.7].
+```
+
+Preferred:
+
+```markdown
+The figure follows the layout of @james2021islr [Figure 6.7].
+```
+
+## What it flags
+
+In `.qmd` and `.md` files,
+a capitalized word within six words before a citation key,
+when the key starts with that word in lower case,
+as `James` and `@james2021islr` do.
+The key can sit in brackets (`[@key]`, `[see @key, p. 3]`),
+in parentheses (`(@key)`), or stand bare.
+The match leans on the lab's bib keys,
+which start with the first author's surname.
+
+The comparison folds case and accents,
+drops a possessive `'s`,
+and joins a lowercase particle to the name after it,
+so `van Buuren` matches `@vanbuuren2018`
+and `Bienaymé` matches `@bienayme1853`.
+
+The six words may reach back onto the previous line of the same paragraph,
+since the notes break lines at clauses,
+and they stop at the end of the previous sentence.
+`et al.` and an initial such as `J.` do not end a sentence.
+
+## What it does not flag
+
+- an author-suppressed citation, `[-@key]`,
+  where the typed name is the only one printed;
+- a crossref such as `@fig-x` or `@sec-y`, and an email address;
+- a name inside link text or emphasis,
+  where it is part of a term or a title,
+  as in `[Cook's distance](#def-cooks)` or `**Cox proportional hazards**`;
+- a one-letter word, or a word that is not capitalized;
+- code fences and code spans, HTML comments, and YAML front matter;
+- a line carrying, or following,
+  `<!-- check-citation-authors: allow: <reason> -->`.
+  The reason is required,
+  for example a sentence that names one author of a multi-author source on purpose.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing pages never block.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+
+Every run prints how many lines and files it examined.
+
+The check is warn-only by default
+while its false-positive rate is measured.
+A whole-tree run on 2026-11-20 found 2 hits in psw, 2 in rme, and 190 in lds,
+nearly all of them true.
+The false ones were a standard named by its number
+and an eponym written outside emphasis.
+
+## Limitations
+
+- An eponym written as plain text, such as `the Elman recurrent layer [@elman1990time]`,
+  is flagged; mark it with the allow comment or put the term in bold.
+- A bib key that does not start with the first author's surname is never matched.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `false` | Fail the workflow when a typed author name is found. Warn-only by default while the false-positive rate is measured. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository, because [a public repository's pull requests can run arbitrary code on it](https://github.com/Morrison-Lab/gha/issues/1167). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-citation-authors.yml in your repo.
+# Diff-scoped check: flags a line a PR adds that types an author's surname next to
+# a citation of the same source, such as "James et al. [@james2021islr, Figure 6.7]",
+# where "@james2021islr [Figure 6.7]" already prints the names.
+# Warn-only by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check citation authors
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-citation-authors.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: true                              # fail on a finding (defaults to false)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-citation-authors.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-citation-authors.yml)
+for the full caller stub.
