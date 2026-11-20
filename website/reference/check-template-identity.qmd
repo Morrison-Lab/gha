@@ -1,0 +1,103 @@
+---
+title: "check-template-identity.yml"
+---
+
+Blocking check for a template repository.
+It fails a repository made from the template
+while that repository's config files still hold the template's own identity.
+GitHub's "Use this template" button copies a template's files once,
+so a new site starts with the template's site URL, repository URL, and title.
+Nothing reports them:
+the site renders,
+and its "Edit this page" link opens the template's repository.
+This implements
+[gha#2154](https://github.com/Morrison-Lab/gha/issues/2154)
+for [qwt#207](https://github.com/Morrison-Lab/qwt/issues/207).
+
+The template ships the caller workflow,
+so every repository made from it runs the check from its first commit.
+A line of a named file is reported when it holds any of these:
+
+- the template's repository URL, `github.com/<owner>/<name>`;
+- the template's Pages URL, `<owner>.github.io/<name>`;
+- a literal listed in `strings`, such as the template's title.
+
+Matching ignores case.
+A match that is part of a longer name on either side,
+such as `github.com/<owner>/<name>-fork`, does not count.
+The same holds for a listed literal.
+A dot with a letter or digit after it carries a name on,
+as in `github.com/<owner>/<name>.v2`,
+except the `.git` of a clone URL.
+A dot that ends a sentence does not.
+So a page under the template's site, such as `<owner>.github.io/<name>.html`,
+is not reported, while `<owner>.github.io/<name>/` is.
+A line that should keep the value, such as a credit link to the template,
+passes with `check-template-identity: allow: <reason>` on that line,
+for example in a YAML comment.
+
+In the template itself there is nothing to check,
+so the job says so and passes.
+A fork that keeps the template's name under another owner
+is a different repository, so the check runs there.
+
+## Scope
+
+The check reads the named tracked files whole,
+because a value the new repository never changed is on no line a diff adds.
+It stops with an error when no tracked file matches `files`,
+whatever `fail` says,
+so a wrong list cannot pass by reading nothing.
+It stops the same way, with exit status 2, when a matched file cannot be read.
+
+## Inputs
+
+| Input          | Type    | Default           | Description |
+| -------------- | ------- | ----------------- | ----------- |
+| `template`     | string  | required          | The template repository, as `owner/name`. |
+| `files`        | string  | `'_quarto.yml _quarto-website.yml _quarto-book.yml DESCRIPTION index.qmd'` | Space-separated git pathspecs of the tracked files to read. |
+| `strings`      | string  | `''`              | Newline-separated extra literals a derived repository must not keep, such as the template's title or placeholder author. |
+| `fail`         | boolean | `true`            | Fail the workflow when a file still holds the template's identity. Set `false` for warning annotations only. |
+| `python-version` | string | `'3.x'`          | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository, because [a public repository's pull requests can run arbitrary code on it](https://github.com/Morrison-Lab/gha/issues/1167). |
+
+The composite action also takes `repository`,
+which defaults to the repository the workflow runs in.
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-template-identity.yml in a TEMPLATE repo,
+# and set `template` to that repo. "Use this template" copies the workflow
+# into every new repository, where it fails until the new repository's config
+# no longer holds the template's repository URL, Pages URL, or a listed
+# literal. In the template itself it passes with a notice.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check template identity
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-template-identity.yml@v3
+    with:
+      template: your-org/your-template  # owner/name of the template repo
+      # files: '_quarto.yml DESCRIPTION'  # tracked files to read
+      # strings: |                        # extra literals, one per line
+      #   Your Template's Title
+      # fail: true                        # set false to warn only (defaults to true)
+```
+
+See
+[`examples/check-template-identity.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-template-identity.yml)
+for the full caller stub.
