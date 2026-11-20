@@ -2415,6 +2415,128 @@ jobs:
         if: always()
         shell: bash
         run: git rm -rf --cached -q _ci-heading-titles || true
+  # check-result-titles is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-result-titles@v3` does not resolve until the
+  # tag slides past the merge. Exercise the local composite directly. The unit
+  # tests cover the sentence test and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  result-titles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-result-titles unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-result-titles/tests/ -v
+      - name: Check this PR's added lines
+        uses: ./check-result-titles
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+          paths-ignore: 'website/**'
+      # Stage three pages: one whose theorem title is a noun phrase, one whose
+      # title is a sentence but whose statement has no display formula, and one
+      # that keeps both rules. Other checks' fixtures under
+      # build-dependency-graph/tests/fixture hold results with no display
+      # formula, so the whole-tree calls skip them.
+      - name: Stage pages for the title and statement rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-result-titles/title _ci-result-titles/statement _ci-result-titles/ok
+          printf '%s\n' '---' 'title: "T"' '---' '' '::: {#thm-x}' '## Derivative of the logistic function' '' 'The derivative is its value times one minus its value.' '' '$$' 'x = 1' '$$' ':::' > _ci-result-titles/title/page.qmd
+          printf '%s\n' '---' 'title: "T"' '---' '' '::: {#thm-y}' '## The derivative is its value times one minus its value' '' 'The derivative is its value times one minus its value.' ':::' > _ci-result-titles/statement/page.qmd
+          printf '%s\n' '---' 'title: "T"' '---' '' '::: {#thm-z}' '## The derivative is its value times one minus its value' '' 'The derivative is its value times one minus its value:' '' '$$' 'x = 1' '$$' ':::' > _ci-result-titles/ok/page.qmd
+          git add -f _ci-result-titles
+      - name: Check the staged pages, expecting a failure
+        id: result-titles-expected-failure
+        continue-on-error: true
+        uses: ./check-result-titles
+        with:
+          whole-tree: 'true'
+          paths-ignore: |
+            website/**
+            build-dependency-graph/tests/fixture/**
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.result-titles-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-result-titles to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The statement rule alone must also fail the action.
+      - name: Check only the page with a prose-only statement, expecting a failure
+        id: result-statement-expected-failure
+        continue-on-error: true
+        uses: ./check-result-titles
+        with:
+          whole-tree: 'true'
+          globs: '_ci-result-titles/statement/*.qmd'
+      - name: Assert the statement call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.result-statement-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-result-titles to fail on a prose-only statement, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With fail turned off, the same findings must pass.
+      - name: Check the staged pages with fail turned off
+        uses: ./check-result-titles
+        with:
+          whole-tree: 'true'
+          fail: 'false'
+          paths-ignore: 'website/**'
+      - name: Check again with the failing pages exempted through paths-ignore
+        uses: ./check-result-titles
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: |
+            _ci-result-titles/title
+            _ci-result-titles/statement
+            website/**
+            build-dependency-graph/tests/fixture/**
+      - name: Check again with prefixes that exclude theorems
+        uses: ./check-result-titles
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          prefixes: 'lem'
+          paths-ignore: |
+            website/**
+            build-dependency-graph/tests/fixture/**
+      - name: Check again with globs naming only the page that keeps both rules
+        uses: ./check-result-titles
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: '_ci-result-titles/ok/*.qmd'
+      - name: Check again with no base, expecting a skip
+        uses: ./check-result-titles
+        with:
+          base-ref: ''
+          fail: 'true'
+      - name: Remove the staged pages
+        if: always()
+        shell: bash
+        run: git rm -rf --cached -q _ci-result-titles || true
   # check-title-references is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-title-references@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit
