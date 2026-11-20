@@ -24,7 +24,15 @@ the page's own text with each `{{< include >}}` shortcode
 replaced by the file it names,
 since a chapter's headings are often split across subfiles.
 Headings inside fenced code blocks and HTML comments do not count.
+Nor do headings inside fenced divs,
+which title the div (the `####` of a definition or exercise) or a tab,
+not a section.
+`.unnumbered` and `.unlisted` headings are not counted as siblings,
+but they still act as parents.
 A heading's parent is the nearest earlier heading of a lower level.
+Measured 2026-11-20 with `whole-tree: true` over lds,
+skipping div headings took the crowded and lone top-level findings
+from 186 to 16.
 
 ## Decision record
 
@@ -52,10 +60,6 @@ The usual fix is to add another sibling or promote a child,
 not to remove the singleton.
 The finding is reported when the pull request adds or changes
 the lone heading or its parent heading.
-This rule reads the page's section outline:
-headings inside a fenced div title the div or a tab, so they do not count,
-and `.unnumbered` and `.unlisted` headings are not counted as siblings
-but still act as parents.
 Set `lone: false` to turn it off.
 Measured 2026-11-20 with `whole-tree: true` over lds:
 18 lone subheadings on 12 pages.

@@ -8,3 +8,7 @@
   and `.unnumbered` and `.unlisted` headings are not counted as siblings but still act as parents.
   Consumers on the reusable workflow get the new rule without opting in.
   Pass `lone: false` to turn it off.
+- `check-heading-siblings`: headings inside fenced divs (the `####` titles of definitions and exercises, tabset tabs) no longer count for any rule,
+  since they title a div or a tab, not a section,
+  and `.unnumbered` headings now act as parents of the numbered headings under them.
+  Measured over lds, the crowded and lone top-level findings drop from 186 to 16.

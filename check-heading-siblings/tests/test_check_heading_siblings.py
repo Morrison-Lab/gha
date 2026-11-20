@@ -227,9 +227,19 @@ def test_headings_inside_divs_are_not_outline_entries():
     assert chs.lone_subheadings(found) == []
 
 
-def test_div_titles_still_count_for_the_max_rule_as_before():
-    text = "::: {#def-x}\n## T\n:::\n"
-    assert [h.title for h in chs.headings(lines(text))] == ["T"]
+def test_div_titles_and_tabs_do_not_count_for_the_max_rule(tmp_path):
+    tabs = "\n\n".join(f"### Tab {i}" for i in range(9))
+    page = tmp_path / "page.qmd"
+    page.write_text('---\ntitle: "P"\n---\n\n# A\n\n## X\n\n'
+                    "::: {.panel-tabset}\n" + tabs + "\n:::\n\n## Y\n\n# B\n")
+    assert chs.scan_page(str(page), str(tmp_path), None, 7, 2, True) == []
+
+
+def test_numbered_children_of_an_unnumbered_parent_are_grouped_under_it():
+    text = ("# Body\n\n## A\n\n## B\n\n# Exercises {.unnumbered}\n\n"
+            + "\n\n".join(f"## E{i}" for i in range(8)))
+    groups = chs.crowded_groups(outline(text), 7)
+    assert [len(m) for _, m in groups] == [8]
 
 
 def test_lone_subheading_is_flagged_when_it_or_its_parent_is_touched(tmp_path):

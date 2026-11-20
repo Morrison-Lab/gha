@@ -16,7 +16,10 @@ between the two.
 The check measures the *expanded* page: the page's own text with every
 ``{{< include >}}`` shortcode replaced by the file it names, since a chapter's
 headings are often split across subfiles. Headings inside fenced code blocks
-and HTML comments do not count.
+and HTML comments do not count, nor do headings inside fenced divs, which
+title the div (the ``####`` of a definition or exercise) or a tab rather than
+a section. Unnumbered and unlisted headings are not counted as siblings, but
+they still act as parents.
 
 What is flagged: a group of more than ``CHS_MAX`` sibling headings, when the
 diff adds one of its headings, in the page or in a file it includes. The
@@ -238,10 +241,11 @@ def headings(lines: List[Source], outline: bool = False
 
 def crowded_groups(found: List[Heading], limit: int
                    ) -> List[Tuple[int, List[Heading]]]:
-    """Groups of siblings over ``limit``, as (parent index, members)."""
+    """Groups of numbered siblings over ``limit``, as (parent index, members)."""
     groups: Dict[Tuple[int, int], List[Heading]] = {}
     for h in found:
-        groups.setdefault((h.level, h.parent), []).append(h)
+        if h.numbered:
+            groups.setdefault((h.level, h.parent), []).append(h)
     return [(parent, members) for (_, parent), members in groups.items()
             if len(members) > limit]
 
@@ -252,7 +256,7 @@ def lone_top_heading(found: List[Heading], minimum: int) -> Optional[Heading]:
     The top level is the shallowest level that has no parent heading. A page
     with no headings has none to flag.
     """
-    top = [h for h in found if h.parent == -1]
+    top = [h for h in found if h.parent == -1 and h.numbered]
     if not top:
         return None
     shallowest = min(h.level for h in top)
@@ -329,7 +333,7 @@ def scan_page(path: str, root: str, touched: Optional[Dict[str, List[int]]],
     """
     if ALLOW_MARKER in (read_text(path) or ""):
         return []
-    found = headings(expand(path, root))
+    found = headings(expand(path, root), outline=True)
     findings: List[Finding] = []
     for parent, members in crowded_groups(found, limit):
         if touched is None:
@@ -348,9 +352,8 @@ def scan_page(path: str, root: str, touched: Optional[Dict[str, List[int]]],
         findings.append(Finding(lone.path, lone.line, lone.level, "", 1,
                                 limit, lone=True))
     if lone_subs:
-        outline = headings(expand(path, root), outline=True)
-        for parent_index, h in lone_subheadings(outline):
-            parent = outline[parent_index]
+        for parent_index, h in lone_subheadings(found):
+            parent = found[parent_index]
             if touched is not None and not (
                     h.line in touched.get(h.path, ())
                     or parent.line in touched.get(parent.path, ())):
