@@ -494,6 +494,13 @@ def test_a_deferred_gate_names_the_runs_it_waits_on_in_the_summary(monkeypatch, 
     assert "::notice title=Annotation gate deferred::" in capsys.readouterr().out
 
 
+def test_a_deferral_notice_escapes_run_names(monkeypatch, capsys):
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    g.report_deferral("abcdef0123", [{"name": "50% done\n::error::x", "status": "queued"}])
+    notice = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("::notice")]
+    assert notice == ["::notice title=Annotation gate deferred::abcdef0 waits on: 50%25 done%0A::error::x: queued"]
+
+
 def test_waiting_lines_count_minutes_since_creation():
     now = g.datetime.datetime(2026, 11, 20, 8, 22, tzinfo=g.datetime.timezone.utc)
     r = {"name": "build", "status": "queued", "created_at": "2026-11-20T07:38:00Z"}

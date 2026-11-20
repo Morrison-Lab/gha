@@ -182,6 +182,15 @@ def waiting_lines(waiting, now=None):
     return lines
 
 
+def command_data(text):
+    """Escape `text` for the data part of a workflow command, as GitHub's toolkit does.
+
+    A run name or URL holding `%`, CR or LF would otherwise end the command
+    early or start a new one.
+    """
+    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
 def report_deferral(head_sha, waiting, now=None):
     """Name the runs a deferred gate waits on, in the log, a notice, and the job summary.
 
@@ -190,7 +199,7 @@ def report_deferral(head_sha, waiting, now=None):
     """
     lines = waiting_lines(waiting, now)
     print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
-    print(f"::notice title=Annotation gate deferred::{head_sha[:7]} waits on: " + "; ".join(lines))
+    print(f"::notice title=Annotation gate deferred::{head_sha[:7]} waits on: " + command_data("; ".join(lines)))
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if path:
         with open(path, "a", encoding="utf-8") as fh:
