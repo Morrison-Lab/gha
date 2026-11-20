@@ -17,7 +17,9 @@ that still holds one of:
 
 Matching ignores case, and a match that is part of a longer name on either
 side (``github.com/<owner>/<name>-fork``, ``my-<owner>.github.io/<name>``)
-does not count; that holds for the listed literals too. A line that holds
+does not count; that holds for the listed literals too. A dot with a letter
+or digit after it carries a name on (``<name>.v2``), except the ``.git`` of a
+clone URL; a dot that ends a sentence does not. A line that holds
 ``check-template-identity: allow: <reason>`` passes.
 
 In the template itself (``repository`` equals ``template``) there is nothing
@@ -64,11 +66,25 @@ def _in_name(char: str) -> bool:
     return char.isalnum() or char in "-_"
 
 
+def _continues(rest: str) -> bool:
+    """True when ``rest``, the text after a match, carries the name on.
+
+    A repository name may hold a dot, so ``<name>.v2`` is a longer name. A dot
+    that ends a sentence is not, and neither is the ``.git`` of a clone URL.
+    """
+    if not rest:
+        return False
+    if _in_name(rest[0]):
+        return True
+    if rest[0] != "." or len(rest) < 2 or not rest[1].isalnum():
+        return False
+    return not (rest.startswith(".git") and not _continues(rest[4:]))
+
+
 def _whole_name(line: str, start: int, end: int) -> bool:
     """True when ``line[start:end]`` is not part of a longer name on either side."""
     before = start > 0 and _in_name(line[start - 1])
-    after = end < len(line) and _in_name(line[end])
-    return not (before or after)
+    return not (before or _continues(line[end:]))
 
 
 def find_in_line(line: str, needles: List[str]) -> List[str]:
@@ -90,7 +106,10 @@ def find_in_line(line: str, needles: List[str]) -> List[str]:
 def scan(paths: List[str], needles: List[str]) -> List[Finding]:
     findings = []
     for path in paths:
-        for number, line in enumerate(diffscope.read_lines(path) or [], start=1):
+        lines = diffscope.read_lines(path)
+        if lines is None:
+            raise SystemExit("check-template-identity: cannot read '%s'" % path)
+        for number, line in enumerate(lines, start=1):
             for needle in find_in_line(line, needles):
                 findings.append(Finding(path, number, needle))
     return findings

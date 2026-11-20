@@ -26,6 +26,10 @@ Matching ignores case.
 A match that is part of a longer name on either side,
 such as `github.com/<owner>/<name>-fork`, does not count.
 The same holds for a listed literal.
+A dot with a letter or digit after it carries a name on,
+as in `github.com/<owner>/<name>.v2`,
+except the `.git` of a clone URL.
+A dot that ends a sentence does not.
 A line that should keep the value, such as a credit link to the template,
 passes with `check-template-identity: allow: <reason>` on that line,
 for example in a YAML comment.
@@ -42,6 +46,7 @@ because a value the new repository never changed is on no line a diff adds.
 It stops with an error when no tracked file matches `files`,
 whatever `fail` says,
 so a wrong list cannot pass by reading nothing.
+It also stops when a matched file cannot be read.
 
 ## Inputs
 

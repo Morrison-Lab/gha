@@ -35,6 +35,10 @@ def test_needles_are_derived_and_lower_cased():
     "URL: https://" + REPO_URL.upper() + ", https://example.org",
     'title: "Template Title"',
     "href: https://" + REPO_URL + "/issues",
+    "See https://" + REPO_URL + ".",
+    "See https://" + REPO_URL + ". Then edit it.",
+    "git clone https://" + REPO_URL + ".git",
+    "git clone https://" + REPO_URL + ".git.",
 ])
 def test_template_identity_is_found(line):
     assert len(found(line)) == 1
@@ -44,6 +48,10 @@ def test_template_identity_is_found(line):
     "repo-url: https://github.com/Acme-Lab/my-site",
     "repo-url: https://" + REPO_URL + "-fork",
     "repo-url: https://" + REPO_URL + "2",
+    "repo-url: https://" + REPO_URL + ".v2",
+    "site-url: https://" + PAGES_URL + ".v2/",
+    "git clone https://" + REPO_URL + ".github.git",
+    "git clone https://" + REPO_URL + ".git2",
     "site-url: https://my-" + PAGES_URL,
     "title: Template Titles",
     "title: My site",
@@ -106,6 +114,11 @@ def test_main_reads_the_repository_from_github(tmp_path):
 def test_main_errors_when_no_file_matches_even_warn_only(tmp_path):
     result = run_main(tmp_path, {"other.txt": "x\n"}, CTI_FAIL="false")
     assert result.returncode == 2 and "read nothing" in result.stdout
+
+
+def test_scan_stops_when_a_file_cannot_be_read(tmp_path):
+    with pytest.raises(SystemExit, match="cannot read"):
+        cti.scan([str(tmp_path / "gone.yml")], NEEDLES)
 
 
 def test_main_reads_files_and_strings_from_the_environment(tmp_path):
