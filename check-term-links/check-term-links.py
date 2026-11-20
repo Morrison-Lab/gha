@@ -77,6 +77,11 @@ for _stream in (sys.stdout, sys.stderr):
 
 DEFAULT_GLOBS = "*.qmd"
 DEFAULT_PATHS_IGNORE = ""
+# Deleting the flagged word quiets this check and loses the term (Ezra, 2026-11-20).
+KEEP_TERM = (
+    "Never delete or replace the term to quiet this check; "
+    "if no definition exists, write one and link to it."
+)
 
 # A code fence, also inside a blockquote (`> ```` `), which CommonMark allows (gha#1905).
 # Each quote marker is one ">" and the spaces after it; no two parts can match the same
@@ -632,7 +637,8 @@ def scan_passage(
                 file=path, line=n, rule="unlinked-first-use", term=key,
                 message=(
                     f"'{m.group(0)}' is a defined term; link its first use in this "
-                    f"{'div' if passage.in_div else 'section'} to its definition."
+                    f"{'div' if passage.in_div else 'section'} to its definition. "
+                    f"{KEEP_TERM}"
                 ),
             ))
 
@@ -653,7 +659,8 @@ def scan_passage(
                 file=path, line=n, rule="no-definition", term=key,
                 message=(
                     f"Bold term '{term.strip()}' has no definition div anywhere in "
-                    "the corpus; give it a `#def-` div and link to it."
+                    "the corpus; give it a `#def-` div and link to it. "
+                    f"{KEEP_TERM}"
                 ),
             ))
     return findings
