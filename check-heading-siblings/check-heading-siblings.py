@@ -16,7 +16,10 @@ between the two.
 The check measures the *expanded* page: the page's own text with every
 ``{{< include >}}`` shortcode replaced by the file it names, since a chapter's
 headings are often split across subfiles. Headings inside fenced code blocks
-and HTML comments do not count.
+and HTML comments do not count, nor do headings inside fenced divs, which
+title the div (the ``####`` of a definition or exercise) or a tab rather than
+a section. Unnumbered and unlisted headings are not counted as siblings, but
+they still act as parents.
 
 What is flagged: a group of more than ``CHS_MAX`` sibling headings, when the
 diff adds one of its headings, in the page or in a file it includes. The
@@ -27,6 +30,16 @@ Also flagged: a page whose top level holds a single heading (fewer than
 then has one entry, which usually restates the page title above about a
 hundred included files (lds#1893). The top level is the shallowest level with
 no parent heading; a page with no headings is not flagged.
+
+Also flagged: a numbered heading that is the only numbered heading at its
+level under its parent heading, such as a lone "1.1" under "1" (lone
+subheading; Ezra, 2026-11-20). Numbering a single subsection says the parent
+has parts when it has one. The usual fix is to add another sibling or
+promote a child, not to remove the singleton. The finding is reported when
+the diff adds or changes the lone heading or its parent heading.
+Unnumbered (``.unnumbered``) and unlisted (``.unlisted``) headings are not
+counted as siblings, but they still act as parents. ``CHS_LONE=false`` turns
+this rule off.
 
 What is not flagged: a group the diff did not add a heading to, and a page
 carrying ``<!-- check-heading-siblings: allow -->`` anywhere in its own file.
@@ -48,6 +61,7 @@ Configuration (environment variables, set by the composite action):
   CHS_WHOLE_TREE    "true" => scan every tracked matching page in full.
   CHS_MAX           Largest number of sibling headings (default 7).
   CHS_MIN           Fewest top-level headings a page with any may have (default 2).
+  CHS_LONE          "true" => flag a lone numbered subheading; default "true".
 """
 
 import os
@@ -77,6 +91,8 @@ HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*?)[ \t]*#*[ \t]*$")
 TITLE_RE = re.compile(r"^title:", re.MULTILINE)
 CALLOUT_RE = re.compile(r"^[ \t]*:::+[ \t]*\{[^}]*\.callout")
 UNNUMBERED_RE = re.compile(r"\{[^}]*\.unnumbered[^}]*\}")
+UNLISTED_RE = re.compile(r"\{[^}]*\.unlisted[^}]*\}")
+DIV_RE = re.compile(r"^ {0,3}(:{3,})\s*(.*?)\s*:*\s*$")
 ATTR_RE = re.compile(r"[ \t]*\{[^}]*\}[ \t]*$")
 
 
@@ -93,6 +109,7 @@ class Heading(NamedTuple):
     parent: int
     path: str
     line: int
+    numbered: bool = True
 
 
 class Finding(NamedTuple):
@@ -103,6 +120,7 @@ class Finding(NamedTuple):
     count: int
     limit: int
     lone: bool = False
+    subheading: bool = False
 
 
 def read_text(path: str) -> Optional[str]:
@@ -147,16 +165,25 @@ def expand(path: str, root: str, seen: Tuple[str, ...] = ()) -> List[Source]:
     return out
 
 
-def headings(lines: List[Source]) -> List[Heading]:
+def headings(lines: List[Source], outline: bool = False
+             ) -> List[Heading]:
     """Headings outside fenced code and HTML comments, each with its parent.
 
     The parent is the nearest earlier heading of a lower level, as an index
-    into the returned list, or -1 for the page itself.
+    into the returned list, or -1 for the page itself. Unnumbered headings
+    are dropped, and unlisted ones marked ``numbered=False``.
+
+    With ``outline``, the page's section outline is returned instead:
+    unnumbered headings are kept, marked ``numbered=False``, so they can be
+    parents, and headings inside a fenced div are dropped, since they title
+    the div (the ``####`` of a definition or exercise) or a tab, not a
+    section, as in ``check-heading-levels``.
     """
     found: List[Heading] = []
     fence: Optional[Tuple[str, int]] = None
     in_comment = False
     prev_line = ""
+    depth = 0
     in_front_matter: Dict[str, bool] = {}
     for src in lines:
         line = src.text
@@ -184,11 +211,21 @@ def headings(lines: List[Source]) -> List[Heading]:
             in_comment = True
             continue
         previous, prev_line = prev_line, (line if line.strip() else prev_line)
+        d = DIV_RE.match(line)
+        if d:
+            depth = depth + 1 if d.group(2) else max(0, depth - 1)
+            continue
         h = HEADING_RE.match(line)
         if not h:
             continue
-        # A callout's title and an unnumbered heading are not outline entries.
-        if CALLOUT_RE.match(previous) or UNNUMBERED_RE.search(h.group(2)):
+        # A callout's title is not an outline entry.
+        if CALLOUT_RE.match(previous):
+            continue
+        unnumbered = bool(UNNUMBERED_RE.search(h.group(2)))
+        numbered = not (unnumbered or UNLISTED_RE.search(h.group(2)))
+        if outline and depth:
+            continue
+        if unnumbered and not outline:
             continue
         level = len(h.group(1))
         parent = -1
@@ -197,16 +234,18 @@ def headings(lines: List[Source]) -> List[Heading]:
                 parent = index
                 break
         title = ATTR_RE.sub("", h.group(2)).strip()
-        found.append(Heading(level, title, parent, src.path, src.line))
+        found.append(Heading(level, title, parent, src.path, src.line,
+                             numbered))
     return found
 
 
 def crowded_groups(found: List[Heading], limit: int
                    ) -> List[Tuple[int, List[Heading]]]:
-    """Groups of siblings over ``limit``, as (parent index, members)."""
+    """Groups of numbered siblings over ``limit``, as (parent index, members)."""
     groups: Dict[Tuple[int, int], List[Heading]] = {}
     for h in found:
-        groups.setdefault((h.level, h.parent), []).append(h)
+        if h.numbered:
+            groups.setdefault((h.level, h.parent), []).append(h)
     return [(parent, members) for (_, parent), members in groups.items()
             if len(members) > limit]
 
@@ -217,7 +256,7 @@ def lone_top_heading(found: List[Heading], minimum: int) -> Optional[Heading]:
     The top level is the shallowest level that has no parent heading. A page
     with no headings has none to flag.
     """
-    top = [h for h in found if h.parent == -1]
+    top = [h for h in found if h.parent == -1 and h.numbered]
     if not top:
         return None
     shallowest = min(h.level for h in top)
@@ -225,7 +264,29 @@ def lone_top_heading(found: List[Heading], minimum: int) -> Optional[Heading]:
     return group[0] if len(group) < minimum else None
 
 
+def lone_subheadings(found: List[Heading]) -> List[Tuple[int, Heading]]:
+    """Numbered headings that are the only numbered one at their level under
+    their parent heading, as (parent index, heading).
+
+    ``found`` should come from ``headings(..., outline=True)``. Only
+    nested headings (those with a parent heading) are considered, since the
+    top level is the ``CHS_MIN`` rule's.
+    """
+    groups: Dict[Tuple[int, int], List[Heading]] = {}
+    for h in found:
+        if h.parent >= 0 and h.numbered:
+            groups.setdefault((h.level, h.parent), []).append(h)
+    return [(parent, members[0]) for (_, parent), members in groups.items()
+            if len(members) == 1]
+
+
 def format_message(f: Finding) -> str:
+    if f.subheading:
+        return (f"This level-{f.level} heading is the only numbered heading at "
+                f"its level under '{f.parent}', so the section is numbered "
+                f"as if it had parts when it has one (a lone 1.1 under 1). "
+                f"Fix: usually add another sibling heading or promote a "
+                f"child, not remove this one; move content, do not delete it")
     if f.lone:
         return (f"This is the only top-level heading of the page, so the "
                 f"table of contents has a single entry that duplicates or "
@@ -263,7 +324,8 @@ class Report(NamedTuple):
 
 
 def scan_page(path: str, root: str, touched: Optional[Dict[str, List[int]]],
-              limit: int, minimum: int = 0) -> List[Finding]:
+              limit: int, minimum: int = 0, lone_subs: bool = False
+              ) -> List[Finding]:
     """Findings for the crowded groups of ``path`` the diff added a heading to.
 
     ``touched`` maps a file to its added lines; None means scan regardless
@@ -271,7 +333,7 @@ def scan_page(path: str, root: str, touched: Optional[Dict[str, List[int]]],
     """
     if ALLOW_MARKER in (read_text(path) or ""):
         return []
-    found = headings(expand(path, root))
+    found = headings(expand(path, root), outline=True)
     findings: List[Finding] = []
     for parent, members in crowded_groups(found, limit):
         if touched is None:
@@ -289,11 +351,21 @@ def scan_page(path: str, root: str, touched: Optional[Dict[str, List[int]]],
                              or lone.line in touched.get(lone.path, ())):
         findings.append(Finding(lone.path, lone.line, lone.level, "", 1,
                                 limit, lone=True))
+    if lone_subs:
+        for parent_index, h in lone_subheadings(found):
+            parent = found[parent_index]
+            if touched is not None and not (
+                    h.line in touched.get(h.path, ())
+                    or parent.line in touched.get(parent.path, ())):
+                continue
+            findings.append(Finding(h.path, h.line, h.level, parent.title, 1,
+                                    limit, subheading=True))
     return findings
 
 
 def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
-              whole_tree: bool, limit: int, minimum: int = 0) -> Report:
+              whole_tree: bool, limit: int, minimum: int = 0,
+              lone_subs: bool = False) -> Report:
     root = os.getcwd()
     touched: Optional[Dict[str, List[int]]] = None
     if whole_tree:
@@ -323,7 +395,7 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
         if text is None or not is_page(text):
             continue
         pages += 1
-        for f in scan_page(rel, root, touched, limit, minimum):
+        for f in scan_page(rel, root, touched, limit, minimum, lone_subs):
             if (f.path, f.line) not in seen:
                 seen.add((f.path, f.line))
                 findings.append(f)
@@ -340,8 +412,10 @@ def main() -> int:
     limit = _env_int("CHS_MAX", DEFAULT_MAX)
 
     minimum = _env_int("CHS_MIN", DEFAULT_MIN)
+    lone_subs = diffscope.env_flag("CHS_LONE", True)
 
-    report = run_check(base_ref, globs, ignores, whole_tree, limit, minimum)
+    report = run_check(base_ref, globs, ignores, whole_tree, limit, minimum,
+                       lone_subs)
     if report.skipped:
         reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
         level = "::warning::" if base_ref else ""
@@ -356,9 +430,10 @@ def main() -> int:
     for f in report.findings:
         print(f"::{severity} file={f.path},line={f.line}::{format_message(f)}")
     if not report.findings:
-        print("No touched heading group is over the limit.")
+        print("No touched heading group is over the limit or lone.")
         return 0
-    print(f"\n{len(report.findings)} heading group(s) are over the limit.")
+    print(f"\n{len(report.findings)} heading group(s) are over the limit "
+          f"or lone.")
     return 1 if fail else 0
 
 

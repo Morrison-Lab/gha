@@ -41,6 +41,12 @@ on:
           the lone-heading rule off).
         type: string
         default: '2'
+      lone:
+        description: >-
+          Flag a numbered heading that is the only numbered heading at its
+          level under its parent heading (a lone 1.1 under 1).
+        type: boolean
+        default: true
       fail:
         description: >-
           Fail the workflow when a touched group is over the limit
@@ -70,6 +76,7 @@ jobs:
           paths-ignore: ${{ inputs.paths-ignore }}
           max: ${{ inputs.max }}
           min: ${{ inputs.min }}
+          lone: ${{ inputs.lone }}
           fail: ${{ inputs.fail }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there is no base to diff against, so the check is skipped.
