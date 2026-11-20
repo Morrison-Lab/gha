@@ -1,0 +1,129 @@
+---
+title: "check-ball-neighborhoods.yml"
+---
+
+Diff-scoped check that flags a neighborhood written as an inequality
+on a distance,
+such as `\norm{\vx - \vx^*} < \delta` or `\abs{x - c} < \delta`.
+The lab's notation rule writes such a condition
+as membership in a ball,
+`\vx \in \ball{\vx^*}{\delta}`
+([psw#684](https://github.com/Morrison-Lab/psw/issues/684)).
+
+The check reads math on the lines a pull request adds
+to `.qmd`, `.Rmd`, and `.md` files.
+It flags a norm or absolute value of a difference
+followed by `<`, `\lt`, `\le`, `\leq`, or `\leqslant`.
+The norm may be written `\norm{...}`, `\abs{...}`, `\|...\|`, `|...|`,
+`\lVert...\rVert`, or `\lvert...\rvert`,
+with or without `\left`, `\right`, and sizing commands,
+and may carry a subscript (`\norm{\vx - \vy}_2`).
+Each finding reports the file, the line, the condition,
+and the ball to write instead
+(a closed ball for `\le`).
+
+## What passes
+
+The check does not flag:
+
+- a norm with no difference inside, such as `\norm{\vw} \le t`,
+  because the constrained form of a penalized fit
+  is usually written that way on purpose;
+- a comparison of two distances,
+  such as the triangle inequality
+  or a Lipschitz bound `\abs{f(x) - f(y)} \le L \abs{x - y}`,
+  because the right-hand side holds a norm or absolute value;
+- a difference whose first operand is a number,
+  such as the step-size condition `\abs{1 - \steplen} < 1`;
+- a `>` or `\ge` condition, which describes the complement of a ball;
+- a code fence or code span, an HTML comment, or YAML front matter;
+- a line carrying, or following,
+  `<!-- check-ball-neighborhoods: allow: <reason> -->`.
+  The reason is required.
+  The definition of the ball itself is the expected use.
+
+## Why it blocks
+
+Measured 2026-11-20 over lds, mds, pds, sds, mcs, and psw (whole tree):
+49 hits, 45 of them neighborhoods
+(epsilon-delta limits, continuity, local minimizers, Cauchy sequences).
+Two of the other four are the ball's own definition,
+which takes the allow comment.
+The other two are a bound in a proof
+and a radius check on a specific number.
+That is few enough to block on lines a pull request adds,
+with the allow comment for the rest.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing pages never block,
+and a page converts when someone edits it.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose,
+for example to count the norm inequalities a repository still carries.
+
+Every run prints how many lines and files it examined.
+
+## Limitations
+
+- A condition split across lines is not found.
+- A bare `|` pairs with the nearest `|` before it at the same group depth,
+  so a conditioning bar inside the same group
+  as an absolute value can mislead it.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `true`  | Fail the workflow when a neighborhood written as a norm inequality is found. Set `false` to warn only. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-ball-neighborhoods.yml in your repo.
+# Diff-scoped check: flags a neighborhood written as a norm inequality, such as
+# `\norm{\vx - \vx^*} < \delta`, on lines a PR adds, and suggests membership in
+# a ball, `\vx \in \ball{\vx^*}{\delta}`.
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check neighborhoods written as norm inequalities
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-ball-neighborhoods.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-ball-neighborhoods.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-ball-neighborhoods.yml)
+for the full caller stub.
