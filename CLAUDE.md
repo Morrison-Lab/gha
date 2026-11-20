@@ -2218,12 +2218,12 @@ CI runs it in the `r-head` job in `_selftest.yml`, followed by real
 `uses: ./check-r-head` calls over a staged data subfile.
 
 `check-citation-authors/tests/test_check_citation_authors.py` is a pytest suite over
-the flagged forms (`et al.`, several authors, a particle, a possessive, an accent, a hyphenated name, a name on the previous line),
-the unflagged ones (`[-@key]`, crossrefs, emails, link text and emphasis, a name in an earlier sentence or outside the window),
+the flagged forms (`et al.`, a list of authors, a particle, a possessive, an accent, a hyphenated name, and a name on the previous line),
+the unflagged ones (`[-@key]`, crossrefs, emails, a name in link text, a name in bold, a name in an earlier sentence, and a name outside the window),
 the skips (fences, spans, comments, front matter, and the allow comment, whose reason is required),
-`main()`'s warn-only default and fail mode, the diff scoping, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
-Five mutations were confirmed to turn a case red: dropping the `[-@key]` exemption, the link and emphasis masking,
-the previous-line carry, the `et al.` and initial guards on the sentence end, and the sentence cut itself.
+`main()`'s exit code with `fail` off (the default) or on, the diff scoping, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+Five mutations were confirmed to turn a case red:
+dropping the `[-@key]` exemption, the term masking, the previous-line carry, the guards that keep `et al.` from ending a sentence, or the sentence cut itself.
 CI runs it in the `citation-authors` job in `_selftest.yml`, followed by real
 `uses: ./check-citation-authors` calls over a staged page.
 
