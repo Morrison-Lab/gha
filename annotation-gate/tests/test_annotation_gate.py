@@ -499,7 +499,17 @@ def test_a_deferral_notice_escapes_run_names(monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     g.report_deferral("abcdef0123", [{"name": "50% done\n::error::x", "status": "queued"}])
     notice = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("::notice")]
-    assert notice == ["::notice title=Annotation gate deferred::abcdef0 waits on: 50%25 done%0A::error::x: queued"]
+    assert notice == ["::notice title=Annotation gate deferred::abcdef0 waits on: 50%25 done ::error::x: queued"]
+
+
+def test_command_data_escapes_percent_and_line_breaks():
+    assert g.command_data("a%b\r\nc") == "a%25b%0D%0Ac"
+
+
+def test_waiting_lines_keep_a_run_name_on_one_line():
+    now = g.datetime.datetime(2026, 11, 20, tzinfo=g.datetime.timezone.utc)
+    r = {"name": "build\n## injected\r\nx", "status": "queued", "html_url": "https://e/1\n- y"}
+    assert g.waiting_lines([r], now) == ["build ## injected x: queued (https://e/1 - y)"]
 
 
 def test_waiting_lines_count_minutes_since_creation():

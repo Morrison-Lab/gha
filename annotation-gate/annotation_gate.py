@@ -167,8 +167,17 @@ def unfinished_runs(runs, own_workflow):
     return [r for r in runs if r.get("name") != own_workflow and r.get("status") in ("queued", "in_progress")]
 
 
+def one_line(text):
+    """`text` with every whitespace run, line breaks included, as one space."""
+    return " ".join(str(text).split())
+
+
 def waiting_lines(waiting, now=None):
-    """One line per unfinished run: name, status, minutes since creation, link (gha#2151)."""
+    """One line per unfinished run: name, status, minutes since creation, link (gha#2151).
+
+    Whitespace runs in the name and link collapse to one space, so a line break
+    in a run name cannot split a job-summary list item or start new Markdown.
+    """
     now = now or datetime.datetime.now(datetime.timezone.utc)
     lines = []
     for r in waiting:
@@ -177,8 +186,8 @@ def waiting_lines(waiting, now=None):
         if created:
             start = datetime.datetime.strptime(created, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
             age = f" for {int((now - start).total_seconds() // 60)} min"
-        link = f" ({r['html_url']})" if r.get("html_url") else ""
-        lines.append(f"{r.get('name', '?')}: {r.get('status')}{age}{link}")
+        link = f" ({one_line(r['html_url'])})" if r.get("html_url") else ""
+        lines.append(f"{one_line(r.get('name', '?'))}: {r.get('status')}{age}{link}")
     return lines
 
 
