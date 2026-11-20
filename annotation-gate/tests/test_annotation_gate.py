@@ -479,6 +479,28 @@ def test_defer_while_running_posts_nothing_when_another_run_is_unfinished(monkey
     assert code == 0 and posted == [] and fetched == []
 
 
+def test_a_deferred_gate_names_the_runs_it_waits_on_in_the_summary(monkeypatch, tmp_path, capsys):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
+    queued = dict(run(2, "pull_request", 1, status="queued", name="Quarto Preview Build", rid=20))
+    queued["created_at"] = "2026-11-20T07:38:00Z"
+    queued["html_url"] = "https://github.com/o/r/actions/runs/20"
+    runs = [run(1, "push", 1, rid=10), queued]
+    code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0})
+    assert code == 0 and posted == []
+    text = summary.read_text()
+    assert "Quarto Preview Build: queued for " in text and "actions/runs/20" in text
+    assert "::notice title=Annotation gate deferred::" in capsys.readouterr().out
+
+
+def test_waiting_lines_count_minutes_since_creation():
+    now = g.datetime.datetime(2026, 11, 20, 8, 22, tzinfo=g.datetime.timezone.utc)
+    r = {"name": "build", "status": "queued", "created_at": "2026-11-20T07:38:00Z"}
+    assert g.waiting_lines([r], now) == ["build: queued for 44 min"]
+    assert g.waiting_lines([{"name": "x", "status": "in_progress"}], now) == ["x: in_progress"]
+
+
 def test_defer_while_running_still_gates_when_every_run_has_finished(monkeypatch):
     monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
     runs = [run(1, "push", 1, rid=10)]
