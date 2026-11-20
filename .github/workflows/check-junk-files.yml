@@ -36,8 +36,18 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Check out repository
+      # The scan reads only the index (`git ls-files`), never file contents,
+      # so fetch trees without blobs and check out just `.github/`. A full
+      # checkout of a repository of large PDFs (Morrison-Lab/mlr) ran past
+      # the 20-minute timeout downloading blobs the scan never opens.
+      # Non-cone mode keeps the index full rather than sparse, so
+      # `git ls-files` still lists every tracked path.
+      - name: Check out repository (index only, no file contents)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          filter: blob:none
+          sparse-checkout: /.github/
+          sparse-checkout-cone-mode: false
 
       - name: Check for tracked junk files
         uses: Morrison-Lab/gha/check-junk-files@v3
