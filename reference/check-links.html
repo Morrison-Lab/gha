@@ -1379,7 +1379,7 @@ cookieconsent.run({
 <td><code>fail-on-any-5xx</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Fail on every 5xx server error, not only on one on a line the PR adds.</td>
+<td>Fail on every 5xx server error and unreachable host, not only on one on a line the PR adds.</td>
 </tr>
 <tr class="odd">
 <td><code>runs-on</code></td>
@@ -1389,7 +1389,7 @@ cookieconsent.run({
 </tr>
 </tbody>
 </table>
-<p>A 404, a network error, or a timeout fails the check wherever the link is. The one exception is a network error saying the certificate is not trusted (“SSL certificate not trusted”): it is a fault of the host’s certificate chain or the runner’s trust store, so the link is unverified, not known dead. It is reported as a warning annotation naming the URL on every line, and does not fail the run (gha#1416). A 5xx server error is usually a host that is briefly down rather than a dead link, so it fails a pull request only when the link is on a line the PR adds. Any other 5xx is reported as a warning annotation and in the job summary, and does not fail the run (gha#1052). On any other event, such as a push, a scheduled run, <code>workflow_dispatch</code>, <code>merge_group</code>, or <code>pull_request_target</code>, the workflow passes no diff base, so every 5xx is a warning unless <code>fail-on-any-5xx</code> is set. The <code>check-links</code> composite that this workflow calls defaults its <code>base-ref</code> input to <code>all</code>, so a direct caller of the composite still fails on every 5xx unless it passes a ref or <code>''</code>.</p>
+<p>A 404, a DNS error, or any other network error fails the check wherever the link is. The one exception is a network error saying the certificate is not trusted (“SSL certificate not trusted”): it is a fault of the host’s certificate chain or the runner’s trust store, so the link is unverified, not known dead. It is reported as a warning annotation naming the URL on every line, and does not fail the run (gha#1416). A 5xx server error is usually a host that is briefly down rather than a dead link, so it fails a pull request only when the link is on a line the PR adds. Any other 5xx is reported as a warning annotation and in the job summary, and does not fail the run (gha#1052). An unreachable host is treated the same way, since it says the host did not answer, not that the link is dead (gha#2121). An unreachable host is a timeout, or a network error saying “Connection failed”. A DNS error still fails the check, because a misspelled host fails that way too. On any other event, such as a push, a scheduled run, <code>workflow_dispatch</code>, <code>merge_group</code>, or <code>pull_request_target</code>, the workflow passes no diff base, so every 5xx and unreachable host is a warning unless <code>fail-on-any-5xx</code> is set. The <code>check-links</code> composite that this workflow calls defaults its <code>base-ref</code> input to <code>all</code>, so a direct caller of the composite still fails on every 5xx and unreachable host unless it passes a ref or <code>''</code>.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
@@ -1425,7 +1425,7 @@ cookieconsent.run({
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-if-empty: true              # fail when no links are found (default: false)</span></span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   create-issue-on-main: true</span></span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   skip-label: 'links checked by hand'</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-any-5xx: true            # fail on every 5xx, not only on PR-added lines (@v3)</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-any-5xx: true            # fail on every 5xx and unreachable host, not only on PR-added lines (@v3)</span></span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-links.yml"><code>examples/check-links.yml</code></a> for the full caller stub.</p>
 
