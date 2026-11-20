@@ -129,7 +129,8 @@ def test_other_network_errors_are_not_mistaken_for_untrusted_certificates(tmp_pa
 
 
 def test_an_untrusted_certificate_in_the_timeout_map_still_fails(tmp_path):
-    proc, _ = run(tmp_path, report(timeouts={"a.md": [STANFORD_TLS]}))
+    # Under 'all' every timeout blocks; the certificate rule is error_map only.
+    proc, _ = run(tmp_path, report(timeouts={"a.md": [STANFORD_TLS]}), base_ref="all")
     assert proc.returncode == 1
 
 
@@ -159,8 +160,56 @@ def test_network_error_without_a_code_still_fails(tmp_path):
     assert "::error file=a.md,line=2::https://nowhere.invalid/" in proc.stdout
 
 
-def test_timeout_still_fails(tmp_path):
-    proc, _ = run(tmp_path, report(timeouts={"a.md": [entry("https://slow.example/", None, 1)]}))
+def test_timeout_with_an_empty_base_ref_is_a_warning(tmp_path):
+    proc, summary = run(tmp_path, report(timeouts={"a.md": [entry("https://slow.example/", None, 1)]}))
+    assert proc.returncode == 0, proc.stdout
+    assert "::warning file=a.md,line=1::https://slow.example/" in proc.stdout
+    assert "host did not answer" in proc.stdout
+    assert "unreachable host" in summary
+
+
+def test_timeout_blocks_under_all(tmp_path):
+    rep = report(timeouts={"a.md": [entry("https://slow.example/", None, 1)]})
+    proc, _ = run(tmp_path, rep, base_ref="all")
+    assert proc.returncode == 1
+
+
+# lychee 0.24's wording, read from mds#862's link-checker log on 2026-11-20.
+STANFORD_DOWN = entry(
+    "https://web.stanford.edu/~boyd/cvxbook/", None, 5,
+    text="Network error: Connection failed. Check network connectivity and firewall "
+         "settings (error sending request for url (https://web.stanford.edu/~boyd/cvxbook/))",
+)
+
+
+def test_connection_failed_with_an_empty_base_ref_is_a_warning(tmp_path):
+    proc, _ = run(tmp_path, report({"a.md": [STANFORD_DOWN]}))
+    assert proc.returncode == 0, proc.stdout
+    assert "::warning file=a.md,line=5::https://web.stanford.edu/~boyd/cvxbook/" in proc.stdout
+
+
+def test_connection_failed_blocks_under_all(tmp_path):
+    proc, _ = run(tmp_path, report({"a.md": [STANFORD_DOWN]}), base_ref="all")
+    assert proc.returncode == 1
+
+
+def test_a_cached_repeat_of_an_unreachable_host_warns(tmp_path):
+    cached = entry(STANFORD_DOWN["url"], None, 3, text="Error (cached)")
+    proc, _ = run(tmp_path, report({"a.md": [STANFORD_DOWN], "b.md": [cached]}))
+    assert proc.returncode == 0, proc.stdout
+    assert "::warning file=b.md,line=3::" in proc.stdout
+
+
+def test_a_cached_repeat_of_a_timeout_warns(tmp_path):
+    slow = entry("https://slow.example/", None, 1)
+    cached = entry("https://slow.example/", None, 4, text="Error (cached)")
+    proc, _ = run(tmp_path, report({"b.md": [cached]}, timeouts={"a.md": [slow]}))
+    assert proc.returncode == 0, proc.stdout
+
+
+def test_connection_failed_with_a_status_code_is_not_an_unreachable_host(tmp_path):
+    e = entry("https://example.org/x", 404, 2, text="Connection failed, then 404")
+    proc, _ = run(tmp_path, report({"a.md": [e]}))
     assert proc.returncode == 1
 
 
@@ -355,6 +404,18 @@ def test_a_5xx_in_a_file_git_does_not_know_blocks(tmp_path, repo, key):
     rep = report({key: [entry("https://down.example/u", 503, 1)]})
     proc, _ = run(tmp_path, rep, base_ref="main", cwd=repo)
     assert proc.returncode == 1, proc.stdout
+
+
+def test_unreachable_host_on_an_added_line_blocks_and_an_untouched_one_warns(tmp_path, repo):
+    down = "Network error: Connection failed. Check network connectivity"
+    rep = report(
+        {"./old.md": [entry("https://down.example/old", None, 2, text=down)]},
+        timeouts={"./new.md": [entry("https://down.example/new", None, 2)]},
+    )
+    proc, _ = run(tmp_path, rep, base_ref="main", cwd=repo)
+    assert proc.returncode == 1
+    assert "::error file=new.md,line=2::https://down.example/new" in proc.stdout
+    assert "::warning file=old.md,line=2::https://down.example/old" in proc.stdout
 
 
 def test_5xx_on_an_unchanged_line_of_a_changed_file_warns(tmp_path, repo):
