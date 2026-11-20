@@ -77,8 +77,8 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 
 ```yaml
 # Copy to .github/workflows/check-result-titles.yml in your repo.
-# Diff-scoped check: flags the title of a theorem, lemma, proposition, corollary or
-# conjecture div when a PR adds it and it is not a declarative sentence stating the
+# Diff-scoped check: flags the title of a theorem, lemma, proposition, corollary,
+# or conjecture div when a PR adds it and it is not a declarative sentence stating the
 # result. A customary name may come first, followed by a colon.
 # Fails by default.
 # Only contents:read is needed (the default), so no permissions block is required.

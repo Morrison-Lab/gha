@@ -1,5 +1,5 @@
 - `check-result-titles`:
-  add a composite action and a reusable workflow, diff-scoped and failing by default, that flag the title of a theorem,
+  add a composite action, with its reusable workflow, that flags the title of a theorem,
   lemma, proposition, corollary, or conjecture div when a pull request adds it
   and the title is not a declarative sentence stating the result (Ezra, 2026-11-20).
   A customary name may come first, followed by a colon.
@@ -9,3 +9,4 @@
   Like `check-heading-titles` it scopes to added lines, so existing titles are not swept,
   skips rather than scanning the whole tree when there is no base to diff against,
   and has a `whole-tree` mode.
+  It fails by default.
