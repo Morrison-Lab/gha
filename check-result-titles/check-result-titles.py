@@ -44,7 +44,7 @@ Design notes, in the model of ``check-heading-titles``:
   whole tree, which measures how many titles a corpus carries.
 - **Failing by default** (agents ignore warnings; Ezra, 2026-11-02).
   Measured 2026-11-20 over Morrison-Lab/lds (144 result divs, whole tree):
-  the check flagged 67 titles, and each one read by hand was a noun phrase,
+  the check flagged 76 titles, and each one read by hand was a noun phrase,
   a gerund phrase, or a bare name.
 
 Configuration (environment variables, set by the composite action):
