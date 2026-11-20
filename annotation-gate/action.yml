@@ -28,7 +28,9 @@ inputs:
       retried: a fetch that keeps failing fails the job itself (gha#1731),
       and condor-batch's notice that it reran the steps on the runner after the
       cluster job did not run normally: a step that then fails fails the job
-      itself (gha#2039).
+      itself (gha#2039), and the warnings `check-links` demotes a link to
+      when its host did not answer or sent a 5xx on a line the change does
+      not add: the same link on an added line still fails (gha#2121).
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
@@ -46,6 +48,7 @@ inputs:
       ^No files were found with the provided path: .*claude-execution-output\.json
       ^execution_file output not set; falling back to
       ^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead
+      ^(\[\d{3}\] )?https?://\S+: .* \((host did not answer,|server error) on a line this change does not add; not failing the check\)$
       ^wait-runner-capacity: still short after \d+ minutes
       ^prune-runner-workdir: measured .+ GB free, under \d+ GB
       ^fetch-pack: (invalid index-pack output|unexpected disconnect while reading sideband packet)

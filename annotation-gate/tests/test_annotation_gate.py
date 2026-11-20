@@ -23,6 +23,7 @@ DEFAULT = [
     r"^No files were found with the provided path: .*claude-execution-output\.json",
     r"^execution_file output not set; falling back to",
     r"^https?://\S+: Network error: SSL certificate not trusted\b.*the link is unverified, not known dead",
+    r"^(\[\d{3}\] )?https?://\S+: .* \((host did not answer,|server error) on a line this change does not add; not failing the check\)$",
     r"^wait-runner-capacity: still short after \d+ minutes",
     r"^prune-runner-workdir: measured .+ GB free, under \d+ GB",
     r"^fetch-pack: (invalid index-pack output|unexpected disconnect while reading sideband packet)",
@@ -515,6 +516,37 @@ def test_demoted_untrusted_certificate_warning_is_allowed():
 def test_undemoted_certificate_error_is_still_a_violation():
     msg = DEMOTED.split(" (the host")[0]
     assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+HOST_DOWN = (
+    "https://web.stanford.edu/class/cs109/: Network error: Connection failed. Check network"
+    " connectivity and firewall settings (error sending request for url"
+    " (https://web.stanford.edu/class/cs109/)) (host did not answer, on a line this change"
+    " does not add; not failing the check)"
+)
+SERVER_ERROR = (
+    "[503] https://example.org/a: Service Unavailable"
+    " (server error on a line this change does not add; not failing the check)"
+)
+
+
+def test_demoted_unreachable_host_warning_is_allowed():
+    """gha#2121 demotes it to a warning; the gate must not fail on it again."""
+    assert not g.find_violations([ann("warning", HOST_DOWN)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_demoted_server_error_warning_is_allowed():
+    assert not g.find_violations([ann("warning", SERVER_ERROR)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_unreachable_host_on_an_added_line_is_still_a_violation():
+    msg = HOST_DOWN.split(" (host did not answer")[0]
+    assert g.find_violations([ann("failure", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_a_suffix_quoted_mid_message_is_not_allowed():
+    msg = "some step quoted (host did not answer, on a line this change does not add; not failing the check) and more"
+    assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def test_commit_mode_gates_the_attempt_a_run_reports_now_not_the_listing(monkeypatch):
