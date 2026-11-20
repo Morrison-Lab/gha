@@ -1321,7 +1321,8 @@ cookieconsent.run({
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#scope" id="toc-scope" class="nav-link active" data-scroll-target="#scope">Scope</a></li>
+  <li><a href="#statements-in-words-and-in-symbols" id="toc-statements-in-words-and-in-symbols" class="nav-link active" data-scroll-target="#statements-in-words-and-in-symbols">Statements in words and in symbols</a></li>
+  <li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a></li>
   <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
@@ -1364,9 +1365,19 @@ cookieconsent.run({
 <p>So a sentence whose only verb is missing from the list is flagged. Add the verb to <code>VERB_STEMS</code> in a pull request here, or mark the line with <code>&lt;!-- check-result-titles: allow: &lt;reason&gt; --&gt;</code>.</p>
 <p>The check does not count a title inside a code fence, an HTML comment, or the YAML front matter.</p>
 <p>Measured on 2026-11-20 over <code>Morrison-Lab/lds</code>, the check read 144 result titles and flagged 76. Each flagged title read by hand was a noun phrase, a gerund phrase, or a bare name.</p>
+<section id="statements-in-words-and-in-symbols" class="level2">
+<h2 class="anchored" data-anchor-id="statements-in-words-and-in-symbols">Statements in words and in symbols</h2>
+<p>The statement of a result, the text of the div after its title, says the title’s sentence again twice: once in words and once in full mathematical notation (Ezra, 2026-11-20). The psw text is “State the title’s sentence again in the statement, in words and in symbols”. So the check also flags a result div whose statement has</p>
+<ul>
+<li>no display formula: no <code>$$ ... $$</code> block and no raw display environment such as <code>equation</code> or <code>align</code>, or</li>
+<li>no sentence in words: no line with at least four words once math, link targets, code spans, and list or quote markers are removed.</li>
+</ul>
+<p>It cannot tell whether the sentence says what the title says, since that needs the meaning of both, so that part is left to review. A statement that is rightly all prose, such as a result about what an algorithm does, takes <code>&lt;!-- check-result-titles: allow-statement: &lt;reason&gt; --&gt;</code> anywhere in the div. That marker does not exempt the title.</p>
+<p>Measured on 2026-11-20 over <code>Morrison-Lab/lds</code> (whole tree), 25 result statements had no display formula, and none had no sentence in words.</p>
+</section>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
-<p>A finding is reported only when the title line was added in the pull request, so existing titles are not swept. A title line whose exact text the pull request also deletes counts as moved. With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to scan every tracked page in full on purpose, which measures how many titles in a corpus break the rule.</p>
+<p>A title finding is reported only when the title line was added in the pull request, so existing titles are not swept. A statement finding is reported when the pull request adds any line of the div, from its opening fence to its closing one. A title line whose exact text the pull request also deletes counts as moved. With no <code>base-ref</code>, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set <code>whole-tree: true</code> to scan every tracked page in full on purpose, which measures how many titles in a corpus break the rule.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>

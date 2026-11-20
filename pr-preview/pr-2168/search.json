@@ -5880,11 +5880,23 @@
     ]
   },
   {
+    "objectID": "reference/check-result-titles.html#statements-in-words-and-in-symbols",
+    "href": "reference/check-result-titles.html#statements-in-words-and-in-symbols",
+    "title": "check-result-titles.yml",
+    "section": "Statements in words and in symbols",
+    "text": "Statements in words and in symbols\nThe statement of a result, the text of the div after its title, says the title’s sentence again twice: once in words and once in full mathematical notation (Ezra, 2026-11-20). The psw text is “State the title’s sentence again in the statement, in words and in symbols”. So the check also flags a result div whose statement has\n\nno display formula: no $$ ... $$ block and no raw display environment such as equation or align, or\nno sentence in words: no line with at least four words once math, link targets, code spans, and list or quote markers are removed.\n\nIt cannot tell whether the sentence says what the title says, since that needs the meaning of both, so that part is left to review. A statement that is rightly all prose, such as a result about what an algorithm does, takes &lt;!-- check-result-titles: allow-statement: &lt;reason&gt; --&gt; anywhere in the div. That marker does not exempt the title.\nMeasured on 2026-11-20 over Morrison-Lab/lds (whole tree), 25 result statements had no display formula, and none had no sentence in words.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-result-titles.yml"
+    ]
+  },
+  {
     "objectID": "reference/check-result-titles.html#scope",
     "href": "reference/check-result-titles.html#scope",
     "title": "check-result-titles.yml",
     "section": "Scope",
-    "text": "Scope\nA finding is reported only when the title line was added in the pull request, so existing titles are not swept. A title line whose exact text the pull request also deletes counts as moved. With no base-ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to scan every tracked page in full on purpose, which measures how many titles in a corpus break the rule.",
+    "text": "Scope\nA title finding is reported only when the title line was added in the pull request, so existing titles are not swept. A statement finding is reported when the pull request adds any line of the div, from its opening fence to its closing one. A title line whose exact text the pull request also deletes counts as moved. With no base-ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to scan every tracked page in full on purpose, which measures how many titles in a corpus break the rule.",
     "crumbs": [
       "Overview",
       "Reference",
