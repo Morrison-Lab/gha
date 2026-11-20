@@ -100,7 +100,7 @@ can cannot could must may might will would shall should
 VERB_STEMS = """
 absorb achieve add agree apply approach approximate attain become belong
 beat cancel carry cause choose classify coincide commute compute contain
-converge correspond create decompose decrease define depend determine differ
+converge correspond create decompose decrease define depend determine differ divide
 diverge dominate encourage equal exceed exist explain extend fail favor
 flip follow generalize generate give grow hold hurt imply improve include
 increase inherit interpolate invert keep lie lose make minimize maximize
@@ -114,6 +114,7 @@ underfit vanish
 # often enough in a result to keep. Their base forms stay out.
 EXTRA_VERBS = frozenset("""
 matches yields doubles shifts drops needs helps breaks passes crosses
+fits lowers smooths turns
 """.split())
 
 

@@ -45,6 +45,11 @@ def flagged(tmp_path, body):
     "$K$-means never raises the distortion",
     "The margin never increases with $C$",
     "Gradient descent converges when the step is below $2 / L$",
+    "Best subset selection over $p$ features fits $2^p$ models",
+    "Ridge divides each coefficient by $1 + c$",
+    "A small enough step lowers the loss at every step",
+    "Backfitting smooths the partial residuals",
+    "Fixing the scale turns the program into a minimization",
     "Under squared-error loss, the empirical risk is the sample mean squared error",
     "Bias-variance decomposition: the expected error is the variance plus the squared bias",
     "Variance of a sum: $\\Var{X + Y} = \\Var{X} + \\Var{Y}$",
@@ -66,6 +71,9 @@ def test_sentences_pass(title):
     "Level sets of an affine function",
     "Shortcut formulas for the centered sums",
     "Parameter counts of the classifiers",
+    # "smooth" and "lower" are adjectives in their base form.
+    "Minimizing a smooth convex function",
+    "A lower bound on the risk",
     # A verb in a relative clause does not make the title a sentence.
     "Number of models that best subset selection fits",
     "A step size that is safe for every coefficient vector",
