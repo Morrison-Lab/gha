@@ -84,7 +84,7 @@ def test_each_citation_on_a_line_is_judged_on_the_words_before_it():
     "James et al. [-@james2021islr] show this.",
     "See @fig-james and Fig. @fig-x.",
     "Hastie showed this. Later work [@hastie2017] extends it.",
-    "Mail james@james2021islr.org.",
+    "Mail james@james2021islr.org.",  # phi-allow
     "[Cook's distance](#def-cooks) [@cook1977detection] combines them.",
     "The **Cox proportional hazards** model [@cox1972regression] is used.",
     "- *Practical R for Epidemiologists* (@practicalr4epi)",
