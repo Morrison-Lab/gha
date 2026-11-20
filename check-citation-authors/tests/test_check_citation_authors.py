@@ -212,8 +212,13 @@ def test_write_idiom_prefix_is_not_read(tmp_path, monkeypatch, capsys):
 # -- the action, the workflow and the script agree ---------------------------
 
 def test_defaults_agree_across_action_workflow_and_script():
+    workflows = _DIR.parent / ".github/workflows"
+    if (workflows / ".restored-from-default-branch").is_file():
+        # The review job restores the default branch's workflows (gha#765),
+        # which may not hold this one yet.
+        pytest.skip("workflows restored from the default branch")
     action = (_DIR / "action.yml").read_text()
-    workflow = (_DIR.parent / ".github/workflows/check-citation-authors.yml").read_text()
+    workflow = (workflows / "check-citation-authors.yml").read_text()
     for text in (action, workflow):
         assert f"default: '{cca.DEFAULT_GLOBS}'" in text
     assert cca._DEFAULT_FAIL is False
