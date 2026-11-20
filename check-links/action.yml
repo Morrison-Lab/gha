@@ -23,19 +23,21 @@ inputs:
     default: 'false'
   base-ref:
     description: >-
-      Which 5xx server errors fail the check. The default, 'all', fails on
-      every 5xx. A 5xx is usually a host that is briefly down rather than a
-      dead link, so set a ref to fail on a 5xx only when the link is on a
-      line added since that ref's merge base with HEAD (the checkout must
-      hold that history), or '' to report every 5xx as a warning. Every
-      other failure, such as a 404, always fails the check.
+      Which 5xx server errors and unreachable hosts (a timeout, or a
+      "Connection failed" network error) fail the check. The default,
+      'all', fails on every one. Either is usually a host that is briefly
+      down rather than a dead link, so set a ref to fail on one only when
+      the link is on a line added since that ref's merge base with HEAD
+      (the checkout must hold that history), or '' to report every one as
+      a warning. Every other failure, such as a 404 or a DNS error, always
+      fails the check.
     default: 'all'
 outputs:
   blocking:
     description: Number of link failures that fail the check (set when the report was usable).
     value: ${{ steps.verdict.outputs.blocking }}
   demoted:
-    description: Number of 5xx server errors reported as warnings instead.
+    description: Number of failures (5xx, unreachable host, untrusted certificate) reported as warnings instead.
     value: ${{ steps.verdict.outputs.demoted }}
 runs:
   using: composite
@@ -132,7 +134,8 @@ runs:
       with:
         args: ${{ steps.cfg.outputs.args }} --config ${{ steps.cfg.outputs.config }}
         # The next step reads this JSON report and decides the verdict, so a
-        # 5xx on a line the change does not add is a warning (gha#1052).
+        # 5xx or unreachable host on a line the change does not add is a
+        # warning (gha#1052, gha#2121).
         # lychee-action's own failIfEmpty only parses Markdown output.
         fail: false
         failIfEmpty: false
