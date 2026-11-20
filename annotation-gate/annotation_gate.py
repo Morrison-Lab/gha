@@ -167,6 +167,56 @@ def unfinished_runs(runs, own_workflow):
     return [r for r in runs if r.get("name") != own_workflow and r.get("status") in ("queued", "in_progress")]
 
 
+def one_line(text):
+    """`text` with every whitespace run, line breaks included, as one space."""
+    return " ".join(str(text).split())
+
+
+def waiting_lines(waiting, now=None):
+    """One line per unfinished run: name, status, minutes since creation, link (gha#2151).
+
+    Whitespace runs in the name and link collapse to one space, so a line break
+    in a run name cannot split a job-summary list item or start new Markdown.
+    """
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    lines = []
+    for r in waiting:
+        age = ""
+        created = r.get("created_at")
+        if created:
+            start = datetime.datetime.strptime(created, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+            age = f" for {int((now - start).total_seconds() // 60)} min"
+        link = f" ({one_line(r['html_url'])})" if r.get("html_url") else ""
+        lines.append(f"{one_line(r.get('name', '?'))}: {r.get('status')}{age}{link}")
+    return lines
+
+
+def command_data(text):
+    """Escape `text` for the data part of a workflow command, as GitHub's toolkit does.
+
+    A run name or URL holding `%`, CR or LF would otherwise end the command
+    early or start a new one.
+    """
+    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def report_deferral(head_sha, waiting, now=None):
+    """Report a deferred gate: count the waiting runs in the log, and name them in a notice and the job summary.
+
+    A deferred gate posts no check run, so without this a held-back gate reads
+    as one that never started (gha#2151).
+    """
+    lines = waiting_lines(waiting, now)
+    print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
+    print(f"::notice title=Annotation gate deferred::{head_sha[:7]} waits on: " + command_data("; ".join(lines)))
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(f"### Annotation gate deferred on {head_sha[:7]}\n\n")
+            fh.write("The last of these runs to finish will gate the commit:\n\n")
+            fh.writelines(f"- {line}\n" for line in lines)
+
+
 JOB_URL_RE = re.compile(r"/actions/runs/(\d+)/job/(\d+)")
 
 
@@ -279,7 +329,7 @@ def gate_commit(settings, head_sha, trigger_id="", trigger_attempt=""):
     waiting = unfinished_runs(runs, own)
     if settings["defer"] and waiting:
         settings["deferred"] = True
-        print(f"annotation-gate: deferred, {len(waiting)} run(s) on {head_sha[:7]} still queued or in progress; the last to finish gates the commit.")
+        report_deferral(head_sha, waiting)
         return 0
     targets = gate_targets(runs, own, trigger_id, trigger_attempt)
     targets = current_attempts(base, repo, token, targets)

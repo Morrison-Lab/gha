@@ -479,6 +479,46 @@ def test_defer_while_running_posts_nothing_when_another_run_is_unfinished(monkey
     assert code == 0 and posted == [] and fetched == []
 
 
+def test_a_deferred_gate_names_the_runs_it_waits_on_in_the_summary(monkeypatch, tmp_path, capsys):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
+    queued = dict(run(2, "pull_request", 1, status="queued", name="Quarto Preview Build", rid=20))
+    queued["created_at"] = "2026-11-20T07:38:00Z"
+    queued["html_url"] = "https://github.com/o/r/actions/runs/20"
+    runs = [run(1, "push", 1, rid=10), queued]
+    code, posted, _ = commit_mode(monkeypatch, runs, {10: [{"id": 100, "name": "a"}]}, {}, {100: 0})
+    assert code == 0 and posted == []
+    text = summary.read_text()
+    assert "Quarto Preview Build: queued for " in text and "actions/runs/20" in text
+    notice = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("::notice")]
+    assert len(notice) == 1 and "Quarto Preview Build: queued for " in notice[0]
+
+
+def test_a_deferral_notice_escapes_run_names(monkeypatch, capsys):
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    g.report_deferral("abcdef0123", [{"name": "50% done\n::error::x", "status": "queued"}])
+    notice = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("::notice")]
+    assert notice == ["::notice title=Annotation gate deferred::abcdef0 waits on: 50%25 done ::error::x: queued"]
+
+
+def test_command_data_escapes_percent_and_line_breaks():
+    assert g.command_data("a%b\r\nc") == "a%25b%0D%0Ac"
+
+
+def test_waiting_lines_keep_a_run_name_on_one_line():
+    now = g.datetime.datetime(2026, 11, 20, tzinfo=g.datetime.timezone.utc)
+    r = {"name": "build\n## injected\r\nx", "status": "queued", "html_url": "https://e/1\n- y"}
+    assert g.waiting_lines([r], now) == ["build ## injected x: queued (https://e/1 - y)"]
+
+
+def test_waiting_lines_count_minutes_since_creation():
+    now = g.datetime.datetime(2026, 11, 20, 8, 22, tzinfo=g.datetime.timezone.utc)
+    r = {"name": "build", "status": "queued", "created_at": "2026-11-20T07:38:00Z"}
+    assert g.waiting_lines([r], now) == ["build: queued for 44 min"]
+    assert g.waiting_lines([{"name": "x", "status": "in_progress"}], now) == ["x: in_progress"]
+
+
 def test_defer_while_running_still_gates_when_every_run_has_finished(monkeypatch):
     monkeypatch.setenv("GATE_DEFER_WHILE_RUNNING", "true")
     runs = [run(1, "push", 1, rid=10)]
