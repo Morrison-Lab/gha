@@ -31,6 +31,23 @@ So a sentence whose only verb is missing from the list is flagged:
 add the verb to ``VERB_STEMS``, or mark the line with
 ``<!-- check-result-titles: allow: <reason> -->``.
 
+A second rule (Ezra, 2026-11-20) asks the statement, the text of the div
+after its title, to say the title's sentence again twice: once in words and
+once in full mathematical notation.
+Psw text: "State the title's sentence again in the statement, in words and in
+symbols".
+The check flags a result div whose statement has no display formula
+(``$$ ... $$`` or a raw ``equation``/``align``-style environment), and one
+whose statement has no line of prose: a line with at least ``MIN_PROSE_WORDS``
+words once math, links' targets and code are removed.
+Whether the prose says what the title says needs the meaning of both, so it
+is left to review.
+A statement that is rightly all prose (a result about an algorithm, say) takes
+``<!-- check-result-titles: allow-statement: <reason> -->`` anywhere in the
+div.
+A statement finding is reported when a pull request adds any line of the div,
+from its opening fence to its closing one.
+
 The title is the ``title="..."`` attribute on the div's opening fence,
 or else the first heading written directly inside the div.
 Code fences, HTML comments and YAML front matter are not read.
@@ -88,7 +105,14 @@ ods = hl.ods
 DEFAULT_GLOBS = "*.qmd"
 DEFAULT_PREFIXES = "thm lem prp cor conj"
 _DEFAULT_FAIL = True
-ALLOW_MARKER = "check-result-titles: allow"
+ALLOW_RE = re.compile(r"check-result-titles:\s*allow\s*(?::|-->)")
+STATEMENT_ALLOW_MARKER = "check-result-titles: allow-statement"
+MIN_PROSE_WORDS = 4
+DISPLAY_BLOCK_RE = re.compile(
+    r"\$\$.*?\$\$|\\begin\{(\w+\*?)\}.*?\\end\{\1\}", re.S)
+LINE_MARKER_RE = re.compile(r"^\s*(?:>\s*)*(?:[-*+]|\d+[.)])?\s*")
+DISPLAY_ENV_RE = re.compile(
+    r"\\begin\{(?:equation|align|alignat|gather|multline|flalign|eqnarray)\*?\}")
 
 AUXILIARIES = frozenset("""
 is are was were be been has have had does do did
@@ -152,11 +176,21 @@ ADVICE = ("state the result as a declarative sentence, after its customary "
           "<!-- check-result-titles: allow: <reason> -->")
 
 
+STATEMENT_ADVICE = ("say the title's sentence again in the statement, once in "
+                    "words and once as a displayed formula (psw, State the "
+                    "title's sentence again in the statement, in words and in "
+                    "symbols), or add <!-- check-result-titles: "
+                    "allow-statement: <reason> --> in the div")
+
+
 class Finding(NamedTuple):
     path: str
     line: int
     kind: str
     message: str
+    # Lines whose addition puts the finding in scope; the title line alone
+    # for a title finding, the whole div for a statement finding.
+    span: Tuple[int, int] = (0, 0)
 
 
 def is_sentence(title: str) -> bool:
@@ -186,17 +220,37 @@ def _result_id(attrs: str, prefixes: List[str]) -> Optional[str]:
     return None
 
 
-def result_titles(path: str, prefixes: List[str]) -> List[Tuple[int, str, str]]:
-    """(line, div id, title) of each result div's title in ``path``."""
+class ResultDiv(NamedTuple):
+    ident: str
+    start: int  # line of the opening fence
+    end: int  # line of the closing fence (the last line if unclosed)
+    title_line: Optional[int]
+    title: Optional[str]
+    statement: List[Tuple[int, str]]  # (line, text) after the title
+
+
+def result_divs(path: str, prefixes: List[str]) -> List[ResultDiv]:
+    """Every result div in ``path``, with its title and statement lines."""
     lines = hl.read_lines(path)
     if lines is None:
         return []
-    out: List[Tuple[int, str, str]] = []
+    done: List[ResultDiv] = []
+    # One entry per open div: a mutable record for a result div, else None.
+    records: List[Optional[dict]] = []
+
+    def innermost() -> Optional[dict]:
+        for rec in reversed(records):
+            if rec is not None:
+                return rec
+        return None
+
+    def close(rec: dict, end: int) -> None:
+        done.append(ResultDiv(rec["ident"], rec["start"], end, rec["title_line"],
+                              rec["title"], rec["statement"]))
+
     fence: Optional[Tuple[str, int]] = None
     in_comment = False
     in_yaml = bool(lines) and lines[0].strip() == "---"
-    # One entry per open div: the result id awaiting its title, or None.
-    stack: List[Optional[str]] = []
     for idx, original in enumerate(lines):
         if in_yaml:
             if idx > 0 and original.strip() in ("---", "..."):
@@ -213,30 +267,73 @@ def result_titles(path: str, prefixes: List[str]) -> List[Tuple[int, str, str]]:
             continue
         if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
             fence = (m.group(1)[0], len(m.group(1)))
-            if stack:
-                stack[-1] = None
+            if records and records[-1] is not None:
+                records[-1]["searching"] = False
             continue
         dm = ods.DIV_RE.match(raw)
         if dm:
             if dm.group(2):
-                if stack:
-                    stack[-1] = None
+                if records and records[-1] is not None:
+                    records[-1]["searching"] = False
                 ident = _result_id(dm.group(2), prefixes)
-                tm = TITLE_ATTR_RE.search(dm.group(2))
-                if ident and tm:
-                    out.append((idx + 1, ident, tm.group(1) or tm.group(2)))
-                    ident = None
-                stack.append(ident)
-            elif stack:
-                stack.pop()
+                rec = None
+                if ident:
+                    rec = {"ident": ident, "start": idx + 1, "title_line": None,
+                           "title": None, "statement": [], "searching": True}
+                    tm = TITLE_ATTR_RE.search(dm.group(2))
+                    if tm:
+                        rec["title_line"] = idx + 1
+                        rec["title"] = tm.group(1) or tm.group(2)
+                        rec["searching"] = False
+                records.append(rec)
+            elif records:
+                rec = records.pop()
+                if rec is not None:
+                    close(rec, idx + 1)
             continue
-        if not raw.strip() or not stack or stack[-1] is None:
+        rec = innermost()
+        if rec is None or not raw.strip():
             continue
-        hm = hl.HEADING_RE.match(raw)
-        if hm:
-            out.append((idx + 1, stack[-1], hm.group(2)))
-        stack[-1] = None
-    return out
+        if rec["searching"] and records[-1] is rec:
+            rec["searching"] = False
+            hm = hl.HEADING_RE.match(raw)
+            if hm:
+                rec["title_line"] = idx + 1
+                rec["title"] = hm.group(2)
+                continue
+        rec["statement"].append((idx + 1, raw))
+    for rec in reversed(records):
+        if rec is not None:
+            close(rec, len(lines))
+    return sorted(done, key=lambda d: d.start)
+
+
+def statement_gaps(statement: List[Tuple[int, str]]) -> List[str]:
+    """Which of the two forms, ``prose`` and ``formula``, ``statement`` lacks.
+
+    A display formula is a ``$$`` block or a raw display environment.
+    A line of prose has at least ``MIN_PROSE_WORDS`` words once display
+    blocks, inline math, link targets, code spans and list or quote markers
+    are removed.
+    """
+    text = "\n".join(line for _, line in statement)
+    has_formula = "$$" in text or bool(DISPLAY_ENV_RE.search(text))
+    text = DISPLAY_BLOCK_RE.sub(" ", text)
+    text = text.split("$$", 1)[0]  # an unclosed display runs to the end
+    text = MATH_RE.sub(" ", text)
+    text = LINK_RE.sub(r"\1", text)
+    text = CODE_RE.sub(" ", text)
+    has_prose = any(
+        len(WORD_RE.findall(LINE_MARKER_RE.sub("", line))) >= MIN_PROSE_WORDS
+        for line in text.split("\n"))
+    return [gap for gap, ok in (("prose", has_prose), ("formula", has_formula))
+            if not ok]
+
+
+def result_titles(path: str, prefixes: List[str]) -> List[Tuple[int, str, str]]:
+    """(line, div id, title) of each result div's title in ``path``."""
+    return [(d.title_line, d.ident, d.title) for d in result_divs(path, prefixes)
+            if d.title_line is not None]
 
 
 def scan_file(path: str, prefixes: List[str]) -> List[Finding]:
@@ -244,15 +341,28 @@ def scan_file(path: str, prefixes: List[str]) -> List[Finding]:
     lines = hl.read_lines(path) or []
     found: List[Finding] = []
     for line, ident, title in result_titles(path, prefixes):
-        if ALLOW_MARKER in lines[line - 1]:
+        if ALLOW_RE.search(lines[line - 1]):
             continue
         if is_sentence(title):
             continue
         plain = hl.ATTR_RE.sub("", title).strip()
         found.append(Finding(path, line, "not-a-sentence",
                              f"Title '{plain}' of #{ident} is not a "
-                             f"declarative sentence. Fix: {ADVICE}"))
-    return found
+                             f"declarative sentence. Fix: {ADVICE}", (line, line)))
+    for div in result_divs(path, prefixes):
+        if any(STATEMENT_ALLOW_MARKER in lines[n - 1]
+               for n in range(div.start, div.end + 1)):
+            continue
+        gaps = statement_gaps(div.statement)
+        if not gaps:
+            continue
+        missing = " and no ".join(
+            {"prose": "sentence in words", "formula": "display formula"}[g]
+            for g in gaps)
+        found.append(Finding(path, div.title_line or div.start, "statement-forms",
+                             f"The statement of #{div.ident} has no {missing}. "
+                             f"Fix: {STATEMENT_ADVICE}", (div.start, div.end)))
+    return sorted(found, key=lambda f: (f.line, f.kind))
 
 
 class Report(NamedTuple):
@@ -287,7 +397,9 @@ def run_check(base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"],
     kept: List[Finding] = []
     for rel in sorted(files):
         for f in scan_file(rel, prefixes):
-            if not whole_tree and f.line not in keep.get(rel, set()):
+            added_here = keep.get(rel, set())
+            if not whole_tree and not any(
+                    n in added_here for n in range(f.span[0], f.span[1] + 1)):
                 continue
             kept.append(f)
     return Report(kept, len(files), False)
@@ -318,9 +430,13 @@ def main() -> int:
     for f in report.findings:
         print(f"::{severity} file={f.path},line={f.line}::{f.message}")
     if not report.findings:
-        print("Every result-div title is a declarative sentence.")
+        print("Every result-div title is a declarative sentence, and every "
+              "statement says it in words and in a display formula.")
         return 0
-    print(f"\n{len(report.findings)} result title(s) not a declarative sentence.")
+    titles = sum(f.kind == "not-a-sentence" for f in report.findings)
+    statements = len(report.findings) - titles
+    print(f"\n{titles} result title(s) not a declarative sentence; "
+          f"{statements} statement(s) missing prose or a display formula.")
     return 1 if fail else 0
 
 

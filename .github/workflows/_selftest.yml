@@ -2445,22 +2445,29 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
           paths-ignore: 'website/**'
-      # Stage a page whose theorem title is a noun phrase, and assert that the
-      # call, which fails by default, really fails.
-      - name: Stage a page with a noun-phrase theorem title
+      # Stage three pages: one whose theorem title is a noun phrase, one whose
+      # title is a sentence but whose statement has no display formula, and one
+      # that keeps both rules. Other checks' fixtures under
+      # build-dependency-graph/tests/fixture hold results with no display
+      # formula, so the whole-tree calls skip them.
+      - name: Stage pages for the title and statement rules
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _ci-result-titles
-          printf '%s\n' '---' 'title: "T"' '---' '' '::: {#thm-x}' '## Derivative of the logistic function' ':::' > _ci-result-titles/page.qmd
-          git add -f _ci-result-titles/page.qmd
-      - name: Check the staged page, expecting a failure
+          mkdir -p _ci-result-titles/title _ci-result-titles/statement _ci-result-titles/ok
+          printf '%s\n' '---' 'title: "T"' '---' '' '::: {#thm-x}' '## Derivative of the logistic function' '' 'The derivative is its value times one minus its value.' '' '$$' 'x = 1' '$$' ':::' > _ci-result-titles/title/page.qmd
+          printf '%s\n' '---' 'title: "T"' '---' '' '::: {#thm-y}' '## The derivative is its value times one minus its value' '' 'The derivative is its value times one minus its value.' ':::' > _ci-result-titles/statement/page.qmd
+          printf '%s\n' '---' 'title: "T"' '---' '' '::: {#thm-z}' '## The derivative is its value times one minus its value' '' 'The derivative is its value times one minus its value:' '' '$$' 'x = 1' '$$' ':::' > _ci-result-titles/ok/page.qmd
+          git add -f _ci-result-titles
+      - name: Check the staged pages, expecting a failure
         id: result-titles-expected-failure
         continue-on-error: true
         uses: ./check-result-titles
         with:
           whole-tree: 'true'
-          paths-ignore: 'website/**'
+          paths-ignore: |
+            website/**
+            build-dependency-graph/tests/fixture/**
       - name: Assert the failing call actually failed
         shell: bash
         env:
@@ -2471,40 +2478,62 @@ jobs:
             echo "::error::expected check-result-titles to fail on a staged page, got outcome='$OUTCOME'"
             exit 1
           fi
-      # With fail turned off, the same finding must pass.
-      - name: Check the staged page with fail turned off
+      # The statement rule alone must also fail the action.
+      - name: Check only the page with a prose-only statement, expecting a failure
+        id: result-statement-expected-failure
+        continue-on-error: true
+        uses: ./check-result-titles
+        with:
+          whole-tree: 'true'
+          globs: '_ci-result-titles/statement/*.qmd'
+      - name: Assert the statement call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.result-statement-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-result-titles to fail on a prose-only statement, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With fail turned off, the same findings must pass.
+      - name: Check the staged pages with fail turned off
         uses: ./check-result-titles
         with:
           whole-tree: 'true'
           fail: 'false'
           paths-ignore: 'website/**'
-      - name: Check again with the page exempted through paths-ignore
+      - name: Check again with the failing pages exempted through paths-ignore
         uses: ./check-result-titles
         with:
           whole-tree: 'true'
           fail: 'true'
           paths-ignore: |
-            _ci-result-titles
+            _ci-result-titles/title
+            _ci-result-titles/statement
             website/**
+            build-dependency-graph/tests/fixture/**
       - name: Check again with prefixes that exclude theorems
         uses: ./check-result-titles
         with:
           whole-tree: 'true'
           fail: 'true'
           prefixes: 'lem'
-          paths-ignore: 'website/**'
-      - name: Check again with globs excluding the page
+          paths-ignore: |
+            website/**
+            build-dependency-graph/tests/fixture/**
+      - name: Check again with globs naming only the page that keeps both rules
         uses: ./check-result-titles
         with:
           whole-tree: 'true'
           fail: 'true'
-          globs: 'build-dependency-graph/tests/fixture/ok/*.qmd'
+          globs: '_ci-result-titles/ok/*.qmd'
       - name: Check again with no base, expecting a skip
         uses: ./check-result-titles
         with:
           base-ref: ''
           fail: 'true'
-      - name: Remove the staged page
+      - name: Remove the staged pages
         if: always()
         shell: bash
         run: git rm -rf --cached -q _ci-result-titles || true

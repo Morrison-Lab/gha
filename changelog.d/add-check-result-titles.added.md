@@ -10,3 +10,8 @@
   skips rather than scanning the whole tree when there is no base to diff against,
   and has a `whole-tree` mode.
   It fails by default.
+  A second rule flags a result whose statement, the div's text after its title,
+  has no display formula or no sentence in words,
+  since the statement says the title's sentence again in both forms (Ezra, 2026-11-20).
+  A statement finding is reported when a pull request adds any line of the div,
+  and `<!-- check-result-titles: allow-statement: <reason> -->` in the div exempts it.

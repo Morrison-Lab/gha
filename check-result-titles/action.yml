@@ -4,8 +4,10 @@ description: >-
   proposition, corollary, or conjecture) when the diff adds it and it is not a
   declarative sentence stating the result (Ezra, 2026-11-20). A customary
   name may come first, followed by a colon. The test is a verb list plus math
-  relations, not a parser. Code fences and comments are not counted.
-  Fails by default.
+  relations, not a parser. It also flags a result whose statement has no
+  display formula or no sentence in words, since the statement says the
+  title's sentence again in both forms. Code fences and comments are not
+  counted. Fails by default.
 inputs:
   python-version:
     description: Python version to set up.
