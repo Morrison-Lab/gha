@@ -1,0 +1,50 @@
+name: Check template identity
+description: >-
+  Fails a repository made from a template while its config files still hold
+  the template's own identity: its repository URL
+  (github.com/<owner>/<name>), its Pages URL (<owner>.github.io/<name>), or
+  a listed literal such as the template's title (gha#2154, qwt#207). Passes
+  with a notice in the template itself. Reads the named tracked files whole,
+  with no diff scope, and stops with an error when none of them exists.
+  Blocking by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  template:
+    description: The template repository, as owner/name.
+    required: true
+  repository:
+    description: This repository, as owner/name.
+    default: ${{ github.repository }}
+  files:
+    description: >-
+      Space-separated git pathspecs of the tracked files to read.
+    default: '_quarto.yml _quarto-website.yml _quarto-book.yml DESCRIPTION index.qmd'
+  strings:
+    description: >-
+      Newline-separated extra literals a derived repository must not keep,
+      such as the template's title or placeholder author.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a file still holds the template's identity (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check template identity
+      shell: bash
+      env:
+        CTI_TEMPLATE: ${{ inputs.template }}
+        CTI_REPOSITORY: ${{ inputs.repository }}
+        CTI_FILES: ${{ inputs.files }}
+        CTI_STRINGS: ${{ inputs.strings }}
+        CTI_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-template-identity.py"

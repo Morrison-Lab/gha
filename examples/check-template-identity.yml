@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-template-identity.yml in a TEMPLATE repo,
+# and set `template` to that repo. "Use this template" copies the workflow
+# into every new repository, where it fails until the new repository's config
+# no longer holds the template's repository URL, Pages URL, or a listed
+# literal. In the template itself it passes with a notice.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check template identity
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-template-identity.yml@v3
+    with:
+      template: your-org/your-template  # owner/name of the template repo
+      # files: '_quarto.yml DESCRIPTION'  # tracked files to read
+      # strings: |                        # extra literals, one per line
+      #   Your Template's Title
+      # fail: true                        # set false to warn only (defaults to true)

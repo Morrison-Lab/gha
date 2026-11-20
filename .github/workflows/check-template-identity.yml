@@ -1,0 +1,56 @@
+name: Check template identity (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ''
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      template:
+        description: The template repository, as owner/name.
+        type: string
+        required: true
+      files:
+        description: >-
+          Space-separated git pathspecs of the tracked files to read.
+        type: string
+        default: '_quarto.yml _quarto-website.yml _quarto-book.yml DESCRIPTION index.qmd'
+      strings:
+        description: >-
+          Newline-separated extra literals a derived repository must not
+          keep, such as the template's title or placeholder author.
+        type: string
+        default: ''
+      fail:
+        description: >-
+          Fail the workflow when a file still holds the template's identity
+          (else non-blocking). Defaults to true.
+        type: boolean
+        default: true
+
+jobs:
+  check-template-identity:
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check template identity
+        uses: Morrison-Lab/gha/check-template-identity@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          template: ${{ inputs.template }}
+          files: ${{ inputs.files }}
+          strings: ${{ inputs.strings }}
+          fail: ${{ inputs.fail }}
