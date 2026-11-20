@@ -1,0 +1,107 @@
+---
+title: "check-result-titles.yml"
+---
+
+Diff-scoped check that flags a result div whose title is not a sentence.
+It fails by default, since agents ignore warnings (Ezra, 2026-11-02).
+The title of a theorem, lemma, proposition, corollary or conjecture div
+is a declarative sentence that states the result (Ezra, 2026-11-20).
+A result with a customary name may put the name first,
+followed by a colon,
+as in "Bias-variance decomposition: the expected test error is the variance
+plus the squared bias plus the noise".
+The rule text is in psw,
+"Title a result with the sentence it states".
+
+The check reads the title of each div whose id starts with a prefix in
+`prefixes`:
+the `title="..."` attribute on its opening fence,
+or else the first heading written directly inside it.
+
+A title counts as a sentence when it holds a finite verb,
+or when its math holds a relation such as `=`, `<`, `\le` or `\in`.
+The verb test is a word list, not a parser:
+
+- An auxiliary or copula (`is`, `are`, `has`, `does`, `can`, ...) counts.
+- A verb from the script's `VERB_STEMS` list counts,
+  in its base form or its third-person form
+  (`equal`, `equals`, `converges`, `separates`, ...).
+- A word that is more often a noun in a title,
+  such as `estimate`, `bounds`, `squares` or `weights`,
+  does not count, so "Bounds on the leverage" is flagged.
+- The first word of the title never counts.
+- Words after `that`, `which`, `when`, `if` and other clause openers are
+  dropped first, so a verb in a relative clause,
+  as in "Number of models that best subset selection fits",
+  does not count.
+
+So a sentence whose only verb is missing from the list is flagged.
+Add the verb to `VERB_STEMS` in a pull request here,
+or mark the line with `<!-- check-result-titles: allow: <reason> -->`.
+
+The check does not count
+a title inside a code fence, an HTML comment or the YAML front matter.
+
+Measured on 2026-11-20 over `Morrison-Lab/lds`,
+the check read 144 result titles and flagged 76.
+Each flagged title read by hand was a noun phrase,
+a gerund phrase or a bare name.
+
+## Scope
+
+A finding is reported only when the title line was added in the pull request,
+so existing titles are not swept.
+A title line whose exact text the pull request also deletes counts as moved.
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked page in full on purpose,
+which measures how many titles in a corpus break the rule.
+
+## Inputs
+
+| Input          | Type    | Default    | Description |
+| -------------- | ------- | ---------- | ----------- |
+| `globs`        | string  | `'*.qmd'`  | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`       | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `prefixes`     | string  | `'thm lem prp cor conj'` | Space-separated div id prefixes that mark a result div. |
+| `fail`         | boolean | `true`     | Fail the workflow when an added result title is not a sentence. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`    | Scan every tracked page in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`   | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-result-titles.yml in your repo.
+# Diff-scoped check: flags the title of a theorem, lemma, proposition, corollary or
+# conjecture div when a PR adds it and it is not a declarative sentence stating the
+# result. A customary name may come first, followed by a colon.
+# Fails by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check result titles
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-result-titles.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   prefixes: 'thm lem prp cor conj'      # div id prefixes of result divs
+    #   fail: false                            # warn instead of block (defaults to true)
+    #   whole-tree: true                       # scan every page, not just a PR's additions
+```
+
+See
+[`examples/check-result-titles.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-result-titles.yml)
+for the full caller stub.
