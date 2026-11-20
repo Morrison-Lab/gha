@@ -4475,6 +4475,94 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-css || true
           rm -rf _ci-css
+  # check-template-identity is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-template-identity@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the matching rules; the composite calls below prove
+  # action.yml wires each input through.
+  template-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      CTI_CI_TEMPLATE: ci-owner/ci-template
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-template-identity unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-template-identity/tests/ -v
+      # stale.yml keeps the template's repository URL, built at run time so
+      # no link checker reads it from this file. clean.yml holds only a title.
+      - name: Stage a stale and a clean config file
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-cti
+          printf 'repo-url: https://github.com/%s\n' "$CTI_CI_TEMPLATE" > _ci-cti/stale.yml
+          printf '%s\n' 'title: CI Template Title' > _ci-cti/clean.yml
+          git add -f _ci-cti
+      - name: Check the stale file, expecting a failure
+        id: cti-stale
+        continue-on-error: true
+        uses: ./check-template-identity
+        with:
+          template: ${{ env.CTI_CI_TEMPLATE }}
+          files: '_ci-cti/stale.yml'
+      # A dropped `files` would read the default list, find no file, and fail.
+      - name: Check the clean file
+        uses: ./check-template-identity
+        with:
+          template: ${{ env.CTI_CI_TEMPLATE }}
+          files: '_ci-cti/clean.yml'
+      - name: Check the clean file with its title listed, expecting a failure
+        id: cti-strings
+        continue-on-error: true
+        uses: ./check-template-identity
+        with:
+          template: ${{ env.CTI_CI_TEMPLATE }}
+          files: '_ci-cti/clean.yml'
+          strings: |
+            CI Template Title
+      - name: Assert both failing calls actually failed
+        shell: bash
+        env:
+          STALE: ${{ steps.cti-stale.outcome }}
+          STRINGS: ${{ steps.cti-strings.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$STALE" != "failure" ] || [ "$STRINGS" != "failure" ]; then
+            echo "::error::expected check-template-identity to fail twice, got stale='$STALE' strings='$STRINGS'"
+            exit 1
+          fi
+      # Each of these must pass over the stale file, so each proves its
+      # input reached the script.
+      - name: Check the stale file as the template itself
+        uses: ./check-template-identity
+        with:
+          template: ${{ env.CTI_CI_TEMPLATE }}
+          repository: ${{ env.CTI_CI_TEMPLATE }}
+          files: '_ci-cti/stale.yml'
+      - name: Check the stale file warn-only
+        uses: ./check-template-identity
+        with:
+          template: ${{ env.CTI_CI_TEMPLATE }}
+          files: '_ci-cti/stale.yml'
+          fail: 'false'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-cti || true
+          rm -rf _ci-cti
   # check-self-contained-captions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-self-contained-captions@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly.
