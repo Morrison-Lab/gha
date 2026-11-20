@@ -7204,7 +7204,7 @@
     "href": "reference/check-heading-siblings.html#what-it-measures",
     "title": "check-heading-siblings.yml",
     "section": "What it measures",
-    "text": "What it measures\nThe check counts headings on the expanded page, the page’s own text with each {{&lt; include &gt;}} shortcode replaced by the file it names, since a chapter’s headings are often split across subfiles. Headings inside fenced code blocks and HTML comments do not count. A heading’s parent is the nearest earlier heading of a lower level.",
+    "text": "What it measures\nThe check counts headings on the expanded page, the page’s own text with each {{&lt; include &gt;}} shortcode replaced by the file it names, since a chapter’s headings are often split across subfiles. Headings inside fenced code blocks and HTML comments do not count. Nor do headings inside fenced divs, which title the div (the #### of a definition or exercise) or a tab, not a section. .unnumbered and .unlisted headings are not counted as siblings, but they still act as parents. A heading’s parent is the nearest earlier heading of a lower level. Measured 2026-11-20 with whole-tree: true over lds, skipping div headings took the crowded and lone top-level findings from 186 to 16.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -7228,7 +7228,7 @@
     "href": "reference/check-heading-siblings.html#what-it-flags",
     "title": "check-heading-siblings.yml",
     "section": "What it flags",
-    "text": "What it flags\nA group of more than max siblings, when the pull request adds one of its headings to the page or to a file it includes. The finding sits on the first added heading of the group. A group the diff did not add a heading to is not reflagged, so nothing is swept. &lt;!-- check-heading-siblings: allow --&gt; anywhere in the page’s own file exempts it.\nWith no base-ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to measure every tracked page in full.",
+    "text": "What it flags\nA group of more than max siblings, when the pull request adds one of its headings to the page or to a file it includes. The finding sits on the first added heading of the group. A group the diff did not add a heading to is not reflagged, so nothing is swept.\nA lone numbered subheading: a numbered heading that is the only numbered heading at its level under its parent heading, such as a lone 1.1 under 1 (Ezra, 2026-11-20). Numbering a single subsection says the parent has parts when it has one. The usual fix is to add another sibling or promote a child, not to remove the singleton. The finding is reported when the pull request adds or changes the lone heading or its parent heading. Set lone: false to turn it off. Measured 2026-11-20 with whole-tree: true over lds: 18 lone subheadings on 12 pages.\n&lt;!-- check-heading-siblings: allow --&gt; anywhere in the page’s own file exempts it.\nWith no base-ref, or when the diff cannot be computed, the check skips with a warning instead of scanning the whole tree. Set whole-tree: true to measure every tracked page in full.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -7240,7 +7240,7 @@
     "href": "reference/check-heading-siblings.html#inputs",
     "title": "check-heading-siblings.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nmax\nstring\n'7'\nLargest number of sibling headings under one parent.\n\n\nfail\nboolean\ntrue\nFail the workflow when a touched group is over the limit. Set false for warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nMeasure every tracked page in full instead of only touched pages.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip.\n\n\nmax\nstring\n'7'\nLargest number of sibling headings under one parent.\n\n\nlone\nboolean\ntrue\nFlag a lone numbered subheading (a 1.1 with no 1.2).\n\n\nfail\nboolean\ntrue\nFail the workflow when a touched group is over the limit. Set false for warning annotations only.\n\n\nwhole-tree\nboolean\nfalse\nMeasure every tracked page in full instead of only touched pages.",
     "crumbs": [
       "Overview",
       "Reference",
