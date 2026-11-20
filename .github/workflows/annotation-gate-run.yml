@@ -89,6 +89,19 @@ on:
 
 jobs:
   annotation-gate-run:
+    # A run on a pull request's superseded head gets no gate: no one merges
+    # that commit. The workflow_run payload's pull_requests entry carries the
+    # PR's current head, so comparing it with the run's head skips the job
+    # without taking a runner. Cancel-superseded cancels ~30 runs per push,
+    # and each of them finishing queued a gate for the old commit; on
+    # 2026-11-19 gates were 41 of ~500 queued lds runs (lds#2992). A schedule
+    # or manual run, and a run with no pull request, are gated as before.
+    if: >-
+      ${{
+        github.event_name != 'workflow_run'
+        || !github.event.workflow_run.pull_requests[0]
+        || github.event.workflow_run.pull_requests[0].head.sha == github.event.workflow_run.head_sha
+      }}
     runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     # The group name differs from any a caller sets at workflow level: a job
