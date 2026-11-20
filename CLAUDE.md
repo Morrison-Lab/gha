@@ -17,14 +17,17 @@ Guidance for Claude Code when working in this repository.
 
 ## Standing tag-slide policy
 
-- **The runner thread slides this repo's major tag without asking, once the gates below pass.**
-  Ezra, 2026-11-10, in the project thread:
-  "can we make `slide v3` allowed without needing my permission" (gha#1834).
-  This replaces the rule that the slide waits for Ezra's typed "slide v3"
-  (coordinator rule, 2026-11-08, gha#1614).
-  Only the runner thread dispatches `slide-major-tag.yml`, so two threads never race:
-  an owner thread whose fix has merged reports the merge to the coordinator
-  and does not dispatch the slide or schedule a check-in that would.
+- **Any agent that finishes a gha PR slides this repo's major tag without asking, once the gates below pass.**
+  Ezra, 2026-11-20: "never ask me before sliding an infra tag; always just do it"
+  ([ai-config#6052](https://github.com/Morrison-Lab/ai-config/issues/6052)).
+  This widens the 2026-11-10 grant to the runner thread alone
+  ("can we make `slide v3` allowed without needing my permission", gha#1834),
+  which replaced the rule that the slide waits for Ezra's typed "slide v3" (gha#1614).
+  The thread that merged the PR, or learned it merged, dispatches `slide-major-tag.yml` itself.
+  It does not hand the slide to a runner thread or the coordinator, and does not ask anyone.
+  Two threads sliding at once are safe:
+  each passes the `expected_sha` it checked, the workflow's concurrency group cancels the older run,
+  and a run whose `main` has moved refuses rather than tagging an unchecked commit.
   Like the other grants here, it removes the asking and not the judgment;
   the readiness bar and audits below still apply.
 
@@ -205,12 +208,12 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** (runner thread only, without waiting to be asked) slide when the
+- **Do:** (any thread, without waiting to be asked) slide when the
   commit is green, the callees' `permissions:` blocks gained no key and
   widened no value since the tagged commit, and consumers need it
   --- then report both SHAs.
-  The bullets above that say "you" describe the runner thread's duties
-  in this section; other threads do not dispatch the slide.
+- **Don't:** ask Ezra or the coordinator whether to slide, or leave the slide
+  to a runner thread; a failing gate is a hold to report, not a question.
 
 - **Don't:** read a green readiness bar as the whole gate; it was green when
   gha#830 shipped the outage.
@@ -295,7 +298,7 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 A capability with another name and an external `uses:` still does.
 
 A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
-The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub, opened after the slide.
+The issue lists the `v3` slide (the thread that merged the check slides it) and one caller PR per notes repo, copied from the example stub, opened after the slide.
 Until the slide, a caller PR pinned at `@v3` fails `check-caller-permissions` with a 404, because the new workflow does not exist at that tag yet.
 A run that failed that way at startup cannot be re-run after the slide:
 the rerun endpoint answers 403 "This workflow run cannot be retried"
