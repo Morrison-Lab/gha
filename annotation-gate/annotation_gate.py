@@ -192,7 +192,7 @@ def command_data(text):
 
 
 def report_deferral(head_sha, waiting, now=None):
-    """Name the runs a deferred gate waits on, in the log, a notice, and the job summary.
+    """Report a deferred gate: count the waiting runs in the log, and name them in a notice and the job summary.
 
     A deferred gate posts no check run, so without this a held-back gate reads
     as one that never started (gha#2151).

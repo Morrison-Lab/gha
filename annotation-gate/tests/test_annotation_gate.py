@@ -491,7 +491,8 @@ def test_a_deferred_gate_names_the_runs_it_waits_on_in_the_summary(monkeypatch, 
     assert code == 0 and posted == []
     text = summary.read_text()
     assert "Quarto Preview Build: queued for " in text and "actions/runs/20" in text
-    assert "::notice title=Annotation gate deferred::" in capsys.readouterr().out
+    notice = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("::notice")]
+    assert len(notice) == 1 and "Quarto Preview Build: queued for " in notice[0]
 
 
 def test_a_deferral_notice_escapes_run_names(monkeypatch, capsys):
