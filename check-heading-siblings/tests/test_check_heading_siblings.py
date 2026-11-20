@@ -189,3 +189,71 @@ def test_callout_titles_and_unnumbered_headings_are_not_outline_entries():
 def test_unnumbered_headings_do_not_count_toward_the_max_rule():
     text = "# Body\n\n" + "\n\n".join(f"## U{i} {{.unnumbered}}" for i in range(9))
     assert chs.crowded_groups(chs.headings(lines(text)), 7) == []
+
+
+def outline(text):
+    return chs.headings(lines(text), outline=True)
+
+
+def test_lone_numbered_subheading_is_found():
+    found = outline("# One\n\n## Only child\n\n# Two\n\n## A\n\n## B\n")
+    lone = chs.lone_subheadings(found)
+    assert [(found[p].title, h.title) for p, h in lone] == [("One", "Only child")]
+
+
+def test_two_numbered_children_and_top_level_are_not_lone():
+    # A page's single top-level heading is the min rule's, not this one's.
+    assert chs.lone_subheadings(outline("# One\n\n## A\n\n## B\n")) == []
+    assert chs.lone_subheadings(outline("# Only\n")) == []
+
+
+def test_unnumbered_and_unlisted_siblings_do_not_count_but_parent():
+    text = ("# One\n\n## A\n\n## Notes {.unnumbered}\n\n## Hidden {.unlisted}\n\n"
+            "# Reading {.unnumbered}\n\n### Lone under unnumbered\n")
+    found = outline(text)
+    lone = [(found[p].title, h.title) for p, h in chs.lone_subheadings(found)]
+    assert lone == [("One", "A"), ("Reading", "Lone under unnumbered")]
+
+
+def test_lone_unnumbered_child_is_not_flagged():
+    assert chs.lone_subheadings(outline("# One\n\n## Notes {.unnumbered}\n")) == []
+
+
+def test_headings_inside_divs_are_not_outline_entries():
+    text = ("# One\n\n## A\n\n::: {#def-x}\n#### Term\n\ntext\n:::\n\n"
+            "::: {.panel-tabset}\n### R\n\n### Python\n:::\n\n## B\n")
+    found = outline(text)
+    assert [h.title for h in found] == ["One", "A", "B"]
+    assert chs.lone_subheadings(found) == []
+
+
+def test_div_titles_still_count_for_the_max_rule_as_before():
+    text = "::: {#def-x}\n## T\n:::\n"
+    assert [h.title for h in chs.headings(lines(text))] == ["T"]
+
+
+def test_lone_subheading_is_flagged_when_it_or_its_parent_is_touched(tmp_path):
+    page = tmp_path / "page.qmd"
+    page.write_text('---\ntitle: "P"\n---\n\n# A\n\n## Only\n\n# B\n\n## X\n\n## Y\n')
+    path = chs.os.path.normpath(str(page))
+    args = (str(tmp_path), )
+    assert chs.scan_page(str(page), *args, {}, 7, 0, True) == []
+    for line in (5, 7):  # the parent, then the lone heading itself
+        out = chs.scan_page(str(page), *args, {path: [line]}, 7, 0, True)
+        assert len(out) == 1 and out[0].subheading and out[0].line == 7
+        message = chs.format_message(out[0])
+        assert "only numbered heading" in message
+        assert "add another sibling heading or promote a child" in message
+    # A touched sibling group elsewhere does not flag it.
+    assert chs.scan_page(str(page), *args, {path: [13]}, 7, 0, True) == []
+    assert len(chs.scan_page(str(page), *args, None, 7, 0, True)) == 1
+    assert chs.scan_page(str(page), *args, None, 7, 0, False) == []
+
+
+def test_lone_rule_is_on_by_default():
+    root = Path(__file__).resolve().parent.parent
+    action = (root / "action.yml").read_text()
+    workflow = (root.parent / ".github" / "workflows" / "check-heading-siblings.yml").read_text()
+    assert "default: 'true'" in action.split("  lone:")[1].split("  fail:")[0]
+    assert "default: true" in workflow.split("      lone:")[1].split("      fail:")[0]
+    assert 'diffscope.env_flag("CHS_LONE", True)' in (root / "check-heading-siblings.py").read_text()

@@ -1,6 +1,7 @@
 # Copy to .github/workflows/check-heading-siblings.yml in your repo.
 # Diff-scoped check: flags a heading a PR adds to a group of more than 7
-# sibling headings (same level, same parent, includes expanded).
+# sibling headings (same level, same parent, includes expanded), and a lone
+# numbered subheading (a 1.1 with no 1.2) a PR adds or changes.
 # Fails by default.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check heading siblings
@@ -19,5 +20,6 @@ jobs:
     #   globs: '*.qmd'                         # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
     #   max: '7'                               # sibling headings per parent
+    #   lone: false                            # allow a lone numbered subheading
     #   fail: false                            # warn instead of block (defaults to true)
     #   whole-tree: true                       # scan every page, not just a PR's additions

@@ -2,7 +2,8 @@ name: Check heading siblings
 description: >-
   Diff-scoped check that flags a heading a pull request adds to a group of more
   than 7 sibling headings (same level, same parent heading, with includes
-  expanded), so a reader scanning the headings can hold them in mind. Fails by default.
+  expanded), so a reader scanning the headings can hold them in mind, and a
+  lone numbered subheading (a 1.1 with no 1.2). Fails by default.
 inputs:
   python-version:
     description: Python version to set up.
@@ -32,6 +33,12 @@ inputs:
       Fewest top-level headings a page that has any may carry; a page with
       fewer is flagged when the diff adds its heading. Set '0' to turn it off.
     default: '2'
+  lone:
+    description: >-
+      Flag a numbered heading that is the only numbered heading at its level
+      under its parent heading (a lone 1.1 under 1), when the diff adds or
+      changes it or its parent. Set 'false' to turn it off.
+    default: 'true'
   fail:
     description: >-
       Fail the action when a touched group is over the limit (else
@@ -54,5 +61,6 @@ runs:
         CHS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         CHS_MAX: ${{ inputs.max }}
         CHS_MIN: ${{ inputs.min }}
+        CHS_LONE: ${{ inputs.lone }}
         CHS_FAIL: ${{ inputs.fail }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-heading-siblings.py"
