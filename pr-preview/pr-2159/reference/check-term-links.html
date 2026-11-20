@@ -1011,6 +1011,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-ball-neighborhoods.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-ball-neighborhoods.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-precedence-parens.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-precedence-parens.yml</span></a>
   </div>
@@ -1362,6 +1368,7 @@ cookieconsent.run({
 <li><strong><code>bare-allow</code>.</strong> An opt-out pragma on a line the pull request adds, with no reason. Write <code>&lt;!-- check-term-links: allow: why this line is exempt --&gt;</code>, so a reviewer sees why each exemption exists.</li>
 </ul>
 <p>It skips code fences and spans, math, HTML comments, YAML front matter, include shortcodes, headings, images, and the target of a link. <code>&lt;!-- check-term-links: allow: reason --&gt;</code> exempts a line, and <code>&lt;!-- check-term-links: ignore-file --&gt;</code> a file.</p>
+<p>Answer a finding by linking the term, writing its definition first when none exists. Never delete or replace the term to quiet the check, since that passes the check and loses the term (Ezra, 2026-11-20). Each finding’s message says so.</p>
 </section>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>

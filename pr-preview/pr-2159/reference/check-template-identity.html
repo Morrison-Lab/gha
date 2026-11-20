@@ -1011,6 +1011,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-ball-neighborhoods.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-ball-neighborhoods.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-precedence-parens.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-precedence-parens.yml</span></a>
   </div>
@@ -1346,11 +1352,11 @@ cookieconsent.run({
 <li>the template’s Pages URL, <code>&lt;owner&gt;.github.io/&lt;name&gt;</code>;</li>
 <li>a literal listed in <code>strings</code>, such as the template’s title.</li>
 </ul>
-<p>Matching ignores case. A match that is part of a longer name on either side, such as <code>github.com/&lt;owner&gt;/&lt;name&gt;-fork</code>, does not count. The same holds for a listed literal. A line that should keep the value, such as a credit link to the template, passes with <code>check-template-identity: allow: &lt;reason&gt;</code> on that line, for example in a YAML comment.</p>
+<p>Matching ignores case. A match that is part of a longer name on either side, such as <code>github.com/&lt;owner&gt;/&lt;name&gt;-fork</code>, does not count. The same holds for a listed literal. A dot with a letter or digit after it carries a name on, as in <code>github.com/&lt;owner&gt;/&lt;name&gt;.v2</code>, except the <code>.git</code> of a clone URL. A dot that ends a sentence does not. So a page under the template’s site, such as <code>&lt;owner&gt;.github.io/&lt;name&gt;.html</code>, is not reported, while <code>&lt;owner&gt;.github.io/&lt;name&gt;/</code> is. A line that should keep the value, such as a credit link to the template, passes with <code>check-template-identity: allow: &lt;reason&gt;</code> on that line, for example in a YAML comment.</p>
 <p>In the template itself there is nothing to check, so the job says so and passes. A fork that keeps the template’s name under another owner is a different repository, so the check runs there.</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
-<p>The check reads the named tracked files whole, because a value the new repository never changed is on no line a diff adds. It stops with an error when no tracked file matches <code>files</code>, whatever <code>fail</code> says, so a wrong list cannot pass by reading nothing.</p>
+<p>The check reads the named tracked files whole, because a value the new repository never changed is on no line a diff adds. It stops with an error when no tracked file matches <code>files</code>, whatever <code>fail</code> says, so a wrong list cannot pass by reading nothing. It stops the same way, with exit status 2, when a matched file cannot be read.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
