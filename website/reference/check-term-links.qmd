@@ -83,6 +83,13 @@ include shortcodes, headings, images, and the target of a link.
 `<!-- check-term-links: allow: reason -->` exempts a line, and
 `<!-- check-term-links: ignore-file -->` a file.
 
+Answer a finding by linking the term,
+writing its definition first when none exists.
+Never delete or replace the term to quiet the check,
+since that passes the check and loses the term
+(Ezra, 2026-11-20).
+Each finding's message says so.
+
 ## Scope
 
 Terms are always learned from every tracked file the globs match.
