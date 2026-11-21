@@ -1369,6 +1369,9 @@ cookieconsent.run({
 <li>Whitespace and braces between tokens do not matter, so <code>\sum_{ i = 1 }^{ n }</code> matches too.</li>
 <li>Several macros with one expansion are reported together (<code>\sumin or \sumto</code>). When matches overlap, the longest one is reported.</li>
 <li>A body is <em>structured enough</em> when it has at least four tokens (commands, symbols, words and placeholders, not braces) and is not an alias of other macros. A lone font wrapper such as <code>\mathcal{H}</code> or <code>\operatorname{rank}</code> has two tokens and is never flagged, because the same glyphs are often a different concept. <code>\begin{aligned}</code> is likewise not flagged.</li>
+<li>A transpose product is structured enough at any size: a body holding <code>\tp</code> and two placeholders, such as <code>\soprod</code> (<code>#1 \tp{#1}</code>), <code>\oprod</code>, <code>\tprod</code>, <code>\ccprod</code>, and <code>\qform</code>, is always kept (Ezra, 2026-11-20, on pds#478). A body that is one call of such a product, as <code>\stprod</code> is <code>\ccprod{#1}{#1}</code>, is also read as the product’s body, so a Gram matrix <code>\tp{\mX} \mX</code> is reported as <code>\stprod</code>.</li>
+<li>In a transpose product, an argument may also be a macro applied to one braced group, such as <code>\paren{\vX - \vmu}</code> or <code>\matr{\Omega}_{11}</code>, with an optional subscript and superscript. A number, <code>\tp</code> itself, and text, spacing, environment, and delimiter commands (<code>\text</code>, <code>\quad</code>, <code>\begin</code>, <code>\left</code>) are never arguments.</li>
+<li>A product that opens on a factor, such as <code>\oprod</code>, is not reported in the middle of a longer product: in <code>\mQ \matr{\Eigvals} \tp{\mQ}</code>, and in <code>\tp{\va} \tp{\vb}</code>, no outer product is reported.</li>
 </ul>
 </section>
 <section id="what-it-does-not-flag" class="level2">
