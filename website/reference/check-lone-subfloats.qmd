@@ -39,7 +39,8 @@ Three findings:
   A chunk's `fig-subcap` or `tbl-subcap` lists exactly one entry.
   Give the caption as `fig-cap` or `tbl-cap` instead.
 
-`<!-- check-lone-subfloats: allow: <reason> -->` inside the float's div,
+`<!-- check-lone-subfloats: allow: <reason> -->` anywhere inside the float's div,
+a tabset nested in it included,
 or inside the chunk, exempts it.
 A pragma with no reason exempts nothing.
 The check does not count a float inside a code fence or an HTML comment,
@@ -49,6 +50,8 @@ or the content an `include` shortcode pulls in at render time.
 
 Only a float that holds a line a pull request adds is reported,
 so existing figures are never reflagged.
+A pull request that only deletes lines adds none,
+so deleting one of two subfigures is not reported.
 The whole file is parsed, since a div opens far above the changed line.
 An added line whose exact text was also deleted in the same diff
 counts as moved rather than new, and a blank added line is not content.

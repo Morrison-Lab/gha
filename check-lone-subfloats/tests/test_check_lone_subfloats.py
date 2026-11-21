@@ -111,6 +111,30 @@ def test_tab_level_is_the_first_heading_in_the_tabset():
 
 # -- the one-subfloat rule -------------------------------------------------------
 
+def test_bare_panel_tabset_class_is_a_tabset():
+    doc = PER_TAB.replace('{.panel-tabset group="language"}', "panel-tabset")
+    assert found(doc) == [(1, "per-tab")]
+
+
+def test_chunk_before_the_first_tab_shows_in_every_tab():
+    doc = ("::: {#fig-a}\n::: {.panel-tabset}\n" + chunk("fig-a0")
+           + "\n### R\n\n" + chunk("fig-a1") + "\n### Python\n\n"
+           + chunk("fig-a2", "python") + ":::\nCap.\n:::\n")
+    assert found(doc) == []
+
+
+def test_id_mentioned_in_an_attribute_value_is_not_a_float():
+    doc = '::: {#exm-a fig-alt="see #fig-x"}\n' + chunk("fig-a1") + ":::\n"
+    assert found(doc) == []
+
+
+def test_allow_pragma_inside_the_tabset_exempts_the_float():
+    doc = PER_TAB.replace(
+        "### R\n",
+        "<!-- check-lone-subfloats: allow: tabs show one figure -->\n### R\n")
+    assert found(doc) == []
+
+
 def test_figure_with_one_subfigure_is_flagged():
     doc = "::: {#fig-a}\n" + chunk("fig-a-1") + "Cap.\n:::\n"
     assert found(doc) == [(1, "one")]

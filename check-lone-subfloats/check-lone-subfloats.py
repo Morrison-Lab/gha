@@ -51,6 +51,7 @@ Configuration (environment variables, set by the composite action):
 """
 
 import importlib.util
+import itertools
 import os
 import re
 import sys
@@ -83,14 +84,18 @@ import diffscope  # noqa: E402
 DEFAULT_GLOBS = "*.qmd"
 _DEFAULT_FAIL = True
 
-FLOAT_ID_RE = re.compile(r"#(fig|tbl)-[\w:.-]*")
-TABSET_RE = re.compile(r"(?:^|[\s{])\.panel-tabset\b")
+# A float is a div whose own id is #fig- or #tbl-, not one whose attribute
+# values merely mention such an id.
+FLOAT_ID_RE = re.compile(r"(?:^|[\s{])#((fig|tbl)-[\w:.-]*)")
+QUOTED_RE = re.compile(r"\"[^\"]*\"|'[^']*'")
+# `.panel-tabset` as a class, or the bare Pandoc form `::: panel-tabset`.
+TABSET_RE = re.compile(r"(?:^|[\s{])\.?panel-tabset\b")
 CHUNK_OPEN_RE = re.compile(r"^[ \t]*(`{3,})\s*\{")
 LABEL_RE = re.compile(r"^\s*#\|\s*label:\s*['\"]?((fig|tbl)-[\w:.-]*)")
 SUBCAP_RE = re.compile(r"^\s*#\|\s*(fig|tbl)-subcap:\s*(.*?)\s*$")
 LIST_ITEM_RE = re.compile(r"^\s*#\|\s+-\s+\S")
 NO_OUTPUT_RE = re.compile(r"^\s*#\|\s*(?:include|output|eval):\s*false\s*$")
-CHUNK_OPT_RE =re.compile(r"^\s*#\|\s*[\w.-]+\s*:")
+CHUNK_OPT_RE = re.compile(r"^\s*#\|\s*[\w.-]+\s*:")
 INLINE_FLOAT_RE = re.compile(r"\{#(fig|tbl)-[\w:.-]*")
 HEADING_RE = re.compile(r"^(#{1,6})\s+\S")
 ALLOW_RE = re.compile(r"<!--\s*check-lone-subfloats:\s*allow:\s*(?!-->)\S")
@@ -107,13 +112,17 @@ class Finding(NamedTuple):
     rule: str   # "one", "per-tab" or "subcap"
 
 
+_SERIAL = itertools.count()
+
+
 class _Div:
     def __init__(self, start: int, attrs: str):
         self.start = start
         self.attrs = attrs
-        m = FLOAT_ID_RE.search(attrs)
-        self.kind = m.group(1) if m else None
-        self.ident = m.group(0) if m else ""
+        m = FLOAT_ID_RE.search(QUOTED_RE.sub('""', attrs))
+        self.kind = m.group(2) if m else None
+        self.ident = "#" + m.group(1) if m else ""
+        self.serial = next(_SERIAL)
         self.tabset = bool(TABSET_RE.search(attrs))
         self.tab_level: Optional[int] = None
         self.tab = -1  # index of the current tab, for a tabset
@@ -123,16 +132,19 @@ class _Div:
 
 
 def _tab_path(stack: List["_Div"], upto: int) -> Tuple[Tuple[int, int], ...]:
-    """The tabs, from stack index ``upto`` inward, that enclose the top."""
-    return tuple((id(d), d.tab) for d in stack[upto + 1:] if d.tabset)
+    """The tabs, from stack index ``upto`` inward, that enclose the top.
+
+    Content before a tabset's first tab heading shows above every tab,
+    so that tabset does not narrow its view.
+    """
+    return tuple((d.serial, d.tab) for d in stack[upto + 1:]
+                 if d.tabset and d.tab >= 0)
 
 
-def _add_sub(stack: List["_Div"], kind: str, own: Optional["_Div"] = None) -> None:
+def _add_sub(stack: List["_Div"], kind: str) -> None:
     """Record a subfloat of ``kind`` in the innermost enclosing float."""
     for i in range(len(stack) - 1, -1, -1):
         d = stack[i]
-        if d is own:
-            continue
         if d.kind is not None:
             if d.kind == kind:
                 d.subs.append(_tab_path(stack, i))
@@ -198,8 +210,13 @@ def scan_file(lines: List[str]) -> List[Finding]:
     in_comment = False
     for idx, raw in enumerate(lines):
         n = idx + 1
-        if fence is None and ALLOW_RE.search(raw) and stack:
-            stack[-1].allow = True
+        if fence is None and ALLOW_RE.search(raw):
+            # The pragma exempts the innermost float around it,
+            # even from inside a tabset or other div nested in that float.
+            for d in reversed(stack):
+                if d.kind is not None:
+                    d.allow = True
+                    break
         if fence is not None:
             if chunk is not None:
                 chunk[1].append(raw)
@@ -343,7 +360,12 @@ def main() -> int:
     report = run_check(base_ref, globs, ignores, whole_tree)
 
     if report.skipped:
-        reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
+        if whole_tree:
+            reason = "could not list the tracked files"
+        elif base_ref:
+            reason = f"could not diff against '{base_ref}'"
+        else:
+            reason = "no base-ref given"
         level = "::warning::" if base_ref else ""
         print(
             f"{level}Skipping the lone-subfloat check for this run "
