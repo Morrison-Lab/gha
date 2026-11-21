@@ -7,7 +7,7 @@
   These bodies have three tokens, below the four-token floor, so the check missed them
   (Ezra, 2026-11-20, on Morrison-Lab/pds#478).
   A product's argument may now be a macro applied to one braced group, with a subscript and superscript.
-  A number, `\tp`, and text, spacing, environment and delimiter commands are never arguments,
+  A number, `\tp`, and text, spacing, environment, and delimiter commands are never arguments,
   and a product that opens on a factor is not reported in the middle of a longer product.
   An argument macro is no longer split into two (`\vX` read as `\v` and `X`),
   which removes false findings such as `\grad_{\vx}\, p` reported as `\gradwrt`.

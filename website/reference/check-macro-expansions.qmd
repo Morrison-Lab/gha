@@ -44,7 +44,7 @@ and `\tp{X} W X` as `\qform`.
   `\begin{aligned}` is likewise not flagged.
 - A transpose product is structured enough at any size:
   a body holding `\tp` and two placeholders,
-  such as `\soprod` (`#1 \tp{#1}`), `\oprod`, `\tprod`, `\ccprod` and `\qform`,
+  such as `\soprod` (`#1 \tp{#1}`), `\oprod`, `\tprod`, `\ccprod`, and `\qform`,
   is always kept (Ezra, 2026-11-20, on pds#478).
   A body that is one call of such a product,
   as `\stprod` is `\ccprod{#1}{#1}`,
@@ -54,7 +54,7 @@ and `\tp{X} W X` as `\qform`.
   applied to one braced group,
   such as `\paren{\vX - \vmu}` or `\matr{\Omega}_{11}`,
   with an optional subscript and superscript.
-  A number, `\tp` itself, and text, spacing, environment and delimiter commands
+  A number, `\tp` itself, and text, spacing, environment, and delimiter commands
   (`\text`, `\quad`, `\begin`, `\left`) are never arguments.
 - A product that opens on a factor, such as `\oprod`,
   is not reported in the middle of a longer product:
