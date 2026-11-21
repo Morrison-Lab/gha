@@ -746,6 +746,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Its env vars use the `CPS_` prefix.
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
+  A transpose product (`\tp` and two placeholders, such as `\soprod`, `\oprod`, `\tprod`) is kept at any size, takes braced arguments, and is not reported mid-product,
+  and a body that is one call of a product (`\stprod`) is also read as that product's body (Ezra, 2026-11-20, pds#478).
   A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.
   It takes its diff model and Markdown masking from `check-common`, takes its math spans from `check-common/mdmask.py` (`math_spans`, shared with `check-precedence-parens`), and its env vars use the `CME_` prefix.
   It takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside `check-write-idiom`.
