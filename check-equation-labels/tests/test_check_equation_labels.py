@@ -104,6 +104,20 @@ def test_inline_math_is_ignored():
     assert found("inline $x$ only\n") == []
 
 
+def test_adjacent_inline_math_is_not_a_display_delimiter():
+    doc = "Let $a$$b$ be.\nThen\n$$\nc\n$$ {#eq-c}\n"
+    assert found(doc) == []
+
+
+def test_currency_does_not_open_inline_math():
+    assert found("It costs $ 5, and then\n$$a$$\n") == [(2, 2)]
+
+
+def test_a_comment_or_code_span_line_does_not_end_the_equation():
+    assert found("$$\na\n<!-- note -->\n$$\n") == [(1, 4)]
+    assert found("$$\na\n`x`\n$$\n") == [(1, 4)]
+
+
 def test_stray_opener_ends_at_a_blank_line():
     doc = "$$\na\n\n$$b$$ {#eq-b}\n"
     # The stray opener on line 1 never closes, so it is no equation, and the
@@ -184,6 +198,21 @@ def test_labeling_one_equation_does_not_flag_its_neighbour(repo):
     two = UNLABELED + "\n$$\nc = d\n$$\n"
     _commit(repo, "old.qmd", two)
     _write(repo, "old.qmd", two.replace("a = b\n$$\n", "a = b\n$$ {#eq-a}\n", 1))
+    assert _run("HEAD").findings == []
+
+
+def test_removed_label_is_flagged_when_another_equation_is_deleted(repo):
+    _commit(repo, "a.qmd", "$$\na = b\n$$ {#eq-a}\n")
+    _commit(repo, "b.qmd", "$$\nc = d\n$$ {#eq-c}\n")
+    _write(repo, "a.qmd", "$$\na = b\n$$\n")
+    _write(repo, "b.qmd", "Text.\n")
+    assert [(p, f.start) for p, f in _run("HEAD").findings] == [("a.qmd", 1)]
+
+
+def test_moving_an_unlabeled_equation_does_not_flag_it(repo):
+    _commit(repo, "a.qmd", "Intro.\n\n" + UNLABELED)
+    _write(repo, "a.qmd", "Intro.\n")
+    _write(repo, "b.qmd", UNLABELED)
     assert _run("HEAD").findings == []
 
 

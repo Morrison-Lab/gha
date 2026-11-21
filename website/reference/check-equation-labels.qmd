@@ -45,6 +45,10 @@ so existing equations are never reflagged.
 An added line whose exact text was also deleted in the same diff
 counts as moved rather than new,
 so labeling one equation does not flag its unlabeled neighbor.
+A bare closing `$$` is in nearly every diff that touches math,
+so when the diff deletes a labeled line that it does not add back,
+an added closing line counts as new,
+and removing a label is reported.
 
 With no `base-ref`, or when the diff cannot be computed,
 the check skips with a warning instead of scanning the whole tree.

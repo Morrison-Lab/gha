@@ -2301,7 +2301,7 @@ CI runs it in the `lone-subfloats` job in `_selftest.yml`, followed by real
 `check-equation-labels/tests/test_check_equation_labels.py` is a pytest suite over
 labeled versus unlabeled equations, on one line or several lines,
 what does not count (fences, code spans, comments, an escaped dollar, inline math),
-the blank-line guard against a stray `$$`, the allow comment with its required reason,
+the blank-line guard against a stray `$$`, adjacent inline math, a removed label, the allow comment with its required reason,
 diff scoping in throwaway git repos, the skip,
 and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `equation-labels` job in `_selftest-content-checks.yml`,

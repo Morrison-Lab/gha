@@ -2901,6 +2901,13 @@ jobs:
             echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
             exit 1
           fi
+      # fail: 'false' must turn the same finding into a warning, which proves
+      # the input reaches the script, since the default already blocks.
+      - name: Check the staged equation with fail false, expecting a pass
+        uses: ./check-equation-labels
+        with:
+          whole-tree: 'true'
+          fail: 'false'
       - name: Check again diff-scoped against HEAD, expecting a failure
         id: cel-diff-expected-failure
         continue-on-error: true

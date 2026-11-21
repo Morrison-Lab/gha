@@ -70,18 +70,38 @@ class Finding(NamedTuple):
     body: str   # the equation's text, whitespace collapsed
 
 
-def _delimiters(line: str) -> List[int]:
-    """Columns where a ``$$`` delimiter starts; a backslash escapes a ``$``."""
+def _delimiters(line: str, in_display: bool) -> List[int]:
+    """Columns where a ``$$`` delimiter starts; a backslash escapes a ``$``.
+
+    Outside display math, a single ``$`` opens inline math when the next
+    character is not a space, and a ``$`` closes it when the previous one is
+    not a space and the next is not a digit, as Pandoc reads them. So in
+    ``$a$$b$`` the middle ``$$`` is two inline delimiters, not a display one.
+    """
     cols, pos, n = [], 0, len(line)
+    inline = False
     while pos < n:
         ch = line[pos]
         if ch == "\\":
             pos += 2
             continue
+        if ch != "$":
+            pos += 1
+            continue
+        if inline:
+            nxt = line[pos + 1:pos + 2]
+            if not line[pos - 1].isspace() and not nxt.isdigit():
+                inline = False
+            pos += 1
+            continue
         if line.startswith("$$", pos):
             cols.append(pos)
+            in_display = not in_display
             pos += 2
             continue
+        nxt = line[pos + 1:pos + 2]
+        if not in_display and nxt and not nxt.isspace():
+            inline = True
         pos += 1
     return cols
 
@@ -107,7 +127,7 @@ def scan_file(lines: List[str]) -> List[Finding]:
                 fence = m.group(1)
                 continue
         cursor = 0
-        for col in _delimiters(text):
+        for col in _delimiters(text, open_at is not None):
             if open_at is None:
                 open_at = (i, col + 2)
                 body = []
@@ -123,8 +143,9 @@ def scan_file(lines: List[str]) -> List[Finding]:
             start_line, start_col = open_at
             body.append(text[start_col:] if start_line == i else text)
             # Pandoc ends display math at a blank line, so a stray $$ does not
-            # swallow the rest of the file.
-            if not text.strip() and start_line != i:
+            # swallow the rest of the file. Test the raw line: a line holding
+            # only a comment or a code span masks to blank but stays math.
+            if not raw.strip() and start_line != i:
                 open_at = None
     return findings
 
@@ -144,6 +165,12 @@ def format_message(f: Finding) -> str:
             f"$$ ... $$ {{#eq-name}}. Equation: {excerpt}")
 
 
+def _deleted_lines(diff: str) -> List[str]:
+    """The text of each line a unified diff deletes."""
+    return [line[1:] for line in diff.split("\n")
+            if line.startswith("-") and not line.startswith("---")]
+
+
 class Report(NamedTuple):
     findings: List[Tuple[str, Finding]]
     files: int
@@ -154,6 +181,7 @@ class Report(NamedTuple):
 def run_check(base_ref: str, globs: List[str], ignores: list,
               whole_tree: bool) -> Report:
     wanted: Dict[str, Optional[Set[int]]] = {}
+    closers: Dict[str, Set[int]] = {}
     if whole_tree:
         out = diffscope.git_paths(["ls-files", "--", *globs])
         if out is None:
@@ -172,11 +200,20 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
         if diff is None:
             return Report([], 0, 0, True)
         added, deleted = diffscope.parse_diff(diff)
+        # A bare `$$` closing line is in nearly every diff that touches math,
+        # so the moved-line test would let a removed label through. When the
+        # diff deletes a labeled line that it does not add back, the label was
+        # removed rather than moved, and added closing lines count as new.
+        added_texts = {t for numbered in added.values() for t in numbered.values()}
+        label_removed = any("#eq-" in t and t not in added_texts
+                            for t in _deleted_lines(diff))
         for rel, numbered in added.items():
             if diffscope.ignored(rel, ignores):
                 continue
             wanted[rel] = {n for n, text in numbered.items()
                            if text.strip() and text not in deleted}
+            if label_removed:
+                closers[rel] = set(numbered)
 
     findings: List[Tuple[str, Finding]] = []
     files = lines = 0
@@ -188,7 +225,8 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
         keep = wanted[rel]
         lines += len(content) if keep is None else len(keep)
         for f in scan_file(content):
-            if keep is None or any(f.start <= n <= f.end for n in keep):
+            if (keep is None or any(f.start <= n <= f.end for n in keep)
+                    or f.end in closers.get(rel, set())):
                 findings.append((rel, f))
     return Report(findings, files, lines, False)
 
