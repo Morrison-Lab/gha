@@ -278,7 +278,7 @@ while `opposition-research`, `report-main-failure`, `triage-backlog`, `check-dep
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-result-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-ball-neighborhoods`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-lab-exposition`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `check-tautological-equations`, `check-citation-authors`, `check-template-identity`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-result-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-ball-neighborhoods`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-lab-exposition`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `check-tautological-equations`, `check-citation-authors`, `check-template-identity`, `check-lone-subfloats`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, `sync-shared-fragments`, and `update-snapshots`).
 
@@ -292,7 +292,11 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 - the `@v3` lists in `CLAUDE.md` and `README.md` (two), and the table row in `README.md`
   (`website/versioning.qmd` and `website/workflows.qmd` insert lists and the catalog table generated from the example stubs,
   the workflows, and the reference pages at render time, gha#1862);
-- `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
+- `website/_quarto.yml`, a `changelog.d/` fragment, and a selftest job.
+  A content check's job goes in `.github/workflows/_selftest-content-checks.yml`,
+  split out of `.github/workflows/_selftest.yml` when that file passed GitHub's 500 KB workflow file limit,
+  which stopped every run of it (gha#1863).
+  Keep each file under the limit, and split again rather than grow one past it.
 
 `.github/dependabot.yml` covers every `check-*` directory by glob, so a check named `check-...` needs no line there.
 A capability with another name and an external `uses:` still does.
@@ -607,6 +611,16 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   and `check-template-identity: allow: <reason>` on a line keeps a credit link.
   It takes its file listing and flag reader from `check-common/diffscope.py`, so keep `check-common` beside it.
   Its env vars use the `CTI_` prefix.
+- `check-lone-subfloats/` (Python, stdlib only, gha#2173) flags a figure (`#fig-`) or table (`#tbl-`) float whose reader sees one subfigure or subtable, when a PR adds a line to it (Ezra, 2026-11-20).
+  Its subfloats are the same-kind floats directly inside it: a nested float div, a `fig-`/`tbl-` labeled chunk, or a `{#fig-}` image or `{#tbl-}` table caption.
+  A chunk with `include`, `output`, or `eval` false is none.
+  It flags a float with one subfloat, a float whose subfloats sit one per tab of a tabset (a figure div wrapping a language tabset whose chunks keep their `fig-` labels, so each tab shows a lone "(a)" or "(b)"), and a chunk with a one-entry `fig-subcap` or `tbl-subcap`.
+  A tab is a heading at the level of the tabset's first heading.
+  A subfloat outside the tabset counts in every tab's view.
+  Measured 2026-11-20 over lds: 138 hits, all one per tab, the same 138 a scan of the published HTML finds.
+  It takes the same diff model as `check-exm-figures` (moved lines exempt, skip-not-fall-back), blocks by default (`fail: true`), and takes its div and fence parsing from `check-one-div-per-subfile` and its git helpers from `check-common/diffscope.py`, so keep the three directories together.
+  The allow comment needs a reason: `<!-- check-lone-subfloats: allow: <reason> -->`.
+  Its env vars use the `CLS_` prefix.
 - `check-r-head/` (Python, stdlib only, gha#2122) flags an R statement that prints a dataset through `head()` in a data div:
   every `{r}` chunk of a file whose base name matches `data-files` (default `_dat-*`), and every `{r}` chunk inside a `#dat-` div.
   Ezra's rule (2026-11-19) is "just not to print data in data divs": `head()` anywhere else, or with its result assigned or used, is fine, <!-- check-avoided-words: allow -->
@@ -2264,6 +2278,15 @@ and `main()` in throwaway git repos: its blocking default, its warn mode, the sk
 the error when no file matches, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `template-identity` job in `_selftest.yml`, followed by real
 `uses: ./check-template-identity` calls over a staged config file.
+
+`check-lone-subfloats/tests/test_check_lone_subfloats.py` is a pytest suite over
+each of the three findings for figures and tables,
+the clean forms that sit next to them (such as a tabset inside each subfigure),
+what is not a subfloat, the allow comment with its required reason,
+diff scoping in throwaway git repos, the skip,
+and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `lone-subfloats` job in `_selftest.yml`, followed by real
+`uses: ./check-lone-subfloats` calls over a staged page.
 
 `check-write-idiom/tests/test_check_write_idiom.py` is a pytest suite over
 the flagged forms (list markers, labels, the three phrases), the unflagged ones
