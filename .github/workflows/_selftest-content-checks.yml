@@ -2824,6 +2824,126 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-cls || true
           rm -rf _ci-cls
+  # check-equation-labels is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-equation-labels@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the labeling rules and both scopes; the composite calls below
+  # prove action.yml wires each input through.
+  equation-labels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-equation-labels unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-equation-labels/tests/ -v
+      - name: Check the whole tree, which is fully labeled
+        uses: ./check-equation-labels
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Check this PR's added lines
+        uses: ./check-equation-labels
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # Every display equation in this repo is labeled, so stage an unlabeled
+      # one, and assert that the blocking call really fails.
+      - name: Stage an unlabeled equation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-cel
+          printf '%s\n' 'Text.' '' '$$' 'a = b' '$$' '' 'More.' > _ci-cel/page.qmd
+          git add -f _ci-cel/page.qmd
+      - name: Check the staged equation, expecting a failure
+        id: cel-expected-failure
+        continue-on-error: true
+        uses: ./check-equation-labels
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.cel-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-equation-labels to fail on a staged equation, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # The default is blocking, so the same finding must fail with no fail input.
+      - name: Check the staged equation with the default fail
+        id: cel-default-failure
+        continue-on-error: true
+        uses: ./check-equation-labels
+        with:
+          whole-tree: 'true'
+      - name: Assert the default call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.cel-default-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the default call to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: cel-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-equation-labels
+        with:
+          base-ref: HEAD
+          fail: 'true'
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.cel-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged equation, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Check again with no base, expecting a skip
+        uses: ./check-equation-labels
+        with:
+          base-ref: ''
+          fail: 'true'
+      # Each of these must pass over the same staged subfile, so each proves
+      # its input reached the script.
+      - name: Check again with the equation exempted through paths-ignore
+        uses: ./check-equation-labels
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          paths-ignore: '_ci-cel'
+      - name: Check again with globs excluding the equation
+        uses: ./check-equation-labels
+        with:
+          whole-tree: 'true'
+          fail: 'true'
+          globs: 'website/reference/*.qmd'
+      - name: Remove the staged equation
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-cel || true
+          rm -rf _ci-cel
+
   # check-lab-exposition is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-lab-exposition@v3` does not resolve until
   # the tag slides past the merge. Exercise the local composite directly. The
