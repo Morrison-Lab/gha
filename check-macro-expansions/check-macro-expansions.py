@@ -24,6 +24,26 @@ macros.  A lone font wrapper such as ``\mathcal{H}`` or ``\operatorname{rank}``
 has two tokens and is never flagged, because the same glyphs are often a
 different concept; ``\sum_{i=1}^n`` (``\sumin``) has seven and is.
 
+A transpose product is structured enough at any size.  The self outer product
+``#1 \tp{#1}`` (``\soprod``), the outer product ``#1 \tp{#2}`` (``\oprod``) and
+the cross product ``\tp{#1} #2`` (``\tprod``, ``\ccprod``) have three tokens
+each, below ``MIN_TOKENS``, yet a ``\tp`` between two arguments is never a
+font wrapper: it is the product the macro names (Ezra, 2026-11-20, pds#478,
+where hand-written ``\vX \tp{\vX}`` and ``\tp{\va}\vX`` went unflagged).  So a
+body that holds ``\tp`` and at least two placeholders is always kept.
+
+A body that is one call of a transpose product defined in the same file, such
+as ``\stprod``'s ``\ccprod{#1}{#1}``, is also read as that product's body with
+the arguments put in, so the Gram matrix ``\tp{\mX} \mX`` is matched as
+``\stprod`` as well as ``\ccprod``.
+
+An argument is a macro, or a letter or number with an optional subscript.  In
+a transpose product it may also be a macro other than ``\tp`` applied to one
+braced group, such as ``\paren{\vX - \Expp\vX}``, so a product of
+parenthesized factors is matched as a whole.  Other macros keep the narrow
+argument, because a braced one there turns ordinary notation such as
+``\paren{1 - p}`` into findings.
+
 What is flagged: in ``.qmd``, ``.md`` and ``.Rmd`` files, inside ``$...$`` and
 ``$$...$$`` math, text that matches a macro's expansion, on a line where that
 macro is not already used.  When several macros match overlapping text, only
@@ -101,9 +121,33 @@ DEF_RE = re.compile(
 )
 TOKEN_RE = re.compile(r"\\[A-Za-z]+|\\.|#\d|[A-Za-z]+|\d+|[^\sA-Za-z\d{}]")
 # What an argument may be: a macro, or a letter or number with an optional
-# subscript.  Anything longer is left to a human.
-ARG_PATTERN = (r"(?:\\[A-Za-z]+|[A-Za-z0-9]+)"
-               r"(?:_(?:[A-Za-z0-9]|\{[^{}]*\}))?")
+# subscript.  Anything longer is left to a human.  A macro name must end where
+# the name ends, so \vX is never split into \v and X.
+# Text, spacing, environment and delimiter commands (\text, \quad, \begin,
+# \left, ...) are never an argument: \tp{\va} \text{, with } is not a product.
+_NOT_ARGS = ("text|textrm|textit|textbf|mbox|quad|qquad|tp"
+             "|begin|end|left|right")
+_MACRO_ARG = (r"\\(?!(?:" + _NOT_ARGS + r")(?![A-Za-z]))"
+              r"[A-Za-z]+(?![A-Za-z])")
+_SUBSCRIPT = r"(?:_(?:[A-Za-z0-9]|\{[^{}]*\}))?"
+ARG_PATTERN = r"(?:(?:" + _MACRO_ARG + r"|[A-Za-z0-9]+)" + _SUBSCRIPT + ")"
+# A transpose product's argument may also be a macro applied to one braced
+# group, such as \paren{\vX - \vmu}, other than \tp itself: \tp{a} \tp{b} is
+# not an outer product of a and b.  It may not be a number: 2\tp{\vd} is a
+# scalar multiple, and the 1 of ^{-1}\tp{\mQ} is an exponent.  Other macros keep
+# the narrow pattern, since a braced argument there turns ordinary notation,
+# such as \paren{1 - p} for \devof, into findings.
+#
+# A bare macro is an argument only when no braced group follows it, so
+# \tp{\matr{Q}} is not read as \matr times Q, and a bare letter only when it
+# stands alone, so the "out" of \text{factor out } is not one.  Any argument
+# may carry a subscript and a superscript, as \matr{\Omega}_{11} and
+# \matr{\Eigvals}^{-1} do.
+_SUPERSCRIPT = r"(?:\^(?:[A-Za-z0-9]|\{[^{}]*\}))?"
+PRODUCT_ARG_PATTERN = (r"(?:(?:" + _MACRO_ARG + r"\{(?:[^{}]|\{[^{}]*\})*\}"
+                       r"|" + _MACRO_ARG + r"(?!\s*\{)"
+                       r"|(?<![A-Za-z])[A-Za-z](?![A-Za-z]))"
+                       + _SUBSCRIPT + _SUPERSCRIPT + ")")
 
 
 class Expansion(NamedTuple):
@@ -135,22 +179,81 @@ def _is_alias(tokens: List[str]) -> bool:
     return all(t.startswith("\\") and t[1:].isalpha() for t in tokens)
 
 
+def _is_transpose_product(tokens: List[str]) -> bool:
+    """A ``\\tp`` between two arguments, as in ``#1 \\tp{#2}``."""
+    placeholders = [t for t in tokens if re.fullmatch(r"#\d", t)]
+    return "\\tp" in tokens and len(placeholders) >= 2
+
+
+CALL_RE = re.compile(r"\\([A-Za-z]+)((?:\{[^{}]*\})+)")
+
+
+def _expand_call(body: str, bodies: Dict[str, str]) -> str:
+    """The body of the macro a body calls whole, with its arguments put in.
+
+    ``\\ccprod{#1}{#1}`` becomes ``\\tp{#1} #1``.  A body that is anything but
+    one call of a macro defined with arguments is returned unchanged.
+    """
+    m = CALL_RE.fullmatch(body.strip())
+    if not m or m.group(1) not in bodies:
+        return body
+    args = re.findall(r"\{([^{}]*)\}", m.group(2))
+    inner = bodies[m.group(1)]
+    used = {int(d) for d in re.findall(r"#(\d)", inner)}
+    if not used or max(used) != len(args):
+        return body
+    return re.sub(r"#(\d)", lambda d: args[int(d.group(1)) - 1], inner)
+
+
 def _to_regex(body: str) -> "re.Pattern[str]":
     """Regex matching the body with its placeholders as wildcards."""
     seen: Set[str] = set()
     parts: List[str] = []
-    for token in TOKEN_RE.findall(body):
+    tokens = TOKEN_RE.findall(body)
+    arg = PRODUCT_ARG_PATTERN if _is_transpose_product(tokens) else ARG_PATTERN
+    for token in tokens:
         if re.fullmatch(r"#\d", token):
             if token in seen:
                 parts.append("(?P=a" + token[1] + ")")
             else:
                 seen.add(token)
-                parts.append("(?P<a" + token[1] + ">" + ARG_PATTERN + ")")
+                parts.append("(?P<a" + token[1] + ">" + arg + ")")
         elif re.fullmatch(r"\\?[A-Za-z]+", token):
             parts.append(re.escape(token) + r"(?![A-Za-z])")
         else:
             parts.append(re.escape(token))
     return re.compile(r"(?<![A-Za-z\\])" + r"(?:\s|[{}])*".join(parts))
+
+
+def _opens_on_factor(body: str) -> bool:
+    """A transpose product whose body starts with an argument, as \\oprod's."""
+    tokens = TOKEN_RE.findall(body)
+    return (_is_transpose_product(tokens) and bool(tokens)
+            and re.fullmatch(r"#\d", tokens[0]) is not None)
+
+
+def _mid_product(math: str, m: "re.Match[str]") -> bool:
+    """Whether a match of a product that opens on a factor starts mid-product.
+
+    In ``\\matr{Q}\\matr{\\Eigvals}\\tp{\\matr{Q}}`` the last two factors are
+    the middle of a longer product, so a factor (a letter, a digit or a closing
+    brace) just before the match rules it out.  So does an opening brace whose
+    group closes right after the first factor, as the ``\\Eigvals`` of
+    ``\\matr{\\Eigvals}`` is the inside of one factor, and an enclosing
+    ``\\tp{``, as in ``\\tp{\\va} \\tp{\\vb}``.  An opening brace whose group
+    goes on, as in ``\\E{\\vX \\tp{\\vX}}``, starts a product.
+    """
+    before = math[:m.start()].rstrip()
+    if not before:
+        return False
+    if before[-1].isalnum() or before[-1] == "}":
+        return True
+    if before[-1] == "{":
+        if re.search(r"\\tp\s*$", before[:-1]):
+            return True
+        after = math[m.end("a1"):].lstrip()
+        return after.startswith("}")
+    return False
 
 
 def load_expansions(path: str, exclude: Set[str]) -> Optional[List[Expansion]]:
@@ -160,21 +263,33 @@ def load_expansions(path: str, exclude: Set[str]) -> Optional[List[Expansion]]:
             text = handle.read()
     except OSError:
         return None
-    by_body: Dict[str, List[str]] = {}
+    bodies: Dict[str, str] = {}
     for line in text.splitlines():
         m = DEF_RE.match(line)
-        if not m:
-            continue
-        name = m.group("n1") or m.group("n2")
+        if m:
+            name = m.group("n1") or m.group("n2")
+            bodies.setdefault(
+                name, _strip_outer_braces(_strip_outer_braces(m.group("body"))))
+    by_body: Dict[str, List[str]] = {}
+    for name, body in bodies.items():
         if name in exclude:
             continue
-        body = _strip_outer_braces(_strip_outer_braces(m.group("body")))
-        tokens = TOKEN_RE.findall(body)
-        if len(tokens) < MIN_TOKENS or _is_alias(tokens):
-            continue
-        key = " ".join(tokens)
-        if name not in by_body.setdefault(key, []):
-            by_body[key].append(name)
+        # Both spellings: the body as written, and, when that is one call of a
+        # transpose product, the product's body (\stprod's \ccprod{#1}{#1} is
+        # \tp{#1} #1).  Other calls are left as written, as before.
+        expanded = _expand_call(body, bodies)
+        for form in dict.fromkeys((body, expanded)):
+            tokens = TOKEN_RE.findall(form)
+            if _is_alias(tokens):
+                continue
+            product = _is_transpose_product(tokens)
+            if form is expanded and form != body and not product:
+                continue
+            if len(tokens) < MIN_TOKENS and not product:
+                continue
+            key = " ".join(tokens)
+            if name not in by_body.setdefault(key, []):
+                by_body[key].append(name)
     return [Expansion(tuple(names), key, _to_regex(key))
             for key, names in by_body.items()]
 
@@ -190,7 +305,10 @@ def expansion_hits(math: str, expansions: List[Expansion]
     for exp in expansions:
         if any("\\" + n in math for n in exp.names):
             continue
+        check_start = _opens_on_factor(exp.body)
         for m in exp.regex.finditer(math):
+            if check_start and _mid_product(math, m):
+                continue
             found.append((m.start(), m.end(), exp.names))
     found.sort(key=lambda f: (-(f[1] - f[0]), f[0]))
     kept: Dict[Tuple[int, int], Tuple[str, ...]] = {}
