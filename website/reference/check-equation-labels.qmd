@@ -1,0 +1,107 @@
+---
+title: "check-equation-labels.yml"
+---
+
+Diff-scoped, blocking check that flags a display equation
+with no `{#eq-...}` label.
+The lab labels every display equation,
+so that each one is numbered and has a stable URL,
+as the display-equation section of ai-config's `AGENTS.md` asks.
+The `equation-anchors` filter adds a permalink only to a labeled equation,
+so an unlabeled one has no anchor to link to.
+It moves the repo-local check that
+[Morrison-Lab/ids#201](https://github.com/Morrison-Lab/ids/pull/201) added,
+when it labeled all 215 of that repository's display equations.
+
+Quarto reads the label from the line of the closing `$$`:
+
+```markdown
+$$
+H(X) = -\sum_x p(x) \log p(x)
+$$ {#eq-entropy}
+```
+
+The label may share its attribute block with other attributes,
+as in `{#eq-entropy .unnumbered}`.
+
+The check does not count `$$` inside a code fence, a code span,
+or an HTML comment, and a backslash escapes a `$`.
+A raw LaTeX environment such as `\begin{equation}`
+is not a display equation here,
+since Quarto numbers only `$$` math.
+A `$$` that opens no equation ends at the next blank line,
+as Pandoc ends display math there,
+so a stray delimiter does not swallow the rest of the file.
+
+`<!-- check-equation-labels: allow: <reason> -->`
+on the equation's opening line, or on the line before it, exempts it.
+A pragma with no reason exempts nothing.
+
+## Scope
+
+Only an equation that holds a line a pull request adds is reported,
+from its opening `$$` through its closing one,
+so existing equations are never reflagged.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new,
+so labeling one equation does not flag its unlabeled neighbor.
+A bare closing `$$` is in nearly every diff that touches math,
+so when the diff deletes a labeled line that it does not add back,
+an added closing line counts as new,
+and removing a label is reported.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose,
+to measure a corpus,
+or to keep a fully labeled repository fully labeled,
+as ids does.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow when a display equation has no label. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, [whose pull requests can run arbitrary code on it](https://github.com/Morrison-Lab/gha/issues/1167). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-equation-labels.yml in your repo.
+# Diff-scoped check: flags a $$ ... $$ display equation with no {#eq-...}
+# label when a PR adds a line to it, since only a labeled equation gets a
+# number and an anchor. Put a label after the closing $$, such as
+# $$ ... $$ {#eq-entropy}, or add
+# <!-- check-equation-labels: allow: reason --> on the line before it.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check equation labels
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-equation-labels.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file; use once every equation is labeled
+```
+
+See
+[`examples/check-equation-labels.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-equation-labels.yml)
+for the full caller stub.

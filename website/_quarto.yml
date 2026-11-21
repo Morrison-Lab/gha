@@ -115,6 +115,7 @@ website:
           - reference/check-search-shortcut.qmd
           - reference/check-template-identity.qmd
           - reference/check-lone-subfloats.qmd
+          - reference/check-equation-labels.qmd
           - reference/check-visualization-figures.qmd
           - reference/check-geometric-figures.qmd
           - reference/check-self-contained-captions.qmd
