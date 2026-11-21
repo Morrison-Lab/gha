@@ -1,0 +1,109 @@
+---
+title: "check-lone-subfloats.yml"
+---
+
+Diff-scoped, blocking check that flags a figure (`#fig-`) or table (`#tbl-`)
+whose reader sees only one subfigure or subtable.
+The lab's rule (Ezra, 2026-11-20) is that a subfigure exists
+to be compared with its siblings,
+so a figure with one subfigure labels a lone panel "(a)"
+and splits one caption into two.
+It is the figure analog of the lone-heading rule in
+[`check-heading-siblings`](check-heading-siblings.qmd).
+This implements
+[gha#2173](https://github.com/Morrison-Lab/gha/issues/2173).
+
+A subfloat is a float of the same kind directly inside a `#fig-` or `#tbl-` div:
+
+- a nested `#fig-` or `#tbl-` div;
+- a code chunk labeled `#| label: fig-...` or `#| label: tbl-...`;
+- a Markdown image or table caption carrying `{#fig-...}` or `{#tbl-...}`.
+
+A chunk with `include`, `output`, or `eval` set to `false` shows nothing,
+so it is not a subfloat.
+
+Three findings:
+
+- **One subfloat.**
+  A float holds exactly one subfloat.
+  Give it more, or drop the subfloat's label so its content is the float itself.
+- **One per tab.**
+  A float's subfloats sit one per tab of a tabset,
+  such as a figure div wrapping an R and Python language tabset
+  whose chunks keep their `fig-` labels.
+  Quarto numbers them across the tabs,
+  so the R tab shows a lone "(a)" and the Python tab a lone "(b)".
+  Drop the chunks' `fig-` labels and keep their `fig-alt`,
+  so the tabs are versions of one figure.
+- **One subcaption.**
+  A chunk's `fig-subcap` or `tbl-subcap` lists exactly one entry.
+  Give the caption as `fig-cap` or `tbl-cap` instead.
+
+`<!-- check-lone-subfloats: allow: <reason> -->` inside the float's div,
+or inside the chunk, exempts it.
+A pragma with no reason exempts nothing.
+The check does not count a float inside a code fence or an HTML comment,
+or the content an `include` shortcode pulls in at render time.
+
+## Scope
+
+Only a float that holds a line a pull request adds is reported,
+so existing figures are never reflagged.
+The whole file is parsed, since a div opens far above the changed line.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to scan every tracked file on purpose.
+Measured 2026-11-20 over lds, the whole tree held 138 hits on 15 pages,
+all of them the one-per-tab case,
+and a scan of the published site's HTML found the same 138 figures.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd'`     | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow when a figure or table shows a lone subfloat. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, [whose pull requests can run arbitrary code on it](https://github.com/Morrison-Lab/gha/issues/1167). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-lone-subfloats.yml in your repo.
+# Diff-scoped check: flags a figure or table whose reader sees one subfigure
+# or subtable, such as a figure wrapping a language tabset whose chunks keep
+# their fig- labels, when a PR adds a line to it. Drop the inner labels, or
+# add <!-- check-lone-subfloats: allow: reason --> in the div.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check lone subfloats
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-lone-subfloats.yml@v3
+    # with:
+    #   globs: '*.qmd'                        # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # set false to warn only (defaults to true)
+    #   whole-tree: true                       # scan every file, not just a PR's additions
+```
+
+See
+[`examples/check-lone-subfloats.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-lone-subfloats.yml)
+for the full caller stub.
