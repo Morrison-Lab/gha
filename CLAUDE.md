@@ -623,7 +623,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Its env vars use the `CLS_` prefix.
 - `check-equation-labels/` (Python, stdlib only, moved from Morrison-Lab/ids#201) flags a `$$ ... $$` display equation with no `{#eq-...}` label on the line of its closing `$$`, when a PR adds a line to it, because the `equation-anchors` filter gives a permalink only to a labeled equation.
   It skips `$$` in fences, code spans, and HTML comments, and a backslash escapes a `$`; a `$$` that opens no equation ends at the next blank line, as Pandoc ends display math there.
-  It takes the same diff model as `check-lone-subfloats` (an equation is reported when a PR adds any of its lines, moved lines exempt, skip-not-fall-back) and blocks by default (`fail: true`).
+  It takes the diff model of `check-lone-subfloats`: an equation is reported when a PR adds any of its lines, moved lines are exempt, and with no base it skips rather than falling back.
+  It blocks by default (`fail: true`).
   A fully labeled repository (ids) calls it with `whole-tree: true`.
   It takes its git helpers from `check-common/diffscope.py` and its masking from `check-common/mdmask.py`, so keep `check-common` beside it.
   The allow comment needs a reason, on the opening line or the line before: `<!-- check-equation-labels: allow: <reason> -->`.
@@ -2298,7 +2299,7 @@ CI runs it in the `lone-subfloats` job in `_selftest.yml`, followed by real
 `uses: ./check-lone-subfloats` calls over a staged page.
 
 `check-equation-labels/tests/test_check_equation_labels.py` is a pytest suite over
-labeled and unlabeled equations, one-line and multi-line,
+labeled versus unlabeled equations, on one line or several lines,
 what does not count (fences, code spans, comments, an escaped dollar, inline math),
 the blank-line guard against a stray `$$`, the allow comment with its required reason,
 diff scoping in throwaway git repos, the skip,

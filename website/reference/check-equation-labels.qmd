@@ -5,8 +5,8 @@ title: "check-equation-labels.yml"
 Diff-scoped, blocking check that flags a display equation
 with no `{#eq-...}` label.
 The lab labels every display equation,
-so that it gets a number and a stable URL
-(ai-config `AGENTS.md`, "Graph and display equation defaults").
+so that each one is numbered and has a stable URL,
+as the display-equation section of ai-config's `AGENTS.md` asks.
 The `equation-anchors` filter adds a permalink only to a labeled equation,
 so an unlabeled one has no anchor to link to.
 It moves the repo-local check that
