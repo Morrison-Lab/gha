@@ -165,7 +165,10 @@ def scan_lines(rel: str, lines: List[str], keep: Optional[Set[int]],
     found: List[Finding] = []
     fence: Optional[Tuple[str, int]] = None
     in_comment = False
-    front = bool(markup and lines and lines[0].strip() == "---")
+    # A leading `---` opens front matter only when a closing `---` or `...`
+    # follows; otherwise it is a thematic break and the file is prose.
+    front = bool(markup and lines and lines[0].strip() == "---"
+                 and any(x.strip() in ("---", "...") for x in lines[1:]))
     for idx, raw in enumerate(lines):
         n = idx + 1
         text = raw
