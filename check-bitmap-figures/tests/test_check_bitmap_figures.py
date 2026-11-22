@@ -114,6 +114,12 @@ def test_front_matter_ends_at_its_closing_line():
     assert found(doc) == [5]
 
 
+def test_unclosed_leading_rule_is_not_front_matter():
+    # A thematic break with no closing delimiter must not hide the file.
+    doc = "---\n\n![](a.png)\n\nfig-format: png\n"
+    assert found(doc) == [3]
+
+
 @pytest.mark.parametrize("line", [
     "fig-format: svg",
     "#| dev: svglite",
