@@ -506,13 +506,16 @@ jobs:
             echo "ai_users=$AI_USERS"
           } >> "$GITHUB_OUTPUT"
           if [ "$USERS" != "[]" ] || [ "$TEAMS" != "[]" ]; then
+            # Written before the DELETE: post-review's `if:` keys on it, so a
+            # cancel that lands after the DELETE still gets the restore
+            # (lds#2979).
+            echo "stashed=true" >> "$GITHUB_OUTPUT"
             # `|| true` is intentional and asymmetric with the restore step: a
             # failed stash leaves reviewers in place (recoverable); a failed
             # restore would drop them entirely (not recoverable).
             jq -n --argjson users "$USERS" --argjson teams "$TEAMS" \
               '{reviewers: $users, team_reviewers: $teams}' \
               | gh api -X DELETE "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" --input - || true
-            echo "stashed=true" >> "$GITHUB_OUTPUT"
           else
             echo "stashed=false" >> "$GITHUB_OUTPUT"
           fi
@@ -1652,21 +1655,26 @@ jobs:
   # repo/PR/run identity from the artifact (those come from this job's
   # github context).
   #
-  # A cancelled gather-context that stashed nothing is the exception
-  # (Morrison-Lab/lds#2979). That is a superseded run: it has no reviewers
-  # to restore and no head to post against. Entering the stash group
-  # anyway does harm, because GitHub keeps one pending job per group and a
-  # new pending job cancels the one already waiting. So this run's
+  # A superseded run that stashed nothing is the exception
+  # (Morrison-Lab/lds#2979): its gather-context or its model job was
+  # cancelled, and gather-context did not report stashed=true. Such a run
+  # has no review to post and no reviewers to restore. Entering the stash
+  # group anyway does harm, because GitHub keeps one pending job per group
+  # and a new pending job cancels the one already waiting. So this run's
   # post-review would cancel the newer run's pending gather-context, and
-  # neither run would post a review ("no stash-head"). A cancelled
-  # gather-context that did stash still runs, so its reviewers come back.
+  # neither run would post a review ("no stash-head").
+  # A run that reported stashed=true still runs post-review to restore its
+  # reviewers, so that one order remains (gha#2179). stashed=true is
+  # written before the reviewer
+  # DELETE, so a reported stash always gets its restore.
   post-review:
     needs: [gather-context, claude-review]
     if: >-
       always() &&
       needs.gather-context.result != 'skipped' &&
-      (needs.gather-context.result != 'cancelled' ||
-       needs.gather-context.outputs.stashed == 'true')
+      (needs.gather-context.outputs.stashed == 'true' ||
+       (needs.gather-context.result != 'cancelled' &&
+        needs.claude-review.result != 'cancelled'))
     # Same non-canceling group as gather-context so a superseded restore
     # queues behind a newer stash rather than cancelling the new model job.
     concurrency:

@@ -96,6 +96,13 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from workflow_discovery import skip_if_restored  # noqa: E402
 
 DEFAULT_WORKFLOW = ".github/workflows/claude-code-review.yml"
+# post-review's whole `if:`, whitespace-normalized (lds#2979).
+POST_REVIEW_IF = (
+    "always() && needs.gather-context.result != 'skipped' && "
+    "(needs.gather-context.outputs.stashed == 'true' || "
+    "(needs.gather-context.result != 'cancelled' && "
+    "needs.claude-review.result != 'cancelled'))"
+)
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
 DEFAULT_ACTIONS_DIR = ".github/actions"
 
@@ -570,14 +577,14 @@ def check_workflow(
             concurrency_of("require-clean-verdict") is None,
             "require-clean-verdict sits in neither concurrency group",
         )
-    # lds#2979: a superseded run whose gather-context was cancelled before it
-    # stashed must not enter the stash group, or its pending post-review
-    # cancels the newer run's pending gather-context and no review posts.
+    # lds#2979: a superseded run that stashed nothing must not enter the stash
+    # group, or its pending post-review cancels the newer run's pending
+    # gather-context and no review posts. Compared whole, so a condition that
+    # merely contains the arm (`always() || (...)`) does not pass.
     post_if = " ".join(str(post.get("if") or "").split())
     check(
-        "needs.gather-context.result != 'cancelled' || "
-        "needs.gather-context.outputs.stashed == 'true'" in post_if,
-        "post-review skips a cancelled gather-context that stashed nothing "
+        post_if == POST_REVIEW_IF,
+        "post-review skips a superseded run that stashed nothing "
         "(a superseded run must not cancel the newer run's stash, lds#2979)",
     )
     gather_needs = (jobs.get("gather-context") or {}).get("needs")
@@ -1291,10 +1298,7 @@ jobs:
         if: "{pack_if}"
   post-review:
     needs: claude-review
-    if: >-
-      always() &&
-      (needs.gather-context.result != 'cancelled' ||
-       needs.gather-context.outputs.stashed == 'true')
+    if: "{POST_REVIEW_IF}"
 {stash_conc}    outputs:
       stale: ${{{{ steps.target.outputs.stale }}}}
     permissions:
@@ -1935,22 +1939,23 @@ runs:
             "does not share the canceling review group",
         )
 
-        cancelled_post = root / "cancelled-post.yml"
-        cancelled_post.write_text(
-            good_wf.read_text().replace(
-                "      (needs.gather-context.result != 'cancelled' ||\n"
-                "       needs.gather-context.outputs.stashed == 'true')\n",
-                "      true\n",
-                1,
+        superseded_arm = POST_REVIEW_IF.split(" && ", 2)[2]
+        for label, replacement in (
+            ("post-review without the superseded-run skip fails",
+             "always() && needs.gather-context.result != 'skipped'"),
+            ("post-review with the skip OR-ed in, not AND-ed, fails",
+             f"always() || {superseded_arm}"),
+        ):
+            mutant = root / f"post-if-{len(label)}.yml"
+            mutant.write_text(
+                good_wf.read_text().replace(POST_REVIEW_IF, replacement, 1)
             )
-        )
-        failures += expect(
-            "post-review entering the stash group after a cancelled, "
-            "unstashed gather-context fails",
-            run(cancelled_post, good_action),
-            False,
-            "skips a cancelled gather-context that stashed nothing",
-        )
+            failures += expect(
+                label,
+                run(mutant, good_action),
+                False,
+                "skips a superseded run that stashed nothing",
+            )
 
         stash_cancels = root / "stash-cancels.yml"
         stash_cancels.write_text(
