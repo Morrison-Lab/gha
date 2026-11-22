@@ -1646,14 +1646,27 @@ jobs:
   # already refused (gha#235), so this stays on pull_request /
   # workflow_dispatch with the job token -- no pull_request_target.
   #
-  # Runs whenever gather-context ran (including cancelled): that job is
-  # what clears reviewers, so restore cannot be gated on claude-review
-  # having started. Does not post a review from a missing or partial
-  # artifact, and does not take repo/PR/run identity from the artifact
-  # (those come from this job's github context).
+  # Runs whenever gather-context ran: that job is what clears reviewers,
+  # so restore cannot be gated on claude-review having started. Does not
+  # post a review from a missing or partial artifact, and does not take
+  # repo/PR/run identity from the artifact (those come from this job's
+  # github context).
+  #
+  # A cancelled gather-context that stashed nothing is the exception
+  # (Morrison-Lab/lds#2979). That is a superseded run: it has no reviewers
+  # to restore and no head to post against. Entering the stash group
+  # anyway does harm, because GitHub keeps one pending job per group and a
+  # new pending job cancels the one already waiting. So this run's
+  # post-review would cancel the newer run's pending gather-context, and
+  # neither run would post a review ("no stash-head"). A cancelled
+  # gather-context that did stash still runs, so its reviewers come back.
   post-review:
     needs: [gather-context, claude-review]
-    if: always() && needs.gather-context.result != 'skipped'
+    if: >-
+      always() &&
+      needs.gather-context.result != 'skipped' &&
+      (needs.gather-context.result != 'cancelled' ||
+       needs.gather-context.outputs.stashed == 'true')
     # Same non-canceling group as gather-context so a superseded restore
     # queues behind a newer stash rather than cancelling the new model job.
     concurrency:

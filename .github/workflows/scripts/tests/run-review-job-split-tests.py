@@ -570,6 +570,16 @@ def check_workflow(
             concurrency_of("require-clean-verdict") is None,
             "require-clean-verdict sits in neither concurrency group",
         )
+    # lds#2979: a superseded run whose gather-context was cancelled before it
+    # stashed must not enter the stash group, or its pending post-review
+    # cancels the newer run's pending gather-context and no review posts.
+    post_if = " ".join(str(post.get("if") or "").split())
+    check(
+        "needs.gather-context.result != 'cancelled' || "
+        "needs.gather-context.outputs.stashed == 'true'" in post_if,
+        "post-review skips a cancelled gather-context that stashed nothing "
+        "(a superseded run must not cancel the newer run's stash, lds#2979)",
+    )
     gather_needs = (jobs.get("gather-context") or {}).get("needs")
     if isinstance(gather_needs, str):
         gather_needs = [gather_needs]
@@ -1281,6 +1291,10 @@ jobs:
         if: "{pack_if}"
   post-review:
     needs: claude-review
+    if: >-
+      always() &&
+      (needs.gather-context.result != 'cancelled' ||
+       needs.gather-context.outputs.stashed == 'true')
 {stash_conc}    outputs:
       stale: ${{{{ steps.target.outputs.stale }}}}
     permissions:
@@ -1919,6 +1933,23 @@ runs:
             run(gather_on_review_group, good_action),
             False,
             "does not share the canceling review group",
+        )
+
+        cancelled_post = root / "cancelled-post.yml"
+        cancelled_post.write_text(
+            good_wf.read_text().replace(
+                "      (needs.gather-context.result != 'cancelled' ||\n"
+                "       needs.gather-context.outputs.stashed == 'true')\n",
+                "      true\n",
+                1,
+            )
+        )
+        failures += expect(
+            "post-review entering the stash group after a cancelled, "
+            "unstashed gather-context fails",
+            run(cancelled_post, good_action),
+            False,
+            "skips a cancelled gather-context that stashed nothing",
         )
 
         stash_cancels = root / "stash-cancels.yml"
