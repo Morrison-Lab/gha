@@ -7,21 +7,21 @@ where a script-generated vector graph would do.
 The lab's rule (Ezra, 2026-11-21) is to replace bitmap images
 with vector graphs that code draws:
 an SVG stays sharp at any zoom and keeps its text as text,
-while a scan, a screenshot or a PNG export does neither.
+while a scan, a screenshot, or a PNG export does neither.
 This implements
-[Morrison-Lab/lds#3086](https://github.com/Morrison-Lab/lds/issues/3086).
+Morrison-Lab/lds#3086, in a private repository.
 
 Three findings:
 
 - **A new bitmap file.**
-  The diff adds a `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tif`, `.tiff`
+  The diff adds a `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tif`, `.tiff`,
   or `.webp` file, under any path.
   A rename is not new.
 - **A new reference to a bitmap.**
-  An added Markdown image (`![alt](x.png)`), `<img src="x.png">` tag
+  An added Markdown image (`![alt](x.png)`), `<img src="x.png">` tag,
   or `knitr::include_graphics("x.png")` call points at one of those extensions.
   Images and tags count only in a markup file (`.qmd`, `.Rmd`, `.md`, `.html`),
-  outside code fences, code spans and HTML comments;
+  outside code fences, code spans, and HTML comments;
   `include_graphics()` counts in any scanned file.
 - **A raster figure device.**
   An added `fig-format: png` (or `retina`, `jpeg`),

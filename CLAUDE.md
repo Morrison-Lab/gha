@@ -621,7 +621,7 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes the same diff model as `check-exm-figures` (moved lines exempt, skip-not-fall-back), blocks by default (`fail: true`), and takes its div and fence parsing from `check-one-div-per-subfile` and its git helpers from `check-common/diffscope.py`, so keep the three directories together.
   The allow comment needs a reason: `<!-- check-lone-subfloats: allow: <reason> -->`.
   Its env vars use the `CLS_` prefix.
-- `check-bitmap-figures/` (Python, stdlib only, Morrison-Lab/lds#3086) flags a new bitmap figure where a script-generated vector graph would do (Ezra, 2026-11-21): a bitmap file the diff adds, an added image reference to one, and an added raster figure device (`fig-format: png`, `dev: png`, a `ggsave()` or `savefig()` writing a bitmap).
+- `check-bitmap-figures/` (Python, stdlib only, Morrison-Lab/lds#3086) flags a new bitmap figure where a script-generated vector graph would do (Ezra, 2026-11-21): a bitmap file the diff adds, an added image reference to one, and an added raster figure device (`fig-format: png`, `dev: png`, or a `ggsave()` or `savefig()` call that writes a bitmap).
   Images, `<img>` tags, fences, and HTML comments count only in a markup file (`.qmd`, `.Rmd`, `.md`, `.html`).
   A script or YAML file is read as code, for `include_graphics()` and the devices.
   `paths-ignore` allows a screenshot directory, both its files and references that resolve into it.
@@ -2307,8 +2307,8 @@ CI runs it in the `lone-subfloats` job in `_selftest.yml`, followed by real
 `uses: ./check-lone-subfloats` calls over a staged page.
 
 `check-bitmap-figures/tests/test_check_bitmap_figures.py` is a pytest suite over
-each of the three findings (a new bitmap file, a reference, a raster device),
-the clean forms beside them (an SVG, a reference in a fence, comment or code span,
+each of the three findings (a new bitmap file, a reference, and a raster device),
+the clean forms beside them (an SVG, a reference in a fence, comment, or code span,
 a Markdown image in a script, a renamed bitmap, a moved line),
 the allow comment with its required reason, `paths-ignore` for files and targets,
 diff scoping in throwaway git repos, the skip,
