@@ -278,7 +278,7 @@ while `opposition-research`, `report-main-failure`, `triage-backlog`, `check-dep
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-result-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-ball-neighborhoods`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-lab-exposition`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `check-tautological-equations`, `check-citation-authors`, `check-template-identity`, `check-lone-subfloats`, `check-equation-labels`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-result-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-ball-neighborhoods`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-lab-exposition`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `check-tautological-equations`, `check-citation-authors`, `check-template-identity`, `check-lone-subfloats`, `check-bitmap-figures`, `check-equation-labels`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, `sync-shared-fragments`, and `update-snapshots`).
 
@@ -313,6 +313,13 @@ In lds, a new caller workflow must also be listed under `workflows:` in `annotat
 sds uses `workflows: ["*"]`.
 The pds, mds, and mcs repos have no gate.
 
+Ship a new check in one PR, with every piece above.
+A stack that splits it to fit the push size cap fails review on each partial part,
+and a part that adds the workflow before the README list fails `lint-qmd` (gha#2182, folded into gha#2184).
+Cite an issue in a private repository, such as Morrison-Lab/lds, as text rather than a link:
+`links / link-checker` gets a 404 for it.
+Run `bash .github/workflows/scripts/check-diff-scoped.sh origin/main` before the first push,
+since `serial-comma` reads the new docs too.
 A synthetic email address in a test needs a `# phi-allow` comment.
 `lint-qmd` fails a prose line with whitespace after column 80 (MD013), and the lists of check names in `website/*.qmd` are where a new check hits it.
 Wrap prose lines at a comma.
@@ -621,6 +628,14 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes the same diff model as `check-exm-figures` (moved lines exempt, skip-not-fall-back), blocks by default (`fail: true`), and takes its div and fence parsing from `check-one-div-per-subfile` and its git helpers from `check-common/diffscope.py`, so keep the three directories together.
   The allow comment needs a reason: `<!-- check-lone-subfloats: allow: <reason> -->`.
   Its env vars use the `CLS_` prefix.
+- `check-bitmap-figures/` (Python, stdlib only, Morrison-Lab/lds#3086) flags a new bitmap figure where a script-generated vector graph would do (Ezra, 2026-11-21): a bitmap file the diff adds, an added image reference to one, and an added raster figure device (`fig-format: png`, `dev: png`, or a `ggsave()` or `savefig()` call that writes a bitmap).
+  Images, `<img>` tags, fences, and HTML comments count only in a markup file (`.qmd`, `.Rmd`, `.md`, `.html`).
+  A script or YAML file is read as code, for `include_graphics()` and the devices.
+  `paths-ignore` allows a screenshot directory, both its files and references that resolve into it.
+  It takes the diff model of `check-exm-figures` (moved lines exempt, skip-not-fall-back), finds added files with `git diff --diff-filter=A -M` so a rename is not new, and blocks by default (`fail: true`).
+  It takes its fence and comment parsing from `check-one-div-per-subfile`, and its git helpers and code-span masking from `check-common`, so keep the three directories together.
+  The allow comment needs a reason, on the flagged line or the line above: `<!-- check-bitmap-figures: allow: <reason> -->`.
+  Its env vars use the `CBF_` prefix.
 - `check-equation-labels/` (Python, stdlib only, moved from Morrison-Lab/ids#201) flags a `$$ ... $$` display equation with no `{#eq-...}` label on the line of its closing `$$`, when a PR adds a line to it, because the `equation-anchors` filter gives a permalink only to a labeled equation.
   It skips `$$` in fences, code spans, and HTML comments, and a backslash escapes a `$`; a `$$` that opens no equation ends at the next blank line, as Pandoc ends display math there.
   It takes the diff model of `check-lone-subfloats`: an equation is reported when a PR adds any of its lines, moved lines are exempt, and with no base it skips rather than falling back.
@@ -2297,6 +2312,17 @@ diff scoping in throwaway git repos, the skip,
 and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `lone-subfloats` job in `_selftest.yml`, followed by real
 `uses: ./check-lone-subfloats` calls over a staged page.
+
+`check-bitmap-figures/tests/test_check_bitmap_figures.py` is a pytest suite over
+each of the three findings (a new bitmap file, a reference, and a raster device),
+and over the clean forms beside them (an SVG, a reference in a fence, comment, or code span,
+a Markdown image in a script, a renamed bitmap, and a moved line).
+It also covers the allow comment with its required reason.
+It covers `paths-ignore` over both files and image targets.
+It covers diff scoping in throwaway git repos, the skip,
+and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `bitmap-figures` job in `_selftest-content-checks.yml`, followed by real
+`uses: ./check-bitmap-figures` calls over a staged image and page.
 
 `check-equation-labels/tests/test_check_equation_labels.py` is a pytest suite over
 labeled versus unlabeled equations, on one line or several lines,
