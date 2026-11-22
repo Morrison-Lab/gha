@@ -1665,8 +1665,9 @@ jobs:
   # neither run would post a review ("no stash-head").
   # A run that reported stashed=true still runs post-review to restore its
   # reviewers, so that one order remains (gha#2179). stashed=true is
-  # written before the reviewer
-  # DELETE, so a reported stash always gets its restore.
+  # written before the reviewer DELETE, so a run that removed reviewers
+  # always qualifies for its restore. A newer pending gather-context can
+  # still cancel that restore while it waits (also gha#2179).
   post-review:
     needs: [gather-context, claude-review]
     if: >-
@@ -2068,8 +2069,10 @@ jobs:
       # tag-mode tracking comment from an older @v2 pin would be stuck
       # showing "review in progress". Agent mode (forced, gha#580) creates
       # none, so this is a no-op for current runs -- kept as a safety net.
-      # Gated on the *review* job having been cancelled, not this job:
-      # post-review is supposed to run in that case.
+      # Gated on the *review* job having been cancelled, not this job.
+      # post-review reaches this step after a cancelled review job only
+      # when gather-context reported stashed=true (see the job's `if:`,
+      # lds#2979).
       - name: Explain and fold tracking comment when canceled
         if: >-
           always() &&

@@ -103,6 +103,69 @@ POST_REVIEW_IF = (
     "(needs.gather-context.result != 'cancelled' && "
     "needs.claude-review.result != 'cancelled'))"
 )
+_RESULTS = ("success", "failure", "cancelled", "skipped")
+
+
+def eval_post_review_if(expr, gather, review, stashed):
+    """Evaluate a post-review `if:` for one combination of job results.
+
+    Handles the subset of GitHub expression syntax the condition uses:
+    always(), string == and !=, &&, ||, and parentheses. Raises ValueError
+    on anything else, so a new construct fails loudly instead of passing.
+    """
+    values = {
+        "needs.gather-context.result": gather,
+        "needs.claude-review.result": review,
+        "needs.gather-context.outputs.stashed": stashed,
+    }
+    tokens = re.findall(r"always\(\)|'[^']*'|==|!=|&&|\|\||\(|\)|[\w.-]+", expr)
+    if "".join(tokens) != expr.replace(" ", ""):
+        raise ValueError(f"unsupported syntax in {expr!r}")
+    out = []
+    for tok in tokens:
+        if tok == "always()":
+            out.append("True")
+        elif tok == "&&":
+            out.append("and")
+        elif tok == "||":
+            out.append("or")
+        elif tok in ("==", "!=", "(", ")") or tok.startswith("'"):
+            out.append(tok)
+        elif tok in values:
+            out.append(repr(values[tok]))
+        else:
+            raise ValueError(f"unknown name {tok!r} in {expr!r}")
+    return bool(eval(" ".join(out), {"__builtins__": {}}, {}))  # noqa: S307
+
+
+def post_review_matrix_errors(expr):
+    """Combinations where `expr` disagrees with the intended post-review gate.
+
+    post-review runs when gather-context was not skipped, unless the run was
+    superseded (gather-context or claude-review cancelled) and gather-context
+    did not report stashed=true (lds#2979).
+    """
+    errors = []
+    for gather in _RESULTS[:3]:
+        for review in _RESULTS:
+            for stashed in ("true", "false", ""):
+                superseded = "cancelled" in (gather, review)
+                want = not (superseded and stashed != "true")
+                try:
+                    got = eval_post_review_if(expr, gather, review, stashed)
+                except ValueError as exc:
+                    return [str(exc)]
+                if got != want:
+                    errors.append(
+                        f"gather={gather} review={review} stashed={stashed!r}: "
+                        f"runs={got}, want {want}"
+                    )
+    try:
+        if eval_post_review_if(expr, "skipped", "skipped", ""):
+            errors.append("runs when gather-context was skipped")
+    except ValueError as exc:
+        return [str(exc)]
+    return errors
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
 DEFAULT_ACTIONS_DIR = ".github/actions"
 
@@ -586,6 +649,29 @@ def check_workflow(
         post_if == POST_REVIEW_IF,
         "post-review skips a superseded run that stashed nothing "
         "(a superseded run must not cancel the newer run's stash, lds#2979)",
+    )
+    # The text match above cannot see a condition wrong in both copies, so
+    # evaluate the workflow's own `if:` over every result combination too.
+    wrong = post_review_matrix_errors(post_if)
+    check(
+        not wrong,
+        "post-review runs in exactly the intended result combinations "
+        f"(lds#2979){': ' + '; '.join(wrong[:3]) if wrong else ''}",
+    )
+    stash_run = next(
+        (
+            str(s.get("run") or "")
+            for s in (jobs.get("gather-context") or {}).get("steps") or []
+            if isinstance(s, dict) and s.get("id") == "stash"
+        ),
+        "",
+    )
+    mark = stash_run.find('echo "stashed=true"')
+    delete = stash_run.find("-X DELETE")
+    check(
+        0 <= mark < delete,
+        "gather-context writes stashed=true before the reviewer DELETE, "
+        "so a run that removed reviewers qualifies for its restore (lds#2979)",
     )
     gather_needs = (jobs.get("gather-context") or {}).get("needs")
     if isinstance(gather_needs, str):
@@ -1255,7 +1341,10 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - run: echo stash
+      - id: stash
+        run: |
+          echo "stashed=true" >> "$GITHUB_OUTPUT"
+          gh api -X DELETE "repos/$REPO/pulls/1/requested_reviewers" || true
   claude-review:
     if: >-
       always() &&
@@ -1697,8 +1786,10 @@ runs:
         model_in_gather = root / "model-in-gather.yml"
         model_in_gather.write_text(
             good_wf.read_text().replace(
-                "      - run: echo stash\n",
-                "      - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2\n",
+                "      - id: stash\n",
+                "      - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2\n"
+                "      - id: stash\n",
+                1,
             )
         )
         failures += expect(
@@ -1956,6 +2047,46 @@ runs:
                 False,
                 "skips a superseded run that stashed nothing",
             )
+
+        # A condition wrong in both the workflow and POST_REVIEW_IF still has
+        # to fail: the matrix evaluates the expression, not its text.
+        if post_review_matrix_errors(POST_REVIEW_IF):
+            print("::error::POST_REVIEW_IF fails its own matrix", file=sys.stderr)
+            failures += 1
+        else:
+            print("OK   POST_REVIEW_IF passes the result matrix")
+        for label, expr in (
+            ("matrix catches a gate that ignores a cancelled review job",
+             "always() && needs.gather-context.result != 'skipped' && "
+             "(needs.gather-context.outputs.stashed == 'true' || "
+             "needs.gather-context.result != 'cancelled')"),
+            ("matrix catches a gate that skips a stashed run",
+             "always() && needs.gather-context.result != 'skipped' && "
+             "needs.gather-context.result != 'cancelled' && "
+             "needs.claude-review.result != 'cancelled'"),
+        ):
+            if post_review_matrix_errors(expr):
+                print(f"OK   {label}")
+            else:
+                print(f"::error::{label}: the matrix passed it", file=sys.stderr)
+                failures += 1
+
+        late_mark = root / "late-stash-mark.yml"
+        late_mark.write_text(
+            good_wf.read_text().replace(
+                '          echo "stashed=true" >> "$GITHUB_OUTPUT"\n'
+                '          gh api -X DELETE "repos/$REPO/pulls/1/requested_reviewers" || true\n',
+                '          gh api -X DELETE "repos/$REPO/pulls/1/requested_reviewers" || true\n'
+                '          echo "stashed=true" >> "$GITHUB_OUTPUT"\n',
+                1,
+            )
+        )
+        failures += expect(
+            "writing stashed=true after the reviewer DELETE fails",
+            run(late_mark, good_action),
+            False,
+            "writes stashed=true before the reviewer DELETE",
+        )
 
         stash_cancels = root / "stash-cancels.yml"
         stash_cancels.write_text(
