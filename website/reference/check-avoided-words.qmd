@@ -91,9 +91,9 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   The intercept term of an expression is its constant term.
   The two differ whenever another term is nonzero at zero input,
   as in a model with a centered predictor.
-  "Intercept term", "intercept of", "y-intercept", "x intercept",
-  a link to `#def-intercept` or `#def-intercept-term`,
-  hyphenated compounds, ids, code, math, quotes, italics, and blockquote lines pass.
+  These forms pass: "intercept term", "intercept of", "y-intercept", and "x intercept".
+  So do a link to `#def-intercept` or `#def-intercept-term`, hyphenated compounds, and ids,
+  as well as code, math, quotes, italics, and blockquote lines.
   Source: Ezra, 2026-11-22, and psw's rule to tell the two apart (psw#701).
   This rule only warns, even with `fail` on, while it is new.
 - **"Write" to name notation.**
@@ -147,7 +147,7 @@ Every run prints how many lines and files it examined.
 | ---------------- | ------- | ------- | ----------- |
 | `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail, and the Gaussian, optional-step, and intercept rules only warn. |
+| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail, and the Gaussian, optional-step, and bare-intercept rules only warn. |
 | `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string  | `'3.x'` | Python version to set up. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |

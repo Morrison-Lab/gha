@@ -92,7 +92,7 @@ gha#1568):
   $f(0)$; the intercept term of an expression is its constant term, such as
   $\beta_0$ in $\beta_0 + \beta_1 x$. The two differ whenever another term
   is nonzero at zero input, as in a model with a centered predictor, so the
-  notes always say which one they mean (Ezra, 2026-11-22; psw word-choice.qmd).
+  notes always say which one they mean (Ezra, 2026-11-22; psw#701).
   "intercept term(s)", "intercept(s) of", "y-intercept", "x intercept", a
   link to ``#def-intercept`` or ``#def-intercept-term``, a hyphenated
   compound or id ("intercept-only", ``@exr-rss-deriv-intercept``), code,
@@ -317,9 +317,9 @@ RULES = (
     ("intercept", INTERCEPT_RE,
      'Say which intercept: "the intercept term" (or "the intercept term '
      '$\\beta_0$") for the constant term of an expression, and "the intercept '
-     'of $f$", "$f(0)$" or "the y-intercept" for the value of a function at '
+     'of $f$", "$f(0)$", or "the y-intercept" for the value of a function at '
      "zero; they differ whenever another term is nonzero at zero input "
-     "(Ezra, 2026-11-22; psw word-choice.qmd). A deliberate use takes the "
+     "(Ezra, 2026-11-22; psw#701). A deliberate use takes the "
      "check-avoided-words allow comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
