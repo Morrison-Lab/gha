@@ -313,6 +313,13 @@ In lds, a new caller workflow must also be listed under `workflows:` in `annotat
 sds uses `workflows: ["*"]`.
 The pds, mds, and mcs repos have no gate.
 
+Ship a new check in one PR, with every piece above.
+A stack that splits it to fit the push size cap fails review on each partial part,
+and a part that adds the workflow before the README list fails `lint-qmd` (gha#2182, folded into gha#2184).
+Cite an issue in a private repository, such as Morrison-Lab/lds, as text rather than a link:
+`links / link-checker` gets a 404 for it.
+Run `bash .github/workflows/scripts/check-diff-scoped.sh origin/main` before the first push,
+since `serial-comma` reads the new docs too.
 A synthetic email address in a test needs a `# phi-allow` comment.
 `lint-qmd` fails a prose line with whitespace after column 80 (MD013), and the lists of check names in `website/*.qmd` are where a new check hits it.
 Wrap prose lines at a comma.
