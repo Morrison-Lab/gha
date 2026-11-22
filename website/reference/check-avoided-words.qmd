@@ -91,8 +91,10 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   The intercept term of an expression is its constant term.
   The two differ whenever another term is nonzero at zero input,
   as in a model with a centered predictor.
-  These forms pass: "intercept term", "intercept of", "y-intercept", and "x intercept".
-  So do a link to `#def-intercept` or `#def-intercept-term`, hyphenated compounds, and ids,
+  These forms pass:
+  "intercept term", "intercept of", "y-intercept", and "x intercept".
+  So do a link to `#def-intercept` or `#def-intercept-term`,
+  hyphenated compounds, and ids,
   as well as code, math, quotes, italics, and blockquote lines.
   Source: Ezra, 2026-11-22, and psw's rule to tell the two apart (psw#701).
   This rule only warns, even with `fail` on, while it is new.
