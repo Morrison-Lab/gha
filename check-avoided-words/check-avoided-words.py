@@ -3,7 +3,7 @@
 r"""
 Flag words and phrases that a style source advises against, in prose.
 
-Twelve rules; the first three each have a source that was read (psw#418),
+Thirteen rules; the first three each have a source that was read (psw#418),
 and the rest are psw's own (psw#427, psw#442) or a lab reviewer's (gha#1402,
 gha#1568):
 
@@ -86,6 +86,18 @@ gha#1568):
   crossrefs and citation keys, ids and attribute blocks, inline math and
   blockquote lines are skipped, besides the code the engine masks, so
   ``colour =`` in R and a British book title pass.
+
+- **bare "intercept"**: "intercept" or "intercepts" with nothing saying
+  which concept it names. The intercept of a function $f$ is the value
+  $f(0)$; the intercept term of an expression is its constant term, such as
+  $\beta_0$ in $\beta_0 + \beta_1 x$. The two differ whenever another term
+  is nonzero at zero input, as in a model with a centered predictor, so the
+  notes always say which one they mean (Ezra, 2026-11-22; psw#701).
+  "intercept term(s)", "intercept(s) of", "y-intercept", "x intercept", a
+  link to ``#def-intercept`` or ``#def-intercept-term``, a hyphenated
+  compound or id ("intercept-only", ``@exr-rss-deriv-intercept``), code,
+  math, quotes, italics and blockquote lines pass. Warn-only while the rule
+  is new; where annotation-gate runs, the warning still fails the PR.
 
 What is flagged is deliberately narrow. ``above`` and ``below`` are flagged
 only in the position senses (after a document noun, after "as shown/noted/..."
@@ -225,12 +237,30 @@ def _mask_british(masked: str) -> str:
     return _BRITISH_MASK_RE.sub(lambda m: " " * len(m.group(0)), masked)
 
 
+# A bare "intercept" (Ezra, 2026-11-22): the word with no qualifier saying
+# whether it means the intercept of a function, f(0), or the intercept term of
+# an expression. A hyphen, id or path character on either side marks a
+# compound ("y-intercept", "intercept-only") or an id, so those pass.
+INTERCEPT_RE = re.compile(
+    r"(?i)(?<![\w\-#@/.])(?<!\b[xy] )(?P<phrase>intercepts?)(?![\w\-])"
+    r"(?!\s+(?:terms?|of)\b)"
+)
+# A link whose target is either definition already says which concept it is.
+_INTERCEPT_LINK_RE = re.compile(r"\[[^\]]*\]\([^)]*#def-intercept(?:-term)?\)")
+
+
+def _mask_intercept(masked: str) -> str:
+    """Blank links to the intercept definitions, then what british blanks."""
+    masked = _INTERCEPT_LINK_RE.sub(lambda m: " " * len(m.group(0)), masked)
+    return _mask_british(masked)
+
+
 # Rules that fail the run whatever CAW_FAIL says (gha#1402: Ezra asked for a
 # failing check; since gha#1473 every rule fails by default).
 ALWAYS_FAIL = frozenset({"parenref", "thing", "vague"})
 # Rules in their trial period: a finding is a warning and never fails the run
 # (gha#1570: warn-only first; promote after several PRs with no false positive).
-WARN_ONLY = frozenset({"gaussian", "optional"})
+WARN_ONLY = frozenset({"gaussian", "optional", "intercept"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -284,6 +314,13 @@ RULES = (
      "analyze, center, modeling, labeled (Ezra, 2026-11-17; gha#2095). Quoted "
      "text, italic titles, code, links and math are skipped; any other "
      "deliberate use takes the check-avoided-words allow comment."),
+    ("intercept", INTERCEPT_RE,
+     'Say which intercept: "the intercept term" (or "the intercept term '
+     '$\\beta_0$") for the constant term of an expression, and "the intercept '
+     'of $f$", "$f(0)$", or "the y-intercept" for the value of a function at '
+     "zero; they differ whenever another term is nonzero at zero input "
+     "(Ezra, 2026-11-22; psw#701). A deliberate use takes the "
+     "check-avoided-words allow comment."),
     ("parenref", PARENREF_RE,
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '
@@ -293,7 +330,7 @@ RULES = (
 
 
 # Rule-specific masking applied before a rule's pattern runs.
-_PREMASK = {"british": _mask_british}
+_PREMASK = {"british": _mask_british, "intercept": _mask_intercept}
 
 
 class Finding(NamedTuple):
