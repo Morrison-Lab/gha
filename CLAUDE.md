@@ -2309,7 +2309,7 @@ CI runs it in the `lone-subfloats` job in `_selftest.yml`, followed by real
 `check-bitmap-figures/tests/test_check_bitmap_figures.py` is a pytest suite over
 each of the three findings (a new bitmap file, a reference, and a raster device),
 the clean forms beside them (an SVG, a reference in a fence, comment, or code span,
-a Markdown image in a script, a renamed bitmap, a moved line),
+a Markdown image in a script, a renamed bitmap, and a moved line),
 the allow comment with its required reason, `paths-ignore` for files and targets,
 diff scoping in throwaway git repos, the skip,
 and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
