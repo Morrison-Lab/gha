@@ -95,7 +95,23 @@ def test_target_resolves_from_the_file_directory():
     "plt.savefig('fig.png', dpi=300)",
 ])
 def test_raster_devices_are_flagged(line):
-    assert found(line) == [1]
+    assert found(line, rel="tools/make.R") == [1]
+    assert found("```{r}\n" + line + "\n```\n") == [2]
+
+
+def test_device_in_prose_is_not_flagged():
+    assert found("Never set fig-format: png in a page.") == []
+    assert found("dev: png") == []
+
+
+def test_device_in_front_matter_is_flagged():
+    doc = "---\ntitle: x\nfig-format: png\n---\n\nfig-format: png\n"
+    assert found(doc) == [3]
+
+
+def test_front_matter_ends_at_its_closing_line():
+    doc = "---\ntitle: x\n---\n\n![](a.png)\n"
+    assert found(doc) == [5]
 
 
 @pytest.mark.parametrize("line", [
@@ -107,7 +123,8 @@ def test_raster_devices_are_flagged(line):
     "fig-width: 6",
 ])
 def test_vector_devices_are_clean(line):
-    assert found(line) == []
+    assert found(line, rel="tools/make.R") == []
+    assert found("```{r}\n" + line + "\n```\n") == []
 
 
 def test_markdown_image_in_a_script_is_not_a_reference():
@@ -146,6 +163,12 @@ def test_allow_without_reason_does_not_exempt():
 def test_allow_two_lines_up_does_not_exempt():
     doc = "<!-- check-bitmap-figures: allow: a photo -->\n\n![](photo.jpg)\n"
     assert found(doc) == [3]
+
+
+def test_allowed_image_does_not_exempt_the_next_one():
+    doc = ("![](photo.jpg) <!-- check-bitmap-figures: allow: a photo -->\n"
+           "![](other.png)\n")
+    assert found(doc) == [2]
 
 
 # -- diff scoping --------------------------------------------------------------
