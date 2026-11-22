@@ -1,5 +1,5 @@
 - **`claude-code-review.yml`'s `post-review` now skips a superseded run that stashed no reviewers**
-  ([Morrison-Lab/lds#2979](https://github.com/Morrison-Lab/lds/issues/2979)).
+  (Morrison-Lab/lds#2979, a private repository the link checker cannot reach).
   GitHub keeps one pending job per concurrency group, and a new pending job cancels the one already waiting.
   So when a second review trigger arrived while the first run was queued,
   the old run's `post-review` entered the stash group and cancelled the new run's pending `gather-context`.
