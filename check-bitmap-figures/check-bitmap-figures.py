@@ -22,6 +22,9 @@ What a pull request is flagged for:
 - **A raster figure device**: an added ``fig-format: png`` (or ``retina``,
   ``jpeg``), ``dev: png`` (``#| dev:``, ``dev =``, any raster device such as
   ``ragg_png``), or a ``ggsave()`` / ``savefig()`` call writing a bitmap.
+  In a markup file only code fences and YAML front matter are read for these,
+  so prose quoting ``dev: png`` passes. A path the code computes, a call
+  split over lines, or a nested call before the file name is not seen.
 
 ``<!-- check-bitmap-figures: allow: reason -->`` with a non-empty reason,
 on the flagged line or the line above it, exempts that line, for a photo or
@@ -112,6 +115,19 @@ DEVICE_RES = [re.compile(p) for p in (
     r"\bsavefig\s*\([^)]*[\"'][^\"']+" + _EXT + r"[\"']",
 )]
 EXEMPT_RE = re.compile(r"<!--\s*check-bitmap-figures:\s*allow:\s*(?!-->)\S")
+# On the line above, the comment exempts only when it stands alone, so an
+# allowed image does not also exempt the unrelated image after it.
+EXEMPT_ALONE_RE = re.compile(
+    r"^\s*<!--\s*check-bitmap-figures:\s*allow:\s*(?!-->)\S.*?-->\s*$")
+DEVICE_MESSAGE = ("Raster figure device or bitmap output. "
+                  f"Fix: {LINE_ADVICE}")
+
+
+def exempt(lines: List[str], idx: int) -> bool:
+    """Whether line ``idx`` (0-based) carries or follows an allow comment."""
+    if EXEMPT_RE.search(lines[idx]):
+        return True
+    return idx > 0 and bool(EXEMPT_ALONE_RE.match(lines[idx - 1]))
 
 
 def is_bitmap_path(rel: str) -> bool:
@@ -149,9 +165,18 @@ def scan_lines(rel: str, lines: List[str], keep: Optional[Set[int]],
     found: List[Finding] = []
     fence: Optional[Tuple[str, int]] = None
     in_comment = False
+    front = bool(markup and lines and lines[0].strip() == "---")
     for idx, raw in enumerate(lines):
         n = idx + 1
         text = raw
+        if front:
+            # YAML front matter is code: devices count, images do not.
+            if idx and raw.strip() in ("---", "..."):
+                front = False
+            if (keep is None or n in keep) and not exempt(lines, idx) \
+                    and any(rx.search(raw) for rx in DEVICE_RES):
+                found.append(Finding(rel, n, DEVICE_MESSAGE))
+            continue
         in_fence = fence is not None
         if markup and fence is None:
             text, in_comment = ods.strip_comments(raw, in_comment)
@@ -165,8 +190,7 @@ def scan_lines(rel: str, lines: List[str], keep: Optional[Set[int]],
             in_fence = True
         if keep is not None and n not in keep:
             continue
-        prev = lines[idx - 1] if idx else ""
-        if EXEMPT_RE.search(raw) or EXEMPT_RE.search(prev):
+        if exempt(lines, idx):
             continue
         if not in_fence:
             if markup:
@@ -179,10 +203,10 @@ def scan_lines(rel: str, lines: List[str], keep: Optional[Set[int]],
                     found.append(Finding(rel, n, (
                         f"Reference to the bitmap '{hit.group(1)}'. "
                         f"Fix: {LINE_ADVICE}")))
-        if any(rx.search(text) for rx in DEVICE_RES):
-            found.append(Finding(rel, n, (
-                "Raster figure device or bitmap output. "
-                f"Fix: {LINE_ADVICE}")))
+        # In a markup file a device setting is code only inside a fence;
+        # prose that quotes `dev: png` is not one.
+        if (in_fence or not markup) and any(rx.search(text) for rx in DEVICE_RES):
+            found.append(Finding(rel, n, DEVICE_MESSAGE))
     return found
 
 
