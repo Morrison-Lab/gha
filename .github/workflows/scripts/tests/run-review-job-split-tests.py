@@ -85,6 +85,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import ast
 import pathlib
 import re
 import subprocess
@@ -118,7 +119,9 @@ def eval_post_review_if(expr, gather, review, stashed):
         "needs.claude-review.result": review,
         "needs.gather-context.outputs.stashed": stashed,
     }
-    tokens = re.findall(r"always\(\)|'[^']*'|==|!=|&&|\|\||\(|\)|[\w.-]+", expr)
+    # No backslash inside a literal: GitHub reads `'a\'` as a whole string,
+    # Python would not, so such a literal fails the join check and raises.
+    tokens = re.findall(r"always\(\)|'[^'\\]*'|==|!=|&&|\|\||\(|\)|[\w.-]+", expr)
     if "".join(tokens) != expr.replace(" ", ""):
         raise ValueError(f"unsupported syntax in {expr!r}")
     out = []
@@ -135,7 +138,27 @@ def eval_post_review_if(expr, gather, review, stashed):
             out.append(repr(values[tok]))
         else:
             raise ValueError(f"unknown name {tok!r} in {expr!r}")
-    return bool(eval(" ".join(out), {"__builtins__": {}}, {}))  # noqa: S307
+    return _eval_node(ast.parse(" ".join(out), mode="eval").body, expr)
+
+
+def _eval_node(node, expr):
+    """Evaluate a parsed condition, allowing only and/or, ==/!= and constants."""
+    if isinstance(node, ast.BoolOp):
+        values = [_eval_node(v, expr) for v in node.values]
+        if isinstance(node.op, ast.And):
+            return all(values)
+        return any(values)
+    if (
+        isinstance(node, ast.Compare)
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], (ast.Eq, ast.NotEq))
+    ):
+        left = _eval_node(node.left, expr)
+        right = _eval_node(node.comparators[0], expr)
+        return (left == right) if isinstance(node.ops[0], ast.Eq) else (left != right)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (str, bool)):
+        return node.value
+    raise ValueError(f"unsupported construct {ast.dump(node)} in {expr!r}")
 
 
 def post_review_matrix_errors(expr):
@@ -2050,6 +2073,19 @@ runs:
 
         # A condition wrong in both the workflow and POST_REVIEW_IF still has
         # to fail: the matrix evaluates the expression, not its text.
+        # A backslash-ended literal is valid GitHub syntax that Python would
+        # misread, so the evaluator must refuse it rather than answer.
+        try:
+            eval_post_review_if(
+                "'a\\' == 'or(1).__class__.__name__==\"int\"#'",
+                "skipped", "skipped", "",
+            )
+        except ValueError:
+            print("OK   the gate evaluator refuses a backslash in a literal")
+        else:
+            print("::error::the gate evaluator accepted a backslash literal",
+                  file=sys.stderr)
+            failures += 1
         if post_review_matrix_errors(POST_REVIEW_IF):
             print("::error::POST_REVIEW_IF fails its own matrix", file=sys.stderr)
             failures += 1
