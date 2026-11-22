@@ -73,3 +73,75 @@ def test_ordinary_algebra_words_are_not_claims():
 def test_keep_limits_to_added_lines():
     assert missing(CLAIM, keep={5}) == []
     assert missing(CLAIM, keep={1}) == [1]
+
+
+# --- Geometric definitions: the next example needs a figure ---------------
+
+DEF = ("::: {#def-pr-curve}\n\n#### Precision-recall curve\n\n"
+       "The **precision-recall curve** plots recall against precision.\n\n:::\n")
+EXM_TABLE = "::: {#exm-pr-curve}\n\n#### A curve\n\nA table.\n\n:::\n"
+EXM_FIG = "::: {#exm-pr-curve}\n\n#### A curve\n\n![Curve](a.png)\n\n:::\n"
+
+
+def def_findings(files, wanted=None):
+    corpus = {k: v.split("\n") for k, v in files.items()}
+    return geo.check_definitions(corpus, wanted)[0]
+
+
+def test_geometric_definition_needs_example_figure_same_file():
+    assert len(def_findings({"a.qmd": DEF + "\n" + EXM_TABLE})) == 1
+    assert def_findings({"a.qmd": DEF + "\n" + EXM_FIG}) == []
+
+
+def test_example_no_figure_pragma_does_not_exempt_the_definition():
+    exm = EXM_TABLE.replace("A table.", "<!-- no-figure: a table -->\nA table.")
+    assert len(def_findings({"a.qmd": DEF + "\n" + exm})) == 1
+
+
+def test_definition_pragma_exempts():
+    d = DEF.replace("plots", "<!-- no-figure: nothing to draw -->\nplots")
+    assert def_findings({"a.qmd": d + "\n" + EXM_TABLE}) == []
+
+
+def test_non_geometric_definition_is_ignored():
+    d = DEF.replace("Precision-recall curve", "Precision").replace(
+        "precision-recall curve", "precision")
+    assert def_findings({"a.qmd": d + "\n" + EXM_TABLE}) == []
+
+
+def test_link_target_in_bold_term_does_not_count():
+    d = ("::: {#def-dm}\n\n#### Design matrix\n\n"
+         "The **[design matrix](https://x.org/projections.html#d)** is X.\n\n:::\n")
+    assert def_findings({"a.qmd": d + "\n" + EXM_TABLE}) == []
+
+
+def test_subfiles_through_parent_includes():
+    parent = ("{{< include _s/_def-pr-curve.qmd >}}\n\n{{< slidebreak >}}\n\n"
+              "{{< include _s/_exm-pr-curve.qmd >}}\n")
+    files = {"ch/p.qmd": parent, "ch/_s/_def-pr-curve.qmd": DEF,
+             "ch/_s/_exm-pr-curve.qmd": EXM_TABLE}
+    found = def_findings(files)
+    assert [(f[0], f[1]) for f in found] == [("ch/_s/_def-pr-curve.qmd", 1)]
+    files["ch/_s/_exm-pr-curve.qmd"] = EXM_FIG
+    assert def_findings(files) == []
+
+
+def test_fig_subfile_include_in_example_counts():
+    exm = EXM_TABLE.replace("A table.", "{{< include _fig-pr.qmd >}}")
+    assert def_findings({"a.qmd": DEF + "\n" + exm}) == []
+
+
+def test_another_result_before_any_example_stops_the_search():
+    thm = "::: {#thm-x}\n\n#### T\n\nA result.\n\n:::\n"
+    assert def_findings({"a.qmd": DEF + "\n" + thm + "\n" + EXM_TABLE}) == []
+
+
+def test_diff_scope_reports_when_definition_or_example_is_touched():
+    parent = ("{{< include _s/_def-pr-curve.qmd >}}\n\n"
+              "{{< include _s/_exm-pr-curve.qmd >}}\n")
+    files = {"p.qmd": parent, "_s/_def-pr-curve.qmd": DEF,
+             "_s/_exm-pr-curve.qmd": EXM_TABLE}
+    assert def_findings(files, {"other.qmd": {1}}) == []
+    assert len(def_findings(files, {"_s/_exm-pr-curve.qmd": {5}})) == 1
+    assert len(def_findings(files, {"_s/_def-pr-curve.qmd": {5}})) == 1
+    assert def_findings(files, {"_s/_def-pr-curve.qmd": {99}}) == []

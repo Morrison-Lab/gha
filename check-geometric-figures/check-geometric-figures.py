@@ -23,6 +23,17 @@ include of a ``_fig`` subfile (the test ``check-exm-figures`` uses).
 ``<!-- no-figure: reason -->`` in the same span exempts a claim that no
 figure can show; the reason is required.
 
+A second rule (Ezra, 2026-11-22): a ``#def-`` div whose title or bold term
+names a geometric object (``GEOM_TERM_RE``: curve, plane, distance, margin,
+boundary, region and the rest) is followed by an example with a figure.
+``check_definitions`` finds the next ``#exm-`` div after the definition,
+following ``include`` shortcodes in the definition's file and, for a
+subfile, in each parent page after its include. It stops at the next
+definition, result, exercise or solution, and reports the definition when
+the diff touches the definition or that example. The example's own
+``no-figure`` marker does not excuse it, because the rule is that the
+definition gets a figure; a ``no-figure`` marker inside the definition does.
+
 Why a check can only approximate the rule: it sees that *a* figure is near
 the claim, not that the figure shows *this* claim. The Claude review prompt
 carries the second half (see psw ``chapters/teaching.qmd``).
@@ -172,6 +183,233 @@ def check_lines(lines: List[str], keep: Optional[Set[int]],
     return missing, seen
 
 
+# --- Geometric definitions (Ezra, 2026-11-22) ------------------------------
+# A definition of a term that names a geometric object is followed by an
+# example with a figure. The term is the div's title or a bold phrase in it.
+
+GEOM_TERM_RE = re.compile(
+    r"\bcurves?\b|\bsurfaces?\b|\b(?:hyper)?planes?\b|\bhalf-?spaces?\b"
+    r"|\bdistances?\b|\bmargins?\b|\bboundar(?:y|ies)\b|\bregions?\b"
+    r"|\bcontours?\b|\blevel\s+sets?\b|\bcircles?\b|\bellipses?\b"
+    r"|\bspheres?\b|\bballs?\b|\bangles?\b|\bpolygons?\b|\bpolytopes?\b"
+    r"|\bconvex\s+hulls?\b|\bprojections?\b|\bline\s+segments?\b"
+    r"|\bsimplex\b|\bsimplices\b|\bcones?\b|\bmanifolds?\b",
+    re.IGNORECASE,
+)
+BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
+LINK_TARGET_RE = re.compile(r"\]\([^)]*\)")
+INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(\S+?)\s*>\}\}")
+RESULT_PREFIXES = ("def-", "thm-", "lem-", "prp-", "cor-", "exr-", "sol-",
+                   "cnj-", "conj-")
+ID_RE = re.compile(r"#([a-z]+-[\w:.-]+)")
+
+DEF_ADVICE = (
+    "add a figure that draws the object to the example after the definition "
+    "(a plot, a diagram, or a `_fig` include), or add "
+    "<!-- no-figure: reason --> inside the definition if nothing can show it"
+)
+
+
+def div_id(attrs: str) -> str:
+    m = ID_RE.search(attrs)
+    return m.group(1) if m else ""
+
+
+def geometric_term(lines: List[str], div) -> Optional[str]:
+    """The geometric word in a definition's title or bold terms, if any."""
+    texts = [viz.title_of(lines, div)]
+    for raw in lines[div.start:div.end - 1]:
+        texts.extend(BOLD_RE.findall(raw))
+    for text in texts:
+        text = LINK_TARGET_RE.sub("]", text or "")  # a URL is not the term
+        m = GEOM_TERM_RE.search(text)
+        if m:
+            return m.group(0)
+    return None
+
+
+def code_and_comment_mask(lines: List[str]) -> List[Optional[str]]:
+    """Each line without HTML comments, or None inside a code fence."""
+    out: List[Optional[str]] = []
+    fence: Optional[Tuple[str, int]] = None
+    in_comment = False
+    for raw in lines:
+        if fence is None:
+            text, in_comment = ods.strip_comments(raw, in_comment)
+        else:
+            text = raw
+        m = ods.FENCE_RE.match(text)
+        if fence is not None:
+            if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+                    and not m.group(2).strip()):
+                fence = None
+            out.append(None)
+            continue
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence = (m.group(1)[0], len(m.group(1)))
+            out.append(None)
+            continue
+        out.append(text)
+    return out
+
+
+def resolve_include(including: str, target: str) -> str:
+    """The repository path an include shortcode in ``including`` names."""
+    if target.startswith("/"):
+        return os.path.normpath(target.lstrip("/"))
+    return os.path.normpath(os.path.join(os.path.dirname(including), target))
+
+
+class Found(NamedTuple):
+    path: str
+    lines: List[str]
+    div: object  # viz.Div
+
+
+class Walk(NamedTuple):
+    example: Optional[Found]
+    reached_end: bool
+
+
+def first_theorem_div(lines: List[str]):
+    """The first top-level theorem-type div of a file, or None."""
+    divs = sorted(viz.scan_divs(lines), key=lambda d: d.start)
+    for d in divs:
+        if any(o.start < d.start and d.end < o.end for o in divs):
+            continue
+        ident = div_id(d.attrs)
+        if ident.startswith("exm-") or ident.startswith(RESULT_PREFIXES):
+            return d
+    return None
+
+
+def walk_after(path: str, lines: List[str], after: int,
+               reader, depth: int = 0) -> Walk:
+    """The first example after 1-based line ``after``, following includes.
+
+    Stops at the next definition, result, exercise or solution, because the
+    example a definition needs comes right after it.
+    """
+    masked = code_and_comment_mask(lines)
+    divs = {d.start: d for d in viz.scan_divs(lines)}
+    idx = after  # 0-based index of the line after ``after``
+    while idx < len(lines):
+        text = masked[idx]
+        n = idx + 1
+        if text is None:
+            idx += 1
+            continue
+        d = divs.get(n)
+        if d is not None:
+            ident = div_id(d.attrs)
+            if ident.startswith("exm-"):
+                return Walk(Found(path, lines, d), False)
+            if ident.startswith(RESULT_PREFIXES):
+                return Walk(None, False)
+            idx = d.end
+            continue
+        inc = INCLUDE_RE.search(text)
+        if inc and "{{</*" not in text and depth < 5:
+            target = resolve_include(path, inc.group(1))
+            sub = reader(target)
+            if sub is not None:
+                d = first_theorem_div(sub)
+                if d is not None:
+                    if div_id(d.attrs).startswith("exm-"):
+                        return Walk(Found(target, sub, d), False)
+                    return Walk(None, False)
+        idx += 1
+    return Walk(None, True)
+
+
+def next_example(path: str, lines: List[str], div, reader,
+                 parents) -> Optional[Found]:
+    """The example after a definition, in its file or after its include."""
+    walk = walk_after(path, lines, div.end, reader)
+    if walk.example is not None or not walk.reached_end:
+        return walk.example
+    for parent, line in parents(path):
+        plines = reader(parent)
+        if plines is None:
+            continue
+        found = walk_after(parent, plines, line, reader).example
+        if found is not None:
+            return found
+    return None
+
+
+def touched(keep: Optional[Set[int]], start: int, end: int) -> bool:
+    return keep is None or any(start <= n <= end for n in keep)
+
+
+def check_definitions(files: Dict[str, List[str]],
+                      wanted: Optional[Dict[str, Optional[Set[int]]]]
+                      ) -> Tuple[List[Tuple[str, int, str]], int]:
+    """Geometric definitions whose next example has no figure.
+
+    ``files`` maps every scanned path to its lines; ``wanted`` maps the paths
+    a diff touched to their added lines (None for the whole tree). A
+    definition is reported when the diff touches it or its example.
+    """
+    def reader(rel: str) -> Optional[List[str]]:
+        if rel in files:
+            return files[rel]
+        got = diffscope.read_lines(rel)
+        if got is not None:
+            files[rel] = got
+        return got
+
+    index: Dict[str, List[Tuple[str, int]]] = {}
+    for rel, content in list(files.items()):
+        for i, text in enumerate(code_and_comment_mask(content)):
+            inc = INCLUDE_RE.search(text or "")
+            if inc and "{{</*" not in text:
+                index.setdefault(resolve_include(rel, inc.group(1)),
+                                 []).append((rel, i + 1))
+
+    def parents(rel: str) -> List[Tuple[str, int]]:
+        return index.get(os.path.normpath(rel), [])
+
+    def keep_of(rel: str) -> Tuple[bool, Optional[Set[int]]]:
+        if wanted is None:
+            return True, None
+        if rel not in wanted:
+            return False, set()
+        return True, wanted[rel]
+
+    findings: List[Tuple[str, int, str]] = []
+    seen = 0
+    for rel in sorted(files):
+        content = files[rel]
+        for d in viz.scan_divs(content):
+            if not div_id(d.attrs).startswith("def-"):
+                continue
+            word = geometric_term(content, d)
+            if word is None:
+                continue
+            seen += 1
+            body = content[d.start - 1:d.end]
+            if any(EXEMPT_RE.search(x) for x in body):
+                continue
+            example = next_example(rel, content, d, reader, parents)
+            if example is None:
+                continue  # check-example-after-def's job
+            in_def, keep = keep_of(rel)
+            hit = in_def and touched(keep, d.start, d.end)
+            in_ex, ex_keep = keep_of(example.path)
+            ex = example.div
+            hit = hit or (in_ex and touched(ex_keep, ex.start, ex.end))
+            if not hit:
+                continue
+            if exf.has_figure(example.lines[ex.start - 1:ex.end]):
+                continue
+            findings.append((rel, d.start, (
+                f"Definition of a geometric term (\"{word}\") is followed by "
+                f"an example ({div_id(ex.attrs)}, {example.path}) with no "
+                f"figure. Fix: {DEF_ADVICE}")))
+    return findings, seen
+
+
 def format_message(text: str) -> str:
     match = CLAIM_RE.search(text)
     word = match.group(0) if match else "geometric word"
@@ -185,6 +423,8 @@ class Report(NamedTuple):
     lines: int
     claims: int
     skipped: bool
+    definitions: List[Tuple[str, int, str]] = []  # (path, line, message)
+    geometric_defs: int = 0
 
 
 def run_check(base_ref: str, globs: List[str], ignores: list,
@@ -226,7 +466,16 @@ def run_check(base_ref: str, globs: List[str], ignores: list,
         missing, seen = check_lines(content, keep, window)
         claims += seen
         findings.extend((rel, n, content[n - 1]) for n in missing)
-    return Report(findings, files, lines, claims, False)
+
+    tracked = diffscope.git_paths(["ls-files", "--", *globs]) or []
+    corpus: Dict[str, List[str]] = {}
+    for rel in tracked:
+        if rel and not diffscope.ignored(rel, ignores):
+            got = diffscope.read_lines(rel)
+            if got is not None:
+                corpus[rel] = got
+    defs, geo_defs = check_definitions(corpus, None if whole_tree else wanted)
+    return Report(findings, files, lines, claims, False, defs, geo_defs)
 
 
 def main() -> int:
@@ -254,12 +503,21 @@ def main() -> int:
     print(f"Examined {report.lines} line(s) across {report.files} file(s), "
           f"{report.claims} geometric claim line(s) (scope: {scope}).")
     severity = "error" if fail else "warning"
+    print(f"Found {report.geometric_defs} definition(s) of a geometric term.")
     for rel, line, text in report.findings:
         print(f"::{severity} file={rel},line={line}::{format_message(text)}")
-    if not report.findings:
-        print("Every examined geometric claim has a figure nearby or a stated exemption.")
+    for rel, line, message in report.definitions:
+        print(f"::{severity} file={rel},line={line}::{message}")
+    if not report.findings and not report.definitions:
+        print("Every examined geometric claim has a figure nearby or a stated "
+              "exemption, and every examined geometric definition's example "
+              "has a figure.")
         return 0
-    print(f"\n{len(report.findings)} geometric claim(s) have no figure nearby.")
+    if report.findings:
+        print(f"\n{len(report.findings)} geometric claim(s) have no figure nearby.")
+    if report.definitions:
+        print(f"\n{len(report.definitions)} geometric definition(s) have an "
+              "example with no figure.")
     return 1 if fail else 0
 
 
