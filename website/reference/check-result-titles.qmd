@@ -76,8 +76,8 @@ Measured on 2026-11-20 over `Morrison-Lab/lds` (whole tree),
 
 The statement names each hypothesis in words,
 with its symbol beside it (Ezra, 2026-11-23):
-"a nonnegative random variable $X$",
-not "a random variable $X$ with $X \ge 0$".
+`a nonnegative random variable $X$`,
+not `a random variable $X$ with $X \ge 0$`.
 The psw text is at the end of
 "State the title's sentence again in the statement, in words and in symbols".
 Whether a sentence names a condition in words needs its meaning,
