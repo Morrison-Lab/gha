@@ -72,6 +72,41 @@ That marker does not exempt the title.
 Measured on 2026-11-20 over `Morrison-Lab/lds` (whole tree),
 25 result statements had no display formula, and none had no sentence in words.
 
+## Hypotheses in words
+
+The statement names each hypothesis in words,
+with its symbol beside it (Ezra, 2026-11-23):
+"a nonnegative random variable $X$",
+not "a random variable $X$ with $X \ge 0$".
+The psw text is at the end of
+"State the title's sentence again in the statement, in words and in symbols".
+Whether a sentence names a condition in words needs its meaning,
+so the check flags the one form it can see:
+inline math holding an inequality
+(`<`, `>`, `\le`, `\ge`, `\ne`, and their variants)
+right after a cue word
+(`with`, `where`, `whenever`, `if`, `let`, `such that`, `satisfying`,
+`assume`, `suppose`, or `for every`, `all`, `each`, `any`, or `some`).
+It does not flag
+
+- an inequality in a subscript or superscript, which is an index range,
+  as in `\sum_{k \ne j}`;
+- math that defines a symbol,
+  with `\eqdef`, `:=`, or a set-builder `\{ ... \}`;
+- math after "there is" or "there exists" in the same sentence,
+  which the result asserts rather than assumes;
+- display math.
+
+A statement where the symbols are clearer
+takes `<!-- check-result-titles: allow-hypothesis: <reason> -->`
+anywhere in the div.
+A hypothesis finding has the statement finding's scope.
+
+Measured on 2026-11-23 over `Morrison-Lab/pds`, `lds`, `mds`, `sds`, and `psw`
+(whole tree), the check flagged 131 statements.
+Each flagged span restricts a quantity in symbols alone,
+such as `$a > 0$`, `$\E{X^2} < \infty$`, or `$\vcoef \neq \vzero$`.
+
 ## Scope
 
 A title finding is reported only when the title line was added in the pull request,

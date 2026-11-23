@@ -48,6 +48,30 @@ div.
 A statement finding is reported when a pull request adds any line of the div,
 from its opening fence to its closing one.
 
+A third rule (Ezra, 2026-11-23) asks the statement to name each hypothesis in
+words, with its symbol beside it: "a nonnegative random variable $X$", not
+"a random variable $X$ with $X \ge 0$".
+Psw text: the end of "State the title's sentence again in the statement, in
+words and in symbols".
+Whether a condition is named in words needs the meaning of the sentence, so
+the check flags the one form it can see: inline math holding an inequality
+(``<``, ``\ge``, ``\ne``, ...) right after a cue word (``with``, ``where``,
+``if``, ``let``, ``such that``, ``for every``, ...).
+It drops an inequality in a subscript or superscript (an index range), math
+that defines a symbol (``\eqdef``, a set-builder ``\{ ... \}``), and math
+after "there is" in the same sentence, which the result asserts rather than
+assumes.
+Measured 2026-11-23 over pds, lds, mds, sds and psw (whole tree): 131
+statements flagged.
+Each flagged math span in that report, read by hand, restricts a quantity in
+symbols alone, such as ``$a > 0$``, ``$\E{X^2} < \infty$`` or
+``$\vcoef \neq \vzero$``; four spans that defined a symbol or stated a
+conclusion were the reason for the three exclusions above.
+A statement where the symbols are clearer takes
+``<!-- check-result-titles: allow-hypothesis: <reason> -->`` anywhere in the
+div.
+It shares the statement rule's scope: any added line of the div.
+
 The title is the ``title="..."`` attribute on the div's opening fence,
 or else the first heading written directly inside the div.
 Code fences, HTML comments and YAML front matter are not read.
@@ -174,6 +198,44 @@ ADVICE = ("state the result as a declarative sentence, after its customary "
           "name and a colon if it has one (psw, Title a result with the "
           "sentence it states), or add "
           "<!-- check-result-titles: allow: <reason> -->")
+
+
+# A hypothesis introduced by one of these words and written only as an
+# inline inequality, such as "with $X \ge 0$" or "for every $a > 0$".
+HYPOTHESIS_ALLOW_MARKER = "check-result-titles: allow-hypothesis"
+HYPOTHESIS_CUE_RE = re.compile(
+    r"\b(?:with|where|whenever|if|let|such\s+that|satisfying|assume|assuming|"
+    r"suppose|for\s+(?:every|all|each|any|some))\s+(?<!\\)\$([^$]+)(?<!\\)\$",
+    re.I)
+INEQUALITY_RE = re.compile(
+    r"(?<!\\)[<>]|\\(?:le|ge|leq|geq|leqslant|geqslant|lt|gt|neq|ne)(?![A-Za-z])")
+# Math that defines a symbol rather than restricting one: "where $V = \{ i :
+# ... < 1 \}$", "with $N \eqdef ...$".
+DEFINING_MATH_RE = re.compile(r"\\eqdef|\\coloneqq|:=|\\\{|\\set\{|\\setb")
+SCRIPT_GROUP_RE = re.compile(r"[_^]\{[^{}]*\}")
+SENTENCE_START_RE = re.compile(r"[.!?:;]\s+|\n\s*\n")
+EXISTENTIAL_RE = re.compile(r"\bthere\s+(?:is|are|exists?)\b", re.I)
+
+
+def _states_inequality(math: str) -> bool:
+    """Whether ``math`` restricts a quantity with an inequality.
+
+    An inequality inside a subscript or superscript (``\\sum_{k \\ne j}``)
+    is an index range, not a hypothesis, so script groups are dropped first.
+    """
+    if DEFINING_MATH_RE.search(math):
+        return False
+    previous = None
+    while previous != math:
+        previous, math = math, SCRIPT_GROUP_RE.sub("", math)
+    return bool(INEQUALITY_RE.search(math))
+
+HYPOTHESIS_ADVICE = ("name the condition in words with its symbol beside it, "
+                     "as in 'a nonnegative random variable $X$' or 'a positive "
+                     "number $a$' (psw, State the title's sentence again in "
+                     "the statement, in words and in symbols), or add "
+                     "<!-- check-result-titles: allow-hypothesis: <reason> --> "
+                     "in the div")
 
 
 STATEMENT_ADVICE = ("say the title's sentence again in the statement, once in "
@@ -330,6 +392,31 @@ def statement_gaps(statement: List[Tuple[int, str]]) -> List[str]:
             if not ok]
 
 
+def symbolic_hypotheses(statement: List[Tuple[int, str]]) -> List[str]:
+    """Inline inequalities that state a hypothesis in symbols only.
+
+    A hypothesis is the inline math right after a cue word (``with``,
+    ``where``, ``if``, ``let``, ``such that``, ``for every``, ...) when that
+    math holds an inequality (``<``, ``\\ge``, ``\\neq``, ...).
+    Display blocks and code spans are not read.
+    """
+    text = "\n".join(line for _, line in statement)
+    text = DISPLAY_BLOCK_RE.sub(" ", text)
+    text = text.split("$$", 1)[0]
+    text = CODE_RE.sub(" ", text)
+    found = []
+    for m in HYPOTHESIS_CUE_RE.finditer(text):
+        if not _states_inequality(m.group(1)):
+            continue
+        # "there is an $s > 0$ with $f(s) < 1$": the math after the cue is
+        # what the result asserts exists, not a hypothesis.
+        sentence = SENTENCE_START_RE.split(text[:m.start()])[-1]
+        if EXISTENTIAL_RE.search(sentence):
+            continue
+        found.append(m.group(1).strip())
+    return found
+
+
 def result_titles(path: str, prefixes: List[str]) -> List[Tuple[int, str, str]]:
     """(line, div id, title) of each result div's title in ``path``."""
     return [(d.title_line, d.ident, d.title) for d in result_divs(path, prefixes)
@@ -350,8 +437,16 @@ def scan_file(path: str, prefixes: List[str]) -> List[Finding]:
                              f"Title '{plain}' of #{ident} is not a "
                              f"declarative sentence. Fix: {ADVICE}", (line, line)))
     for div in result_divs(path, prefixes):
-        if any(STATEMENT_ALLOW_MARKER in lines[n - 1]
-               for n in range(div.start, div.end + 1)):
+        div_lines = [lines[n - 1] for n in range(div.start, div.end + 1)]
+        hypotheses = symbolic_hypotheses(div.statement)
+        if hypotheses and not any(HYPOTHESIS_ALLOW_MARKER in t for t in div_lines):
+            shown = ", ".join(f"${h}$" for h in hypotheses)
+            found.append(Finding(path, div.title_line or div.start,
+                                 "symbolic-hypothesis",
+                                 f"The statement of #{div.ident} gives a "
+                                 f"hypothesis only in symbols ({shown}). "
+                                 f"Fix: {HYPOTHESIS_ADVICE}", (div.start, div.end)))
+        if any(STATEMENT_ALLOW_MARKER in t for t in div_lines):
             continue
         gaps = statement_gaps(div.statement)
         if not gaps:
@@ -431,12 +526,15 @@ def main() -> int:
         print(f"::{severity} file={f.path},line={f.line}::{f.message}")
     if not report.findings:
         print("Every result-div title is a declarative sentence, and every "
-              "statement says it in words and in a display formula.")
+              "statement says it in words and in a display formula, "
+              "with its hypotheses named in words.")
         return 0
     titles = sum(f.kind == "not-a-sentence" for f in report.findings)
-    statements = len(report.findings) - titles
+    statements = sum(f.kind == "statement-forms" for f in report.findings)
+    hypotheses = sum(f.kind == "symbolic-hypothesis" for f in report.findings)
     print(f"\n{titles} result title(s) not a declarative sentence; "
-          f"{statements} statement(s) missing prose or a display formula.")
+          f"{statements} statement(s) missing prose or a display formula; "
+          f"{hypotheses} statement(s) giving a hypothesis only in symbols.")
     return 1 if fail else 0
 
 

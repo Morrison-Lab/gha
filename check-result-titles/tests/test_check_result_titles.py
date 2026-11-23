@@ -308,3 +308,55 @@ def test_statement_finding_in_scope_when_any_div_line_is_added(tmp_path, monkeyp
     monkeypatch.chdir(tmp_path)
     report = crt.run_check("HEAD^1", ["*.qmd"], [], False)
     assert [(f.kind, f.line) for f in report.findings] == [("statement-forms", 12)]
+
+
+# The hypothesis rule: name each hypothesis in words, not as an inequality alone.
+
+MARKOV_SYMBOLS = (r"Let $X$ be a random variable with $X \ge 0$ and $\E{X} < \infty$." "\n"
+                  r"Then for every $a > 0$, the claim holds:" "\n\n" + DISPLAY)
+MARKOV_WORDS = (r"Let $X$ be a nonnegative random variable with a finite expected value "
+                r"$\E{X}$, and let $a$ be a positive number." "\n"
+                "Then the claim holds:\n\n" + DISPLAY)
+
+
+def test_symbolic_hypotheses_are_flagged(tmp_path):
+    path = tmp_path / "page.qmd"
+    path.write_text(result(MARKOV_SYMBOLS))
+    found = [f for f in crt.scan_file(str(path), PREFIXES)
+             if f.kind == "symbolic-hypothesis"]
+    assert [f.line for f in found] == [2]
+    assert r"($X \ge 0$, $a > 0$)" in found[0].message
+
+
+def test_hypotheses_in_words_pass(tmp_path):
+    assert flagged(tmp_path, result(MARKOV_WORDS), "symbolic-hypothesis") == []
+
+
+@pytest.mark.parametrize("sentence", [
+    r"Let $r_j = y - \sum_{k \ne j} x_k$ be the partial residual.",
+    r"The gradient is $g$, where $V = \{ i : m_i < 1 \}$.",
+    r"Let $N \eqdef \sum_i \indic{T_i \ge t}$ count the larger statistics.",
+    r"There is an $s_0 > 0$ with $f(s) < f(0)$ for every $s$ below it.",
+    r"For every $x \in \reals$, the claim holds.",
+    r"The bound $\Prf{X \ge a}$ is small.",
+])
+def test_non_hypotheses_pass(tmp_path, sentence):
+    body = result(sentence + "\n\n" + DISPLAY)
+    assert flagged(tmp_path, body, "symbolic-hypothesis") == []
+
+
+def test_existential_exclusion_ends_at_the_sentence(tmp_path):
+    body = result(r"There is a bound. It holds for every $a > 0$." "\n\n" + DISPLAY)
+    assert flagged(tmp_path, body, "symbolic-hypothesis") == [6]
+
+
+def test_display_math_is_not_read_for_hypotheses(tmp_path):
+    body = result(PROSE + "\n\n$$\n\\text{for every } a > 0\n$$")
+    assert flagged(tmp_path, body, "symbolic-hypothesis") == []
+
+
+def test_hypothesis_allow_marker(tmp_path):
+    body = result(MARKOV_SYMBOLS
+                  + "\n<!-- check-result-titles: allow-hypothesis: a list of cases -->")
+    assert flagged(tmp_path, body, "symbolic-hypothesis") == []
+    assert flagged(tmp_path, body, "statement-forms") == []
