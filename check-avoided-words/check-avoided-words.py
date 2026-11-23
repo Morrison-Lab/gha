@@ -49,6 +49,11 @@ gha#1568):
   "(see @thm-x)" and "(see [the proof](url))" pass, since no word can carry
   that link.
 
+- **definition crossrefs used as nouns**: "a", "an", "the", or a form of "be"
+  right before `@def-x`, as in "which is @def-affine-map with ...", which
+  renders "which is Definition 3 with ...". Name the term and link it.
+  "as in @def-x" passes. Warn-only while the rule is new (Ezra, 2026-11-23).
+
 - **"score" for a linear predictor**: "score" or "scores" on a line that
   also has `\eta`, "linear predictor", "log-odds", "logit", "sigmoid", or
   "logistic function". Write "log-odds" for a logistic regression and "linear
@@ -195,6 +200,13 @@ PARENREF_RE = re.compile(
     r"|\(\[(?:why|proof|here|details?)\]\([^)\s]+\)\)"
     r"|[^\s(]\s+\(\[[^\]]+\]\([^)\s]+\)\)"
 )
+# A definition crossref used as a noun phrase, "an @def-x" or "which is
+# @def-x with b = 0": it renders "which is Definition 3 with b = 0", where the
+# term itself, linked, says what the thing is (Ezra, 2026-11-23). "as in
+# @def-x" and "by @def-x" name the definition as a whole and pass.
+NOUNREF_RE = re.compile(
+    r"(?i)(?<![\w-])(?P<phrase>(?:an?|the|is|are|was|were|be)\s+@def-[\w-]+)"
+)
 _LP_CONTEXT = (
     r"(?:\\eta\b|\u03b7|linear\s+predictors?|log-?odds|\blogits?\b|sigmoid|"
     r"logistic\s+function)"
@@ -260,7 +272,7 @@ def _mask_intercept(masked: str) -> str:
 ALWAYS_FAIL = frozenset({"parenref", "thing", "vague"})
 # Rules in their trial period: a finding is a warning and never fails the run
 # (gha#1570: warn-only first; promote after several PRs with no false positive).
-WARN_ONLY = frozenset({"gaussian", "optional", "intercept"})
+WARN_ONLY = frozenset({"gaussian", "optional", "intercept", "nounref"})
 RULES = (
     ("position", POSITION_RE,
      'Refer to a place in the document by its label, not "above" or "below"; '
@@ -325,6 +337,12 @@ RULES = (
      "Link the term, or make the whole claim the link text, instead of a "
      'trailing "(@def-x)" crossref or "([why](url))" link '
      "(Ezra, 2026-11-02; gha#1402). A deliberate use takes the "
+     "check-avoided-words allow comment."),
+    ("nounref", NOUNREF_RE,
+     'Name the defined term and link it, as "which is an [affine map](#def-x) '
+     'with ...", instead of using a crossref as a noun ("which is @def-x", '
+     '"an @def-x"), which renders as "which is Definition 3" (Ezra, '
+     '2026-11-23). "as in @def-x" passes. A deliberate use takes the '
      "check-avoided-words allow comment."),
 )
 

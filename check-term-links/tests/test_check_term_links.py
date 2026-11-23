@@ -76,8 +76,24 @@ def test_linked_first_use_passes_even_when_a_later_use_is_bare():
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 
-def test_crossref_counts_as_a_link():
+def test_trailing_crossref_is_reported_not_counted_as_a_link():
     page = "::: {#exm-a}\n\nThe risk (@def-risk) is large.\n\n:::\n"
+    found = run_text(page, {"d.qmd": RISK_DEF})
+    assert [f.rule for f in found] == ["trailing-crossref"]
+    assert "link the term itself" in found[0].message
+
+
+def test_trailing_crossref_counts_as_the_first_use():
+    page = (
+        "::: {#exm-a}\n\nThe risk (@def-risk) is large.\n"
+        "The risk is small.\n\n:::\n"
+    )
+    found = run_text(page, {"d.qmd": RISK_DEF})
+    assert [f.rule for f in found] == ["trailing-crossref"]
+
+
+def test_linked_term_passes():
+    page = "::: {#exm-a}\n\nThe [risk](d.qmd#def-risk) is large.\n\n:::\n"
     assert run_text(page, {"d.qmd": RISK_DEF}) == []
 
 

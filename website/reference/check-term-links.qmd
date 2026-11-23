@@ -48,7 +48,7 @@ a label such as "note" or "example".
   ([gha#1283](https://github.com/Morrison-Lab/gha/issues/1283)).
   A div inside a section has its own scope,
   and does not split the prose around it.
-  An occurrence inside a link, or followed by `(@def-...)`, is linked.
+  An occurrence inside a link is linked.
   A term's own definition div is skipped,
   and so is any other div in the file that holds that definition
   (such as a source callout).
@@ -63,6 +63,14 @@ a label such as "note" or "example".
   and the next word is another word of that title,
   such as "[probability](...#def-pdf) density" for "probability density function"
   (a different next word, as in "[fitted](...) probability", is not flagged).
+- **`trailing-crossref`.**
+  The first occurrence of a known term is followed by a crossref to a definition,
+  as in "affine map (@def-affine-map)".
+  The crossref renders as "(Definition 3)" and leaves the term itself unlinked.
+  Link the term, as `[affine map](#def-affine-map)`.
+  Drop the parenthetical (Ezra, 2026-11-02; again 2026-11-23).
+  Until 2026-11-23 the check counted this form as a link,
+  while `check-avoided-words` failed it.
 - **`no-definition`.**
   A bold term in a passage that is not a definition div, and that matches no
   known term: it is introduced as technical and defined nowhere.

@@ -28,6 +28,9 @@ Findings:
 - `partial-link`: a link covers only part of a longer defined phrase, such as
   "logistic [regression](#def-regression)" when "logistic regression" is defined.
   The whole phrase is the link (Ezra, 2026-10-24, lds#1375; gha#1219).
+- `trailing-crossref`: the first occurrence is followed by `(@def-...)`, as in
+  "affine map (@def-affine-map)". The term itself is the link (Ezra, 2026-11-02
+  and 2026-11-23); this form was counted as linked before.
 - `no-definition`: a bold term in a passage that is not a def div, and that
   matches no known term, so it is introduced as technical with no definition
   anywhere in the corpus. Give it a `#def-` div.
@@ -624,10 +627,21 @@ def scan_passage(
                         ),
                     ))
                 continue
-            # "term (@def-term)" links the term it follows.
-            if FOLLOWING_CROSSREF_RE.match(prose, m.end()):
-                continue
             n = line_at(start)
+            # "term (@def-term)" points at the definition but leaves the term
+            # itself unlinked: link the term (Ezra, 2026-11-02 and 2026-11-23).
+            if FOLLOWING_CROSSREF_RE.match(prose, m.end()):
+                if reportable(n):
+                    findings.append(Finding(
+                        file=path, line=n, rule="trailing-crossref", term=key,
+                        message=(
+                            f"'{m.group(0)}' is followed by a crossref to its "
+                            "definition; link the term itself, as "
+                            f"[{m.group(0)}](#def-...), and drop the "
+                            "parenthetical, which renders as \"(Definition N)\"."
+                        ),
+                    ))
+                continue
             if not reportable(n):
                 if n in opted:
                     # An opted-out use is exempt, not a first use: the next use is (gha#1283 review).

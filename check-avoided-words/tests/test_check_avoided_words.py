@@ -64,6 +64,9 @@ def found(text: str):
      "d ([proof](page.qmd#thm-b))"),
     ("Fit by gradient descent ([Gradient Descent](gd.qmd#def-gd)) here.", "parenref",
      "t ([gradient descent](gd.qmd#def-gd))"),
+    ("which is @def-affine-map with $b = 0$.", "nounref", "is @def-affine-map"),
+    ("Take an @def-affine-map here.", "nounref", "an @def-affine-map"),
+    ("The @def-risk is large.", "nounref", "the @def-risk"),
     ("Some authors call it improbability.", "vague", "some authors"),
     ("Some people call it improbability.", "vague", "some people call"),
     ("Many statistical researchers disagree.", "vague", "many statistical researchers"),
@@ -240,6 +243,24 @@ def test_parenref_passes_linked_term_and_see():
     assert found("(@def-x) opens the line.") == {}
     assert found("The bound holds (see [the proof](page.qmd#thm-b)).") == {}
     assert found("Hold <!-- check-avoided-words: allow --> it (@def-x).") == {}
+
+
+def test_nounref_passes_a_crossref_naming_the_definition():
+    assert found("Write $f(x)$ as in @def-affine-map.") == {}
+    assert found("By @def-affine-map, $f$ is affine.") == {}
+    assert found("This uses @def-x and @thm-y.") == {}
+    assert found("Its offset is @eq-offset.") == {}
+    assert found("It is [affine](#def-affine-map).") == {}
+    assert found("It <!-- check-avoided-words: allow --> is @def-x.") == {}
+
+
+def test_nounref_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nwhich is @def-affine-map here.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CAW_FAIL="true")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
 
 
 def test_backref_passes_unrelated_setup():
