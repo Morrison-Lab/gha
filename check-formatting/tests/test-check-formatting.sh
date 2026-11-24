@@ -24,8 +24,8 @@ workflow_yml="$script_dir/../../.github/workflows/check-formatting.yml"
 
 DEFAULT_VERSION='0.11.0'
 DEFAULT_PATH='.'
-SETUP_AIR_SHA='cf390573ff4fe0f198f35df3a642b1409328d859'
-SETUP_AIR_RELEASE='v1.0.1'
+SETUP_AIR_SHA='482cb5912394878ab5a63b75db0f9d19cc6df5ba'
+SETUP_AIR_RELEASE='v1.0.3'
 
 failures=0
 case_name=""
