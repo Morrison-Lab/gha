@@ -155,6 +155,7 @@ website:
           - reference/check-iterate-subscripts.qmd
           - reference/check-ball-neighborhoods.qmd
           - reference/check-precedence-parens.qmd
+          - reference/check-double-inequalities.qmd
           - reference/check-r-head.qmd
           - reference/check-macro-expansions.qmd
           - reference/check-write-idiom.qmd
