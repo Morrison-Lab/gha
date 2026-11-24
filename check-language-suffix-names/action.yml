@@ -1,9 +1,9 @@
 name: Check language-suffixed names
 description: >-
   Diff-scoped check that flags a name ending in a language suffix (`_py`,
-  `_r` or `_jl` by default), such as `fit_py = model.fit(X, y)` or
-  `fit_r <- lm(y ~ x)`, bound in a `{python}`, `{r}` or `{julia}` chunk of a
-  `.qmd`, `.Rmd` or `.md` file, or in an `.R`, `.py` or `.jl` script. A
+  `_r`, or `_jl` by default), such as `fit_py = model.fit(X, y)` or
+  `fit_r <- lm(y ~ x)`, bound in a `{python}`, `{r}`, or `{julia}` chunk of a
+  `.qmd`, `.Rmd`, or `.md` file, or in an `.R`, `.py`, or `.jl` script. A
   Python object takes the same name as its R counterpart, since each
   language keeps its own namespace. Uses of a suffixed name, and
   attribute, element and keyword-argument assignments, pass. Scoped to lines

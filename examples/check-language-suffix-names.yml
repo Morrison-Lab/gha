@@ -1,6 +1,6 @@
 # Copy to .github/workflows/check-language-suffix-names.yml in your repo.
 # Diff-scoped check: flags a name ending in a language suffix (_py, _r, _jl),
-# such as `fit_py = model.fit(X, y)`, bound in a {python}, {r} or {julia}
+# such as `fit_py = model.fit(X, y)`, bound in a {python}, {r}, or {julia}
 # chunk on lines a PR adds. A Python object takes the same name as its R
 # counterpart, since each language keeps its own namespace.
 # Blocks by default; existing pages never block, since only added lines count.

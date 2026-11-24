@@ -663,10 +663,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes the same diff model as `check-iterate-subscripts` (moved lines exempt, skip-not-fall-back), and it blocks by default (`fail: true`).
   It takes its git, diff, and file helpers from `check-common/diffscope.py` and its fence pattern and comment masking from `check-common/mdmask.py`, so keep `check-common` beside it.
   Its env vars use the `CRH_` prefix.
-- `check-language-suffix-names/` (Python, stdlib only, from Morrison-Lab/lds#3152) flags a name ending in a language suffix (`_py`, `_r`, `_jl` by default) that a line a PR adds binds in a `{python}`, `{r}` or `{julia}` chunk, or in an `.R`, `.py` or `.jl` script a glob names.
+- `check-language-suffix-names/` (Python, stdlib only, from Morrison-Lab/lds#3152) flags a name ending in a language suffix (`_py`, `_r`, `_jl` by default) that a line a PR adds binds in a `{python}`, `{r}`, or `{julia}` chunk, or in an `.R`, `.py`, or `.jl` script a glob names.
   Ezra's rule (Morrison-Lab/lds#3146) is that a Python object takes the same name as its R counterpart, since each language keeps its own namespace.
-  A binding is an assignment target, R's right assignment, a loop variable, a definition, or Python's `as` and walrus forms;
-  a use, an element or attribute assignment, a keyword argument, and a name in a string or comment pass.
+  A binding is an assignment target, R's right assignment, a loop variable, a definition, a Python `as` target, or a walrus target;
+  a use, an assignment to an element, an assignment to an attribute, a keyword argument, and a name in a string or a comment pass.
   Only R names hold a dot, so `obj.x_py = 1` elsewhere is an attribute.
   It takes the same diff model as `check-r-head` (moved lines exempt, skip-not-fall-back, `whole-tree` on request), and it blocks by default (`fail: true`).
   The allow comment needs a reason: `# check-language-suffix-names: allow: <reason>`.
@@ -2314,7 +2314,7 @@ CI runs it in the `r-head` job in `_selftest.yml`, followed by real
 `uses: ./check-r-head` calls over a staged data subfile.
 
 `check-language-suffix-names/tests/test_check_language_suffix_names.py` is a pytest suite over
-the flagged bindings in each language (assignment targets, tuple and annotated targets, augmented assignment, R's right assignment, loop variables, definitions, and Python's `as` and walrus forms),
+the flagged bindings in each language (assignment targets, tuple and annotated targets, augmented assignment, R's right assignment, loop variables, definitions, `as` targets, and walrus targets),
 the forms that pass (uses, element and attribute assignments, keyword arguments, strings, comments, and a bare suffix),
 which chunks are read (executable `{r}`, `{python}`, and `{julia}` chunks, not a plain fence) and which scripts,
 the allow comment, whose reason is required,
