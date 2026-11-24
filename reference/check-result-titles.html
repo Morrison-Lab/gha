@@ -1340,6 +1340,7 @@ cookieconsent.run({
    
   <ul>
   <li><a href="#statements-in-words-and-in-symbols" id="toc-statements-in-words-and-in-symbols" class="nav-link active" data-scroll-target="#statements-in-words-and-in-symbols">Statements in words and in symbols</a></li>
+  <li><a href="#hypotheses-in-words" id="toc-hypotheses-in-words" class="nav-link" data-scroll-target="#hypotheses-in-words">Hypotheses in words</a></li>
   <li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a></li>
   <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
@@ -1392,6 +1393,18 @@ cookieconsent.run({
 </ul>
 <p>It cannot tell whether the sentence says what the title says, since that needs the meaning of both, so that part is left to review. A statement that is rightly all prose, such as a result about what an algorithm does, takes <code>&lt;!-- check-result-titles: allow-statement: &lt;reason&gt; --&gt;</code> anywhere in the div. That marker does not exempt the title.</p>
 <p>Measured on 2026-11-20 over <code>Morrison-Lab/lds</code> (whole tree), 25 result statements had no display formula, and none had no sentence in words.</p>
+</section>
+<section id="hypotheses-in-words" class="level2">
+<h2 class="anchored" data-anchor-id="hypotheses-in-words">Hypotheses in words</h2>
+<p>The statement names each hypothesis in words, with its symbol beside it (Ezra, 2026-11-23): <code>a nonnegative random variable $X$</code>, not <code>a random variable $X$ with $X \ge 0$</code>. The psw text is at the end of “State the title’s sentence again in the statement, in words and in symbols”. Whether a sentence names a condition in words needs its meaning, so the check flags the one form it can see: inline math holding an inequality (<code>&lt;</code>, <code>&gt;</code>, <code>\le</code>, <code>\ge</code>, <code>\ne</code>, and their variants) right after a cue word (<code>with</code>, <code>where</code>, <code>whenever</code>, <code>if</code>, <code>let</code>, <code>such that</code>, <code>satisfying</code>, <code>assume</code>, <code>suppose</code>, or <code>for every</code>, <code>all</code>, <code>each</code>, <code>any</code>, or <code>some</code>). It does not flag</p>
+<ul>
+<li>an inequality in a subscript or superscript, which is an index range, as in <code>\sum_{k \ne j}</code>;</li>
+<li>math that defines a symbol, with <code>\eqdef</code>, <code>:=</code>, or a set-builder <code>\{ ... \}</code>;</li>
+<li>math after “there is” or “there exists” in the same sentence, which the result asserts rather than assumes;</li>
+<li>display math.</li>
+</ul>
+<p>A statement where the symbols are clearer takes <code>&lt;!-- check-result-titles: allow-hypothesis: &lt;reason&gt; --&gt;</code> anywhere in the div. A hypothesis finding has the statement finding’s scope.</p>
+<p>Measured on 2026-11-23 over <code>Morrison-Lab/pds</code>, <code>lds</code>, <code>mds</code>, <code>sds</code>, and <code>psw</code> (whole tree), the check flagged 131 statements. Each flagged span restricts a quantity in symbols alone, such as <code>$a &gt; 0$</code>, <code>$\E{X^2} &lt; \infty$</code>, or <code>$\vcoef \neq \vzero$</code>.</p>
 </section>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>

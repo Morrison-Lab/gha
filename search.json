@@ -3432,6 +3432,18 @@
     ]
   },
   {
+    "objectID": "reference/check-result-titles.html#hypotheses-in-words",
+    "href": "reference/check-result-titles.html#hypotheses-in-words",
+    "title": "check-result-titles.yml",
+    "section": "Hypotheses in words",
+    "text": "Hypotheses in words\nThe statement names each hypothesis in words, with its symbol beside it (Ezra, 2026-11-23): a nonnegative random variable $X$, not a random variable $X$ with $X \\ge 0$. The psw text is at the end of “State the title’s sentence again in the statement, in words and in symbols”. Whether a sentence names a condition in words needs its meaning, so the check flags the one form it can see: inline math holding an inequality (&lt;, &gt;, \\le, \\ge, \\ne, and their variants) right after a cue word (with, where, whenever, if, let, such that, satisfying, assume, suppose, or for every, all, each, any, or some). It does not flag\n\nan inequality in a subscript or superscript, which is an index range, as in \\sum_{k \\ne j};\nmath that defines a symbol, with \\eqdef, :=, or a set-builder \\{ ... \\};\nmath after “there is” or “there exists” in the same sentence, which the result asserts rather than assumes;\ndisplay math.\n\nA statement where the symbols are clearer takes &lt;!-- check-result-titles: allow-hypothesis: &lt;reason&gt; --&gt; anywhere in the div. A hypothesis finding has the statement finding’s scope.\nMeasured on 2026-11-23 over Morrison-Lab/pds, lds, mds, sds, and psw (whole tree), the check flagged 131 statements. Each flagged span restricts a quantity in symbols alone, such as $a &gt; 0$, $\\E{X^2} &lt; \\infty$, or $\\vcoef \\neq \\vzero$.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-result-titles.yml"
+    ]
+  },
+  {
     "objectID": "reference/check-result-titles.html#scope",
     "href": "reference/check-result-titles.html#scope",
     "title": "check-result-titles.yml",
