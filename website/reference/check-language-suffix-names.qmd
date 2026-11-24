@@ -1,0 +1,123 @@
+---
+title: "check-language-suffix-names.yml"
+---
+
+Diff-scoped check that flags a name ending in a language suffix,
+such as `fit_py = model.fit(X, y)` or `fit_r <- lm(y ~ x)`,
+bound in a code chunk.
+A page that shows one step in R, Python, and Julia
+gives each language's object the same name,
+so the tabs read as one example,
+and each language keeps its own namespace.
+The rule comes from Morrison-Lab/lds#3152.
+
+## Where it applies
+
+The check reads:
+
+- every executable `{r}`, `{python}`, and `{julia}` chunk
+  of a `.qmd`, `.Rmd`, or `.md` file;
+- a whole `.R`, `.py`, or `.jl` script, when `globs` names one.
+
+A plain `r` fence, shown as text, is not read.
+
+## What it flags
+
+A name ending in one of `suffixes` (default `_py _r _jl`)
+that a line binds:
+
+- an assignment target: `x_py = 1`, `x_r <- 1`, `a_py, b = f()`,
+  `x_py: int = 1`, `x_py += 1`, or `const x_jl = 1`;
+- the target of R's right assignment, `f() -> x_r`;
+- a loop variable: `for x_py in xs`, `for (i_r in xs)`,
+  or `for i_jl = 1:n`;
+- a definition: `def f_py(`, `class A_py`, `function f_jl(`,
+  or Julia's short form `f_jl(x) = ...`;
+- Python's `as` and walrus forms: `import numpy as np_py`,
+  `with open(p) as f_py`, or `(n_py := len(x))`.
+
+The check does not flag:
+
+- a use of an existing name, such as `print(x_py)`;
+- an element or attribute assignment,
+  such as `x_py[0] = 1` or `obj.x_py = 1`;
+- a keyword argument, such as `f(n_py = 1)`;
+- a name inside a string or a comment;
+- a name that is only a suffix, such as `_py`;
+- a line carrying, or following a comment-only line that carries,
+  `# check-language-suffix-names: allow: <reason>`.
+  The reason is required.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing pages never block.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+
+Every run prints how many lines and files it examined.
+
+## Limitations
+
+- A string that spans lines can hide or invent a binding.
+- A target list that spans lines, such as `(a,` then `b_py) = f()`,
+  is missed, since each line is read alone.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `suffixes`       | string  | `'_py _r _jl'` | Space- or comma-separated name suffixes that mark a language. |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `true`  | Fail the workflow when a suffixed name is found. Set `false` to warn only. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository, because [a public repository's pull requests can run arbitrary code on it](https://github.com/Morrison-Lab/gha/issues/1167). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-language-suffix-names.yml in your repo.
+# Diff-scoped check: flags a name ending in a language suffix (_py, _r, _jl),
+# such as `fit_py = model.fit(X, y)`, bound in a {python}, {r} or {julia}
+# chunk on lines a PR adds. A Python object takes the same name as its R
+# counterpart, since each language keeps its own namespace.
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check language-suffixed names
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-language-suffix-names.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   suffixes: '_py _r _jl'                  # suffixes that mark a language
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-language-suffix-names.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-language-suffix-names.yml)
+for the full caller stub.
