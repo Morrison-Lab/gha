@@ -43,3 +43,4 @@ jobs:
     # with:
     #   pages-base-url: 'example.org' # custom Pages base URL or custom domain
     #   pages-base-path: 'docs'       # custom Pages base path prefix
+    #   pages-build-wait-minutes: 15  # wait for a running Pages build; 0 = off
