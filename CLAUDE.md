@@ -2316,7 +2316,7 @@ CI runs it in the `r-head` job in `_selftest.yml`, followed by real
 `check-language-suffix-names/tests/test_check_language_suffix_names.py` is a pytest suite over
 the flagged bindings in each language (assignment targets, tuple targets, annotated targets, augmented assignment, R's right assignment, loop variables, definitions, `as` targets, and walrus targets),
 the forms that pass (uses, assignments to elements, assignments to attributes, keyword arguments, strings, comments, and a bare suffix),
-which chunks are read (executable `{r}`, `{python}`, and `{julia}` chunks, not a plain fence) and which scripts,
+which chunks are read (executable `{r}`, `{python}`, and `{julia}` chunks, not a plain fence), which scripts are read,
 the allow comment, whose reason is required,
 the diff scoping with moved lines, the skip with no base,
 `main()`'s blocking default, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
