@@ -17,7 +17,16 @@ Flagged, in a line the diff adds: a sentence that starts with "This" or
 page, handout), optionally followed by "and the ones that follow it",
 and then a verb that reports what the structure does: shows, establishes,
 explains, says, derives, proves, covers, introduces, demonstrates, illustrates,
-describes, computes, handles, or "is about".
+describes, computes, handles, treats, discusses, presents, "focuses on",
+or "is about". The last four came from "This page treats one input",
+which Ezra called overexplaining (2026-11-24).
+
+Also flagged: a sentence that narrates how a source's materials are laid
+out, such as "Hastie and Tibshirani open their slides on this topic with"
+(Ezra, 2026-11-24: "too much meta-discussion of materials; just block quote
+them and move on"). Quote the source as a block quote with its citation.
+Rule text: psw, ``chapters/citations-evidence.qmd``, "Put the content
+first".
 
 What is not counted: code fences, HTML comments, YAML front matter; a
 sentence that names a figure or table placed beside it ("Table 2 shows the
@@ -80,7 +89,8 @@ NOUNS = ("exercise", "solution", "section", "chapter", "lecture", "page",
          "handout")
 VERBS = ("shows?", "establish(?:es)?", "explains?", "says?", "derives?",
          "proves?", "covers?", "introduces?", "demonstrates?", "illustrates?",
-         "describes?", "computes?", "handles?", "is about")
+         "describes?", "computes?", "handles?", "is about", "treats?",
+         "discusses?", "presents?", "focuses on")
 # "This exercise shows", "These exercises prove", "This exercise and the ones
 # that follow it establish", at the start of a sentence.
 PATTERN = re.compile(
@@ -102,6 +112,17 @@ POSITION_ADVICE = ("name the items by cross-reference, as in \"Exercises "
                    "@exr-a through @exr-b establish ...\", not by position "
                    "(psw, Avoid forward references), or add "
                    "<!-- check-self-reference: allow -->")
+
+# "Hastie and Tibshirani open their slides with ...": a sentence about how a
+# source's materials are laid out, instead of the source's words.
+SOURCE_PATTERN = re.compile(
+    r"\b(?:opens?|opened|begins?|began|starts?|started|ends?|ended|closes?"
+    r"|closed)\s+(?:their|his|her|its)\s+(?:own\s+)?(?:slides?|lectures?"
+    r"|book|textbook|chapters?|notes|talks?|course|paper)\b",
+    re.IGNORECASE)
+SOURCE_ADVICE = ("quote the source as a block quote followed by its "
+                 "citation, and move on (psw, Put the content first), or add "
+                 "<!-- check-self-reference: allow -->")
 
 
 class Finding(NamedTuple):
@@ -159,6 +180,11 @@ def line_findings(text: str) -> Optional[str]:
         phrase = text[pos.start():pos.end()].strip(" .!?\"'([*_")
         return (f"'{phrase}...' names items by position. "
                 f"Fix: {POSITION_ADVICE}")
+    src = SOURCE_PATTERN.search(text)
+    if src:
+        phrase = text[src.start():src.end()]
+        return (f"'{phrase}' narrates a source's materials. "
+                f"Fix: {SOURCE_ADVICE}")
     m = PATTERN.search(text)
     if not m:
         return None
