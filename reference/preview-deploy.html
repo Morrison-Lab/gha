@@ -1412,6 +1412,12 @@ cookieconsent.run({
 <td><code>''</code></td>
 <td>Custom Pages base path prefix to override automatic path guessing by <code>pr-preview-action</code>.</td>
 </tr>
+<tr class="even">
+<td><code>pages-build-wait-minutes</code></td>
+<td>number</td>
+<td><code>15</code></td>
+<td>Before pushing to <code>gh-pages</code>, wait up to this many minutes for a running GitHub Pages build to finish, so the push does not cancel it (gha#2192). <code>0</code> turns the wait off.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -1459,7 +1465,8 @@ cookieconsent.run({
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pages-base-url: 'example.org' # custom Pages base URL or custom domain</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pages-base-path: 'docs'       # custom Pages base path prefix</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pages-base-path: 'docs'       # custom Pages base path prefix</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pages-build-wait-minutes: 15  # wait for a running Pages build; 0 = off</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview-deploy.yml"><code>examples/preview-deploy.yml</code></a> for the full caller stub.</p>
 
 
