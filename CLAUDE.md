@@ -2284,9 +2284,10 @@ CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
 
 `check-double-inequalities/tests/test_check_double_inequalities.py` is a pytest suite over
 the flagged forms (every relation spelling, both directions, and a clause inside a macro argument),
-the unflagged ones (interval membership, a longer chain, a chain with `=`, opposite directions, a clause split by a comma or a connective, an empty operand),
-the skips, the allow comment and its required reason, the diff scoping with moved lines,
+the unflagged ones (interval membership, a longer chain, a chain with `=`, opposite directions, a clause split at a separator, and an empty operand),
+the skips, the diff scoping with moved lines,
 the blocking default of `main()`, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+The allow comment's reason is required, and a test pins that.
 CI runs it in the `double-inequalities` job in `_selftest-content-checks.yml`, followed by real
 `uses: ./check-double-inequalities` calls over a staged page.
 
