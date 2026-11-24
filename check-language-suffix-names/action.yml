@@ -1,0 +1,70 @@
+name: Check language-suffixed names
+description: >-
+  Diff-scoped check that flags a name ending in a language suffix (`_py`,
+  `_r`, or `_jl` by default), such as `fit_py = model.fit(X, y)` or
+  `fit_r <- lm(y ~ x)`, bound in a `{python}`, `{r}`, or `{julia}` chunk of a
+  `.qmd`, `.Rmd`, or `.md` file, or in an `.R`, `.py`, or `.jl` script. A
+  Python object takes the same name as its R counterpart, since each
+  language keeps its own namespace. Uses of a suffixed name, and
+  attribute, element and keyword-argument assignments, pass. Scoped to lines
+  a diff adds (an added line whose exact text was also deleted in the same
+  diff counts as moved). Blocks by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every suffixed name the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default. `.R`, `.py` and
+      `.jl` scripts are read as code when a glob names them.
+    default: '*.qmd *.Rmd *.md'
+  suffixes:
+    description: >-
+      Space- or comma-separated name suffixes that mark a language.
+    default: '_py _r _jl'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a suffixed name is found (else non-blocking).
+      Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check language-suffixed names
+      shell: bash
+      env:
+        CLN_BASE_REF: ${{ inputs.base-ref }}
+        CLN_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CLN_GLOBS: ${{ inputs.globs }}
+        CLN_SUFFIXES: ${{ inputs.suffixes }}
+        CLN_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CLN_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-language-suffix-names.py"

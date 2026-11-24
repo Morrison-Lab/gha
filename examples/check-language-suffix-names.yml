@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-language-suffix-names.yml in your repo.
+# Diff-scoped check: flags a name ending in a language suffix (_py, _r, _jl),
+# such as `fit_py = model.fit(X, y)`, bound in a {python}, {r}, or {julia}
+# chunk on lines a PR adds. A Python object takes the same name as its R
+# counterpart, since each language keeps its own namespace.
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check language-suffixed names
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-language-suffix-names.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   suffixes: '_py _r _jl'                  # suffixes that mark a language
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions

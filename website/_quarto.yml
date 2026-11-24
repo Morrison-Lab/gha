@@ -157,6 +157,7 @@ website:
           - reference/check-precedence-parens.qmd
           - reference/check-double-inequalities.qmd
           - reference/check-r-head.qmd
+          - reference/check-language-suffix-names.qmd
           - reference/check-macro-expansions.qmd
           - reference/check-write-idiom.qmd
           - reference/check-avoided-words.qmd
