@@ -1,0 +1,119 @@
+---
+title: "check-double-inequalities.yml"
+---
+
+Diff-scoped check that flags a double inequality in math.
+psw's rule
+["Avoiding double inequalities"](https://morrison-lab.github.io/psw/chapters/notation.html#avoiding-double-inequalities)
+prefers interval membership, which says the constraint once:
+`x \in (a, b)` rather than `a < x < b`,
+and `p \in [0, 1]` rather than `0 \le p \le 1`.
+
+The check reads `$...$` and `$$...$$` math
+on lines a pull request adds,
+in `.qmd`, `.Rmd`, and `.md` files.
+It flags a clause made of exactly three operands
+joined by two order relations that point the same way:
+`<`, `\lt`, `\le`, `\leq`, `\leqslant`, `\prec`, `\preceq`,
+their Unicode forms, or their `>` mirrors.
+Each finding reports the file, the line, and the clause as written.
+
+## Clauses and groups
+
+A clause ends at a separator
+(`,`, `;`, `:`, `&`, `\\`, `\quad`, a text command such as `\text{...}`,
+or a quantifier)
+and at a logical connective (`\land`, `\lor`, `\implies`, ...),
+using the tokenizer and parser of
+[check-precedence-parens](check-precedence-parens.qmd).
+A group is checked on its own:
+parentheses, brackets, braces, and a macro argument,
+so the event in `\Pr{a < X \le b}` is a clause too.
+
+The check does not flag:
+
+- a chain of three or more relations (`x_1 < x_2 < \dots < x_n`),
+  or one mixing in `=` (`a \le b = c`),
+  which is an ordering or a derivation
+  rather than a constraint on one quantity;
+- relations that point opposite ways (`a < x > b`);
+- a code fence or code span, an HTML comment, or YAML front matter;
+- a line carrying, or following,
+  `<!-- check-double-inequalities: allow: <reason> -->`.
+  The reason is required, so a bare `allow` does not exempt the line.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing pages never block,
+and a page converts when someone edits it.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose,
+for example to count the double inequalities a repository still carries.
+Measured 2026-11-24 with `whole-tree: true`:
+66 hits in Morrison-Lab/pds and 6 in Morrison-Lab/psw,
+the psw ones all on the pages that state the rule.
+
+Every run prints how many lines and files it examined.
+
+## Limitations
+
+- Each line is read on its own,
+  so a clause split across lines is checked in pieces.
+- A two-step bound in a derivation,
+  such as `\E{X} \le A \le B`, is flagged.
+  Write it as two relations on separate lines, or allow it with a reason.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.Rmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `true`  | Fail the workflow when a double inequality is found. Set `false` to warn only. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-double-inequalities.yml in your repo.
+# Diff-scoped check: flags a double inequality in math on lines a PR adds,
+# such as `a < x < b` or `0 \le p \le 1`, where interval membership
+# (`x \in (a, b)`, `p \in [0, 1]`) says it once.
+# Blocks by default; existing pages never block, since only added lines count.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check math for double inequalities
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-double-inequalities.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'mds/**,notes/**'         # skip submodules and known-noisy paths
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)
+```
+
+See
+[`examples/check-double-inequalities.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-double-inequalities.yml)
+for the full caller stub.
