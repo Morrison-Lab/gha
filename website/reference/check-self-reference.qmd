@@ -29,8 +29,7 @@ Name the items by cross-reference instead:
 
 The check also flags a sentence that narrates how a source's materials
 are laid out: opens, begins, starts, ends, or closes, then their, his, her,
-or its, then slides, lecture, book, textbook, chapter, notes, talk, course,
-or paper,
+or its, then slides, lecture, book, textbook, chapter, notes, or talk,
 such as "Hastie and Tibshirani open their slides on this topic with".
 Quote the source as a block quote followed by its citation instead
 (psw, "Put the content first").

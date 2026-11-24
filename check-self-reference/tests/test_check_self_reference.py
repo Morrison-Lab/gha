@@ -71,6 +71,8 @@ def test_self_reference_is_flagged(tmp_path, sentence):
     "In the next section we derive the update.",
     "The door opens their way.",
     "The model starts its training at zero.",
+    "The loop ends its course after n steps.",
+    "The proof begins its paper trail with a lemma.",
 ])
 def test_content_sentences_pass(tmp_path, sentence):
     assert flagged(tmp_path, sentence + "\n") == []

@@ -118,7 +118,7 @@ POSITION_ADVICE = ("name the items by cross-reference, as in \"Exercises "
 SOURCE_PATTERN = re.compile(
     r"\b(?:opens?|opened|begins?|began|starts?|started|ends?|ended|closes?"
     r"|closed)\s+(?:their|his|her|its)\s+(?:own\s+)?(?:slides?|lectures?"
-    r"|book|textbook|chapters?|notes|talks?|course|paper)\b",
+    r"|book|textbook|chapters?|notes|talks?)\b",
     re.IGNORECASE)
 SOURCE_ADVICE = ("quote the source as a block quote followed by its "
                  "citation, and move on (psw, Put the content first), or add "
