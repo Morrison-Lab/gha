@@ -30,6 +30,13 @@ on:
           pr-preview-action.
         type: string
         default: ''
+      pages-build-wait-minutes:
+        description: >-
+          Before pushing to gh-pages, wait up to this many minutes for a
+          running GitHub Pages build to finish, so the push does not cancel
+          it. `0` turns the wait off.
+        type: number
+        default: 15
 
 # One deploy per PR at a time, and the newest head wins (gha#1827).
 # An old head's preview is overwritten by the new head's deploy anyway, so
@@ -201,6 +208,45 @@ jobs:
           fi
           echo "pr-number=$pr_number" >> "$GITHUB_OUTPUT"
           echo "action=$action" >> "$GITHUB_OUTPUT"
+
+      # A push to gh-pages cancels the GitHub Pages build already running.
+      # A large site's build takes minutes, so on a busy day each preview
+      # push cancelled the build before it, and the main site's publish never
+      # went live: on Morrison-Lab/lds, the build for one publish and the next
+      # two were cancelled by preview pushes within ten minutes, and a page
+      # fixed on gh-pages kept serving its old copy (gha#2192).
+      # Waiting here, while this job holds the `gh-pages` group, lets each
+      # running build finish; the next build then carries this push too.
+      # The wait is bounded, and a timeout is a notice rather than a failure,
+      # since a late preview is better than none.
+      - name: Wait for a running Pages build to finish
+        if: >-
+          inputs.pages-build-wait-minutes > 0 &&
+          (steps.meta.outputs.action == 'deploy' || steps.meta.outputs.action == 'remove')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WAIT_MINUTES: ${{ inputs.pages-build-wait-minutes }}
+        run: |
+          set -euo pipefail
+          deadline=$(( $(date +%s) + WAIT_MINUTES * 60 ))
+          while :; do
+            running=0
+            for status in queued in_progress; do
+              n=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?event=dynamic&status=${status}&per_page=100" \
+                --jq '[.workflow_runs[] | select(.path == "dynamic/pages/pages-build-deployment")] | length')
+              running=$(( running + n ))
+            done
+            if [ "$running" -eq 0 ]; then
+              echo "No Pages build is running; deploying."
+              exit 0
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::notice::A Pages build was still running after ${WAIT_MINUTES} minutes; deploying anyway, which cancels it."
+              exit 0
+            fi
+            echo "Waiting for ${running} running Pages build(s) to finish."
+            sleep 20
+          done
 
       - name: Deploy PR Preview
         if: steps.meta.outputs.action == 'deploy'
