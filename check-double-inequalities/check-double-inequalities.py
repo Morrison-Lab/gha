@@ -4,7 +4,7 @@ r"""
 Flag a double inequality in math, where interval membership says it once.
 
 The rule is psw's "Avoiding double inequalities"
-(https://morrison-lab.github.io/psw/notation.html#avoiding-double-inequalities):
+(https://morrison-lab.github.io/psw/chapters/notation.html#avoiding-double-inequalities):
 prefer ``x \in (a, b)`` to ``a < x < b``, and ``p \in [0, 1]`` to
 ``0 \le p \le 1``. Ezra asked on Morrison-Lab/pds#492 (2026-11-24) why an
 agent wrote ``0 < \varpar < \infty``; no check flagged it.

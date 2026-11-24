@@ -4,7 +4,7 @@ title: "check-double-inequalities.yml"
 
 Diff-scoped check that flags a double inequality in math.
 psw's rule
-["Avoiding double inequalities"](https://morrison-lab.github.io/psw/notation.html#avoiding-double-inequalities)
+["Avoiding double inequalities"](https://morrison-lab.github.io/psw/chapters/notation.html#avoiding-double-inequalities)
 prefers interval membership, which says the constraint once:
 `x \in (a, b)` rather than `a < x < b`,
 and `p \in [0, 1]` rather than `0 \le p \le 1`.
