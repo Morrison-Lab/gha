@@ -589,8 +589,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes its math spans from `check-common/mdmask.py`'s `math_spans`, moved there from `check-macro-expansions`, so keep `check-common` beside it.
   Its env vars use the `CPP_` prefix.
 - `check-double-inequalities/` (Python, stdlib only, psw's "Avoiding double inequalities", from Ezra's question on Morrison-Lab/pds#492) flags a double inequality in math on a line a PR adds, such as `a < x < b` or `0 \le p \le 1`, where interval membership says it once.
-  A clause is exactly three operands joined by two order relations pointing the same way; a longer chain, or one mixing in `=`, is an ordering or a derivation and passes.
-  It loads `check-precedence-parens`' tokenizer and parser by path, so a group (`\Pr{a < X \le b}`) is a clause of its own and separators and connectives end one; keep `check-precedence-parens` and `check-common` beside it.
+  A clause is exactly three operands joined by two order relations pointing the same way.
+  A longer chain, or one mixing in `=`, is an ordering or a derivation and passes.
+  It loads `check-precedence-parens`' tokenizer and parser by path, so a group (`\Pr{a < X \le b}`) is a clause of its own, and separators and connectives end one.
+  Keep `check-precedence-parens` and `check-common` beside it.
   Measured 2026-11-24 with `whole-tree: true`: 66 hits in pds and 6 in psw, the psw ones on the pages that state the rule.
   It takes the same diff model as `check-precedence-parens` and blocks by default (`fail: true`).
   The allow comment needs a reason: `<!-- check-double-inequalities: allow: <reason> -->`.
@@ -2281,7 +2283,7 @@ CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
 `uses: ./check-precedence-parens` calls over a staged page.
 
 `check-double-inequalities/tests/test_check_double_inequalities.py` is a pytest suite over
-the flagged forms (every relation spelling, both directions, a clause inside a macro argument),
+the flagged forms (every relation spelling, both directions, and a clause inside a macro argument),
 the unflagged ones (interval membership, a longer chain, a chain with `=`, opposite directions, a clause split by a comma or a connective, an empty operand),
 the skips, the allow comment and its required reason, the diff scoping with moved lines,
 the blocking default of `main()`, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
