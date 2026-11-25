@@ -2168,3 +2168,82 @@ def test_leading_semicolon_with_and_without_a_space_agree():
     spaced = "`code` ; " + _PADDING
     tight = "`code`; " + _PADDING
     assert nlb.has_late_semicolon(spaced) == nlb.has_late_semicolon(tight)
+
+
+# ── table cells (opt-in, NLB_TABLE_CELLS) ───────────────────────────────────
+
+def test_table_cells_split_on_unescaped_pipes_outside_code():
+    assert nlb.table_cells("| a | `x | y` | b |") == [" a ", " `x | y` ", " b "]
+
+
+def test_table_cell_with_two_sentences_is_flagged():
+    row = "| `f.qmd` | Practice exam. It was posted on Monday. |"
+    assert nlb.table_cell_reason(row) == "table-cell"
+
+
+def test_table_row_with_one_sentence_per_cell_passes():
+    row = "| `f.qmd` | Practice exam for Midterm 3. | Posted Monday. |"
+    assert nlb.table_cell_reason(row) is None
+
+
+def test_table_delimiter_row_passes():
+    assert nlb.table_cell_reason("|---|:---:|--:|") is None
+
+
+def _find_tables(tmp_path: Path, table_cells_check: bool):
+    import os
+    cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        return nlb.find_violations(
+            "HEAD~1", ["*.md"], [],
+            nlb._DEFAULT_CLAUSE_BREAKS, nlb._DEFAULT_CLAUSE_MIN_LENGTH,
+            "auto", table_cells_check,
+        )
+    finally:
+        os.chdir(cwd)
+
+
+def test_added_table_row_flagged_only_when_opted_in(tmp_path):
+    _init_repo(tmp_path)
+    base = "| File | About |\n|---|---|\n| `a.qmd` | One sentence. |\n"
+    (tmp_path / "README.md").write_text(base)
+    _commit(tmp_path, "base")
+    (tmp_path / "README.md").write_text(
+        base + "| `b.qmd` | First sentence. Second sentence. |\n"
+    )
+    _commit(tmp_path, "add packed row")
+
+    violations, skipped = _find_tables(tmp_path, True)
+    assert not skipped
+    assert [(v.line, v.reason) for v in violations] == [(4, "table-cell")]
+
+    # Control: the default (off) leaves table rows alone, as before.
+    violations, skipped = _find_tables(tmp_path, False)
+    assert not skipped
+    assert violations == []
+
+
+def test_pre_existing_packed_table_row_not_reflagged(tmp_path):
+    _init_repo(tmp_path)
+    base = "| File | About |\n|---|---|\n| `a.qmd` | Old. Packed. |\n"
+    (tmp_path / "README.md").write_text(base)
+    _commit(tmp_path, "base")
+    (tmp_path / "README.md").write_text(base + "| `b.qmd` | One sentence. |\n")
+    _commit(tmp_path, "add clean row")
+
+    violations, _ = _find_tables(tmp_path, True)
+    assert violations == []
+
+
+def test_table_cells_default_agrees_across_yaml():
+    root = Path(__file__).resolve().parents[2]
+    for rel in ("check-new-line-breaks/action.yml",
+                ".github/workflows/check-new-line-breaks.yml"):
+        text = (root / rel).read_text()
+        idx = text.index("table-cells:")
+        default_line = next(
+            ln for ln in text[idx:].splitlines() if ln.strip().startswith("default:")
+        )
+        value = default_line.split(":", 1)[1].strip().strip("'\"").lower()
+        assert value == str(nlb._DEFAULT_TABLE_CELLS).lower(), rel
