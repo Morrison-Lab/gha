@@ -16,7 +16,7 @@ version: 2
 updates:
   - package-ecosystem: "github-actions"
     directories:
-      - "/" # .github/workflows/
+      - "/"  # .github/workflows/
       - "/antigravity-review"
       # Every top-level check directory, by glob (gha#1862), so a new
       # check needs no line here; one with no external `uses:` costs nothing.
