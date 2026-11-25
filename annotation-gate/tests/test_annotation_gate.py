@@ -32,6 +32,7 @@ DEFAULT = [
     r"^RPC failed; curl \d+\b",
     r"^the remote end hung up unexpectedly$",
     r"^running the steps on the runner: the cluster job did not run normally$",
+    r"^Failed to restore: Aborting cache download as the download time exceeded the timeout\.$",
 ]
 
 
@@ -274,6 +275,29 @@ def test_other_condor_batch_runner_notices_stay_gated():
         "Error: running the steps on the runner: the cluster job did not run normally",
     ):
         assert g.find_violations([ann("notice", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_action_default_allow_matches_the_test_mirror():
+    # Every pattern this file mirrors must be in the action's default list.
+    text = open(os.path.join(os.path.dirname(__file__), "..", "action.yml")).read()
+    for pattern in DEFAULT:
+        assert "\n      " + pattern + "\n" in text, pattern
+
+
+def test_codeql_cache_download_timeout_is_allowed():
+    # CodeQL's default setup warns when its cache download times out, then
+    # analyzes without the cache; its run cannot be re-run (gha#2167).
+    msg = "Failed to restore: Aborting cache download as the download time exceeded the timeout."
+    assert not g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
+
+
+def test_other_cache_restore_failures_stay_gated():
+    for msg in (
+        "Failed to restore: Cache service responded with 503",
+        "Failed to restore: Aborting cache download as the download time exceeded the timeout. Extra",
+        "Error: Failed to restore: Aborting cache download as the download time exceeded the timeout.",
+    ):
+        assert g.find_violations([ann("warning", msg)], set(g.LEVELS_ALL), DEFAULT)
 
 
 def test_condor_batch_fallback_notice_matches_the_action_text():
