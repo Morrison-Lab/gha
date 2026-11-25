@@ -38,6 +38,11 @@ Guidance for Claude Code when working in this repository.
   gh workflow run slide-major-tag.yml -R Morrison-Lab/gha --ref main -f expected_sha=<sha>
   ```
 
+  In a cloud session, where a hook denies `gh workflow run`,
+  call the GitHub MCP tool `actions_run_trigger` with `method: run_workflow`,
+  `workflow_id: slide-major-tag.yml`, `ref: main`,
+  and `inputs: {"expected_sha": "<sha>"}` instead.
+
   The run refuses unless the commit it would tag is that one,
   so a merge that lands between your checks and the dispatch fails the slide
   instead of shipping a commit nobody checked.
