@@ -30,7 +30,10 @@ inputs:
       cluster job did not run normally: a step that then fails fails the job
       itself (gha#2039), and the warnings `check-links` demotes a link to
       when its host did not answer or sent a 5xx on a line the change does
-      not add: the same link on an added line still fails (gha#2121).
+      not add: the same link on an added line still fails (gha#2121), and
+      the warning CodeQL's default setup emits when its cache download
+      times out: the analysis still runs without the cache, and a
+      default-setup run cannot be re-run (gha#2167).
     default: |
       The ubuntu-latest label will migrate to
       Node\.js \d+ is deprecated\. The following actions target Node
@@ -57,6 +60,7 @@ inputs:
       ^RPC failed; curl \d+\b
       ^the remote end hung up unexpectedly$
       ^running the steps on the runner: the cluster job did not run normally$
+      ^Failed to restore: Aborting cache download as the download time exceeded the timeout\.$
   job-name:
     description: >-
       Optional extra name prefix of a job to skip. The gate's own job is always
