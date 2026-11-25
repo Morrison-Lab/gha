@@ -46,6 +46,14 @@ on:
           `clause-breaks` is false.
         type: string
         default: '80'
+      table-cells:
+        description: >-
+          Also check each cell of an added pipe-table row with the sentence
+          and clause rules, and flag the row when a cell fails (a row cannot
+          take a line break, so the fix is moving the prose out). Off by
+          default.
+        type: boolean
+        default: false
 
 jobs:
   check-new-line-breaks:
@@ -69,6 +77,7 @@ jobs:
           fail: ${{ inputs.fail }}
           clause-breaks: ${{ inputs.clause-breaks }}
           clause-min-length: ${{ inputs.clause-min-length }}
+          table-cells: ${{ inputs.table-cells }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there's no base to diff against, so the check is skipped.
           # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
