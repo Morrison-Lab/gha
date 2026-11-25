@@ -2238,6 +2238,10 @@ def test_pre_existing_packed_table_row_not_reflagged(tmp_path):
 
 def test_table_cells_default_agrees_across_yaml():
     root = Path(__file__).resolve().parents[2]
+    # The review job swaps in the default branch's workflows and drops this
+    # marker (gha#765); that copy predates any input a PR adds.
+    if (root / ".github/workflows/.restored-from-default-branch").is_file():
+        pytest.skip("workflows restored from the default branch")
     for rel in ("check-new-line-breaks/action.yml",
                 ".github/workflows/check-new-line-breaks.yml"):
         text = (root / rel).read_text()
