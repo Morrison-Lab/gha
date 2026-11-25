@@ -41,7 +41,7 @@ runs:
 
     - name: Set up Quarto
       if: steps.cached.outputs.installed != 'true'
-      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b  # v2.2.0
       env:
         GH_TOKEN: ${{ inputs.github-token }}
       with:
