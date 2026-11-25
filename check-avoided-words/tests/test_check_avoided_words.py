@@ -270,6 +270,12 @@ def test_backref_passes_unrelated_setup():
     assert found("Adjust the setting of the dial.") == {}
 
 
+def test_backref_message_suggests_continuation():
+    message = dict((r[0], r[2]) for r in wi.RULES)["backref"]
+    assert "(Continuation of @exr-x.)" in message
+    assert found("(Continuation of @exr-wcgs.)") == {}
+
+
 @pytest.mark.parametrize("text", [
     "A value above the threshold is large.",
     "The curve falls below zero.",

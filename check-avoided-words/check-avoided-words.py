@@ -33,7 +33,8 @@ gha#1568):
   deliberate abstract use takes the allow comment.
 
 - **back-references to a "setup"**: "the setup of @exr-x", "the same setup
-  as". Name the specific data, variables, or model the part reuses (psw#442).
+  as". Open the follow-up with "(Continuation of @exr-x.)", or name the
+  specific data, variables, or model the part reuses (psw#442).
   A finding only asks the author to check; a deliberate use takes the allow
   comment.
 
@@ -288,9 +289,9 @@ RULES = (
      'Name the specific set, such as "the range of X", instead of a '
      "generic placeholder; be as specific as feasible (psw#427)."),
     ("backref", BACKREF_RE,
-     'Name the data, variables, or model a back-reference reuses instead of '
-     '"the setup of ..."; write about content, not the structure of the '
-     "notes (psw#442)."),
+     'Instead of "the setup of ...", open a follow-up exercise with '
+     '"(Continuation of @exr-x.)", or name the data, variables, or model it '
+     "reuses (psw#442)."),
     ("thing", THING_RE,
      'Name the object, quantity, step or idea instead of "thing" or "things" '
      '(psw word-choice.qmd, "Say which thing"; Ezra, 2026-11-04; gha#1454). '
