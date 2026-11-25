@@ -1432,6 +1432,12 @@ cookieconsent.run({
 <td>Minimum line length before <code>clause-breaks</code> applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when <code>clause-breaks</code> is <code>false</code>.</td>
 </tr>
 <tr class="odd">
+<td><code>table-cells</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Also check each cell of an added pipe-table row with the sentence and clause rules. A row cannot take a line break, so the fix is to keep the cell short and move its prose out of the table.</td>
+</tr>
+<tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td>empty (<code>CI_RUNNER</code> variable, else <code>ubuntu-latest</code>)</td>
@@ -1471,7 +1477,8 @@ cookieconsent.run({
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   clause-breaks: false                   # sentences only; skip the</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #                                          # semicolon clause check (on by default)</span></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   clause-min-length: 100                 # raise the clause check's length gate</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   table-cells: true                      # also check pipe-table cells</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   runs-on: private-runner                # self-hosted runner label (private repositories only)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-new-line-breaks.yml"><code>examples/check-new-line-breaks.yml</code></a> for the full caller stub.</p>
 
 
