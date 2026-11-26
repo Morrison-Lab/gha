@@ -784,6 +784,74 @@ def test_following_word_outside_target_title_is_clean():
     assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
 
 
+CV_DEF = """
+::: {#def-cross-validation}
+
+#### $k$-fold cross-validation
+
+**$k$-fold cross-validation** splits the pairs into $k$ folds.
+
+:::
+"""
+
+
+@pytest.mark.parametrize("prefix", ["10-fold", "ten-fold", "$K$-fold", "Five-fold"])
+def test_word_before_link_from_target_title_is_partial_link(prefix):
+    page = f"Estimate it by {prefix} [cross-validation](d.qmd#def-cross-validation).\n"
+    found = run_text(page, {"d.qmd": CV_DEF})
+    assert rules(found) == [("partial-link", "cross validation")]
+    assert f"'{prefix} cross-validation'" in found[0].message
+
+
+def test_whole_phrase_with_number_linked_is_clean():
+    page = "Estimate it by [10-fold cross-validation](d.qmd#def-cross-validation).\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_word_before_link_outside_target_title_is_clean():
+    page = "Estimate it by repeated [cross-validation](d.qmd#def-cross-validation).\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_function_word_before_link_is_clean():
+    # "over" is a word of this title, but a function word never extends a term.
+    mixture = "::: {#def-mixture}\n\n#### Mixture over components\n\nA **mixture** averages.\n\n:::\n"
+    page = "Averaged over [components](d.qmd#def-mixture) here.\n"
+    assert rules(run_text(page, {"d.qmd": mixture})) == []
+
+
+def test_link_over_math_only_is_clean():
+    mean = "::: {#def-sample-mean}\n\n#### Sample mean\n\nThe **sample mean** averages.\n\n:::\n"
+    page = "Compute the sample [$\\bar x$](d.qmd#def-sample-mean) now.\n"
+    assert rules(run_text(page, {"d.qmd": mean})) == []
+
+
+def test_word_before_link_already_in_the_link_is_clean():
+    page = "Use validation [cross-validation](d.qmd#def-cross-validation) here.\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_defined_longer_phrase_before_link_is_reported_once():
+    page = "We fit a logistic [regression](#def-logistic-regression).\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [("partial-link", "logistic regression")]
+
+
+def test_prefix_on_the_previous_line_is_not_read():
+    page = "Estimate it by 10-fold \n[cross-validation](d.qmd#def-cross-validation).\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_message_does_not_take_punctuation_before_the_count():
+    page = "Estimate it (10-fold [cross-validation](d.qmd#def-cross-validation)).\n"
+    found = run_text(page, {"d.qmd": CV_DEF})
+    assert "'10-fold cross-validation'" in found[0].message
+
+
+def test_word_before_link_reported_only_on_added_line():
+    page = "Estimate it by 10-fold [cross-validation](d.qmd#def-cross-validation).\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF}, added={5})) == []
+
+
 def test_partial_link_on_untouched_line_is_not_reported():
     page = "A [marginal](d.qmd#def-marginal-density) density estimate is used.\n"
     assert rules(run_text(page, {"d.qmd": MARGINAL_DEF}, added={5})) == []
@@ -935,3 +1003,39 @@ def test_a_heading_after_the_tabset_closes_is_still_a_term():
     terms = _harvest(text)
     assert "plot" in terms
     assert "python" not in terms
+
+
+VARIANCE_DEF = """
+::: {#def-variance}
+
+#### Variance of a random variable
+
+The **variance of** a random variable is its expected squared deviation.
+
+:::
+"""
+
+
+def test_preposition_before_link_is_clean():
+    page = "The class of [variance](d.qmd#def-variance) 1 wins.\n"
+    assert rules(run_text(page, {"d.qmd": VARIANCE_DEF})) == []
+
+
+def test_hyphenated_word_before_link_that_is_not_a_count_is_clean():
+    page = "The in-sample [mean squared error](d.qmd#def-mse) falls.\n"
+    mse = "::: {#def-mse}\n\n#### Sample mean squared error\n\nThe **sample mean squared error** is an average.\n\n:::\n"
+    assert rules(run_text(page, {"d.qmd": mse})) == []
+
+
+def test_unlinked_first_use_names_the_whole_counted_phrase():
+    page = "See [cross-validation](d.qmd#def-cross-validation).\n\n## Next\n\nUse 5-fold cross-validation here.\n"
+    found = [f for f in run_text(page, {"d.qmd": CV_DEF}) if f.rule == "unlinked-first-use"]
+    assert len(found) == 1
+    assert "'5-fold cross-validation' is a defined term" in found[0].message
+    assert "the whole phrase" in found[0].message
+
+
+def test_function_word_after_link_from_target_title_is_clean():
+    lasso = "::: {#def-lasso}\n\n#### Lasso (least absolute shrinkage and selection operator)\n\nThe **lasso** penalizes.\n\n:::\n"
+    page = "Fit the [lasso](d.qmd#def-lasso) and ridge regression.\n"
+    assert rules(run_text(page, {"d.qmd": lasso})) == []

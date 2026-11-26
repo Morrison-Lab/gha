@@ -63,6 +63,16 @@ a label such as "note" or "example".
   and the next word is another word of that title,
   such as "[probability](...#def-pdf) density" for "probability density function"
   (a different next word, as in "[fitted](...) probability", is not flagged).
+  The same holds for the word before a link,
+  with a count in place of the title's symbol:
+  "10-fold [cross-validation](...)" is flagged
+  when the target is titled `$k$-fold cross-validation`,
+  and so are "ten-fold" and `$K$-fold`.
+  A preposition or article before the link ("of", "a"),
+  and a word that is not a count ("in-sample"), are not flagged.
+  An unlinked first use preceded by such a word
+  names the whole phrase in its message,
+  as in "'5-fold cross-validation' is a defined term".
 - **`trailing-crossref`.**
   The first occurrence of a known term is followed by a crossref to a definition,
   as in "affine map (@def-affine-map)".
