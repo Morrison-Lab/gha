@@ -28,6 +28,10 @@ Findings:
 - `partial-link`: a link covers only part of a longer defined phrase, such as
   "logistic [regression](#def-regression)" when "logistic regression" is defined.
   The whole phrase is the link (Ezra, 2026-10-24, lds#1375; gha#1219).
+  A link whose text is part of its target's title also fires when the next word,
+  or the word before it, is another title word: "[marginal] density" (gha#1787),
+  and "10-fold [cross-validation]" for "$k$-fold cross-validation", where a count
+  stands in for the title's symbol (Ezra, 2026-11-26).
 - `trailing-crossref`: the first occurrence is followed by `(@def-...)`, as in
   "affine map (@def-affine-map)". The term itself is the link (Ezra, 2026-11-02
   and 2026-11-23); this form was counted as linked before.
@@ -153,6 +157,17 @@ FUNCTION_WORDS = frozenset({
     "computed", "computing", "use", "uses", "used", "using", "given", "gives", "give",
 })
 GENERIC_NOUNS = frozenset({"number", "numbers", "value", "values"})
+# The token right before a link: letters, digits and hyphens, after blanked math
+# ("$K$-fold" reads "   -fold"), separated from the link by spaces only.
+# Short words that sit before a link without belonging to its term ("the class of
+# [variance](#def-variance)"), beyond FUNCTION_WORDS.
+PREPOSITIONS = frozenset({"a", "of", "in","on", "at", "by", "to", "as", "or", "is", "be", "with", "per", "via"})
+# Counts that replace a title's symbol in front of its word ("ten-fold" for "$k$-fold").
+NUMBER_WORDS = frozenset({
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "twenty", "fifty", "hundred", "n", "k",
+})
+PRECEDING_TOKEN_RE = re.compile(r"(?<![\w\-])(?P<tok>[\w\-]+)[ \t]+$")
 # Ordinary English words that a link to a `#def-` anchor often wraps inside a sentence
 # ("a [linear](...) map").  As a one-word term learned only from such a link they flag
 # every ordinary use, so they count as terms only when a def-div title or bold term
@@ -530,6 +545,33 @@ def term_regex(keys: Sequence[str]) -> "re.Pattern[str]":
     )
 
 
+def title_prefix(
+    text: str, raw: str, pos: int, title_words: Set[str], own_words: Set[str]
+) -> Optional[Tuple[int, str]]:
+    """The token before `pos` that completes a definition's title, as (start, raw text), or None.
+
+    The token's last word must be a title word that `own_words` lacks; anything before
+    it in the token must be a count ("10-fold", "ten-fold" for "$k$-fold").  `text` has
+    math blanked, so "$K$-fold" reads "-fold"; the raw text returned widens back over it.
+    """
+    prev = PRECEDING_TOKEN_RE.search(text, 0, pos)
+    if not prev:
+        return None
+    before = term_key(prev.group("tok")).split()
+    last = before[-1] if before else ""
+    if not last.isalpha() or last in FUNCTION_WORDS or last in PREPOSITIONS:
+        return None
+    # "in-sample" before a link to "sample mean squared error" is another word, not a count.
+    if not all(w.isdigit() or w in NUMBER_WORDS for w in before[:-1]):
+        return None
+    if last not in title_words or last in own_words:
+        return None
+    start = prev.start("tok")
+    while start > 0 and not raw[start - 1].isspace():
+        start -= 1
+    return start, raw[start:prev.end("tok")]
+
+
 def scan_passage(
     path: Path,
     passage: Passage,
@@ -549,7 +591,8 @@ def scan_passage(
     for n, text in passage.lines:
         chunks.append(text + "\n")
         line_of.extend([n] * (len(text) + 1))
-    text = mask_inline("".join(chunks))
+    raw = "".join(chunks)
+    text = mask_inline(raw)
 
     def line_at(offset: int) -> int:
         return line_of[min(offset, len(line_of) - 1)]
@@ -596,6 +639,30 @@ def scan_passage(
                         f"link the whole phrase '{lm.group('text')} {nxt.group(1)}' to its definition."
                     ),
                 ))
+
+    # The same, with the missing word before the link: "10-fold [cross-validation](#def-cross-validation)"
+    # when the title is "$k$-fold cross-validation" (Ezra, 2026-11-26).
+    for lm in LINK_RE.finditer(text):
+        frag = re.search(r"#(def-[A-Za-z0-9_-]+)$", lm.group("url") or "")
+        title_words = (def_words or {}).get(frag.group(1), set()) if frag else set()
+        link_words = set(term_key(lm.group("text")).split())
+        if not title_words or not link_words <= title_words:
+            continue
+        found = title_prefix(text, raw, lm.start(), title_words, link_words)
+        if found is None:
+            continue
+        pstart, shown = found
+        if lookup(f"{shown} {lm.group('text')}", terms) is not None:
+            continue  # a defined phrase: the term scan below reports it
+        n = line_at(pstart)
+        if reportable(n):
+            findings.append(Finding(
+                file=path, line=n, rule="partial-link", term=term_key(lm.group("text")),
+                message=(
+                    f"'{lm.group('text')}' links part of a defined phrase; link the whole "
+                    f"phrase '{shown} {lm.group('text')}' to its definition, number or symbol included."
+                ),
+            ))
 
     if seen is None:
         seen = set()
@@ -647,11 +714,17 @@ def scan_passage(
                     # An opted-out use is exempt, not a first use: the next use is (gha#1283 review).
                     seen.discard(key)
                 continue
+            # Name the whole phrase when a count before the term completes its title
+            # ("5-fold cross-validation"), so the link covers all of it (Ezra, 2026-11-26).
+            title_words = set().union(*((def_words or {}).get(d, set()) for d in terms[key]))
+            ahead = title_prefix(text, raw, start, title_words, set(key.split()))
+            phrase = f"{ahead[1]} {m.group(0)}" if ahead else m.group(0)
             findings.append(Finding(
                 file=path, line=n, rule="unlinked-first-use", term=key,
                 message=(
-                    f"'{m.group(0)}' is a defined term; link its first use in this "
-                    f"{'div' if passage.in_div else 'section'} to its definition. "
+                    f"'{phrase}' is a defined term; link its first use in this "
+                    f"{'div' if passage.in_div else 'section'} to its definition"
+                    f"{', the whole phrase' if ahead else ''}. "
                     f"{KEEP_TERM}"
                 ),
             ))
