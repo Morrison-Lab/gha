@@ -629,6 +629,10 @@ def scan_passage(
         whole = term_key(f"{lm.group('text')} {nxt.group(1)}")
         if whole in terms:
             continue  # a defined phrase: the check below reports it
+        # "[lasso](#def-lasso) and ridge": "and" is in the title "least absolute
+        # shrinkage and selection operator", but a connective never extends a term.
+        if word in FUNCTION_WORDS or word in PREPOSITIONS:
+            continue
         if link_words <= title_words and word in title_words and word not in link_words:
             n = line_at(lm.start())
             if reportable(n):

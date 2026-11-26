@@ -1004,3 +1004,9 @@ def test_unlinked_first_use_names_the_whole_counted_phrase():
     assert len(found) == 1
     assert "'5-fold cross-validation' is a defined term" in found[0].message
     assert "the whole phrase" in found[0].message
+
+
+def test_function_word_after_link_from_target_title_is_clean():
+    lasso = "::: {#def-lasso}\n\n#### Lasso (least absolute shrinkage and selection operator)\n\nThe **lasso** penalizes.\n\n:::\n"
+    page = "Fit the [lasso](d.qmd#def-lasso) and ridge regression.\n"
+    assert rules(run_text(page, {"d.qmd": lasso})) == []
