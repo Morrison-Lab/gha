@@ -62,7 +62,7 @@ a label such as "note" or "example".
   It also fires when a link's text is part of its target definition's title
   and the next or previous word is another word of that title,
   such as "[probability](...#def-pdf) density" for "probability density function",
-  or "$k$-fold [cross-validation](...)" for "$k$-fold cross-validation"
+  or `$k$-fold [cross-validation](...)` for `$k$-fold cross-validation`
   (math or a number before the word, as in "4-fold", stands in for the title's `$k$`).
   A word outside the title, as in "[fitted](...) probability"
   or "the [cross-validation](...)", is not flagged.
