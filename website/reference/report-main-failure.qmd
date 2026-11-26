@@ -13,6 +13,8 @@ Call it from a `workflow_run` stub; see `examples/report-main-failure.yml`.
   `Main CI failing: <workflow>`, through the same deduplication as
   [`report-failure.yml`](report-failure.qmd).
   A second infrastructure-looking failure carries the `infra-suspect` label.
+- A success on the default branch comments on that issue with the green run
+  and closes it.
 
 ## Inputs
 
@@ -22,8 +24,9 @@ Call it from a `workflow_run` stub; see `examples/report-main-failure.yml`.
 
 ## Permissions
 
-Grant `issues: write` to file the issue and `actions: write` to re-run the
-failed jobs, on the calling job and nothing else.
+Grant `issues: write` to file and close the issue,
+and `actions: write` to re-run the failed jobs,
+on the calling job and nothing else.
 The job performs no checkout, so it needs no `contents` grant.
 
 ## Example
