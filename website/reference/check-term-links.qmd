@@ -60,9 +60,12 @@ a label such as "note" or "example".
   such as "logistic [regression](...)" when "logistic regression" is defined.
   Link the whole phrase to its own definition.
   It also fires when a link's text is part of its target definition's title
-  and the next word is another word of that title,
-  such as "[probability](...#def-pdf) density" for "probability density function"
-  (a different next word, as in "[fitted](...) probability", is not flagged).
+  and the next or previous word is another word of that title,
+  such as "[probability](...#def-pdf) density" for "probability density function",
+  or "$k$-fold [cross-validation](...)" for "$k$-fold cross-validation"
+  (math or a number before the word, as in "4-fold", stands in for the title's `$k$`).
+  A word outside the title, as in "[fitted](...) probability"
+  or "the [cross-validation](...)", is not flagged.
 - **`trailing-crossref`.**
   The first occurrence of a known term is followed by a crossref to a definition,
   as in "affine map (@def-affine-map)".

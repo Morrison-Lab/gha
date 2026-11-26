@@ -574,28 +574,51 @@ def scan_passage(
             return False
         return added is None or n in added
 
-    # A link over a sub-phrase of its target's title, then the next word of that title (gha#1787).
+    # A link over a sub-phrase of its target's title, beside another word of that title:
+    # the next word (gha#1787) or the word before it (gha#2205).
+    raw = "".join(chunks)
     for lm in LINK_RE.finditer(text):
         frag = re.search(r"#(def-[A-Za-z0-9_-]+)$", lm.group("url") or "")
         title_words = (def_words or {}).get(frag.group(1), set()) if frag else set()
-        nxt = re.match(r"\s+([A-Za-z][A-Za-z-]*)", text[lm.end():])
-        if not nxt or not title_words:
+        if not title_words:
             continue
         link_words = set(term_key(lm.group("text")).split())
-        word = term_key(nxt.group(1))
-        whole = term_key(f"{lm.group('text')} {nxt.group(1)}")
+        if not link_words <= title_words:
+            continue
+
+        def missing(word: str) -> bool:
+            key = term_key(word)
+            return key in title_words and key not in link_words
+
+        nxt = re.match(r"\s+([A-Za-z][A-Za-z-]*)", text[lm.end():])
+        if nxt and not missing(nxt.group(1)):
+            nxt = None
+        # The word before may follow math or a number, as in "$k$-fold" or "4-fold",
+        # which stands in for the `$k$` the masked title drops.
+        prv = re.search(r"(?<![A-Za-z])([A-Za-z][A-Za-z]*)\s+$", text[:lm.start()])
+        if prv and not missing(prv.group(1)):
+            prv = None
+        if not nxt and not prv:
+            continue
+        before = ""
+        if prv:
+            start = prv.start(1)
+            while start > 0 and not raw[start - 1].isspace() and raw[start - 1] not in "([":
+                start -= 1
+            before = raw[start:prv.end(1)] + " "
+        after = f" {nxt.group(1)}" if nxt else ""
+        whole = term_key(f"{before}{lm.group('text')}{after}")
         if whole in terms:
             continue  # a defined phrase: the check below reports it
-        if link_words <= title_words and word in title_words and word not in link_words:
-            n = line_at(lm.start())
-            if reportable(n):
-                findings.append(Finding(
-                    file=path, line=n, rule="partial-link", term=term_key(lm.group("text")),
-                    message=(
-                        f"'{lm.group('text')}' links part of a defined phrase; "
-                        f"link the whole phrase '{lm.group('text')} {nxt.group(1)}' to its definition."
-                    ),
-                ))
+        n = line_at(lm.start())
+        if reportable(n):
+            findings.append(Finding(
+                file=path, line=n, rule="partial-link", term=term_key(lm.group("text")),
+                message=(
+                    f"'{lm.group('text')}' links part of a defined phrase; "
+                    f"link the whole phrase '{before}{lm.group('text')}{after}' to its definition."
+                ),
+            ))
 
     if seen is None:
         seen = set()

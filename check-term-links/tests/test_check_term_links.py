@@ -789,6 +789,47 @@ def test_partial_link_on_untouched_line_is_not_reported():
     assert rules(run_text(page, {"d.qmd": MARGINAL_DEF}, added={5})) == []
 
 
+CV_DEF = """
+::: {#def-cv}
+
+#### $k$-fold cross-validation
+
+**$k$-fold cross-validation** splits the data into $k$ folds.
+
+:::
+"""
+
+
+def test_word_before_link_from_target_title_is_partial_link():
+    # gha#2205: "$k$-fold [cross-validation]" links only part of the title.
+    page = "We use $k$-fold [cross-validation](d.qmd#def-cv) here.\n"
+    found = run_text(page, {"d.qmd": CV_DEF})
+    assert [f.rule for f in found] == ["partial-link"]
+    assert "$k$-fold cross-validation" in found[0].message
+
+
+def test_number_before_link_from_target_title_is_partial_link():
+    page = "We use 4-fold [cross-validation](d.qmd#def-cv) here.\n"
+    found = run_text(page, {"d.qmd": CV_DEF})
+    assert [f.rule for f in found] == ["partial-link"]
+    assert "4-fold cross-validation" in found[0].message
+
+
+def test_word_before_link_outside_target_title_is_clean():
+    page = "We use the [cross-validation](d.qmd#def-cv) here.\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_whole_title_link_with_math_is_clean():
+    page = "We use [$k$-fold cross-validation](d.qmd#def-cv) here.\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_word_before_link_on_untouched_line_is_not_reported():
+    page = "We use $k$-fold [cross-validation](d.qmd#def-cv) here.\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF}, added={5})) == []
+
+
 def test_common_word_from_link_only_is_not_a_term():
     masked, _ = ctl.preprocess("See a [linear](https://x.io/m.html#def-linear-map) map.\n".splitlines())
     assert "linear" not in ctl.harvest_terms(masked, set())
