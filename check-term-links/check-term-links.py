@@ -165,9 +165,9 @@ PREPOSITIONS = frozenset({"a", "of", "in","on", "at", "by", "to", "as", "or", "i
 # Counts that replace a title's symbol in front of its word ("ten-fold" for "$k$-fold").
 NUMBER_WORDS = frozenset({
     "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-    "eleven", "twelve", "twenty", "fifty", "hundred", "n", "k",
+    "eleven", "twelve", "twenty", "thirty", "forty", "fifty", "hundred", "n", "k",
 })
-PRECEDING_TOKEN_RE = re.compile(r"(?<![\w\-])(?P<tok>[\w\-]+)[ \t]+$")
+PRECEDING_TOKEN_RE = re.compile(r"(?<![\w\-])(?P<tok>[\w\-]+)[ \t]+\Z")
 # Ordinary English words that a link to a `#def-` anchor often wraps inside a sentence
 # ("a [linear](...) map").  As a one-word term learned only from such a link they flag
 # every ordinary use, so they count as terms only when a def-div title or bold term
@@ -554,7 +554,9 @@ def title_prefix(
     it in the token must be a count ("10-fold", "ten-fold" for "$k$-fold").  `text` has
     math blanked, so "$K$-fold" reads "-fold"; the raw text returned widens back over it.
     """
-    prev = PRECEDING_TOKEN_RE.search(text, 0, pos)
+    # A bounded window: the token sits right before `pos`, and a search from the start
+    # of a long passage for every link grows with the square of its length.
+    prev = PRECEDING_TOKEN_RE.search(text, max(0, pos - 200), pos)
     if not prev:
         return None
     before = term_key(prev.group("tok")).split()
@@ -566,8 +568,10 @@ def title_prefix(
         return None
     if last not in title_words or last in own_words:
         return None
+    # Widen back over masked math only ("$K$" in "$K$-fold"), never over punctuation
+    # such as the "(" of "(10-fold".
     start = prev.start("tok")
-    while start > 0 and not raw[start - 1].isspace():
+    while start > 0 and text[start - 1] == " " and not raw[start - 1].isspace():
         start -= 1
     return start, raw[start:prev.end("tok")]
 
@@ -650,7 +654,8 @@ def scan_passage(
         frag = re.search(r"#(def-[A-Za-z0-9_-]+)$", lm.group("url") or "")
         title_words = (def_words or {}).get(frag.group(1), set()) if frag else set()
         link_words = set(term_key(lm.group("text")).split())
-        if not title_words or not link_words <= title_words:
+        # A link over math only ("[$\bar x$](#def-sample-mean)") has no words to extend.
+        if not title_words or not link_words or not link_words <= title_words:
             continue
         found = title_prefix(text, raw, lm.start(), title_words, link_words)
         if found is None:
@@ -659,7 +664,8 @@ def scan_passage(
         if lookup(f"{shown} {lm.group('text')}", terms) is not None:
             continue  # a defined phrase: the term scan below reports it
         n = line_at(pstart)
-        if reportable(n):
+        # One report per link: the forward scan above may already name it.
+        if reportable(n) and not any(f.rule == "partial-link" and f.line == n for f in findings):
             findings.append(Finding(
                 file=path, line=n, rule="partial-link", term=term_key(lm.group("text")),
                 message=(

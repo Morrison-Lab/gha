@@ -814,8 +814,37 @@ def test_word_before_link_outside_target_title_is_clean():
 
 
 def test_function_word_before_link_is_clean():
-    page = "Compare the [marginal density](d.qmd#def-marginal-density) of each.\n"
-    assert rules(run_text(page, {"d.qmd": MARGINAL_DEF})) == []
+    # "over" is a word of this title, but a function word never extends a term.
+    mixture = "::: {#def-mixture}\n\n#### Mixture over components\n\nA **mixture** averages.\n\n:::\n"
+    page = "Averaged over [components](d.qmd#def-mixture) here.\n"
+    assert rules(run_text(page, {"d.qmd": mixture})) == []
+
+
+def test_link_over_math_only_is_clean():
+    mean = "::: {#def-sample-mean}\n\n#### Sample mean\n\nThe **sample mean** averages.\n\n:::\n"
+    page = "Compute the sample [$\\bar x$](d.qmd#def-sample-mean) now.\n"
+    assert rules(run_text(page, {"d.qmd": mean})) == []
+
+
+def test_word_before_link_already_in_the_link_is_clean():
+    page = "Use validation [cross-validation](d.qmd#def-cross-validation) here.\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_defined_longer_phrase_before_link_is_reported_once():
+    page = "We fit a logistic [regression](#def-logistic-regression).\n"
+    assert rules(run_text(page, {"d.qmd": LOGISTIC_DEFS})) == [("partial-link", "logistic regression")]
+
+
+def test_prefix_on_the_previous_line_is_not_read():
+    page = "Estimate it by 10-fold \n[cross-validation](d.qmd#def-cross-validation).\n"
+    assert rules(run_text(page, {"d.qmd": CV_DEF})) == []
+
+
+def test_message_does_not_take_punctuation_before_the_count():
+    page = "Estimate it (10-fold [cross-validation](d.qmd#def-cross-validation)).\n"
+    found = run_text(page, {"d.qmd": CV_DEF})
+    assert "'10-fold cross-validation'" in found[0].message
 
 
 def test_word_before_link_reported_only_on_added_line():
