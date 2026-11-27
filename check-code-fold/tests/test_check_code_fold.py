@@ -83,6 +83,82 @@ def test_added_lines_scopes_the_diff():
     assert ccf.added_lines(diff) == {"a.qmd": {5, 6}}
 
 
+def missing(text: str, default_fold: bool = False):
+    return ccf.missing_summaries(text.split("\n"), default_fold)
+
+
+@pytest.mark.parametrize("option", [
+    "#| code-fold: true", "#| code-fold: show", '#| code-fold: "true"',
+    "#| code-fold: TRUE",
+])
+def test_a_folded_chunk_without_a_summary_is_flagged(option):
+    assert missing(chunk(option)) == [1]
+
+
+@pytest.mark.parametrize("options", [
+    '#| code-fold: true\n#| code-summary: "Code: fit the model"',
+    "#| code-fold: false",
+    "#| code-fold: true\n#| echo: false",
+    "#| code-fold: true\n#| include: false",
+    "#| label: a",
+])
+def test_unfolded_hidden_or_summarized_chunks_pass(options):
+    assert missing(chunk(options)) == []
+
+
+def test_default_fold_makes_a_chunk_with_no_code_fold_fold():
+    assert missing(chunk("#| label: a"), default_fold=True) == [1]
+    assert missing(chunk("#| code-fold: false"), default_fold=True) == []
+
+
+def test_an_empty_summary_counts_as_missing():
+    assert missing(chunk('#| code-fold: true\n#| code-summary: ""')) == [1]
+
+
+def test_options_after_the_code_do_not_count():
+    text = chunk("#| code-fold: true", body='x <- 1\n#| code-summary: "late"')
+    assert missing(text) == [1]
+
+
+def test_a_plain_fence_is_not_a_chunk():
+    assert missing("```r\n#| code-fold: true\n```", default_fold=True) == []
+
+
+def test_each_chunk_is_reported_at_its_fence():
+    text = chunk("#| code-fold: true") + "\n\n" + chunk(
+        '#| code-fold: show\n#| code-summary: "Code: plot"', "python")
+    assert missing(text) == [1]
+    assert missing(text + "\n\n" + chunk("#| code-fold: show")) == [1, 12]
+
+
+def test_main_flags_only_a_new_chunk(tmp_path, monkeypatch, capsys):
+    import subprocess
+
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True,
+                       capture_output=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "ci@example.com")  # phi-allow
+    git("config", "user.name", "ci")
+    page = tmp_path / "page.qmd"
+    page.write_text(chunk("#| code-fold: true") + "\n")
+    git("add", "page.qmd")
+    git("commit", "-qm", "base")
+    page.write_text(chunk("#| code-fold: true") + "\n\n"
+                    + chunk("#| code-fold: true", "python") + "\n")
+    git("commit", "-qam", "add a chunk")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CCF_BASE_REF", "HEAD^1")
+    monkeypatch.setenv("CCF_REQUIRE_SUMMARY", "true")
+    assert ccf.main() == 1
+    out = capsys.readouterr().out
+    assert "line=6::New chunk folds" in out
+    assert "line=1::" not in out
+    monkeypatch.setenv("CCF_REQUIRE_SUMMARY", "false")
+    assert ccf.main() == 0
+
+
 def test_defaults_agree_across_script_action_and_workflow():
     def input_block(text: str, name: str) -> str:
         start = text.index(f"\n      {name}:" if "workflow_call" in text else f"\n  {name}:")
@@ -95,3 +171,10 @@ def test_defaults_agree_across_script_action_and_workflow():
     assert "default: true" in input_block(workflow, "fail")
     assert "default: '*.qmd'" in input_block(action, "globs")
     assert "default: '*.qmd'" in input_block(workflow, "globs")
+    for name, var in (("require-summary", "CCF_REQUIRE_SUMMARY"),
+                      ("default-fold", "CCF_DEFAULT_FOLD")):
+        assert ccf._flag(var, False) is False
+        assert "default: 'false'" in input_block(action, name)
+        assert "default: false" in input_block(workflow, name)
+        assert f"{name}: ${{{{ inputs.{name} }}}}" in workflow
+        assert f"{var}: ${{{{ inputs.{name} }}}}" in action
