@@ -23,3 +23,4 @@ jobs:
     #   clause-breaks: false                   # sentences only; skip the
     #                                          # semicolon clause check (on by default)
     #   clause-min-length: 100                 # raise the clause check's length gate
+    #   table-cells: true                      # also check pipe-table cells

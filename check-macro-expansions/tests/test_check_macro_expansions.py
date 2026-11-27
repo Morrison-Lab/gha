@@ -32,6 +32,12 @@ MACROS = (
     "\\providecommand{\\powf}[2]{{\\paren{#1}}^{#2}}\n"
     "\\providecommand{\\prederrf}[1]{\\paren{#1 - \\newoutvar}}\n"
     "\\providecommand{\\qform}[2]{\\tp{#2} #1 #2}\n"
+    "\\providecommand{\\bform}[3]{\\tp{#2} #1 #3}\n"
+    "\\providecommand{\\soprod}[1]{#1 \\tp{#1}}\n"
+    "\\providecommand{\\oprod}[2]{#1 \\tp{#2}}\n"
+    "\\providecommand{\\tprod}[2]{\\tp{#1} #2}\n"
+    "\\providecommand{\\ccprod}[2]{\\tp{#1} #2}\n"
+    "\\providecommand{\\stprod}[1]{\\ccprod{#1}{#1}}\n"
     "\\providecommand{\\modelfam}{\\mathcal{H}}\n"
     "\\providecommand{\\distop}[1]{\\operatorname{#1}}\n"
     "\\providecommand{\\ba}{\\begin{aligned}}\n"
@@ -63,6 +69,8 @@ def test_expansions_keep_structured_bodies_only(table):
     names = {n for exp in table for n in exp.names}
     # structured bodies are kept
     assert {"sumin", "sumto", "prederrf", "qform", "hist"} <= names
+    # transpose products are kept although their bodies are short
+    assert {"soprod", "oprod", "tprod", "ccprod", "stprod"} <= names
     # a lone font wrapper, an environment opener and an alias are not
     assert not {"modelfam", "distop", "ba", "bfX", "Sumi", "sqf"} & names
 
@@ -93,8 +101,76 @@ def test_wildcard_arguments_are_captured(table):
 
 
 def test_repeated_placeholder_must_match_itself(table):
-    assert found(table, r"$\tp{X} W X$") == {1: ("qform",)}
-    assert found(table, r"$\tp{X} W Z$") == {}
+    # \bform's three wildcards match a quadratic form too; \qform's repeated
+    # #2 matches only when both sides are the same.
+    assert found(table, r"$\tp{X} W X$") == {1: ("qform", "bform")}
+    assert found(table, r"$\tp{X} W Z$") == {1: ("bform",)}
+
+
+def test_flags_a_self_outer_product(table):
+    assert found(table, r"$\vX \tp{\vX}$") == {1: ("soprod", "oprod")}
+
+
+def test_flags_an_outer_product_of_a_braced_argument(table):
+    text = r"$\paren{\vX - \vmu} \tp{\paren{\vX - \vmu}}$"
+    assert found(table, text) == {1: ("soprod", "oprod")}
+
+
+def test_flags_an_outer_product_of_two_vectors(table):
+    assert found(table, r"$\va \tp{\vb}$") == {1: ("oprod",)}
+
+
+def test_flags_a_transpose_product(table):
+    assert found(table, r"$\tp{\va} \vX$") == {1: ("tprod", "ccprod")}
+
+
+def test_flags_a_gram_matrix_through_the_macro_it_calls(table):
+    assert found(table, r"$\tp{\mX} \mX$") == {1: ("tprod", "ccprod", "stprod")}
+
+
+def test_an_outer_product_inside_an_expectation_is_flagged(table):
+    # The pds#478 text that went unflagged before.
+    assert found(table, r"$\E{\vX \tp{\vX}}$") == {1: ("soprod", "oprod")}
+    text = r"$\paren{\Expp\vX} \tp{\paren{\Expp\vX}}$"
+    assert found(table, text) == {1: ("soprod", "oprod")}
+
+
+def test_the_inside_of_one_factor_is_not_a_product(table):
+    assert found(table, r"$\mQ \matr{\Eigvals}\tp{\mQ}$") == {}
+
+
+def test_two_transposes_are_not_an_outer_product(table):
+    assert found(table, r"$\tp{\va} \tp{\vb}$") == {}
+
+
+def test_a_scalar_or_text_is_not_a_product_factor(table):
+    assert found(table, r"$2\tp{\vb}$") == {}
+    assert found(table, r"$\mA^{-1}\tp{\mQ}$") == {1: ("oprod",)}
+    # the last two factors of a longer product are not flagged alone
+    assert found(table, r"$\mQ \mA^{-1}\tp{\mQ}$") == {}
+    assert found(table, r"$\tp{\va} \text{, with } \vb$") == {}
+    assert found(table, r"$\begin{bmatrix} \tp{\vone} \end{bmatrix}$") == {}
+    assert found(table, r"$\tp{\mU} \begin{bmatrix} a \end{bmatrix}$") == {}
+
+
+def test_only_products_take_a_braced_argument(table):
+    # \prederrf is \paren{#1 - \newoutvar}; its #1 stays narrow.
+    assert found(table, r"$\paren{\E{Y} - \newoutvar}$") == {}
+
+
+def test_a_lone_transpose_is_clean(table):
+    # \vX is one argument; it is not split into \v and X.
+    assert found(table, r"$\tp{\vX}$") == {}
+
+
+def test_a_macro_written_as_its_call_is_still_matched(tmp_path):
+    macros = tmp_path / "macros.qmd"
+    macros.write_text(MACROS)
+    loaded = cme.load_expansions(str(macros), set())
+    bodies = {exp.body for exp in loaded if "stprod" in exp.names}
+    # Tokens drop braces; "\ccprod #1 #1" has three tokens and no \tp, so only
+    # the expanded form is kept.
+    assert bodies == {"\\tp #1 #1"}
 
 
 def test_flags_the_prediction_error_chunk(table):

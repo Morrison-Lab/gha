@@ -26,6 +26,18 @@ on:
         description: Fail the workflow on a finding (else warnings only).
         type: boolean
         default: true
+      require-summary:
+        description: >-
+          Also flag a new executed chunk whose code folds but that sets no
+          code-summary.
+        type: boolean
+        default: false
+      default-fold:
+        description: >-
+          Treat a chunk with no code-fold option as folded, as when the
+          project sets code-fold true. Used only with require-summary.
+        type: boolean
+        default: false
 
 jobs:
   check-code-fold:
@@ -47,6 +59,8 @@ jobs:
           whole-tree: ${{ inputs.whole-tree }}
           globs: ${{ inputs.globs }}
           fail: ${{ inputs.fail }}
+          require-summary: ${{ inputs.require-summary }}
+          default-fold: ${{ inputs.default-fold }}
           # On pull_request, HEAD^1 is the base tip GitHub built the merge ref on
           # (see check-one-div-per-subfile, gha#1007); on push there is no base.
           base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-bitmap-figures.yml in your repo.
+# Diff-scoped check: flags a new bitmap figure (.png, .jpg, .gif, ...), a new
+# image reference to one, and a new raster figure device (fig-format: png,
+# dev: png), where a script-generated SVG would do. Allow a screenshot
+# directory through paths-ignore, or add
+# <!-- check-bitmap-figures: allow: reason --> on the line or the one above.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check bitmap figures
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-bitmap-figures.yml@v3
+    # with:
+    #   globs: '*.qmd *.yml'                    # text files to scan (recursive)
+    #   paths-ignore: 'images/screenshots/**'   # allowed bitmaps
+    #   fail: true                              # set false to warn only (defaults to true)
+    #   whole-tree: true                        # report every bitmap, not just a PR's additions

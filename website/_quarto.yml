@@ -86,6 +86,7 @@ website:
           - reference/check-one-div-per-subfile.qmd
           - reference/check-heading-levels.qmd
           - reference/check-heading-titles.qmd
+          - reference/check-result-titles.qmd
           - reference/check-title-references.qmd
           - reference/check-self-reference.qmd
           - reference/check-page-length.qmd
@@ -95,6 +96,8 @@ website:
           - reference/check-code-messages.qmd
           - reference/check-pr-size.qmd
           - reference/check-pr-concerns.qmd
+          - reference/check-tautological-equations.qmd
+          - reference/check-citation-authors.qmd
           - reference/cancel-superseded.qmd
           - reference/check-def-commentary.qmd
           - reference/check-unexplained-contrasts.qmd
@@ -103,12 +106,17 @@ website:
           - reference/check-exercise-before-result.qmd
           - reference/check-caller-permissions.qmd
           - reference/check-exm-figures.qmd
+          - reference/check-lab-exposition.qmd
           - reference/check-contour-3d.qmd
           - reference/check-static-figures.qmd
           - reference/check-function-graphs.qmd
           - reference/check-axis-titles.qmd
           - reference/check-tree-lists.qmd
           - reference/check-search-shortcut.qmd
+          - reference/check-template-identity.qmd
+          - reference/check-lone-subfloats.qmd
+          - reference/check-bitmap-figures.qmd
+          - reference/check-equation-labels.qmd
           - reference/check-visualization-figures.qmd
           - reference/check-geometric-figures.qmd
           - reference/check-self-contained-captions.qmd
@@ -145,8 +153,11 @@ website:
           - reference/check-local-macros.qmd
           - reference/check-fform-paren.qmd
           - reference/check-iterate-subscripts.qmd
+          - reference/check-ball-neighborhoods.qmd
           - reference/check-precedence-parens.qmd
+          - reference/check-double-inequalities.qmd
           - reference/check-r-head.qmd
+          - reference/check-language-suffix-names.qmd
           - reference/check-macro-expansions.qmd
           - reference/check-write-idiom.qmd
           - reference/check-avoided-words.qmd

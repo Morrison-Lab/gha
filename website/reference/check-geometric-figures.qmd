@@ -27,6 +27,21 @@ Only claims on lines a pull request adds are reported, one per paragraph.
 The check sees that a figure is near, not that it shows this claim,
 so the Claude review prompt carries the rule too.
 
+A definition of a geometric term needs a figure too (Ezra, 2026-11-22):
+a `#def-` div whose title or bold term names a geometric object
+(curve, surface, plane, hyperplane, half-space, distance, margin,
+boundary, region, contour, level set, circle, ellipse, sphere, ball,
+angle, polygon, polytope, convex hull, projection, line segment,
+simplex, cone, or manifold)
+is flagged when the next example after it has no figure.
+The check follows `include` shortcodes to find that example,
+in the definition's own file or after its include in a parent page,
+and stops at the next definition, result, exercise, or solution.
+It reports the definition when a pull request touches the definition
+or that example.
+The example's own `no-figure` marker does not excuse the definition;
+`<!-- no-figure: reason -->` inside the definition does.
+
 ```yaml
 jobs:
   check:

@@ -1,0 +1,67 @@
+name: Check bitmap figures
+description: >-
+  Diff-scoped check that flags a new bitmap figure where a script-generated
+  vector graph would do (Ezra, 2026-11-21, Morrison-Lab/lds#3086): a new
+  `.png`, `.jpg`, `.gif`, `.bmp`, `.tif` or `.webp` file, a new Markdown
+  image, `<img>` tag or `include_graphics()` call pointing at one, and a new
+  raster figure device (`fig-format: png`, `dev: png`, a `ggsave()` or
+  `savefig()` writing a bitmap). `paths-ignore` allows a screenshot
+  directory, and `<!-- check-bitmap-figures: allow: reason -->` on a line or
+  the line above it exempts that line. Scoped to lines and files a diff adds
+  (an added line whose exact text was also deleted in the same diff counts as
+  moved). Blocking by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines and files added since this ref
+      are checked. On a pull request the reusable workflow passes `HEAD^1`,
+      the base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every bitmap the repository already carries.
+    default: ''
+  whole-tree:
+    description: >-
+      Report every tracked bitmap file, and scan every tracked file the globs
+      match in full, instead of only what a diff adds. Use it to measure a
+      repository; `base-ref` is ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of the text files scanned for bitmap
+      references and raster devices. New bitmap files are found under any
+      path. Git pathspecs match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md *.yml *.yaml *.R *.py'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths): text files not
+      scanned, and bitmap files and image targets that are allowed, such as
+      `images/screenshots/`. Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action on a finding (else warning annotations only).
+      Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check bitmap figures
+      shell: bash
+      env:
+        CBF_BASE_REF: ${{ inputs.base-ref }}
+        CBF_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CBF_GLOBS: ${{ inputs.globs }}
+        CBF_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CBF_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-bitmap-figures.py"

@@ -6,17 +6,21 @@ lychee fails on every rejected link, including a 5xx from a host that is
 briefly down. A github.com outage then fails every PR in every consumer,
 for links in files the PR never touched. With a diff base, this script
 demotes such a 5xx to a warning unless the link sits on a line the PR adds.
-Every other failure (a 404, a network error, a timeout) still blocks.
+A host that cannot be reached at all (a timeout, or lychee's "Connection
+failed" network error) is treated the same way (gha#2121): it says the host
+is down, not that the link is dead. Every other failure (a 404, a DNS error,
+any other network error) still blocks.
 
 Environment:
   LYCHEE_JSON      path to lychee's ``--format json`` report (required)
   LYCHEE_EXIT      lychee's exit code (required): 0 clean, 2 link failures,
                    anything else a tool or configuration error
-  LINKS_BASE_REF   which 5xx block: ``all`` (the composite's default) means
-                   every 5xx does, as lychee itself decides; empty means none
-                   do (no line is known to be added, as on a push); anything
-                   else is a git ref, and a 5xx blocks only when it is on a
-                   line added since the merge base of that ref and HEAD
+  LINKS_BASE_REF   which 5xx and unreachable-host failures block: ``all``
+                   (the composite's default) means every one does, as lychee
+                   itself decides; empty means none do (no line is known to
+                   be added, as on a push); anything else is a git ref, and
+                   one blocks only when it is on a line added since the
+                   merge base of that ref and HEAD
   LINKS_FAIL       ``true`` (default) exits 1 on a blocking failure
   LINKS_FAIL_IF_EMPTY  ``true`` exits 1 when lychee found no links
 
@@ -197,25 +201,59 @@ def cached_untrusted_certificate(key: str, entry: dict, untrusted_urls: set) -> 
     return is_cached_error and entry.get("url") in untrusted_urls
 
 
+_CONNECTION_FAILED = "Connection failed"
+
+
+def unreachable_host(key: str, entry: dict) -> bool:
+    """True for a timeout, or an error_map entry saying the connection failed.
+
+    Either means the host did not answer, not that the link is dead
+    (gha#2121: web.stanford.edu on 2026-11-20 failed mds#862, pds#474 and
+    sds#642 on lines none of them touched). lychee 0.24 words it
+    "Network error: Connection failed. Check network connectivity and
+    firewall settings (error sending request for url (...))". A DNS error is
+    not included: a misspelled host fails that way too.
+    """
+    if key == "timeout_map":
+        return True
+    text = (entry.get("status") or {}).get("text") or ""
+    return key == "error_map" and _status_code(entry) is None and _CONNECTION_FAILED in text
+
+
+def cached_unreachable_host(key: str, entry: dict, unreachable_urls: set) -> bool:
+    """True for an "Error (cached)" repeat of a URL whose host did not answer."""
+    text = (entry.get("status") or {}).get("text") or ""
+    is_cached_error = key == "error_map" and text.startswith("Error (cached)")
+    return is_cached_error and entry.get("url") in unreachable_urls
+
+
 def classify(
-    listed: List[Tuple[str, str, dict]], blocks_5xx: Callable[[str, dict], bool]
+    listed: List[Tuple[str, str, dict]], blocks_transient: Callable[[str, dict], bool]
 ) -> Tuple[List[Tuple[str, dict]], List[Tuple[str, dict]]]:
     """Split failures into (blocking, demoted).
 
-    Only an error_map 5xx off the diff, or an untrusted certificate, is demoted.
+    Demoted are an untrusted certificate anywhere, and, off the diff, an
+    error_map 5xx or a host that did not answer (with its cached repeats).
     """
     blocking: List[Tuple[str, dict]] = []
     demoted: List[Tuple[str, dict]] = []
     untrusted_urls = {
         e.get("url") for k, _, e in listed if untrusted_certificate(k, e)
     }
+    unreachable_urls = {
+        e.get("url") for k, _, e in listed if unreachable_host(k, e)
+    }
     for key, path, entry in listed:
         code = _status_code(entry)
-        transient = key == "error_map" and code is not None and 500 <= code <= 599
+        transient = (
+            (key == "error_map" and code is not None and 500 <= code <= 599)
+            or unreachable_host(key, entry)
+            or cached_unreachable_host(key, entry, unreachable_urls)
+        )
         if (
             untrusted_certificate(key, entry)
             or cached_untrusted_certificate(key, entry, untrusted_urls)
-            or (transient and not blocks_5xx(path, entry))
+            or (transient and not blocks_transient(path, entry))
         ):
             demoted.append((path, entry))
         else:
@@ -281,7 +319,8 @@ def _summary(blocking, demoted, root: Optional[str] = None) -> str:
     out = ["## Link check", ""]
     out.append(f"{len(blocking)} blocking failure(s), {len(demoted)} demoted warning(s).")
     for title, rows in (("Blocking", blocking),
-                        ("Demoted (a 5xx not on an added line, or an untrusted certificate)", demoted)):
+                        ("Demoted (a 5xx or unreachable host not on an added line, "
+                         "or an untrusted certificate)", demoted)):
         if rows:
             out += ["", f"### {title}", ""]
             out += [f"- {_code_span(_display_path(p, root))}: {_describe(e)}" for p, e in rows]
@@ -298,7 +337,7 @@ def _scope(base_ref: str) -> Callable[[str, dict], bool]:
     except (subprocess.CalledProcessError, OSError) as exc:
         detail = getattr(exc, "stderr", "") or str(exc)
         print(f"::warning::cannot diff against base-ref {base_ref!r} "
-              f"({detail.strip()}); every 5xx blocks this run.")
+              f"({detail.strip()}); every 5xx and unreachable host blocks this run.")
         return lambda path, entry: True
 
 
@@ -349,8 +388,11 @@ def main() -> int:
         ):
             why = (" (the host's certificate is not trusted, so the link is unverified, "
                    "not known dead; not failing the check)")
-        else:
+        elif _status_code(entry) is not None:
             why = " (server error on a line this change does not add; not failing the check)"
+        else:
+            why = (" (host did not answer, on a line this change does not add; "
+                   "not failing the check)")
         print(_annotate("warning", path, entry, why, root))
     for path, entry in blocking:
         print(_annotate("error", path, entry, root=root))

@@ -41,7 +41,8 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   so a finding only asks the author to check.
 - **Back-references to a setup.**
   "The setup of @exr-x" or "the same setup as".
-  Name the data, variables or model the part reuses.
+  Open a follow-up exercise with "(Continuation of @exr-x.)",
+  or name the data, variables, or model the part reuses.
   Source: psw's "Talk about the ideas, not the notes" (psw#442).
 - **"Score" for a linear predictor.**
   "score" or "scores" on a line that also has `\eta`, "linear predictor",
@@ -59,6 +60,16 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   `(see @thm-x)` passes, since no word can carry that link.
   Source: Ezra's review of mds, 2026-11-02 (gha#1402).
   This rule fails the run whatever `fail` says.
+- **A definition crossref used as a noun.**
+  A crossref after "a", "an", "the", or a form of "be",
+  such as `which is @def-affine-map with $\vec{b} = \vzero$`,
+  which renders as "which is Definition 3 with ...".
+  Name the term and link it,
+  as `which is an [affine map](#def-affine-map) with`.
+  `as in @def-x` and `by @def-x` pass,
+  since they name the definition as a whole.
+  Source: Ezra, 2026-11-23.
+  This rule only warns, even with `fail` on, while it is new.
 - **The word "thing".**
   `thing` or `things` as a whole word; `something`, `anything`, and `nothing` pass.
   Name the object, quantity, step, or idea instead.
@@ -84,6 +95,19 @@ This is [psw#418](https://github.com/Morrison-Lab/psw/pull/418).
   "Otherwise," is not flagged, because in the notes repositories
   it opens the second case of a proof.
   Source: psw's "Phrase optional steps as conditions" (psw#490, psw#493).
+  This rule only warns, even with `fail` on, while it is new.
+- **A bare "intercept".**
+  "Intercept" or "intercepts" with nothing saying which concept it names.
+  The intercept of a function is its value at zero input.
+  The intercept term of an expression is its constant term.
+  The two differ whenever another term is nonzero at zero input,
+  as in a model with a centered predictor.
+  These forms pass:
+  "intercept term", "intercept of", "y-intercept", and "x intercept".
+  So do a link to `#def-intercept` or `#def-intercept-term`,
+  hyphenated compounds, and ids,
+  as well as code, math, quotes, italics, and blockquote lines.
+  Source: Ezra, 2026-11-22, and psw's rule to tell the two apart (psw#701).
   This rule only warns, even with `fail` on, while it is new.
 - **"Write" to name notation.**
   A math span after "write", "writes", or "writing" and then "for"
@@ -136,7 +160,7 @@ Every run prints how many lines and files it examined.
 | ---------------- | ------- | ------- | ----------- |
 | `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
-| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail, and the Gaussian and optional-step rules only warn. |
+| `fail`           | boolean | `true`  | Fail the workflow when an avoided word is found. Set `false` for warnings only; a trailing parenthetical link and the words "thing" and "things" always fail, and the Gaussian, optional-step, bare-intercept, and crossref-as-noun rules only warn. |
 | `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
 | `python-version` | string  | `'3.x'` | Python version to set up. |
 | `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, whose pull requests can run arbitrary code on it ([#1167](https://github.com/Morrison-Lab/gha/issues/1167)). |

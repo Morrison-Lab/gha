@@ -1,0 +1,105 @@
+---
+title: "check-bitmap-figures.yml"
+---
+
+Diff-scoped, blocking check that flags a new bitmap figure
+where a script-generated vector graph would do.
+The lab's rule (Ezra, 2026-11-21) is to replace bitmap images
+with vector graphs that code draws:
+an SVG stays sharp at any zoom and keeps its text as text,
+while a scan, a screenshot, or a PNG export does neither.
+This implements
+Morrison-Lab/lds#3086, in a private repository.
+
+Three findings:
+
+- **A new bitmap file.**
+  The diff adds a `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tif`, `.tiff`,
+  or `.webp` file, under any path.
+  A rename is not new.
+- **A new reference to a bitmap.**
+  An added Markdown image (`![alt](x.png)`), `<img src="x.png">` tag,
+  or `knitr::include_graphics("x.png")` call points at one of those extensions.
+  Images and tags count only in a markup file (`.qmd`, `.Rmd`, `.md`, `.html`),
+  outside code fences, code spans, and HTML comments;
+  `include_graphics()` counts in any scanned file.
+- **A raster figure device.**
+  An added `fig-format: png` (or `retina`, `jpeg`),
+  `dev: png` (as a chunk option, a YAML key, or `dev = "png"`,
+  with any raster device such as `ragg_png`),
+  or a `ggsave()` or `savefig()` call writing a bitmap.
+
+Draw the figure with code and save it as SVG instead:
+the `svglite` device in R,
+or an `.svg` file or `fig-format: svg` for matplotlib.
+A screenshot or a photo has no vector form,
+so allow its directory through `paths-ignore`,
+which also allows a reference whose target resolves into it,
+or put `<!-- check-bitmap-figures: allow: <reason> -->`
+on the flagged line or the line above it.
+A pragma with no reason exempts nothing.
+
+## Scope
+
+Only files and lines a pull request adds are reported,
+so existing bitmaps are never reflagged.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new, and a blank added line is not content.
+
+With no `base-ref`, or when the diff cannot be computed,
+the check skips with a warning instead of scanning the whole tree.
+Set `whole-tree: true` to report every tracked bitmap file
+and every reference on purpose.
+Measured 2026-11-22 over lds,
+the whole tree held 33 hits:
+17 bitmap files (16 scans and a screenshot)
+and 16 references to them.
+
+## Inputs
+
+| Input          | Type    | Default       | Description |
+| -------------- | ------- | ------------- | ----------- |
+| `globs`        | string  | `'*.qmd *.Rmd *.md *.yml *.yaml *.R *.py'` | Space-separated git pathspecs of the text files scanned for references and devices (recursive by default). New bitmap files are found under any path. |
+| `paths-ignore` | string  | `''`          | Comma- or newline-separated glob patterns (relative paths): text files not scanned, and bitmap files and image targets that are allowed. Supports `*`, `?` and recursive `**`. |
+| `fail`         | boolean | `true`        | Fail the workflow on a finding. Set `false` for warning annotations only. |
+| `whole-tree`   | boolean | `false`       | Report every tracked bitmap and scan every tracked file in full, instead of only a PR's additions. |
+| `python-version` | string | `'3.x'`      | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository; never for a public one, [whose pull requests can run arbitrary code on it](https://github.com/Morrison-Lab/gha/issues/1167). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-bitmap-figures.yml in your repo.
+# Diff-scoped check: flags a new bitmap figure (.png, .jpg, .gif, ...), a new
+# image reference to one, and a new raster figure device (fig-format: png,
+# dev: png), where a script-generated SVG would do. Allow a screenshot
+# directory through paths-ignore, or add
+# <!-- check-bitmap-figures: allow: reason --> on the line or the one above.
+# Blocking by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check bitmap figures
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-bitmap-figures.yml@v3
+    # with:
+    #   globs: '*.qmd *.yml'                    # text files to scan (recursive)
+    #   paths-ignore: 'images/screenshots/**'   # allowed bitmaps
+    #   fail: true                              # set false to warn only (defaults to true)
+    #   whole-tree: true                        # report every bitmap, not just a PR's additions
+```
+
+See
+[`examples/check-bitmap-figures.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-bitmap-figures.yml)
+for the full caller stub.

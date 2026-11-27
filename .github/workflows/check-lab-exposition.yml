@@ -1,0 +1,70 @@
+name: Check lab exposition (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: >-
+          Runner label for the job. Use a self-hosted label only for a
+          private repository; never for a public one, whose pull requests
+          can run arbitrary code on it.
+        type: string
+        default: ''
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      whole-tree:
+        description: >-
+          Scan every lab page in full, instead of only the lines a pull
+          request adds. Use it to list the labs that break the rule.
+        type: boolean
+        default: false
+      pages:
+        description: >-
+          Space-separated git pathspecs of the lab pages (recursive by
+          default).
+        type: string
+        default: '*-lab.qmd'
+      prefixes:
+        description: >-
+          Space-separated div-id prefixes that count as exposition.
+        type: string
+        default: 'def thm lem prp cor cnj rem'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: >-
+          Fail the workflow when a lab page gains exposition
+          (else non-blocking). Defaults to true.
+        type: boolean
+        default: true
+
+jobs:
+  check-lab-exposition:
+    runs-on: ${{ inputs.runs-on || (github.event.repository.private && vars.CI_RUNNER) || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check lab exposition
+        uses: Morrison-Lab/gha/check-lab-exposition@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          whole-tree: ${{ inputs.whole-tree }}
+          pages: ${{ inputs.pages }}
+          prefixes: ${{ inputs.prefixes }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          # On pull_request, HEAD is GitHub's merge ref and HEAD^1 is the base tip
+          # it was built on (gha#1007); a push has no base, so the check skips.
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}

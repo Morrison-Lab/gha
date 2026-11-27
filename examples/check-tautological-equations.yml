@@ -1,0 +1,25 @@
+# Copy to .github/workflows/check-tautological-equations.yml in your repo.
+# Diff-scoped check: expands the shared macros (the latex-macros submodule's macros.qmd) on each side
+# of an equality in math a PR touches, and fails when both sides render identically, such as
+# `\bform{\matr{A}}{\vx}{\vy} \eqdef \tp{\vx} \matr{A} \vy` where `\bform` expands to the right side.
+# Blocking by default. Skips with a warning when the macros file is missing.
+# Mark a deliberate reflexivity example with `<!-- check-tautological-equations: allow -->`.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check tautological equations
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-tautological-equations.yml@v3
+    with:
+      # A manual run has no PR to diff against; make it report the whole tree.
+      whole-tree: ${{ github.event_name == 'workflow_dispatch' }}
+    #   macros-file: 'latex-macros/macros.qmd'  # where the macros are defined
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   submodule-paths: latex-macros           # only this submodule, beside a private one
+    #   fail: false                             # warn instead of block (defaults to true)
+    #   runs-on: private-runner                # self-hosted runner label (private repositories only)

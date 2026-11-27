@@ -80,6 +80,11 @@ Configuration (environment variables, set by the composite action):
                     mode, so a caller can block one letter whose macro is
                     certain (``J`` for ``\objfn``) without the noise of the
                     rest. Deprecated macros are still flagged.
+  LML_WRAPPERS      Space-separated generic wrapper macros (``\vecf \vec``).
+                    A direct use of one in math is flagged in either mode,
+                    and whatever ``LML_LETTERS`` says, because it means the
+                    writer typed ``\vecf{z}`` where a semantic macro such as
+                    ``\vdesign`` belongs (Morrison-Lab/lds#2881).
 """
 
 import os
@@ -244,6 +249,12 @@ ONLY_LETTERS: Set[str] = set()
 DEPRECATED: Dict[str, str] = {}
 DEPRECATED_RE = re.compile(r"deprecated,\s*use\s+(\\[A-Za-z]+)")
 
+# Generic notation wrappers (``\vecf``, ``\vec``): macros that only mark a
+# symbol's type, so a direct use in content means no semantic macro names the
+# quantity. Names without the backslash, from LML_WRAPPERS; a use of one is
+# flagged in either mode, as a deprecated macro is.
+WRAPPERS: Set[str] = set()
+
 GENERIC_ADVICE = (
     "use the semantic macro for this quantity (see interpretations.tsv in "
     "Morrison-Lab/macros), or put a passage about the notation itself in a "
@@ -357,7 +368,7 @@ def scan_math(text: str) -> List[str]:
             if name in GREEK_COMMANDS:
                 if not KNOWN_ONLY or name in GREEK_SUGGESTIONS:
                     tokens.append("\\" + name)
-            elif name in DEPRECATED:
+            elif name in DEPRECATED or name in WRAPPERS:
                 tokens.append("\\" + name)
             if name in SKIP_ARG_COMMANDS:
                 if j < n and text[j] == "*":
@@ -683,6 +694,9 @@ def scan_file(lines: List[str]) -> Tuple[List[Finding], int]:
 def _describe(token: str) -> str:
     if token.startswith("\\") and token[1:] in DEPRECATED:
         return f"{token} is deprecated -> {DEPRECATED[token[1:]]}"
+    if token.startswith("\\") and token[1:] in WRAPPERS:
+        return (f"{token} is a generic wrapper -> use the semantic macro that "
+                f"names this quantity, or add one to Morrison-Lab/macros")
     if token.endswith(LOGODDS_SUFFIX):
         letter = token[0]
         return (f"{letter} -> \\logodds if this is the log-odds "
@@ -719,7 +733,7 @@ class Report(NamedTuple):
 
 
 def _kept(token: str) -> bool:
-    if token.startswith("\\") and token[1:] in DEPRECATED:
+    if token.startswith("\\") and (token[1:] in DEPRECATED or token[1:] in WRAPPERS):
         return True
     return token in ONLY_LETTERS
 
@@ -797,6 +811,8 @@ def main() -> int:
     KNOWN_ONLY = mode == "known"
     for path in os.environ.get("LML_DEPRECATED_FILES", "").split():
         DEPRECATED.update(load_deprecated(path))
+    WRAPPERS.clear()
+    WRAPPERS.update(w.lstrip("\\") for w in os.environ.get("LML_WRAPPERS", "").split())
     ONLY_LETTERS.clear()
     ONLY_LETTERS.update(os.environ.get("LML_LETTERS", "").split())
     if ONLY_LETTERS:

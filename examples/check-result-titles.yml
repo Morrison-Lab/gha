@@ -1,0 +1,24 @@
+# Copy to .github/workflows/check-result-titles.yml in your repo.
+# Diff-scoped check: flags the title of a theorem, lemma, proposition, corollary,
+# or conjecture div when a PR adds it and it is not a declarative sentence stating the
+# result. A customary name may come first, followed by a colon.
+# Fails by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check result titles
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-result-titles.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   prefixes: 'thm lem prp cor conj'      # div id prefixes of result divs
+    #   fail: false                            # warn instead of block (defaults to true)
+    #   whole-tree: true                       # scan every page, not just a PR's additions

@@ -1,0 +1,63 @@
+name: Check math for double inequalities
+description: >-
+  Diff-scoped check that flags a double inequality in math, in `.qmd`, `.Rmd`
+  and `.md` files: three operands joined by two order relations that point the
+  same way, such as `a < x < b` or `0 \le p \le 1`, where interval membership
+  (`x \in (a, b)`, `p \in [0, 1]`) says it once (psw: Avoiding double
+  inequalities). A chain of three or more relations, or one mixing in `=`,
+  passes. Skips code fences and spans, HTML comments and front matter.
+  Scoped to lines a diff adds (an added line whose exact text was also deleted
+  in the same diff counts as moved). Blocks by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. On a pull request the reusable workflow passes `HEAD^1`, the
+      base tip GitHub built the merge ref on.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped with
+      a warning rather than falling back to a whole-tree scan, which would
+      reflag every double inequality the repository already has.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      lines added since base-ref. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a double inequality is found (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check math for double inequalities
+      shell: bash
+      env:
+        CDI_BASE_REF: ${{ inputs.base-ref }}
+        CDI_WHOLE_TREE: ${{ inputs.whole-tree }}
+        CDI_GLOBS: ${{ inputs.globs }}
+        CDI_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CDI_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-double-inequalities.py"

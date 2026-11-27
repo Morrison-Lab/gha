@@ -64,6 +64,9 @@ def found(text: str):
      "d ([proof](page.qmd#thm-b))"),
     ("Fit by gradient descent ([Gradient Descent](gd.qmd#def-gd)) here.", "parenref",
      "t ([gradient descent](gd.qmd#def-gd))"),
+    ("which is @def-affine-map with $b = 0$.", "nounref", "is @def-affine-map"),
+    ("Take an @def-affine-map here.", "nounref", "an @def-affine-map"),
+    ("The @def-risk is large.", "nounref", "the @def-risk"),
     ("Some authors call it improbability.", "vague", "some authors"),
     ("Some people call it improbability.", "vague", "some people call"),
     ("Many statistical researchers disagree.", "vague", "many statistical researchers"),
@@ -129,6 +132,52 @@ def test_optional_step_passes_conditions_and_mid_sentence_uses():
     assert found("A <!-- check-avoided-words: allow --> step (optional).") == {}
 
 
+@pytest.mark.parametrize("text, phrase", [
+    ("The intercept is the mean outcome at age 40.", "intercept"),
+    ("Center age so the intercept means something.", "intercept"),
+    ("Both models share one intercept.", "intercept"),
+    ("Random intercepts vary by school.", "intercepts"),
+    ("The intercept, $\\beta_0$, is 2.", "intercept"),
+    ("- Intercept: 3.1", "intercept"),
+])
+def test_bare_intercept_forms(text, phrase):
+    assert found(text) == {1: ("intercept", phrase)}
+
+
+@pytest.mark.parametrize("text", [
+    "The intercept term $\\beta_0$ is the mean outcome at age 40.",
+    "Both lines have intercept terms of 1.",
+    "The intercept of $f$ is $f(0)$.",
+    "The intercepts of the two lines differ.",
+    "The y-intercept is 3.",
+    "The y intercept is 3.",
+    "Fit an intercept-only model.",
+    "By @exr-rss-deriv-intercept, the gradient is zero.",
+    "See [the intercept](https://x.org/mds/algebra.html#def-intercept).",
+    "Its [intercept](algebra.qmd#def-intercept-term) is $\\beta_0$.",
+    "Set `fit_intercept=False` in scikit-learn.",
+    "R labels it `(Intercept)`.",
+    "Use $\\text{intercept}$ as the label.",
+    "> The intercept is 2.",
+    'R prints "intercept" in its output.',
+    "Its *intercept* is a number.",
+    "The intercept <!-- check-avoided-words: allow --> is 2.",
+])
+def test_bare_intercept_passes_qualified_uses(text):
+    assert found(text) == {}
+
+
+def test_bare_intercept_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nThe intercept is 2.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CAW_FAIL="true")
+    assert wi.main() == 0
+    out = capsys.readouterr().out
+    assert "::warning file=page.qmd,line=2::" in out
+    assert "intercept term" in out
+
+
 def test_optional_step_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
     repo, git = _repo(tmp_path)
     (repo / "page.qmd").write_text("prose\nOptionally, plot the fit.\n")
@@ -140,7 +189,7 @@ def test_optional_step_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, ca
 
 @pytest.mark.parametrize("text, phrase", [
     ("Write $L$ for that number.", "write $l$ for"),
-    ("- write $b$ for the intercept,", "write $b$ for"),
+    ("- write $b$ for the intercept term,", "write $b$ for"),
     ("ISL writes $w$ for the weights.", "writes $w$ for"),
     ("such as writing $d_i$ for the deviation,", "writing $d_i$ for"),
     ("We write $S$ to denote the sum.", "write $s$ to denote"),
@@ -196,11 +245,35 @@ def test_parenref_passes_linked_term_and_see():
     assert found("Hold <!-- check-avoided-words: allow --> it (@def-x).") == {}
 
 
+def test_nounref_passes_a_crossref_naming_the_definition():
+    assert found("Write $f(x)$ as in @def-affine-map.") == {}
+    assert found("By @def-affine-map, $f$ is affine.") == {}
+    assert found("This uses @def-x and @thm-y.") == {}
+    assert found("Its offset is @eq-offset.") == {}
+    assert found("It is [affine](#def-affine-map).") == {}
+    assert found("It <!-- check-avoided-words: allow --> is @def-x.") == {}
+
+
+def test_nounref_only_warns_even_when_fail_is_on(tmp_path, monkeypatch, capsys):
+    repo, git = _repo(tmp_path)
+    (repo / "page.qmd").write_text("prose\nwhich is @def-affine-map here.\n")
+    git("add", "-A")
+    _main_env(monkeypatch, repo, CAW_FAIL="true")
+    assert wi.main() == 0
+    assert "::warning file=page.qmd,line=2::" in capsys.readouterr().out
+
+
 def test_backref_passes_unrelated_setup():
     assert found("Set up the model, then fit it.") == {}
     assert found("An experiment's setup is simple.") == {}
     assert found("Consider the setting in which data are missing.") == {}
     assert found("Adjust the setting of the dial.") == {}
+
+
+def test_backref_message_suggests_continuation():
+    message = dict((r[0], r[2]) for r in wi.RULES)["backref"]
+    assert "(Continuation of @exr-x.)" in message
+    assert found("(Continuation of @exr-wcgs.)") == {}
 
 
 @pytest.mark.parametrize("text", [

@@ -57,6 +57,13 @@ inputs:
       because of a URL does not qualify. Ignored when `clause-breaks` is
       'false'.
     default: '80'
+  table-cells:
+    description: >-
+      Also check each cell of an added pipe-table row with the sentence and
+      clause rules, and flag the row when a cell fails. A pipe-table row must
+      stay on one source line, so the fix is to keep the cell short and move
+      its prose out of the table. Off by default.
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -74,4 +81,5 @@ runs:
         NLB_FAIL: ${{ inputs.fail }}
         NLB_CLAUSE_BREAKS: ${{ inputs.clause-breaks }}
         NLB_CLAUSE_MIN_LENGTH: ${{ inputs.clause-min-length }}
+        NLB_TABLE_CELLS: ${{ inputs.table-cells }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-new-line-breaks.py"

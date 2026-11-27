@@ -51,6 +51,10 @@ Configuration (all via environment variables, set by the composite action):
                     Minimum *visible* line length before the clause check
                     applies, inclusive (default: 80); markup is stripped
                     first. Ignored when NLB_CLAUSE_BREAKS is false.
+  NLB_TABLE_CELLS   "true" => also check each cell of an added pipe-table
+                    row with the sentence and clause rules, and flag the row
+                    when a cell fails (a row cannot take a line break, so
+                    the fix is moving the prose out); default "false".
   NLB_SCOPE         "auto" (default) => scope from the working tree when a
                     *tracked* file it matches carries a change, else from
                     HEAD; "worktree" => always scope from the working tree;
@@ -685,6 +689,8 @@ def _sub_link_targets(text: str, repl, skip=()) -> str:
 _DEFAULT_FAIL = True
 _DEFAULT_CLAUSE_BREAKS = True
 _DEFAULT_CLAUSE_MIN_LENGTH = 80
+# Off by default, so no caller starts failing on table rows without opting in.
+_DEFAULT_TABLE_CELLS = False
 
 
 def strip_inline_markup(text: str) -> str:
@@ -810,8 +816,12 @@ _BLANK_RE = re.compile(r"^\s*$")
 _HTML_COMMENT_RE = re.compile(r"^\s*<!--")
 
 
-def prose_line_numbers(text: str) -> Set[int]:
+def prose_line_numbers(text: str, tables: Optional[Set[int]] = None) -> Set[int]:
     """1-indexed lines eligible for a sentence-count check.
+
+    When ``tables`` is a set, the pipe-table rows the scan skips (outside
+    frontmatter, code and comments) are added to it, for the table-cell
+    check in ``table_cell_reason``.
 
     Excludes frontmatter, fenced code, tables, headings, and horizontal
     rules, and HTML comments. (Ported from Morrison-Lab/ai-config's
@@ -926,10 +936,13 @@ def prose_line_numbers(text: str) -> Set[int]:
             continue
         in_bq_code = False
 
+        if _TABLE_RE.match(line):
+            if tables is not None:
+                tables.add(idx)
+            continue
         if (
             _BLANK_RE.match(line)
             or _HEADING_RE.match(line)
-            or _TABLE_RE.match(line)
             or _HR_RE.match(stripped)
         ):
             continue
@@ -937,6 +950,57 @@ def prose_line_numbers(text: str) -> Set[int]:
         prose.add(idx)
 
     return prose
+
+
+# A delimiter-row cell: dashes with optional alignment colons.
+_TABLE_DELIM_CELL_RE = re.compile(r"^\s*:?-+:?\s*$")
+
+
+def table_cells(row: str) -> List[str]:
+    """Split a pipe-table row into its cells.
+
+    A pipe inside a code span, or escaped with a backslash, does not end a
+    cell. The row's leading and trailing pipes are dropped, so
+    ``| a | b |`` gives ``[" a ", " b "]``.
+    """
+    inside = [False] * len(row)
+    for a, b in _code_spans(row):
+        for k in range(a, b):
+            inside[k] = True
+    escaped = _escape_map(row)
+    cells = []
+    start = 0
+    for k, ch in enumerate(row):
+        if ch == "|" and not inside[k] and not escaped[k]:
+            cells.append(row[start:k])
+            start = k + 1
+    cells.append(row[start:])
+    if cells and not cells[0].strip():
+        cells = cells[1:]
+    if cells and not cells[-1].strip():
+        cells = cells[:-1]
+    return cells
+
+
+def table_cell_reason(
+    row: str,
+    clause_breaks: bool = _DEFAULT_CLAUSE_BREAKS,
+    clause_min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH,
+) -> Optional[str]:
+    """Return ``"table-cell"`` when a cell of a pipe-table row would be
+    flagged as a prose line, else None.
+
+    A pipe-table row must stay on one source line, so a cell can never take
+    a semantic break; the fix is to move the prose out of the table. A
+    delimiter row (``|---|:--:|``) is never flagged.
+    """
+    cells = table_cells(row.strip())
+    if cells and all(_TABLE_DELIM_CELL_RE.match(c) for c in cells):
+        return None
+    for cell in cells:
+        if classify_line(cell.strip(), clause_breaks, clause_min_length):
+            return "table-cell"
+    return None
 
 
 _EMPH_BULLET_RE = re.compile(
@@ -1166,6 +1230,11 @@ class Violation(NamedTuple):
 _REASON_MESSAGES = {
     "sentence": "Line packs more than one sentence",
     "clause": "Long line with a mid-line semicolon; consider a break after the clause",
+    "table-cell": (
+        "Table cell packs more than one sentence or clause, and a pipe-table"
+        " row cannot take a line break; keep the cell short and move its"
+        " prose out of the table"
+    ),
 }
 
 
@@ -1176,6 +1245,7 @@ def find_violations(
     clause_breaks: bool = _DEFAULT_CLAUSE_BREAKS,
     clause_min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH,
     scope_mode: str = "auto",
+    table_cells_check: bool = _DEFAULT_TABLE_CELLS,
 ) -> Tuple[List[Violation], bool]:
     """Return (violations, skipped). violations is empty and skipped is True
     whenever there's no diff to check against -- either base_ref was never
@@ -1227,7 +1297,10 @@ def find_violations(
         except (UnicodeDecodeError, OSError):
             continue
         lines = text.split("\n")
-        prose = prose_line_numbers(text)
+        tables: Set[int] = set()
+        prose = prose_line_numbers(text, tables)
+        if table_cells_check:
+            prose = prose | tables
         target_lines = scope[rel_path] & prose
         # Only count a file toward the reported search space when it
         # actually contributed an examined line -- a file whose added
@@ -1242,8 +1315,12 @@ def find_violations(
             if line_no < 1 or line_no > len(lines):
                 continue
             raw = lines[line_no - 1]
-            content = line_content(raw)
-            reason = classify_line(content, clause_breaks, clause_min_length)
+            if line_no in tables:
+                content = raw.strip()
+                reason = table_cell_reason(raw, clause_breaks, clause_min_length)
+            else:
+                content = line_content(raw)
+                reason = classify_line(content, clause_breaks, clause_min_length)
             if reason is not None:
                 preview = content if len(content) <= 80 else content[:77] + "..."
                 # Moved-content exemption (gha#684): an added line whose
@@ -1344,9 +1421,11 @@ def main() -> int:
     clause_breaks = _env_flag("NLB_CLAUSE_BREAKS", _DEFAULT_CLAUSE_BREAKS)
     clause_min_length = _env_int("NLB_CLAUSE_MIN_LENGTH", _DEFAULT_CLAUSE_MIN_LENGTH)
     scope_mode = _env_choice("NLB_SCOPE", "auto", _SCOPE_CHOICES)
+    table_cells_check = _env_flag("NLB_TABLE_CELLS", _DEFAULT_TABLE_CELLS)
 
     violations, skipped = find_violations(
-        base_ref, globs, ignore, clause_breaks, clause_min_length, scope_mode
+        base_ref, globs, ignore, clause_breaks, clause_min_length, scope_mode,
+        table_cells_check,
     )
 
     if skipped:

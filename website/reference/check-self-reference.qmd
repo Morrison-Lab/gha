@@ -15,7 +15,8 @@ then a structural noun
 optionally "and the ones that follow it",
 then a verb that reports what the structure does:
 shows, establishes, explains, says, derives, proves, covers, introduces,
-demonstrates, illustrates, describes, computes, handles or "is about".
+demonstrates, illustrates, describes, computes, handles, treats,
+discusses, presents, "focuses on", or "is about".
 
 The check also flags a sentence that starts with
 "The next", "The previous", "The preceding" or "The following"
@@ -25,6 +26,13 @@ such as "The next exercises establish the properties".
 Name the items by cross-reference instead:
 "Exercises @exr-a through @exr-b establish the properties"
 (psw, "Avoid forward references").
+
+The check also flags a sentence that narrates how a source's materials
+are laid out: opens, begins, starts, ends, or closes, then their, his, her,
+or its, then slides, lecture, book, textbook, chapter, notes, or talk,
+such as "Hastie and Tibshirani open their slides on this topic with".
+Quote the source as a block quote followed by its citation instead
+(psw, "Put the content first").
 
 The check does not count:
 

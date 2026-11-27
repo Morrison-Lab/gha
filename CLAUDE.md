@@ -17,14 +17,17 @@ Guidance for Claude Code when working in this repository.
 
 ## Standing tag-slide policy
 
-- **The runner thread slides this repo's major tag without asking, once the gates below pass.**
-  Ezra, 2026-11-10, in the project thread:
-  "can we make `slide v3` allowed without needing my permission" (gha#1834).
-  This replaces the rule that the slide waits for Ezra's typed "slide v3"
-  (coordinator rule, 2026-11-08, gha#1614).
-  Only the runner thread dispatches `slide-major-tag.yml`, so two threads never race:
-  an owner thread whose fix has merged reports the merge to the coordinator
-  and does not dispatch the slide or schedule a check-in that would.
+- **Any agent that finishes a gha PR slides this repo's major tag without asking, once the gates below pass.**
+  Ezra, 2026-11-20: "never ask me before sliding an infra tag; always just do it"
+  ([ai-config#6052](https://github.com/Morrison-Lab/ai-config/issues/6052)).
+  This widens the 2026-11-10 grant to the runner thread alone
+  ("can we make `slide v3` allowed without needing my permission", gha#1834),
+  which replaced the rule that the slide waits for Ezra's typed "slide v3" (gha#1614).
+  The thread that merged the PR, or learned it merged, dispatches `slide-major-tag.yml` itself.
+  It does not hand the slide to a runner thread or the coordinator, and does not ask anyone.
+  Two threads sliding at once are safe:
+  each passes the `expected_sha` it checked, the workflow's concurrency group cancels the older run,
+  and a run whose `main` has moved refuses rather than tagging an unchecked commit.
   Like the other grants here, it removes the asking and not the judgment;
   the readiness bar and audits below still apply.
 
@@ -34,6 +37,11 @@ Guidance for Claude Code when working in this repository.
   ```bash
   gh workflow run slide-major-tag.yml -R Morrison-Lab/gha --ref main -f expected_sha=<sha>
   ```
+
+  In a cloud session, where a hook denies `gh workflow run`,
+  call the GitHub MCP tool `actions_run_trigger` with `method: run_workflow`,
+  `workflow_id: slide-major-tag.yml`, `ref: main`,
+  and `inputs: {"expected_sha": "<sha>"}` instead.
 
   The run refuses unless the commit it would tag is that one,
   so a merge that lands between your checks and the dispatch fails the slide
@@ -205,12 +213,12 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** (runner thread only, without waiting to be asked) slide when the
+- **Do:** (any thread, without waiting to be asked) slide when the
   commit is green, the callees' `permissions:` blocks gained no key and
   widened no value since the tagged commit, and consumers need it
   --- then report both SHAs.
-  The bullets above that say "you" describe the runner thread's duties
-  in this section; other threads do not dispatch the slide.
+- **Don't:** ask Ezra or the coordinator whether to slide, or leave the slide
+  to a runner thread; a failing gate is a hold to report, not a question.
 
 - **Don't:** read a green readiness bar as the whole gate; it was green when
   gha#830 shipped the outage.
@@ -275,7 +283,7 @@ while `opposition-research`, `report-main-failure`, `triage-backlog`, `check-dep
 `check-source-overlap`,
 `check-quarto-prose`, `check-orphaned-images`, `check-r-package`,
 `check-python-package`, `check-typed-output`,
-`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-precedence-parens`, `check-r-head`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `cancel-superseded`,
+`check-informal-definitions`, `check-literal-math-letters`, `check-wikipedia-further-reading`, `check-redundant-citations`, `check-self-credits`, `check-one-div-per-subfile`, `check-geometric-figures`, `check-heading-levels`, `check-heading-titles`, `check-result-titles`, `check-title-references`, `check-self-reference`, `check-page-length`, `check-heading-siblings`, `check-figure-placement`, `check-div-ids`, `check-code-messages`, `check-multipart-exercises`, `check-rubric-checklists`, `check-python-qmd-chunks`, `check-single-ask-parts`, `check-split-solutions`, `check-restated-results`, `check-results-in-remarks`, `check-result-definition-links`, `check-corollary-sources`, `check-definition-expectation`, `check-extracted-lemmas`, `check-definition-equations`, `check-hybrid-sentences`, `check-format-output-files`, `check-def-title-synonyms`, `check-def-wiktionary`, `check-bare-yes-no`, `check-code-fold`, `check-base-r-tabs`, `check-serial-comma`, `check-exercise-background`, `check-exercise-question-paragraph`, `check-removed-content`, `check-exercise-ends-with-task`, `check-key-equations-displayed`, `check-note-sheet-rows`, `check-definite-antecedents`, `check-iterate-subscripts`, `check-ball-neighborhoods`, `check-precedence-parens`, `check-double-inequalities`, `check-r-head`, `check-language-suffix-names`, `check-term-links`, `check-dependency-graph`, `check-paired-file-change`, `annotation-gate`, `annotation-gate-run`, `check-local-macros`, `check-fform-paren`, `check-macro-expansions`, `check-write-idiom`, `check-avoided-words`, `check-proof-statements`, `check-gradient-lhs`, `cleanup-pr-previews`, `student-qmd`, `summary`, `check-caller-permissions`, `check-exm-figures`, `check-lab-exposition`, `check-contour-3d`, `check-static-figures`, `check-function-graphs`, `check-axis-titles`, `check-visualization-figures`, `check-tree-lists`, `check-search-shortcut`, `check-self-contained-captions`, `check-def-commentary`, `check-unexplained-contrasts`, `check-unexplained-choices`, `check-solution-citations`, `check-exercise-before-result`, `check-pr-size`, `check-pr-concerns`, `check-tautological-equations`, `check-citation-authors`, `check-template-identity`, `check-lone-subfloats`, `check-bitmap-figures`, `check-equation-labels`, `cancel-superseded`,
 `update-quarto-extensions`, and `update-snapshots`
 only ever shipped at `@v3` (or moved to `@v3` for `cleanup-pr-previews`, `summary`, `sync-shared-fragments`, and `update-snapshots`).
 
@@ -289,18 +297,34 @@ A new check also has to appear in these lists, or CI fails (gha#1264):
 - the `@v3` lists in `CLAUDE.md` and `README.md` (two), and the table row in `README.md`
   (`website/versioning.qmd` and `website/workflows.qmd` insert lists and the catalog table generated from the example stubs,
   the workflows, and the reference pages at render time, gha#1862);
-- `website/_quarto.yml`, a `changelog.d/` fragment, and a job in `.github/workflows/_selftest.yml`.
+- `website/_quarto.yml`, a `changelog.d/` fragment, and a selftest job.
+  A content check's job goes in `.github/workflows/_selftest-content-checks.yml`,
+  split out of `.github/workflows/_selftest.yml` when that file passed GitHub's 500 KB workflow file limit,
+  which stopped every run of it (gha#1863).
+  Keep each file under the limit, and split again rather than grow one past it.
 
 `.github/dependabot.yml` covers every `check-*` directory by glob, so a check named `check-...` needs no line there.
 A capability with another name and an external `uses:` still does.
 
 A check with no caller does not run, so the PR that adds a check also files its wiring issue (gha#1606).
-The issue lists the `v3` slide (the runner thread slides it) and one caller PR per notes repo, copied from the example stub.
+The issue lists the `v3` slide (the thread that merged the check slides it) and one caller PR per notes repo, copied from the example stub, opened after the slide.
 Until the slide, a caller PR pinned at `@v3` fails `check-caller-permissions` with a 404, because the new workflow does not exist at that tag yet.
+A run that failed that way at startup cannot be re-run after the slide:
+the rerun endpoint answers 403 "This workflow run cannot be retried"
+(measured 2026-11-19 on [pds run 44626577900](https://github.com/Morrison-Lab/pds/actions/runs/44626577900), a gha#2135 caller).
+The agent rules forbid an empty commit or a close and reopen to kick CI,
+so open the caller PRs after the slide, or plan a real follow-up commit for each.
 In lds, a new caller workflow must also be listed under `workflows:` in `annotation-gate.yml`, or `check-orphans` fails.
 sds uses `workflows: ["*"]`.
 The pds, mds, and mcs repos have no gate.
 
+Ship a new check in one PR, with every piece above.
+A stack that splits it to fit the push size cap fails review on each partial part,
+and a part that adds the workflow before the README list fails `lint-qmd` (gha#2182, folded into gha#2184).
+Cite an issue in a private repository, such as Morrison-Lab/lds, as text rather than a link:
+`links / link-checker` gets a 404 for it.
+Run `bash .github/workflows/scripts/check-diff-scoped.sh origin/main` before the first push,
+since `serial-comma` reads the new docs too.
 A synthetic email address in a test needs a `# phi-allow` comment.
 `lint-qmd` fails a prose line with whitespace after column 80 (MD013), and the lists of check names in `website/*.qmd` are where a new check hits it.
 Wrap prose lines at a comma.
@@ -551,6 +575,15 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It blocks by default (`fail: true`), because the rule is deterministic once the `symbols` (default `vcoef steplen`) and `indices` (default `t \iter`) are named.
   A number index (`\vcoef_0`, often a true parameter) and a letter not in `indices` (`k`, often a coordinate) pass, so a caller adds `k` only where a page uses it for an iteration.
   Its env vars use the `CIS_` prefix.
+- `check-ball-neighborhoods/` (Python, stdlib only, gha#2156, from psw#684) flags math on a line a PR adds that writes a neighborhood as a norm inequality (`\norm{\vx - \vx^*} < \delta`, `\abs{x - c} < \delta`, `|x - a| < \delta`), and suggests membership in a ball, `\vx \in \ball{\vx^*}{\delta}`.
+  It anchors on each `<`, `\lt`, `\le`, `\leq`, or `\leqslant`, then looks left for a norm or absolute value (`\norm{}`, `\abs{}`, `\|`, `|`, `\lVert`, `\lvert`, with `\left`, `\right`, sizing, and a subscript) whose content holds a top-level binary minus.
+  A bare `|` pairs with the nearest `|` before it at the same group depth, so a conditioning bar earlier in the span does not mislead it.
+  A right-hand side holding another norm (the triangle inequality, a Lipschitz bound), a difference whose first operand is a number (a step-size condition `\abs{1 - \steplen} < 1`), and a norm with no difference pass.
+  Measured 2026-11-20 over lds, mds, pds, sds, mcs, and psw: 49 hits, of which 45 are neighborhoods.
+  Two of the rest are the ball's own definition, so it blocks by default (`fail: true`).
+  The allow comment needs a reason: `<!-- check-ball-neighborhoods: allow: <reason> -->`.
+  It takes the same diff model as `check-iterate-subscripts` and its math spans from `check-common/mdmask.py`, so keep `check-common` beside it.
+  Its env vars use the `CBN_` prefix.
 - `check-precedence-parens/` (Python, stdlib only, Ezra's rule of 2026-11-19) flags math on a line a PR adds that leaves a logical connective's precedence implicit:
   a relation (`\in`, `=`, `<`, `\equiv`, ...) unparenthesized in an operand of `\land`, `\lor`, `\Rightarrow`, or `\Leftrightarrow` (`x \in A \lor x \in B`),
   and two kinds of connective at one level, or a repeated implication (`P \land Q \lor R`).
@@ -560,6 +593,71 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes the same diff model as `check-iterate-subscripts` (added lines only, moved lines exempt, and skip-not-fall-back), and it blocks by default (`fail: true`).
   It takes its math spans from `check-common/mdmask.py`'s `math_spans`, moved there from `check-macro-expansions`, so keep `check-common` beside it.
   Its env vars use the `CPP_` prefix.
+- `check-double-inequalities/` (Python, stdlib only, psw's "Avoiding double inequalities", from Ezra's question on Morrison-Lab/pds#492) flags a double inequality in math on a line a PR adds, such as `a < x < b` or `0 \le p \le 1`, where interval membership says it once.
+  A clause is exactly three operands joined by two order relations pointing the same way.
+  A longer chain, or one mixing in `=`, is an ordering or a derivation and passes.
+  It loads `check-precedence-parens`' tokenizer and parser by path, so a group (`\Pr{a < X \le b}`) is a clause of its own, and separators and connectives end one.
+  Keep `check-precedence-parens` and `check-common` beside it.
+  Measured 2026-11-24 with `whole-tree: true`: 66 hits in pds and 6 in psw, the psw ones on the pages that state the rule.
+  It takes the same diff model as `check-precedence-parens` and blocks by default (`fail: true`).
+  The allow comment needs a reason: `<!-- check-double-inequalities: allow: <reason> -->`.
+  Its env vars use the `CDI_` prefix.
+- `check-tautological-equations/` (Python, stdlib only, Ezra's question of 2026-11-19 on Morrison-Lab/mds#835) fails when the two sides of an equality render identically once the shared macros are expanded, such as `\bform{\matr{A}}{\vx}{\vy} \eqdef \tp{\vx} \matr{A} \vy`.
+  It expands every macro the macros file defines (`\providecommand`, `\newcommand`, `\renewcommand`, `\def` with parameters, and `\DeclareMathOperator`, multi-line bodies included), splits each equation only at a top-level relation (not inside braces, parentheses, or brackets in any mix, `\left...\right`, or a non-alignment environment), and compares neighbouring sides after dropping spacing, sizing, `\tag`, `\label`, single-token groups, and trailing punctuation.
+  An argument-free macro that expands to a relation (`\eqdef`) is a split point, and in an alignment a row opening with a relation continues the previous row's chain.
+  It takes the same diff model as `check-macro-expansions`, but an equation is reported when a PR adds any of its lines, and it blocks by default (`fail: true`).
+  Measured 2026-11-19 over lds, mds, pds, sds, mcs, and psw: 13 hits in about 57,000 equations, four of them notation tautologies and the rest deliberate reflexivity statements that take `<!-- check-tautological-equations: allow -->`.
+  Its env vars use the `TE_` prefix.
+- `check-citation-authors/` (Python, stdlib only, gha#2144, from psw#679) flags an author's surname typed next to a citation of the same source,
+  such as `James et al. [@james2021islr, Figure 6.7]`, where `@james2021islr [Figure 6.7]` already prints the names.
+  A capitalized word within six words before a citation key is flagged when the key starts with that word in lower case,
+  so the match leans on the lab's bib keys starting with the first author's surname.
+  The window reaches back onto the previous line of the paragraph and stops at the previous sentence end;
+  link text and emphasis are blanked first, since a name there is part of a term or title (`[Cook's distance](#def-x)`, `**Cox proportional hazards**`).
+  An author-suppressed `[-@key]`, a crossref, and an email pass.
+  It loads `check-write-idiom`'s engine like `check-avoided-words`, so keep `check-write-idiom` and `check-common` beside it.
+  It is warn-only by default (`fail: false`), as the issue asks, while the false-positive rate is measured.
+  Measured 2026-11-20 over psw, rme, and lds (whole tree): 2, 2, and 190 hits.
+  The ones read by hand were nearly all true, mostly video lists in lds (`Starmer explains [x](url) [@starmer2018x]`);
+  the false ones were a standard's name (`ISO 80000-2:2019 [@iso80000_2_2019]`) and an eponym outside emphasis (`the Elman recurrent layer [@elman1990time]`).
+  The allow comment needs a reason: `<!-- check-citation-authors: allow: <reason> -->`.
+  Its env vars use the `CCA_` prefix.
+- `check-template-identity/` (Python, stdlib only, gha#2154, for qwt#207) fails a repository made from a template
+  while the files it names still hold the template's repository URL, Pages URL, or a literal listed in `strings`.
+  The template ships the caller, so each new repository runs it.
+  Where `repository` equals `template`, it passes with a notice.
+  It is whole-tree like `check-search-shortcut`, because a value nobody changed is on no line a diff adds,
+  and it exits 2 when no tracked file matches `files`, whatever `fail` says.
+  A match that is part of a longer name on either side (`<name>-fork`, `my-<owner>.github.io`) does not count,
+  and `check-template-identity: allow: <reason>` on a line keeps a credit link.
+  It takes its file listing and flag reader from `check-common/diffscope.py`, so keep `check-common` beside it.
+  Its env vars use the `CTI_` prefix.
+- `check-lone-subfloats/` (Python, stdlib only, gha#2173) flags a figure (`#fig-`) or table (`#tbl-`) float whose reader sees one subfigure or subtable, when a PR adds a line to it (Ezra, 2026-11-20).
+  Its subfloats are the same-kind floats directly inside it: a nested float div, a `fig-`/`tbl-` labeled chunk, or a `{#fig-}` image or `{#tbl-}` table caption.
+  A chunk with `include`, `output`, or `eval` false is none.
+  It flags a float with one subfloat, a float whose subfloats sit one per tab of a tabset (a figure div wrapping a language tabset whose chunks keep their `fig-` labels, so each tab shows a lone "(a)" or "(b)"), and a chunk with a one-entry `fig-subcap` or `tbl-subcap`.
+  A tab is a heading at the level of the tabset's first heading.
+  A subfloat outside the tabset counts in every tab's view.
+  Measured 2026-11-20 over lds: 138 hits, all one per tab, the same 138 a scan of the published HTML finds.
+  It takes the same diff model as `check-exm-figures` (moved lines exempt, skip-not-fall-back), blocks by default (`fail: true`), and takes its div and fence parsing from `check-one-div-per-subfile` and its git helpers from `check-common/diffscope.py`, so keep the three directories together.
+  The allow comment needs a reason: `<!-- check-lone-subfloats: allow: <reason> -->`.
+  Its env vars use the `CLS_` prefix.
+- `check-bitmap-figures/` (Python, stdlib only, Morrison-Lab/lds#3086) flags a new bitmap figure where a script-generated vector graph would do (Ezra, 2026-11-21): a bitmap file the diff adds, an added image reference to one, and an added raster figure device (`fig-format: png`, `dev: png`, or a `ggsave()` or `savefig()` call that writes a bitmap).
+  Images, `<img>` tags, fences, and HTML comments count only in a markup file (`.qmd`, `.Rmd`, `.md`, `.html`).
+  A script or YAML file is read as code, for `include_graphics()` and the devices.
+  `paths-ignore` allows a screenshot directory, both its files and references that resolve into it.
+  It takes the diff model of `check-exm-figures` (moved lines exempt, skip-not-fall-back), finds added files with `git diff --diff-filter=A -M` so a rename is not new, and blocks by default (`fail: true`).
+  It takes its fence and comment parsing from `check-one-div-per-subfile`, and its git helpers and code-span masking from `check-common`, so keep the three directories together.
+  The allow comment needs a reason, on the flagged line or the line above: `<!-- check-bitmap-figures: allow: <reason> -->`.
+  Its env vars use the `CBF_` prefix.
+- `check-equation-labels/` (Python, stdlib only, moved from Morrison-Lab/ids#201) flags a `$$ ... $$` display equation with no `{#eq-...}` label on the line of its closing `$$`, when a PR adds a line to it, because the `equation-anchors` filter gives a permalink only to a labeled equation.
+  It skips `$$` in fences, code spans, and HTML comments, and a backslash escapes a `$`; a `$$` that opens no equation ends at the next blank line, as Pandoc ends display math there.
+  It takes the diff model of `check-lone-subfloats`: an equation is reported when a PR adds any of its lines, moved lines are exempt, and with no base it skips rather than falling back.
+  It blocks by default (`fail: true`).
+  A fully labeled repository (ids) calls it with `whole-tree: true`.
+  It takes its git helpers from `check-common/diffscope.py` and its masking from `check-common/mdmask.py`, so keep `check-common` beside it.
+  The allow comment needs a reason, on the opening line or the line before: `<!-- check-equation-labels: allow: <reason> -->`.
+  Its env vars use the `CEL_` prefix.
 - `check-r-head/` (Python, stdlib only, gha#2122) flags an R statement that prints a dataset through `head()` in a data div:
   every `{r}` chunk of a file whose base name matches `data-files` (default `_dat-*`), and every `{r}` chunk inside a `#dat-` div.
   Ezra's rule (2026-11-19) is "just not to print data in data divs": `head()` anywhere else, or with its result assigned or used, is fine, <!-- check-avoided-words: allow -->
@@ -570,6 +668,15 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   It takes the same diff model as `check-iterate-subscripts` (moved lines exempt, skip-not-fall-back), and it blocks by default (`fail: true`).
   It takes its git, diff, and file helpers from `check-common/diffscope.py` and its fence pattern and comment masking from `check-common/mdmask.py`, so keep `check-common` beside it.
   Its env vars use the `CRH_` prefix.
+- `check-language-suffix-names/` (Python, stdlib only, from Morrison-Lab/lds#3152) flags a name ending in a language suffix (`_py`, `_r`, `_jl` by default) that a line a PR adds binds in a `{python}`, `{r}`, or `{julia}` chunk, or in an `.R`, `.py`, or `.jl` script a glob names.
+  Ezra's rule (Morrison-Lab/lds#3146) is that a Python object takes the same name as its R counterpart, since each language keeps its own namespace.
+  A binding is an assignment target, R's right assignment, a loop variable, a definition, a Python `as` target, or a walrus target;
+  a use, an assignment to an element, an assignment to an attribute, a keyword argument, and a name in a string or a comment pass.
+  Only R names hold a dot, so `obj.x_py = 1` elsewhere is an attribute.
+  It takes the same diff model as `check-r-head` (moved lines exempt, skip-not-fall-back, `whole-tree` on request), and it blocks by default (`fail: true`).
+  The allow comment needs a reason: `# check-language-suffix-names: allow: <reason>`.
+  It takes its git, diff, and file helpers from `check-common/diffscope.py` and its fence pattern and comment masking from `check-common/mdmask.py`, so keep `check-common` beside it.
+  Its env vars use the `CLN_` prefix.
 - `check-avoided-words/` (Python, stdlib only, psw#418) flags words a style source advises against on a line a PR adds in a `.qmd` or `.md` file:
   `above` or `below` used for a place in the document, `just`, `easy` and `easily`, time-relative words such as `currently` and `recently`, and a generic placeholder set such as `domain A`.
   The sources are the Google developer documentation style guide's word list and "Timeless documentation" page.
@@ -586,6 +693,10 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   `spelling.py` beside it holds the British spelling list and its American forms (gha#2095):
   `check-avoided-words` flags the list, and `parse_diff` adds each deleted line's American respellings to the deleted set,
   so a line whose only change is a spelling fix reads as moved in every check that uses the moved-line test.
+  The deleted set is a `DeletedTexts`, whose `in` also passes a line whose only change is to its inline links (gha#2133).
+  A page split repoints `old.qmd#id` links across many lines of old prose,
+  and without this every diff-scoped check judged that prose as new (Morrison-Lab/mds#839: 14 findings, 13 of them old prose).
+  Fix such a moved-line gap here, once, rather than with per-line exemption markers in the consumer.
   A check that judges moved lines too drops spelling-only lines with `diffscope.spelling_only_lines`, as `check-definition-equations` does.
   `mdmask.py` beside it holds the Markdown masking (code spans, HTML comments, and the fence pattern) that `check-write-idiom`, `check-fform-paren`, `check-macro-expansions`, and `check-local-macros` share.
   Each of those keeps its own fence state.
@@ -681,6 +792,8 @@ When a check fails within seconds, read its `##[error]` lines with a log tail of
   Its env vars use the `CPS_` prefix.
 - `check-macro-expansions/` (Python, stdlib only, gha#1218) flags math on a line a PR adds that spells out what a shared macro says, such as `\sum_{i=1}^n` for `\sumin`.
   It builds the table from the single-line definitions in the macros file whose body has at least four tokens and is not an alias, turns `#1` into a wildcard (a repeated `#1` must match itself), and reports one finding per expression with every macro that has it.
+  A transpose product (`\tp` and two placeholders, such as `\soprod`, `\oprod`, `\tprod`) is kept at any size, takes braced arguments, and is not reported mid-product,
+  and a body that is one call of a product (`\stprod`) is also read as that product's body (Ezra, 2026-11-20, pds#478).
   A lone font wrapper (`\mathcal{H}`) is never flagged, and `exclude` (default `hist`) drops a macro whose body is also ordinary notation.
   It takes its diff model and Markdown masking from `check-common`, takes its math spans from `check-common/mdmask.py` (`math_spans`, shared with `check-precedence-parens`), and its env vars use the `CME_` prefix.
   It takes its git, file, and path-ignore helpers from `check-common/diffscope.py` (gha#1856), so keep `check-common` beside `check-write-idiom`.
@@ -2168,12 +2281,29 @@ the skips (fences, spans, comments, front matter, the `allow` comment), the diff
 CI runs it in the `iterate-subscripts` job in `_selftest.yml`, followed by real
 `uses: ./check-iterate-subscripts` calls over a staged page.
 
+`check-ball-neighborhoods/tests/test_check_ball_neighborhoods.py` is a pytest suite over
+the flagged forms (every norm and absolute-value spelling, `\left`/`\right`, a subscript, `\lt`, `\le`, `\leq`),
+the unflagged ones (no difference, a leading minus, two distances compared, `>`, `\ge`, `=`, a number first operand, a difference inside a group, a conditioning bar),
+the skips (fences, spans, comments, front matter, the `allow: <reason>` comment), the diff scoping with moved lines,
+`main()`'s blocking default, and its `CBN_FAIL=false` warn mode.
+CI runs it in the `ball-neighborhoods` job in `_selftest.yml`, followed by real
+`uses: ./check-ball-neighborhoods` calls over a staged page.
+
 `check-precedence-parens/tests/test_check_precedence_parens.py` is a pytest suite over
 both rules, what bounds an operand (a set-builder colon, a quantifier's comma, `\left( ... \right)`, `\paren{}`, a thin space `\,` that is not a comma),
 the unflagged arrows, an aligned row's leading `\iff`, the skips, the diff scoping with moved lines,
 the blocking default of `main()`, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
 CI runs it in the `precedence-parens` job in `_selftest.yml`, followed by real
 `uses: ./check-precedence-parens` calls over a staged page.
+
+`check-double-inequalities/tests/test_check_double_inequalities.py` is a pytest suite over
+the flagged forms (every relation spelling, both directions, and a clause inside a macro argument),
+the unflagged ones (interval membership, a longer chain, a chain with `=`, opposite directions, a clause split at a separator, and an empty operand),
+the skips, the diff scoping with moved lines,
+the blocking default of `main()`, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+The allow comment's reason is required, and a test pins that.
+CI runs it in the `double-inequalities` job in `_selftest-content-checks.yml`, followed by real
+`uses: ./check-double-inequalities` calls over a staged page.
 
 `check-r-head/tests/test_check_r_head.py` is a pytest suite over
 the printing forms (a call, a pipeline ending in `head`, or a `print()` wrapper),
@@ -2187,6 +2317,64 @@ Seventeen mutations were confirmed to turn a named case red, each on a copy of t
 including dropping the reason the allow comment needs, reading `%in%` as a pipe, never closing a div, and testing only the line that holds `head`.
 CI runs it in the `r-head` job in `_selftest.yml`, followed by real
 `uses: ./check-r-head` calls over a staged data subfile.
+
+`check-language-suffix-names/tests/test_check_language_suffix_names.py` is a pytest suite over
+the flagged bindings in each language (assignment targets, tuple targets, annotated targets, augmented assignment, R's right assignment, loop variables, definitions, `as` targets, and walrus targets),
+the forms that pass (uses, assignments to elements, assignments to attributes, keyword arguments, strings, comments, and a bare suffix),
+which chunks are read (executable `{r}`, `{python}`, and `{julia}` chunks, not a plain fence), which scripts are read,
+the allow comment, whose reason is required,
+the diff scoping with moved lines, the skip with no base,
+`main()`'s blocking default, its warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `language-suffix-names` job in `_selftest-content-checks.yml`, followed by real
+`uses: ./check-language-suffix-names` calls over a staged page.
+
+`check-citation-authors/tests/test_check_citation_authors.py` is a pytest suite over
+the flagged forms (`et al.`, a list of authors, a particle, a possessive, an accent, a hyphenated name, and a name on the previous line),
+the unflagged ones (`[-@key]`, crossrefs, emails, a name in link text, a name in bold, a name in an earlier sentence, and a name outside the window),
+the skips (fences, spans, comments, front matter, and the allow comment, whose reason is required),
+`main()`'s exit code with `fail` off (the default) or on, the diff scoping, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+Five mutations were confirmed to turn a case red:
+dropping the `[-@key]` exemption, the term masking, the previous-line carry, the guards that keep `et al.` from ending a sentence, or the sentence cut itself.
+CI runs it in the `citation-authors` job in `_selftest.yml`, followed by real
+`uses: ./check-citation-authors` calls over a staged page.
+
+`check-template-identity/tests/test_check_template_identity.py` is a pytest suite over
+the derived needles, the flagged lines (either URL, any case, or a listed literal),
+the unflagged ones (another repository, a longer name, and the allow comment, whose reason is required),
+and `main()` in throwaway git repos: its blocking default, its warn mode, the skip in the template,
+the error when no file matches, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `template-identity` job in `_selftest.yml`, followed by real
+`uses: ./check-template-identity` calls over a staged config file.
+
+`check-lone-subfloats/tests/test_check_lone_subfloats.py` is a pytest suite over
+each of the three findings for figures and tables,
+the clean forms that sit next to them (such as a tabset inside each subfigure),
+what is not a subfloat, the allow comment with its required reason,
+diff scoping in throwaway git repos, the skip,
+and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `lone-subfloats` job in `_selftest.yml`, followed by real
+`uses: ./check-lone-subfloats` calls over a staged page.
+
+`check-bitmap-figures/tests/test_check_bitmap_figures.py` is a pytest suite over
+each of the three findings (a new bitmap file, a reference, and a raster device),
+and over the clean forms beside them (an SVG, a reference in a fence, comment, or code span,
+a Markdown image in a script, a renamed bitmap, and a moved line).
+It also covers the allow comment with its required reason.
+It covers `paths-ignore` over both files and image targets.
+It covers diff scoping in throwaway git repos, the skip,
+and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `bitmap-figures` job in `_selftest-content-checks.yml`, followed by real
+`uses: ./check-bitmap-figures` calls over a staged image and page.
+
+`check-equation-labels/tests/test_check_equation_labels.py` is a pytest suite over
+labeled versus unlabeled equations, on one line or several lines,
+what does not count (fences, code spans, comments, an escaped dollar, inline math),
+the blank-line guard against a stray `$$`, adjacent inline math, a removed label, the allow comment with its required reason,
+diff scoping in throwaway git repos, the skip,
+and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
+CI runs it in the `equation-labels` job in `_selftest-content-checks.yml`,
+followed by a whole-tree call over this repository and real
+`uses: ./check-equation-labels` calls over a staged page.
 
 `check-write-idiom/tests/test_check_write_idiom.py` is a pytest suite over
 the flagged forms (list markers, labels, the three phrases), the unflagged ones

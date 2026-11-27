@@ -1,0 +1,72 @@
+name: Check equations whose two sides render identically
+description: >-
+  Diff-scoped check that expands the shared macros on each side of an
+  equality (`=`, `:=`, `=:`, `\coloneqq`, `\eqqcolon`, `\equiv`, `\triangleq`,
+  `\doteq`, an `=` under `\stackrel`/`\overset`/`\underset`, or an argument-free macro
+  such as `\eqdef` that expands to one) in `$...$` and `$$...$$` math, and
+  flags the equation when both sides typeset the same glyphs, such as
+  `\bform{\matr{A}}{\vx}{\vy} \eqdef \tp{\vx} \matr{A} \vy` where `\bform`
+  expands to the right side. Spacing, sizing, `\tag`, `\label`, a group
+  around one token and trailing punctuation are ignored. Skips code fences
+  and spans, HTML comments, front matter, math that defines a macro, and an
+  equation carrying, or following,
+  `<!-- check-tautological-equations: allow -->`. An equation is checked when
+  a diff adds one of its lines (an added line whose exact text was also
+  deleted counts as moved). A missing macros file skips the check with a
+  warning. Blocking by default.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only equations with a line added since
+      this ref are checked. On a pull request the reusable workflow passes
+      `HEAD^1`, the base tip GitHub built the merge ref on. Diff mode needs
+      the base commit in history (checkout with fetch-depth: 0); when the
+      diff can't be computed, the check is skipped with a warning rather
+      than falling back to a whole-tree scan.
+    default: ''
+  whole-tree:
+    description: >-
+      Scan every tracked file the globs match, in full, instead of only the
+      equations a diff touches. Use it to measure a corpus; `base-ref` is
+      ignored when this is 'true'.
+    default: 'false'
+  macros-file:
+    description: >-
+      Whitespace-separated paths of the macros files whose definitions are
+      expanded. When none can be read the check is skipped with a warning.
+    default: 'latex-macros/macros.qmd'
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.Rmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an equation renders as a tautology (else
+      non-blocking). Defaults to 'true'.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Check equations whose two sides render identically
+      shell: bash
+      env:
+        TE_BASE_REF: ${{ inputs.base-ref }}
+        TE_WHOLE_TREE: ${{ inputs.whole-tree }}
+        TE_MACROS_FILE: ${{ inputs.macros-file }}
+        TE_GLOBS: ${{ inputs.globs }}
+        TE_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        TE_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-tautological-equations.py"

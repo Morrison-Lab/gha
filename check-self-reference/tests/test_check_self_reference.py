@@ -44,6 +44,10 @@ def flagged(tmp_path, body):
     "The next exercises establish the properties of the sigmoid.",
     "Go downhill. The previous section defined the cost.",
     "The following exercises make this precise.",
+    "This page treats one input.",
+    "This chapter discusses the bias.",
+    "Hastie and Tibshirani open their slides on this topic with a quote.",
+    "The authors begin their book with an example.",
 ])
 def test_self_reference_is_flagged(tmp_path, sentence):
     assert flagged(tmp_path, sentence + "\n")
@@ -65,6 +69,10 @@ def test_self_reference_is_flagged(tmp_path, sentence):
     "The next step is to differentiate the cost.",
     "The following equation holds for every x.",
     "In the next section we derive the update.",
+    "The door opens their way.",
+    "The model starts its training at zero.",
+    "The loop ends its course after n steps.",
+    "The proof begins its paper trail with a lemma.",
 ])
 def test_content_sentences_pass(tmp_path, sentence):
     assert flagged(tmp_path, sentence + "\n") == []
