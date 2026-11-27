@@ -17,6 +17,17 @@ An untouched chunk is never reflagged.
 With no base ref the check skips instead of scanning the whole tree;
 `whole-tree` measures a corpus.
 
+With `require-summary: true` (off by default),
+it also flags a new executed chunk whose code folds
+but that sets no `code-summary`,
+so the toggle says what the hidden code does
+rather than a site-wide "Show code".
+A chunk folds when it sets `code-fold: true` or `show`,
+or sets no `code-fold` while `default-fold` is true.
+Set `default-fold: true` when the project's own `code-fold` default is true.
+A chunk with `echo: false` or `include: false` shows no code and is skipped.
+A chunk counts as new when the PR adds its opening fence line.
+
 ## Usage
 
 Copy
@@ -30,5 +41,7 @@ to `.github/workflows/` in your repository.
 | `globs` | `*.qmd` | Space-separated git pathspecs of tracked files to check |
 | `fail` | `true` | Fail the workflow on a finding instead of warning |
 | `whole-tree` | `false` | Scan every chunk, not only a PR's additions |
+| `require-summary` | `false` | Also flag a new folded chunk with no `code-summary` |
+| `default-fold` | `false` | Treat a chunk with no `code-fold` option as folded |
 | `runs-on` | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label; self-hosted only for a private repository |
 | `python-version` | `3.x` | Python version to set up |
