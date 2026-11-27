@@ -9196,7 +9196,7 @@
     "href": "reference/check-code-fold.html",
     "title": "check-code-fold.yml",
     "section": "",
-    "text": "Diff-scoped check that fails when a pull request adds #| code-fold: false to an executed code chunk. The lab’s rule (Ezra, 2026-11-05) is that every executed chunk is show when the prose mentions the code, or true when it does not. false removes the fold toggle and gains nothing, because show also keeps the code and its output together.\nThe check reads the option lines at the top of each chunk whose fence names an engine, such as {r}, {python}, or {julia}. A plain fence has no options, and a code-fold key in front matter is not examined.\nAn untouched chunk is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus.",
+    "text": "Diff-scoped check that fails when a pull request adds #| code-fold: false to an executed code chunk. The lab’s rule (Ezra, 2026-11-05) is that every executed chunk is show when the prose mentions the code, or true when it does not. false removes the fold toggle and gains nothing, because show also keeps the code and its output together.\nThe check reads the option lines at the top of each chunk whose fence names an engine, such as {r}, {python}, or {julia}. A plain fence has no options, and a code-fold key in front matter is not examined.\nAn untouched chunk is never reflagged. With no base ref the check skips instead of scanning the whole tree; whole-tree measures a corpus.\nWith require-summary: true (off by default), it also flags a new executed chunk whose code folds but that sets no code-summary, so the toggle says what the hidden code does rather than a site-wide “Show code”. A chunk folds when it sets code-fold: true or show, or sets no code-fold while default-fold is true. Set default-fold: true when the project’s own code-fold default is true. A chunk with echo: false or include: false shows no code and is skipped. A chunk counts as new when the PR adds its opening fence line.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -9220,7 +9220,7 @@
     "href": "reference/check-code-fold.html#inputs",
     "title": "check-code-fold.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every chunk, not only a PR’s additions\n\n\nruns-on\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDefault\nMeaning\n\n\n\n\nglobs\n*.qmd\nSpace-separated git pathspecs of tracked files to check\n\n\nfail\ntrue\nFail the workflow on a finding instead of warning\n\n\nwhole-tree\nfalse\nScan every chunk, not only a PR’s additions\n\n\nrequire-summary\nfalse\nAlso flag a new folded chunk with no code-summary\n\n\ndefault-fold\nfalse\nTreat a chunk with no code-fold option as folded\n\n\nruns-on\nempty (CI_RUNNER variable, else ubuntu-latest)\nRunner label; self-hosted only for a private repository\n\n\npython-version\n3.x\nPython version to set up",
     "crumbs": [
       "Overview",
       "Reference",

@@ -1347,6 +1347,7 @@ cookieconsent.run({
 <p>Diff-scoped check that fails when a pull request adds <code>#| code-fold: false</code> to an executed code chunk. The lab’s rule (Ezra, 2026-11-05) is that every executed chunk is <code>show</code> when the prose mentions the code, or <code>true</code> when it does not. <code>false</code> removes the fold toggle and gains nothing, because <code>show</code> also keeps the code and its output together.</p>
 <p>The check reads the option lines at the top of each chunk whose fence names an engine, such as <code>{r}</code>, <code>{python}</code>, or <code>{julia}</code>. A plain fence has no options, and a <code>code-fold</code> key in front matter is not examined.</p>
 <p>An untouched chunk is never reflagged. With no base ref the check skips instead of scanning the whole tree; <code>whole-tree</code> measures a corpus.</p>
+<p>With <code>require-summary: true</code> (off by default), it also flags a new executed chunk whose code folds but that sets no <code>code-summary</code>, so the toggle says what the hidden code does rather than a site-wide “Show code”. A chunk folds when it sets <code>code-fold: true</code> or <code>show</code>, or sets no <code>code-fold</code> while <code>default-fold</code> is true. Set <code>default-fold: true</code> when the project’s own <code>code-fold</code> default is true. A chunk with <code>echo: false</code> or <code>include: false</code> shows no code and is skipped. A chunk counts as new when the PR adds its opening fence line.</p>
 <section id="usage" class="level2">
 <h2 class="anchored" data-anchor-id="usage">Usage</h2>
 <p>Copy <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-code-fold.yml"><code>examples/check-code-fold.yml</code></a> to <code>.github/workflows/</code> in your repository.</p>
@@ -1381,6 +1382,16 @@ cookieconsent.run({
 <td><code>whole-tree</code></td>
 <td><code>false</code></td>
 <td>Scan every chunk, not only a PR’s additions</td>
+</tr>
+<tr class="even">
+<td><code>require-summary</code></td>
+<td><code>false</code></td>
+<td>Also flag a new folded chunk with no <code>code-summary</code></td>
+</tr>
+<tr class="odd">
+<td><code>default-fold</code></td>
+<td><code>false</code></td>
+<td>Treat a chunk with no <code>code-fold</code> option as folded</td>
 </tr>
 <tr class="even">
 <td><code>runs-on</code></td>
