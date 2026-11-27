@@ -1,4 +1,4 @@
-- `check-code-fold` gains two opt-in inputs, `require-summary` and `default-fold`.
+- `check-code-fold` gains an opt-in `require-summary` input.
   With `require-summary: true`, it also flags a new executed chunk
   whose code folds but that sets no `code-summary`,
   so the toggle says what the hidden code does (Morrison-Lab/lds#2849).
