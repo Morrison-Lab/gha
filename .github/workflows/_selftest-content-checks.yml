@@ -6114,6 +6114,120 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-citation-authors || true
           rm -rf _ci-citation-authors
+  # check-swallowed-citations is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-swallowed-citations@v3` does not resolve until
+  # the tag slides past the merge. Exercise the local composite directly. The
+  # unit tests cover the scanner and both scopes; the composite calls below
+  # prove action.yml wires each input through to the script.
+  swallowed-citations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Run check-swallowed-citations unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-swallowed-citations/tests/ -v
+      # This PR's own added lines must swallow no citation.
+      - name: Check this PR's added lines
+        uses: ./check-swallowed-citations
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      # The whole tree must be clean too, so the whole-tree calls below fail
+      # only on the staged page.
+      - name: Check the whole tree
+        uses: ./check-swallowed-citations
+        with:
+          whole-tree: 'true'
+      # Stage a page whose cross-reference swallows the citation on the next
+      # line, then assert that the default call really fails.
+      - name: Stage a page with a swallowed citation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-swallowed-citations
+          printf '%s\n' 'The layer follows @eq-recurrent-layer' \
+            '[@pascanu2014construct, section 3.3.2].' \
+            > _ci-swallowed-citations/page.qmd
+          git add -f _ci-swallowed-citations/page.qmd
+      # Blocking by default: the default call must fail.
+      - name: Check the staged page with the default fail, expecting a failure
+        id: swallowed-citations-expected-failure
+        continue-on-error: true
+        uses: ./check-swallowed-citations
+        with:
+          whole-tree: 'true'
+      - name: Assert the default call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.swallowed-citations-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-swallowed-citations to fail on a staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-swallowed-citations failed on the staged page, as expected."
+      # Were fail dropped, this call would fail as the one above did.
+      - name: Check the staged page warn-only
+        uses: ./check-swallowed-citations
+        with:
+          fail: 'false'
+          whole-tree: 'true'
+      # Diff-scoped against HEAD, the staged page is an uncommitted change, so
+      # the diff examines it and the call must fail. Were base-ref dropped, the
+      # call would skip and pass, so this failure proves base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: swallowed-citations-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-swallowed-citations
+        with:
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.swallowed-citations-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # With no base and no whole-tree, the call skips (exit 0). Were the skip
+      # a whole-tree fallback, it would fail on the staged page.
+      - name: Check again with no base, expecting a skip
+        uses: ./check-swallowed-citations
+        with:
+          base-ref: ''
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-swallowed-citations
+        with:
+          whole-tree: 'true'
+          paths-ignore: '_ci-swallowed-citations/**'
+      - name: Check again with globs excluding the page
+        uses: ./check-swallowed-citations
+        with:
+          whole-tree: 'true'
+          globs: 'website/reference/check-swallowed-citations.qmd'
+      - name: Remove the staged files
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-swallowed-citations || true
+          rm -rf _ci-swallowed-citations
   # check-macro-expansions is brand new, so its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-macro-expansions@v3` does not resolve until the
   # tag slides past the merge. Exercise the local composite directly. The unit

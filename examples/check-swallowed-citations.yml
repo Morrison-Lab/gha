@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-swallowed-citations.yml in your repo.
+# Diff-scoped check: flags a line a PR adds where an in-text cross-reference
+# swallows the citation after it, such as "as in @eq-x [@key, section 3]",
+# which Pandoc reads as one citation, so @key drops out of the page.
+# Fails by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check swallowed citations
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-swallowed-citations.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn only (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
