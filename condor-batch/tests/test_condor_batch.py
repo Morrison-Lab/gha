@@ -101,7 +101,17 @@ def _stub(path: Path, body: str) -> None:
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
 
 
-def _run(tmp_path: Path, steps: list[str], **extra_env: str):
+def _git_checkout(checkout: Path) -> None:
+    """Make checkout a real git work tree with one committed file, tools/run.sh."""
+    git = ["git", "-C", str(checkout), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]  # phi-allow
+    subprocess.run(["git", "init", "-q", str(checkout)], check=True)
+    (checkout / "tools").mkdir()
+    (checkout / "tools" / "run.sh").write_text("x")
+    subprocess.run([*git, "add", "-A"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "init"], check=True)
+
+
+def _run(tmp_path: Path, steps: list[str], git_repo: bool = False, **extra_env: str):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log = tmp_path / "calls.log"
@@ -114,8 +124,13 @@ def _run(tmp_path: Path, steps: list[str], **extra_env: str):
     _stub(bin_dir / "condor_status", STATUS_STUB)
     checkout = tmp_path / "checkout"
     checkout.mkdir()
-    (checkout / ".git").mkdir()
-    (checkout / ".git" / "pack").write_text("x")
+    if git_repo:
+        _git_checkout(checkout)
+        if extra_env.pop("DELETE_TRACKED", ""):
+            (checkout / "tools" / "run.sh").unlink()
+    else:
+        (checkout / ".git").mkdir()
+        (checkout / ".git" / "pack").write_text("x")
     (checkout / "node_modules").mkdir()
     (checkout / "node_modules" / "m.js").write_text("x")
     (checkout / "keep.txt").write_text("x")
@@ -177,11 +192,78 @@ def test_job_return_value_becomes_the_exit_code(tmp_path):
 
 
 def test_step_exit_codes_that_look_like_infrastructure_become_1(tmp_path):
-    for rv in ("70", "71", "255"):
+    for rv in ("70", "71", "73", "75", "255"):
         case_dir = tmp_path / rv
         case_dir.mkdir()
         proc, _ = _run(case_dir, ["a", "b"], STUB_RV=rv)
         assert proc.returncode == 1, rv
+
+
+def test_job_that_could_not_extract_the_checkout_exits_70(tmp_path):
+    # lds#3285: return value 74 is the job's own "the checkout did not arrive",
+    # an infrastructure failure the runner reruns, never a step's failure.
+    proc, _ = _run(tmp_path, ["a", "b"], STUB_RV="74")
+    assert proc.returncode == 70
+    assert "did not receive the whole checkout" in proc.stderr
+
+
+def test_checkout_missing_tracked_files_stops_before_the_cluster(tmp_path):
+    proc, calls = _run(tmp_path, ["a", "b"], git_repo=True, STUB_RV="0", DELETE_TRACKED="1")
+    assert proc.returncode == 75, proc.stderr
+    assert "missing 1 tracked file(s)" in proc.stderr
+    assert "tools/run.sh" in proc.stderr
+    assert _count(calls, "condor_submit") == 0
+    assert _submits(calls) == []
+
+
+def test_complete_git_checkout_is_submitted(tmp_path):
+    # The control for the case above: the same work tree with nothing deleted.
+    proc, calls = _run(tmp_path, ["a", "b"], git_repo=True, STUB_RV="0")
+    assert proc.returncode == 0, proc.stderr
+    assert _count(calls, "condor_submit") == 1
+    assert "tools/run.sh" in (tmp_path / "calls.log.tar").read_text()
+
+
+def _run_job_script(tmp_path: Path, tarball_ok: bool, steps: str, env: dict | None = None):
+    """Run the generated .condor-run.sh in a scratch dir, as an execute node would."""
+    _run(tmp_path, ["a", "b"], STUB_RV="0")
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / ".condor-steps").write_text(steps)
+    if tarball_ok:
+        seed = tmp_path / "seed"
+        seed.mkdir()
+        (seed / "seed.txt").write_text("x")
+        subprocess.run(["tar", "-czf", str(work / "checkout.tar.gz"), "-C", str(seed), "."], check=True)
+    else:
+        (work / "checkout.tar.gz").write_bytes(b"not a tarball")
+    return subprocess.run(
+        ["bash", str(tmp_path / "calls.log.run")],
+        cwd=work, capture_output=True, text=True, check=False,
+        env={**os.environ, **(env or {})},
+    ), work / "work"
+
+
+def test_job_exits_74_without_running_steps_when_extraction_fails(tmp_path):
+    proc, work = _run_job_script(tmp_path, False, "touch ran.txt\n")
+    assert proc.returncode == 74, proc.stdout
+    assert "could not extract the checkout" in proc.stdout
+    assert not (work / "ran.txt").exists()
+    assert not (work.parent / "output.tar.gz").exists()
+
+
+def test_failed_extraction_still_writes_the_output_tarball_for_a_returned_path(tmp_path):
+    # transfer_output_files names output.tar.gz, so a missing one holds the job.
+    proc, work = _run_job_script(tmp_path, False, "touch ran.txt\n", {"CONDOR_OUTPUT": "_site"})
+    assert proc.returncode == 74, proc.stdout
+    assert (work.parent / "output.tar.gz").is_file()
+    assert not (work / "ran.txt").exists()
+
+
+def test_step_exit_74_in_the_job_is_reported_as_1(tmp_path):
+    proc, work = _run_job_script(tmp_path, True, "exit 74\n")
+    assert proc.returncode == 1, proc.stdout
+    assert (work / "seed.txt").exists()
 
 
 def test_failed_ssh_exits_70(tmp_path):
@@ -593,7 +675,7 @@ def _run_action(tmp_path: Path, script_rc: int, **extra):
 
 
 def test_composite_reruns_locally_only_for_infrastructure_codes(tmp_path):
-    for rc, reruns, final in [(70, True, 0), (71, True, 0), (0, False, 0), (2, False, 2), (3, False, 3), (255, False, 255)]:
+    for rc, reruns, final in [(70, True, 0), (71, True, 0), (0, False, 0), (2, False, 2), (3, False, 3), (75, False, 75), (255, False, 255)]:
         case_dir = tmp_path / str(rc)
         case_dir.mkdir()
         code, ran_locally = _run_action(case_dir, rc)

@@ -21,7 +21,7 @@
 #
 # Exit 70 means the cluster could not run the job normally (ssh failed, or the
 # job was held or aborted) and 71 means too few steps; the caller may rerun the
-# steps on the runner for those two only. A step's own exit 70, 71 or 255 is
+# steps on the runner for those two only. A step's own exit 70, 71, 73, 74, 75 or 255 is
 # reported as 1, so no step failure can look like an infrastructure failure.
 #
 # Environment: CONDOR_HEAD (default cse-head.cluster.cs.wwu.edu; a space- or
@@ -86,8 +86,10 @@
 # Exit codes: the last failing step's code, or 0; 71 = refused (too few steps);
 # 70 = the cluster could not run the job normally (copy or ssh failed, the
 # job was held, removed or aborted, condor_wait failed, or the job did not end
-# within CONDOR_WAIT_MINUTES); 64 = CONDOR_SSH_KEY contains whitespace, or
-# another setting is malformed.
+# within CONDOR_WAIT_MINUTES, or the job could not extract the checkout);
+# 75 = the checkout is a git work tree missing tracked files, so neither the
+# job nor a rerun on the runner would see the whole tree (lds#3285);
+# 64 = CONDOR_SSH_KEY contains whitespace, or another setting is malformed.
 set -euo pipefail
 
 checkout="${1:?usage: condor-batch.sh <checkout-dir> <steps-file>}"
@@ -280,9 +282,23 @@ transfer_failed() { echo "copying to the cluster head failed" >&2; exit 70; }
 excludes=()
 read -ra patterns <<< "${RSYNC_EXCLUDE:-}"
 for pattern in ${patterns[@]+"${patterns[@]}"}; do excludes+=("--exclude=$pattern"); done
+# A checkout missing tracked files would run every step against a partial tree
+# and fail far from the cause (lds#3285: the job's tree had no tools/). Stop
+# here instead, naming the files, with a code the action does not rerun
+# locally, since the runner's own tree is the one that is incomplete.
+if top=$(git -C "$checkout" rev-parse --show-toplevel 2>/dev/null) &&
+  [ "$(cd "$top" && pwd -P)" = "$(cd "$checkout" && pwd -P)" ]; then
+  missing=$(git -C "$checkout" ls-files --deleted 2>/dev/null) || missing=
+  if [ -n "$missing" ]; then
+    count=$(printf '%s\n' "$missing" | wc -l | tr -d ' ')
+    echo "::error::the checkout in $checkout is missing $count tracked file(s), so the job would run on a partial tree; first ones: $(printf '%s\n' "$missing" | head -n 5 | paste -sd ' ' -)" >&2
+    exit 75
+  fi
+fi
 pack_dir=$(mktemp -d)
 trap 'rm -rf "$pack_dir"' EXIT
-tar -czf "$pack_dir/checkout.tar.gz" ${excludes[@]+"${excludes[@]}"} -C "$checkout" .
+tar -czf "$pack_dir/checkout.tar.gz" ${excludes[@]+"${excludes[@]}"} -C "$checkout" . ||
+  { echo "packing the checkout failed" >&2; exit 70; }
 copied=0
 for attempt in 1 2; do
   if rsync -a --mkpath -e "ssh ${ssh_opts[*]}" "$pack_dir/checkout.tar.gz" "$head_host:$root/$run/checkout.tar.gz" &&
@@ -339,7 +355,15 @@ img=${1:-}; scratch=$PWD
 # A transferred image arrives as a bare file name in the scratch directory.
 [ -z "$img" ] || [[ "$img" == /* ]] || img="$scratch/$img"
 mkdir -p "$scratch/work/.home" "$scratch/.tmp"
-tar -xzf checkout.tar.gz -C "$scratch/work"
+# A failed extraction (a full scratch disk, a truncated transfer) leaves a
+# partial tree; exit 74 so the runner reruns the steps itself (lds#3285).
+# A returned path still needs output.tar.gz, or the transfer holds the job
+# instead of letting it end with 74.
+if ! tar -xzf checkout.tar.gz -C "$scratch/work"; then
+  echo "::error::could not extract the checkout: tar failed (is the scratch disk full?)"
+  [ -z "${CONDOR_OUTPUT:-}" ] || tar -czf "$scratch/output.tar.gz" -T /dev/null
+  exit 74
+fi
 export TMPDIR="$scratch/.tmp"; cd "$scratch/work"; rc=0; i=0
 wrap=()
 [ -z "$img" ] || wrap=(apptainer exec --containall --bind "$scratch/work:/work" --bind "$TMPDIR:/tmp" --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp --env UV_CACHE_DIR=/work/.uvcache --env UV_PYTHON_INSTALL_DIR=/work/.uvpy --env TEXMFVAR=/tmp --env TEXMFCACHE=/tmp "$img")
@@ -360,6 +384,8 @@ if [ -n "${CONDOR_OUTPUT:-}" ]; then
     tar -czf "$scratch/output.tar.gz" -T /dev/null
   fi
 fi
+# 74 means "the checkout did not arrive", so a step's own 74 is reported as 1.
+[ "$rc" != 74 ] || rc=1
 exit $rc
 RUN
 chmod +x .condor-run.sh
@@ -431,7 +457,10 @@ rv=
 if [ -n "$rv" ]; then
   # A returned path is fetched by the runner, which then removes the directory.
   [ "$out" != . ] || { cd / && rm -rf "$dir" || echo "could not remove $dir" >&2; }
-  case "$rv" in 70|71|73|255) exit 1 ;; esac
+  case "$rv" in
+    74) echo "the job's work directory did not receive the whole checkout" >&2; exit 70 ;;
+    70|71|73|75|255) exit 1 ;;
+  esac
   exit "$rv"
 fi
 if [ -n "$late" ] && [ -s .cluster-id ]; then
