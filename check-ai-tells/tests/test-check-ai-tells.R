@@ -223,4 +223,92 @@ check("Currency is not read as math that hides a verb",
 check("A link target holding a tell word is not prose",
       finding_count("See [the notes](robust-leverage-notes.md) for more.") == 0L)
 
+# Test: a directory holding no Markdown or Quarto file exits 0 with a notice.
+# unlist(list()) is NULL, and file.exists(NULL) used to stop the script with
+# "invalid 'file' argument" before the empty-list notice could run.
+empty_dir <- tempfile("ai-tells-empty-")
+dir.create(empty_dir)
+rscript <- file.path(R.home("bin"), "Rscript")
+empty_out <- local({
+  old <- setwd(empty_dir)
+  on.exit(setwd(old))
+  suppressWarnings(system2(rscript, check_script, stdout = TRUE, stderr = TRUE))
+})
+empty_status <- attr(empty_out, "status")
+check("Empty directory exits 0", is.null(empty_status) || empty_status == 0L,
+      empty_status, 0L)
+check("Empty directory prints the no-files notice",
+      any(grepl("No markdown or Quarto files found to scan", empty_out)),
+      empty_out, "No markdown or Quarto files found to scan in <dir>.")
+
+# Test: a checkout whose tracked prose files are missing from the working
+# tree fails with an error, because nothing was scanned.
+broken_dir <- tempfile("ai-tells-broken-")
+dir.create(broken_dir)
+broken_out <- local({
+  old <- setwd(broken_dir)
+  on.exit(setwd(old))
+  system2("git", c("init", "-q"))
+  writeLines("A paragraph.", "notes.md")
+  system2("git", c("add", "notes.md"))
+  system2("git", c("-c", "user.name=t", "-c", "user.email=t@example.invalid", # phi-allow
+                   "commit", "-q", "-m", "init"))
+  unlink("notes.md")
+  suppressWarnings(system2(rscript, check_script, stdout = TRUE, stderr = TRUE))
+})
+broken_status <- attr(broken_out, "status")
+check("Incomplete checkout exits 1", identical(broken_status, 1L),
+      broken_status, 1L)
+check("Incomplete checkout names the tracked count",
+      any(grepl("but git tracks 1 there", broken_out, fixed = TRUE)),
+      broken_out, "... but git tracks 1 there ...")
+
+# Test: a healthy repo emptied only by our own filters still passes, both when
+# paths-ignore covers every prose file and when the prose is all hidden.
+filtered_run <- function(files, env = character(0)) {
+  dir <- tempfile("ai-tells-filtered-")
+  dir.create(dir)
+  old <- setwd(dir)
+  on.exit(setwd(old))
+  system2("git", c("init", "-q"))
+  for (f in files) {
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    writeLines("A paragraph.", f)
+  }
+  system2("git", c("add", "-A"))
+  system2("git", c("-c", "user.name=t", "-c", "user.email=t@example.invalid", # phi-allow
+                   "commit", "-q", "-m", "init"))
+  suppressWarnings(system2(rscript, check_script, stdout = TRUE,
+                           stderr = TRUE, env = env))
+}
+exit_ok <- function(out) {
+  status <- attr(out, "status")
+  is.null(status) || status == 0L
+}
+no_files_notice <- function(out) {
+  any(grepl("No markdown or Quarto files found to scan", out, fixed = TRUE))
+}
+ignored_out <- filtered_run("docs/notes.md", "AIT_PATHS_IGNORE=docs/**")
+check("paths-ignore covering every file exits 0", exit_ok(ignored_out),
+      attr(ignored_out, "status"), 0L)
+check("paths-ignore covering every file prints the no-files notice",
+      no_files_notice(ignored_out), ignored_out, "No markdown or Quarto files found to scan in <dir>.")
+hidden_out <- filtered_run(".github/notes.md")
+check("Hidden-only prose exits 0", exit_ok(hidden_out),
+      attr(hidden_out, "status"), 0L)
+
+# Test: git quotes a non-ASCII name by default; a hidden one must still read
+# as hidden, not as tracked prose missing from the tree.
+quoted_out <- filtered_run(".github/notes-é.md")
+check("Hidden-only prose with a non-ASCII name exits 0", exit_ok(quoted_out),
+      attr(quoted_out, "status"), 0L)
+
+# Test: a name the tree search found is a literal file, not a glob, so
+# notes[1].md is scanned rather than expanded to nothing.
+bracket_out <- filtered_run("notes[1].md")
+check("A bracketed file name exits 0", exit_ok(bracket_out),
+      attr(bracket_out, "status"), 0L)
+check("A bracketed file name is scanned", !no_files_notice(bracket_out),
+      bracket_out, "a scan, not the no-files notice")
+
 cat("\nAll check-ai-tells tests passed successfully.\n")

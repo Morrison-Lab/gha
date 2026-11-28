@@ -364,6 +364,25 @@ parse_ignore_tells <- function(raw_arg) {
   unname(as.character(unique(results)))
 }
 
+# Markdown and Quarto files git tracks under the working directory, or
+# character(0) outside a git work tree. core.quotepath=false keeps non-ASCII
+# names unquoted; a name git still quotes (one holding a quote, backslash or
+# control character) loses its leading quote, so the hidden-path test below
+# still sees its first path segment.
+tracked_prose_files <- function() {
+  out <- tryCatch(
+    suppressWarnings(system2(
+      "git", c("-c", "core.quotepath=false", "ls-files", "--",
+               "*.md", "*.qmd", "*.Rmd"),
+      stdout = TRUE, stderr = FALSE
+    )),
+    error = function(e) character(0)
+  )
+  if (!is.null(attr(out, "status"))) return(character(0))
+  out <- sub('^"', "", out)
+  out[nzchar(out)]
+}
+
 # ── Main Entrypoint ──────────────────────────────────────────────────────────
 
 main <- function() {
@@ -387,16 +406,26 @@ main <- function() {
     list.files(pattern = "\\.(md|qmd|Rmd)$", recursive = TRUE, full.names = TRUE)
   }
 
-  raw_files <- raw_files[!grepl("(^|/)\\.[^/]+", raw_files)]
+  hidden_path_re <- "(^|/)\\.[^/]+"
+  raw_files <- raw_files[!grepl(hidden_path_re, raw_files)]
+  # What the whole-tree search found, before paths-ignore and the existence
+  # test narrow it; the incomplete-checkout test below compares this count.
+  searched_tree <- length(args) == 0L && !nzchar(paths_arg)
+  searched_count <- length(raw_files)
 
-  files <- unlist(lapply(raw_files, function(p) {
-    if (grepl("[*?[]", p)) {
+  # as.character() keeps an empty raw_files as character(0): unlist(list())
+  # is NULL, and file.exists(NULL) stops with "invalid 'file' argument"
+  # before the empty-list notice below can run.
+  # Only caller-given paths are glob patterns; a name the tree search found,
+  # such as notes[1].md, is a literal file and must not be re-expanded.
+  files <- as.character(unlist(lapply(raw_files, function(p) {
+    if (!searched_tree && grepl("[*?[]", p)) {
       expanded <- Sys.glob(p)
       if (length(expanded) > 0) expanded else character(0)
     } else {
       p
     }
-  }))
+  })))
 
   files <- files[file.exists(files)]
 
@@ -411,7 +440,25 @@ main <- function() {
   }
 
   if (length(files) == 0L) {
-    cat("No markdown or Quarto files found to scan.\n")
+    # A whole-tree search that finds nothing, before any filter of ours,
+    # while git tracks non-hidden prose files here means the working tree is
+    # not the checkout it should be, so the check did not run; say so instead
+    # of passing (Morrison-Lab/lds#3306). Files that paths-ignore or the
+    # hidden-path rule remove are an ordinary empty scan, not this case.
+    tracked <- if (searched_tree && searched_count == 0L) {
+      tracked_prose_files()
+    } else {
+      character(0)
+    }
+    tracked <- tracked[!grepl(hidden_path_re, tracked)]
+    if (length(tracked) > 0L) {
+      cat(sprintf(
+        "::error::Found no markdown or Quarto files in %s, but git tracks %d there (for example %s); the working tree is incomplete, so nothing was scanned.\n",
+        getwd(), length(tracked), tracked[[1]]
+      ))
+      quit(status = 1)
+    }
+    cat(sprintf("No markdown or Quarto files found to scan in %s.\n", getwd()))
     quit(status = 0)
   }
 
