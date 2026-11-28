@@ -364,6 +364,20 @@ parse_ignore_tells <- function(raw_arg) {
   unname(as.character(unique(results)))
 }
 
+# Markdown and Quarto files git tracks under the working directory, or
+# character(0) outside a git work tree.
+tracked_prose_files <- function() {
+  out <- tryCatch(
+    suppressWarnings(system2(
+      "git", c("ls-files", "--", "*.md", "*.qmd", "*.Rmd"),
+      stdout = TRUE, stderr = FALSE
+    )),
+    error = function(e) character(0)
+  )
+  if (!is.null(attr(out, "status"))) return(character(0))
+  out[nzchar(out)]
+}
+
 # ── Main Entrypoint ──────────────────────────────────────────────────────────
 
 main <- function() {
@@ -414,6 +428,18 @@ main <- function() {
   }
 
   if (length(files) == 0L) {
+    # A whole-tree search that finds nothing while git tracks prose files
+    # here means the working tree is not the checkout it should be, so the
+    # check did not run; say so instead of passing (Morrison-Lab/lds#3306).
+    searched_tree <- length(args) == 0L && !nzchar(paths_arg)
+    tracked <- if (searched_tree) tracked_prose_files() else character(0)
+    if (length(tracked) > 0L) {
+      cat(sprintf(
+        "::error::Found no markdown or Quarto files in %s, but git tracks %d there (for example %s); the working tree is incomplete, so nothing was scanned.\n",
+        getwd(), length(tracked), tracked[[1]]
+      ))
+      quit(status = 1)
+    }
     cat(sprintf("No markdown or Quarto files found to scan in %s.\n", getwd()))
     quit(status = 0)
   }

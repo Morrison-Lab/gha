@@ -241,4 +241,26 @@ check("Empty directory prints the no-files notice",
       any(grepl("No markdown or Quarto files found to scan", empty_out)),
       empty_out, "No markdown or Quarto files found to scan in <dir>.")
 
+# Test: a checkout whose tracked prose files are missing from the working
+# tree fails with an error, because nothing was scanned.
+broken_dir <- tempfile("ai-tells-broken-")
+dir.create(broken_dir)
+broken_out <- local({
+  old <- setwd(broken_dir)
+  on.exit(setwd(old))
+  system2("git", c("init", "-q"))
+  writeLines("A paragraph.", "notes.md")
+  system2("git", c("add", "notes.md"))
+  system2("git", c("-c", "user.name=t", "-c", "user.email=t@example.invalid", # phi-allow
+                   "commit", "-q", "-m", "init"))
+  unlink("notes.md")
+  suppressWarnings(system2(rscript, check_script, stdout = TRUE, stderr = TRUE))
+})
+broken_status <- attr(broken_out, "status")
+check("Incomplete checkout exits 1", identical(broken_status, 1L),
+      broken_status, 1L)
+check("Incomplete checkout names the tracked count",
+      any(grepl("but git tracks 1 there", broken_out, fixed = TRUE)),
+      broken_out, "... but git tracks 1 there ...")
+
 cat("\nAll check-ai-tells tests passed successfully.\n")
