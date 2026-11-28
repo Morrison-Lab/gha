@@ -7082,14 +7082,14 @@ jobs:
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-pr-size/tests/ -v
       # This PR is itself a new check plus its docs, so measure a throwaway
-      # commit of 22 small files instead of the PR: the cap must fail it.
-      - name: Commit a 22-file sweep on a scratch branch
+      # commit of 42 small files instead of the PR: the 40-file cap must fail it.
+      - name: Commit a 42-file sweep on a scratch branch
         shell: bash
         run: |
           set -euo pipefail
           git switch -q -c ci-pr-size-sweep
           mkdir -p _ci-pr-size
-          for i in $(seq 1 22); do echo "line $i" > "_ci-pr-size/f$i.txt"; done
+          for i in $(seq 1 42); do echo "line $i" > "_ci-pr-size/f$i.txt"; done
           git add -f _ci-pr-size
           git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "sweep fixture" # phi-allow
       - name: Check the sweep, expecting a failure
@@ -7105,7 +7105,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$OUTCOME" != "failure" ]; then
-            echo "::error::expected check-pr-size to fail on a 22-file sweep, got outcome='$OUTCOME'"
+            echo "::error::expected check-pr-size to fail on a 42-file sweep, got outcome='$OUTCOME'"
             exit 1
           fi
       - name: Check again with the exemption label, expecting a pass
@@ -7117,7 +7117,7 @@ jobs:
         uses: ./check-pr-size
         with:
           base-ref: HEAD^1
-          max-files: '22'
+          max-files: '42'
       - name: Check again with the sweep exempted through paths-ignore
         uses: ./check-pr-size
         with:
