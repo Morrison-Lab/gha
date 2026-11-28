@@ -357,7 +357,13 @@ img=${1:-}; scratch=$PWD
 mkdir -p "$scratch/work/.home" "$scratch/.tmp"
 # A failed extraction (a full scratch disk, a truncated transfer) leaves a
 # partial tree; exit 74 so the runner reruns the steps itself (lds#3285).
-tar -xzf checkout.tar.gz -C "$scratch/work" || { echo "::could not extract the checkout: tar failed (is the scratch disk full?)"; exit 74; }
+# A returned path still needs output.tar.gz, or the transfer holds the job
+# instead of letting it end with 74.
+if ! tar -xzf checkout.tar.gz -C "$scratch/work"; then
+  echo "::error::could not extract the checkout: tar failed (is the scratch disk full?)"
+  [ -z "${CONDOR_OUTPUT:-}" ] || tar -czf "$scratch/output.tar.gz" -T /dev/null
+  exit 74
+fi
 export TMPDIR="$scratch/.tmp"; cd "$scratch/work"; rc=0; i=0
 wrap=()
 [ -z "$img" ] || wrap=(apptainer exec --containall --bind "$scratch/work:/work" --bind "$TMPDIR:/tmp" --pwd /work --home /work/.home --env LANG=C.UTF-8 --env TMPDIR=/tmp --env UV_CACHE_DIR=/work/.uvcache --env UV_PYTHON_INSTALL_DIR=/work/.uvpy --env TEXMFVAR=/tmp --env TEXMFCACHE=/tmp "$img")

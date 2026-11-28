@@ -224,7 +224,7 @@ def test_complete_git_checkout_is_submitted(tmp_path):
     assert "tools/run.sh" in (tmp_path / "calls.log.tar").read_text()
 
 
-def _run_job_script(tmp_path: Path, tarball_ok: bool, steps: str):
+def _run_job_script(tmp_path: Path, tarball_ok: bool, steps: str, env: dict | None = None):
     """Run the generated .condor-run.sh in a scratch dir, as an execute node would."""
     _run(tmp_path, ["a", "b"], STUB_RV="0")
     work = tmp_path / "work"
@@ -240,6 +240,7 @@ def _run_job_script(tmp_path: Path, tarball_ok: bool, steps: str):
     return subprocess.run(
         ["bash", str(tmp_path / "calls.log.run")],
         cwd=work, capture_output=True, text=True, check=False,
+        env={**os.environ, **(env or {})},
     ), work / "work"
 
 
@@ -247,6 +248,15 @@ def test_job_exits_74_without_running_steps_when_extraction_fails(tmp_path):
     proc, work = _run_job_script(tmp_path, False, "touch ran.txt\n")
     assert proc.returncode == 74, proc.stdout
     assert "could not extract the checkout" in proc.stdout
+    assert not (work / "ran.txt").exists()
+    assert not (work.parent / "output.tar.gz").exists()
+
+
+def test_failed_extraction_still_writes_the_output_tarball_for_a_returned_path(tmp_path):
+    # transfer_output_files names output.tar.gz, so a missing one holds the job.
+    proc, work = _run_job_script(tmp_path, False, "touch ran.txt\n", {"CONDOR_OUTPUT": "_site"})
+    assert proc.returncode == 74, proc.stdout
+    assert (work.parent / "output.tar.gz").is_file()
     assert not (work / "ran.txt").exists()
 
 
