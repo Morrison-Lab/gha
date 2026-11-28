@@ -1,0 +1,136 @@
+---
+title: "check-swallowed-citations.yml"
+---
+
+Diff-scoped check that flags a citation
+that an in-text cross-reference just before it swallows.
+Pandoc reads an in-text citation followed by a bracket
+as one citation with a suffix, as in `@key [p. 3]`,
+and it reads a Quarto cross-reference such as `@eq-x` with the same grammar.
+So the bracket becomes part of the cross-reference,
+and the cited source drops out of the rendered page with no warning
+(Morrison-Lab/lds#3239).
+
+Flagged:
+
+```markdown
+The layer follows @eq-recurrent-layer
+[@pascanu2014construct, section 3.3.2].
+```
+
+Preferred:
+
+```markdown
+The layer follows @eq-recurrent-layer,
+as in [@pascanu2014construct, section 3.3.2].
+```
+
+`quarto pandoc -t native` (Quarto 1.10) parses the flagged form
+as one `Cite` that holds both ids,
+and the preferred form as two.
+
+## What it flags
+
+In `.qmd` and `.md` files,
+an in-text cross-reference
+(`@fig-`, `@tbl-`, `@eq-`, `@sec-`, `@def-`, `@thm-`, `@exm-`,
+and the other Quarto prefixes)
+followed by a bracket that holds a citation
+(`[@key]`, `[-@key]`, `[see @key, p. 3]`).
+Only spaces may sit between the two,
+or one line break, since the notes break lines at clauses.
+
+## What it does not flag
+
+- a cross-reference followed by punctuation,
+  as in `@eq-x, [@key]` or `@eq-x. [@key]`,
+  since the punctuation ends the citation;
+- a cross-reference inside a bracket, as in `[@eq-x] [@key]`;
+- a bracket that is a link, `[@key](url)`, a span, or a reference link;
+- a bracket that holds no citation;
+- an ordinary citation followed by a bracket, as in `@key [@other]`;
+- a blank line between the two, since a paragraph break ends the citation;
+- code fences and code spans, HTML comments, and YAML front matter;
+- a line carrying, or following,
+  `<!-- check-swallowed-citations: allow: <reason> -->`.
+  The reason is required.
+
+## Scope
+
+Only lines a pull request adds are reported,
+so existing pages never block.
+A finding is reported on the line holding the bracket,
+and it counts as added when either that line
+or the cross-reference's line is one the diff adds.
+An added line whose exact text was also deleted in the same diff
+counts as moved rather than new.
+
+With no `base-ref`, or when the diff cannot be computed
+(a shallow clone, an unresolvable ref),
+the check skips with a warning.
+It never falls back to a whole-tree scan.
+Set `whole-tree: true` to scan every tracked file in full on purpose.
+
+Every run prints how many lines and files it examined.
+
+The check blocks by default,
+because the defect is silent in the render
+and the pattern has no use a word or a comma cannot serve.
+A whole-tree run on 2026-11-28 found 6 hits in lds,
+1 each in mds, pds, and mcs,
+and none in sds, psw, or psc.
+Each hit read by hand was a dropped citation.
+
+## Limitations
+
+- A cross-reference with a prefix outside the Quarto list is not recognized.
+- A bracket that spans a line break is not matched.
+- A brand new untracked file is invisible to `git diff`.
+  Stage it to have a local run examine it.
+
+## Inputs
+
+| Input            | Type    | Default | Description |
+| ---------------- | ------- | ------- | ----------- |
+| `globs`          | string  | `'*.qmd *.md'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip. Supports `*`, `?` and recursive `**`. |
+| `fail`           | boolean | `true`  | Fail the workflow when a swallowed citation is found. |
+| `whole-tree`     | boolean | `false` | Scan every tracked file in full instead of only a PR's added lines. |
+| `python-version` | string  | `'3.x'` | Python version to set up. |
+| `runs-on` | string | empty (`CI_RUNNER` variable, else `ubuntu-latest`) | Runner label for the job. Use a self-hosted label only for a private repository, because [a public repository's pull requests can run arbitrary code on it](https://github.com/Morrison-Lab/gha/issues/1167). |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-swallowed-citations.yml in your repo.
+# Diff-scoped check: flags a line a PR adds where an in-text cross-reference
+# swallows the citation after it, such as "as in @eq-x [@key, section 3]",
+# which Pandoc reads as one citation, so @key drops out of the page.
+# Fails by default.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check swallowed citations
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-swallowed-citations.yml@v3
+    # with:
+    #   globs: '*.qmd *.md'                     # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'    # skip known-noisy paths
+    #   fail: false                             # warn only (defaults to true)
+    #   whole-tree: true                        # scan every line, not just a PR's additions
+```
+
+See
+[`examples/check-swallowed-citations.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-swallowed-citations.yml)
+for the full caller stub.
