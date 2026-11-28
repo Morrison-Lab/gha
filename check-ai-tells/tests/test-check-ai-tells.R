@@ -278,15 +278,37 @@ filtered_run <- function(files, env = character(0)) {
   system2("git", c("add", "-A"))
   system2("git", c("-c", "user.name=t", "-c", "user.email=t@example.invalid", # phi-allow
                    "commit", "-q", "-m", "init"))
-  out <- suppressWarnings(system2(rscript, check_script, stdout = TRUE,
-                                  stderr = TRUE, env = env))
-  attr(out, "status")
+  suppressWarnings(system2(rscript, check_script, stdout = TRUE,
+                           stderr = TRUE, env = env))
 }
-ignored_status <- filtered_run("docs/notes.md", "AIT_PATHS_IGNORE=docs/**")
-check("paths-ignore covering every file exits 0",
-      is.null(ignored_status) || ignored_status == 0L, ignored_status, 0L)
-hidden_status <- filtered_run(".github/notes.md")
-check("Hidden-only prose exits 0",
-      is.null(hidden_status) || hidden_status == 0L, hidden_status, 0L)
+exit_ok <- function(out) {
+  status <- attr(out, "status")
+  is.null(status) || status == 0L
+}
+no_files_notice <- function(out) {
+  any(grepl("No markdown or Quarto files found to scan", out, fixed = TRUE))
+}
+ignored_out <- filtered_run("docs/notes.md", "AIT_PATHS_IGNORE=docs/**")
+check("paths-ignore covering every file exits 0", exit_ok(ignored_out),
+      attr(ignored_out, "status"), 0L)
+check("paths-ignore covering every file prints the no-files notice",
+      no_files_notice(ignored_out), ignored_out, "No markdown or Quarto files found to scan in <dir>.")
+hidden_out <- filtered_run(".github/notes.md")
+check("Hidden-only prose exits 0", exit_ok(hidden_out),
+      attr(hidden_out, "status"), 0L)
+
+# Test: git quotes a non-ASCII name by default; a hidden one must still read
+# as hidden, not as tracked prose missing from the tree.
+quoted_out <- filtered_run(".github/notes-é.md")
+check("Hidden-only prose with a non-ASCII name exits 0", exit_ok(quoted_out),
+      attr(quoted_out, "status"), 0L)
+
+# Test: a name the tree search found is a literal file, not a glob, so
+# notes[1].md is scanned rather than expanded to nothing.
+bracket_out <- filtered_run("notes[1].md")
+check("A bracketed file name exits 0", exit_ok(bracket_out),
+      attr(bracket_out, "status"), 0L)
+check("A bracketed file name is scanned", !no_files_notice(bracket_out),
+      bracket_out, "a scan, not the no-files notice")
 
 cat("\nAll check-ai-tells tests passed successfully.\n")

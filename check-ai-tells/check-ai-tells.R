@@ -365,16 +365,21 @@ parse_ignore_tells <- function(raw_arg) {
 }
 
 # Markdown and Quarto files git tracks under the working directory, or
-# character(0) outside a git work tree.
+# character(0) outside a git work tree. core.quotepath=false keeps non-ASCII
+# names unquoted; a name git still quotes (one holding a quote, backslash or
+# control character) loses its leading quote, so the hidden-path test below
+# still sees its first path segment.
 tracked_prose_files <- function() {
   out <- tryCatch(
     suppressWarnings(system2(
-      "git", c("ls-files", "--", "*.md", "*.qmd", "*.Rmd"),
+      "git", c("-c", "core.quotepath=false", "ls-files", "--",
+               "*.md", "*.qmd", "*.Rmd"),
       stdout = TRUE, stderr = FALSE
     )),
     error = function(e) character(0)
   )
   if (!is.null(attr(out, "status"))) return(character(0))
+  out <- sub('^"', "", out)
   out[nzchar(out)]
 }
 
@@ -411,8 +416,10 @@ main <- function() {
   # as.character() keeps an empty raw_files as character(0): unlist(list())
   # is NULL, and file.exists(NULL) stops with "invalid 'file' argument"
   # before the empty-list notice below can run.
+  # Only caller-given paths are glob patterns; a name the tree search found,
+  # such as notes[1].md, is a literal file and must not be re-expanded.
   files <- as.character(unlist(lapply(raw_files, function(p) {
-    if (grepl("[*?[]", p)) {
+    if (!searched_tree && grepl("[*?[]", p)) {
       expanded <- Sys.glob(p)
       if (length(expanded) > 0) expanded else character(0)
     } else {
