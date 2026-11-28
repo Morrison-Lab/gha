@@ -9,7 +9,9 @@ description: >-
   counts as a file), and a pure rename does not count toward the file cap.
   A line moved unchanged, within a file or between files, does not count,
   nor does a file whose every changed line moved, so a pure movement PR
-  passes at any size.
+  passes at any size. A short or punctuation-only line (a blank, a fence, a
+  brace) counts as moved only in a file whose other changed lines all moved,
+  since such a line alone cannot be told apart from a new one.
   The exemption label (`size-exempt` in the reusable workflow) lifts the cap,
   as does a PR description saying "mechanical, content-identical".
 inputs:
