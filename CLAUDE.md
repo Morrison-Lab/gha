@@ -2348,8 +2348,8 @@ CI runs it in the `citation-authors` job in `_selftest.yml`, followed by real
 `uses: ./check-citation-authors` calls over a staged page.
 
 `check-swallowed-citations/tests/test_check_swallowed_citations.py` is a pytest suite over
-the flagged forms (a crossref and its citation bracket on one line or across one line break, `[-@key]`, `[see @key]`),
-the unflagged ones (punctuation, a bracketed crossref, a link, a span, a bracket with no citation, an ordinary citation, a blank line, an email),
+the flagged forms (a citation bracket after a crossref on one line, after one line break, with `[-@key]`, or with `[see @key]`),
+the unflagged ones (punctuation, a bracketed crossref, a link, a span, a bracket with no citation, an ordinary citation, a blank line, or an email),
 the skips (fences, spans, comments, front matter, and the allow comment, whose reason is required),
 the two-line scope (kept when only the crossref line or only the bracket line is added),
 `main()`'s blocking default and warn mode, and the defaults that the script, `action.yml`, and the reusable workflow must agree on.
