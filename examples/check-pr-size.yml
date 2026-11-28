@@ -1,8 +1,9 @@
 # Copy to .github/workflows/check-pr-size.yml in your repo.
-# Blocking check: fails a PR that changes more than 20 files or 600 lines
+# Blocking check: fails a PR that changes more than 40 files or 1200 lines
 # (added plus deleted). Every PR should be as small and focused as it can be
 # while completely solving its task; a sweep goes out as minimal batches.
-# Generated, lock, image and data paths are not counted. The `size-exempt`
+# Generated, lock, image and data paths are not counted, nor are lines moved
+# unchanged between files, so a pure movement PR passes. The `size-exempt`
 # label, or a description saying "mechanical, content-identical", lifts the
 # cap; a pure rename does not count toward the file cap. Needs contents:read and pull-requests:read.
 name: Check pull request size
@@ -18,8 +19,8 @@ jobs:
       contents: read
       pull-requests: read
     # with:
-    #   max-files: '20'                  # most files a PR may change
-    #   max-lines: '600'                 # most added plus deleted lines
+    #   max-files: '40'                  # most files a PR may change
+    #   max-lines: '1200'                # most added plus deleted lines
     #   paths-ignore: 'data/**'          # paths not counted, on top of the built-ins
     #   exempt-label: size-exempt        # label that lifts the cap
     #   fail: false                      # warn instead of block (defaults to true)

@@ -1,12 +1,14 @@
 name: Check pull request size
 description: >-
   Diff-scoped, blocking check that fails a pull request changing more than
-  20 files or 600 lines (added plus deleted). Every PR should be as small and
+  40 files or 1200 lines (added plus deleted). Every PR should be as small and
   focused as it can be while completely solving its task; a sweep goes out as
   minimal batches. Generated, lock, image and data paths are not counted,
   nor any path `.gitattributes` marks `linguist-generated`, and
   neither are the lines of a newly added `_fig-*` figure subfile (each still
   counts as a file), and a pure rename does not count toward the file cap.
+  A line moved unchanged between files does not count, nor does a file whose
+  every changed line moved, so a pure movement PR passes at any size.
   The exemption label (`size-exempt` in the reusable workflow) lifts the cap,
   as does a PR description saying "mechanical, content-identical".
 inputs:
@@ -22,10 +24,10 @@ inputs:
     default: ''
   max-files:
     description: Most files a PR may change.
-    default: '20'
+    default: '40'
   max-lines:
     description: Most lines (added plus deleted) a PR may change.
-    default: '600'
+    default: '1200'
   paths-ignore:
     description: >-
       Comma/newline-separated glob patterns (relative paths) not counted, in

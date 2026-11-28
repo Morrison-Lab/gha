@@ -235,6 +235,61 @@ def test_body_saying_mechanical_content_identical_exempts(tmp_path):
     assert run(repo, PRS_PR_BODY="mechanical but reworded")[0] == 1
 
 
+def _split_repo(tmp_path, pages, extra=None):
+    """`pages` pages of 40 distinct lines each, then every page split in two.
+
+    The second half of each page moves unchanged into a new page. `extra`
+    (a line of text) is appended to the first page's new half, as a reworded
+    or new line would be.
+    """
+    git(tmp_path, "init", "-q")
+    for i in range(pages):
+        (tmp_path / f"p{i}.qmd").write_text("".join(f"page {i} sentence {j}.\n" for j in range(40)))
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-q", "-m", "base")
+    for i in range(pages):
+        lines = (tmp_path / f"p{i}.qmd").read_text().splitlines(keepends=True)
+        (tmp_path / f"p{i}.qmd").write_text("".join(lines[:20]))
+        moved = "".join(lines[20:]) + (extra + "\n" if extra and i == 0 else "")
+        (tmp_path / f"q{i}.qmd").write_text(moved)
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-q", "-m", "split")
+    return tmp_path
+
+
+def test_pure_movement_is_exempt_at_any_size(tmp_path):
+    """Ezra, 2026-11-28: "pure movement prs are exempt from the cap"."""
+    code, out = run(_split_repo(tmp_path, 20))
+    assert code == 0, out
+    assert "0 file(s), 0 changed line(s)" in out
+
+
+def test_movement_plus_a_new_line_counts_only_the_new_line(tmp_path):
+    code, out = run(_split_repo(tmp_path, 20, extra="A sentence nobody wrote before."))
+    assert code == 0, out
+    assert "1 file(s), 1 changed line(s)" in out
+
+
+def test_short_lines_never_count_as_moved(tmp_path):
+    texts = {"a.qmd": (["}", ""], ["}", ""])}
+    assert not cps.move_budget(texts)
+
+
+def test_moved_lines_into_an_ignored_path_still_count(tmp_path):
+    """An ignored path's lines cannot pay for a counted file's lines."""
+    rows = [("a.qmd", 1), ("x.lock", 1)]
+    texts = {"a.qmd": ([], ["long enough line"]), "x.lock": (["long enough line"], [])}
+    regexes = cps.diffscope.compile_ignores(cps.BUILTIN_IGNORE)
+    files, lines, _ = cps.measure(rows, regexes, texts=texts)
+    assert (files, lines) == (1, 1)
+
+
+def test_changed_texts_keys_a_deleted_file_on_its_old_path():
+    diff = ("diff --git a/gone.qmd b/gone.qmd\ndeleted file mode 100644\n--- a/gone.qmd\n"
+            "+++ /dev/null\n@@ -1,2 +0,0 @@\n-first line\n--- a dashed line\n")
+    assert cps.changed_texts(diff) == {"gone.qmd": ([], ["first line", "-- a dashed line"])}
+
+
 def test_parse_numstat_handles_renames():
     rows = cps.parse_numstat("3\t1\t\0dir/old.qmd\0dir/new.qmd\0-\t-\timg.bin\0")
     assert rows == [("dir/new.qmd", 4), ("img.bin", 0)]
