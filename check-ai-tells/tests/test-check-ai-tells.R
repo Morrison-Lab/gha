@@ -223,4 +223,22 @@ check("Currency is not read as math that hides a verb",
 check("A link target holding a tell word is not prose",
       finding_count("See [the notes](robust-leverage-notes.md) for more.") == 0L)
 
+# Test: a directory holding no Markdown or Quarto file exits 0 with a notice.
+# unlist(list()) is NULL, and file.exists(NULL) used to stop the script with
+# "invalid 'file' argument" before the empty-list notice could run.
+empty_dir <- tempfile("ai-tells-empty-")
+dir.create(empty_dir)
+rscript <- file.path(R.home("bin"), "Rscript")
+empty_out <- local({
+  old <- setwd(empty_dir)
+  on.exit(setwd(old))
+  suppressWarnings(system2(rscript, check_script, stdout = TRUE, stderr = TRUE))
+})
+empty_status <- attr(empty_out, "status")
+check("Empty directory exits 0", is.null(empty_status) || empty_status == 0L,
+      empty_status, 0L)
+check("Empty directory prints the no-files notice",
+      any(grepl("No markdown or Quarto files found to scan", empty_out)),
+      empty_out, "No markdown or Quarto files found to scan in <dir>.")
+
 cat("\nAll check-ai-tells tests passed successfully.\n")

@@ -389,14 +389,17 @@ main <- function() {
 
   raw_files <- raw_files[!grepl("(^|/)\\.[^/]+", raw_files)]
 
-  files <- unlist(lapply(raw_files, function(p) {
+  # as.character() keeps an empty raw_files as character(0): unlist(list())
+  # is NULL, and file.exists(NULL) stops with "invalid 'file' argument"
+  # before the empty-list notice below can run.
+  files <- as.character(unlist(lapply(raw_files, function(p) {
     if (grepl("[*?[]", p)) {
       expanded <- Sys.glob(p)
       if (length(expanded) > 0) expanded else character(0)
     } else {
       p
     }
-  }))
+  })))
 
   files <- files[file.exists(files)]
 
@@ -411,7 +414,7 @@ main <- function() {
   }
 
   if (length(files) == 0L) {
-    cat("No markdown or Quarto files found to scan.\n")
+    cat(sprintf("No markdown or Quarto files found to scan in %s.\n", getwd()))
     quit(status = 0)
   }
 
