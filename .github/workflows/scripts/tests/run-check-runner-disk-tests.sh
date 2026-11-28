@@ -9,6 +9,9 @@ set -uo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../../../.." && pwd)"
 script="$repo_root/scripts/check-runner-disk.sh"
+# The hook empties GITHUB_WORKSPACE, and in CI that is this repository's own
+# checkout, so no case may inherit it.
+unset GITHUB_WORKSPACE
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
