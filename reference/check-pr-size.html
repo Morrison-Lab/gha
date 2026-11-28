@@ -1352,13 +1352,13 @@ cookieconsent.run({
 </header>
 
 
-<p>Diff-scoped, blocking check that fails a pull request changing more than 20 files or 600 lines. Every PR should be as small and focused as it can be while completely solving its stated task. A sweep goes out as minimal batches, one PR per batch of one concern. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1188">gha#1188</a>.</p>
+<p>Diff-scoped, blocking check that fails a pull request changing more than 40 files or 1200 lines. Every PR should be as small and focused as it can be while completely solving its stated task. A sweep goes out as minimal batches, one PR per batch of one concern. This implements <a href="https://github.com/Morrison-Lab/gha/issues/1188">gha#1188</a>.</p>
 <p>The check counts the files a PR changes and the lines it adds plus deletes, measured from the merge base to <code>HEAD</code>. A rename counts as one file. A binary file counts as one file and no lines.</p>
 <p>These paths are not counted, since nobody writes them by hand: lockfiles, <code>renv.lock</code>, <code>_freeze/</code>, <code>docs/</code>, images, PDFs, CSV and R data files, and minified scripts. Add more with <code>paths-ignore</code>. A path that the repository’s <code>.gitattributes</code> marks <code>linguist-generated</code> is not counted either, so a repository marks its committed generator outputs once, and GitHub folds them in review as well (<a href="https://github.com/Morrison-Lab/gha/issues/1959">gha#1959</a>).</p>
 <p>The lines of a newly added <code>_fig-*</code> subfile are not counted either, since figure code in several languages is long but mechanical (<a href="https://github.com/Morrison-Lab/ai-config/issues/4928">ai-config#4928</a>). Each such file still counts as a file, and editing an existing <code>_fig-*</code> file still counts its lines.</p>
 <section id="exemptions" class="level2">
 <h2 class="anchored" data-anchor-id="exemptions">Exemptions</h2>
-<p>A pure rename (no line changed) does not count toward the file cap. A PR whose description says “mechanical, content-identical” (a pure move, rename, or split with no wording change) is exempt at any size, as one carrying the exemption label is. A diff that is a pure token substitution is exempt without either (<a href="https://github.com/Morrison-Lab/gha/issues/2050">#2050</a>): every hunk adds as many lines as it removes, and each changed line differs from the line it replaces only by one map of at most 10 substitutions that stays the same across the PR, such as a macro renamed in every file that uses it. Each substitution swaps one name (a backslash macro or an identifier) for another. An inserted or deleted token, a phrase, punctuation, a number, or a logic word such as <code>true</code>, <code>not</code>, or <code>never</code> is an edit, not a substitution, so it is measured as usual. The check prints the map, so a reviewer sees exactly what was substituted. The reusable workflow reads the description live through the API. Other PRs keep the 20-file and 600-line caps (<a href="https://github.com/Morrison-Lab/ai-config/pull/5129">ai-config#5129</a>).</p>
+<p>A pure rename (no line changed) does not count toward the file cap. A line deleted in one place and added unchanged in another, in the same file or another one, as in a move or a page split, does not count, and neither does a file whose every changed line moved, so a pure movement PR is exempt at any size (Ezra, 2026-11-28: “pure movement prs are exempt from the cap”). Lines are compared with surrounding whitespace stripped. A short or punctuation-only line (a brace, a fence, a blank line) counts as moved only in a file whose other changed lines all moved, and only against the short lines such files delete, since braces, fences, and blank lines recur in any big edit. This mirrors the push hook in ai-config, <code>no-oversized-pr-push</code>. A PR whose description says “mechanical, content-identical” (a pure move, rename, or split with no wording change) is exempt at any size, as one carrying the exemption label is. A diff that is a pure token substitution is exempt without either (<a href="https://github.com/Morrison-Lab/gha/issues/2050">#2050</a>): every hunk adds as many lines as it removes, and each changed line differs from the line it replaces only by one map of at most 10 substitutions that stays the same across the PR, such as a macro renamed in every file that uses it. Each substitution swaps one name (a backslash macro or an identifier) for another. An inserted or deleted token, a phrase, punctuation, a number, or a logic word such as <code>true</code>, <code>not</code>, or <code>never</code> is an edit, not a substitution, so it is measured as usual. The check prints the map, so a reviewer sees exactly what was substituted. The reusable workflow reads the description live through the API. Other PRs keep the 40-file and 1200-line caps (<a href="https://github.com/Morrison-Lab/ai-config/pull/5129">ai-config#5129</a>).</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -1378,12 +1378,12 @@ cookieconsent.run({
 <tbody>
 <tr class="odd">
 <td><code>max-files</code></td>
-<td><code>20</code></td>
+<td><code>40</code></td>
 <td>Most files a PR may change</td>
 </tr>
 <tr class="even">
 <td><code>max-lines</code></td>
-<td><code>600</code></td>
+<td><code>1200</code></td>
 <td>Most added plus deleted lines</td>
 </tr>
 <tr class="odd">
