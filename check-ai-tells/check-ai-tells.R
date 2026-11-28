@@ -401,7 +401,12 @@ main <- function() {
     list.files(pattern = "\\.(md|qmd|Rmd)$", recursive = TRUE, full.names = TRUE)
   }
 
-  raw_files <- raw_files[!grepl("(^|/)\\.[^/]+", raw_files)]
+  hidden_path_re <- "(^|/)\\.[^/]+"
+  raw_files <- raw_files[!grepl(hidden_path_re, raw_files)]
+  # What the whole-tree search found, before paths-ignore and the existence
+  # test narrow it; the incomplete-checkout test below compares this count.
+  searched_tree <- length(args) == 0L && !nzchar(paths_arg)
+  searched_count <- length(raw_files)
 
   # as.character() keeps an empty raw_files as character(0): unlist(list())
   # is NULL, and file.exists(NULL) stops with "invalid 'file' argument"
@@ -428,11 +433,17 @@ main <- function() {
   }
 
   if (length(files) == 0L) {
-    # A whole-tree search that finds nothing while git tracks prose files
-    # here means the working tree is not the checkout it should be, so the
-    # check did not run; say so instead of passing (Morrison-Lab/lds#3306).
-    searched_tree <- length(args) == 0L && !nzchar(paths_arg)
-    tracked <- if (searched_tree) tracked_prose_files() else character(0)
+    # A whole-tree search that finds nothing, before any filter of ours,
+    # while git tracks non-hidden prose files here means the working tree is
+    # not the checkout it should be, so the check did not run; say so instead
+    # of passing (Morrison-Lab/lds#3306). Files that paths-ignore or the
+    # hidden-path rule remove are an ordinary empty scan, not this case.
+    tracked <- if (searched_tree && searched_count == 0L) {
+      tracked_prose_files()
+    } else {
+      character(0)
+    }
+    tracked <- tracked[!grepl(hidden_path_re, tracked)]
     if (length(tracked) > 0L) {
       cat(sprintf(
         "::error::Found no markdown or Quarto files in %s, but git tracks %d there (for example %s); the working tree is incomplete, so nothing was scanned.\n",

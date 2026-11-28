@@ -263,4 +263,30 @@ check("Incomplete checkout names the tracked count",
       any(grepl("but git tracks 1 there", broken_out, fixed = TRUE)),
       broken_out, "... but git tracks 1 there ...")
 
+# Test: a healthy repo emptied only by our own filters still passes, both when
+# paths-ignore covers every prose file and when the prose is all hidden.
+filtered_run <- function(files, env = character(0)) {
+  dir <- tempfile("ai-tells-filtered-")
+  dir.create(dir)
+  old <- setwd(dir)
+  on.exit(setwd(old))
+  system2("git", c("init", "-q"))
+  for (f in files) {
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    writeLines("A paragraph.", f)
+  }
+  system2("git", c("add", "-A"))
+  system2("git", c("-c", "user.name=t", "-c", "user.email=t@example.invalid", # phi-allow
+                   "commit", "-q", "-m", "init"))
+  out <- suppressWarnings(system2(rscript, check_script, stdout = TRUE,
+                                  stderr = TRUE, env = env))
+  attr(out, "status")
+}
+ignored_status <- filtered_run("docs/notes.md", "AIT_PATHS_IGNORE=docs/**")
+check("paths-ignore covering every file exits 0",
+      is.null(ignored_status) || ignored_status == 0L, ignored_status, 0L)
+hidden_status <- filtered_run(".github/notes.md")
+check("Hidden-only prose exits 0",
+      is.null(hidden_status) || hidden_status == 0L, hidden_status, 0L)
+
 cat("\nAll check-ai-tells tests passed successfully.\n")
