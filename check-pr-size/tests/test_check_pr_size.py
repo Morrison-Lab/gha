@@ -235,16 +235,19 @@ def test_body_saying_mechanical_content_identical_exempts(tmp_path):
     assert run(repo, PRS_PR_BODY="mechanical but reworded")[0] == 1
 
 
-def _split_repo(tmp_path, pages, extra=None):
+def _split_repo(tmp_path, pages, extra=None, blanks=False):
     """`pages` pages of 40 distinct lines each, then every page split in two.
 
     The second half of each page moves unchanged into a new page. `extra`
     (a line of text) is appended to the first page's new half, as a reworded
-    or new line would be.
+    or new line would be. With `blanks`, every other line is a blank line or a
+    `:::` fence, as in a real page.
     """
     git(tmp_path, "init", "-q")
     for i in range(pages):
-        (tmp_path / f"p{i}.qmd").write_text("".join(f"page {i} sentence {j}.\n" for j in range(40)))
+        rows = [f"page {i} sentence {j}." if j % 2 or not blanks else ("" if j % 4 else ":::")
+                for j in range(40)]
+        (tmp_path / f"p{i}.qmd").write_text("".join(r + "\n" for r in rows))
     git(tmp_path, "add", "-A")
     git(tmp_path, "commit", "-q", "-m", "base")
     for i in range(pages):
@@ -270,9 +273,28 @@ def test_movement_plus_a_new_line_counts_only_the_new_line(tmp_path):
     assert "1 file(s), 1 changed line(s)" in out
 
 
-def test_short_lines_never_count_as_moved(tmp_path):
+def test_pure_movement_with_blank_lines_and_fences_is_exempt(tmp_path):
+    """The blank lines and fences of a moved block move with it."""
+    code, out = run(_split_repo(tmp_path, 20, blanks=True))
+    assert code == 0, out
+    assert "0 file(s), 0 changed line(s)" in out
+
+
+def test_short_lines_are_not_in_the_move_budget(tmp_path):
     texts = {"a.qmd": (["}", ""], ["}", ""])}
     assert not cps.move_budget(texts)
+
+
+def test_short_lines_count_outside_a_moving_file():
+    """A file with a new substantive line counts its short lines too, and a
+    file of only short-line edits is not a moving file."""
+    texts = {
+        "src.qmd": ([], ["a moved sentence.", ""]),
+        "dst.qmd": (["a moved sentence.", ""], []),
+        "edit.qmd": (["a sentence nobody wrote.", ""], [""]),
+        "blank.qmd": ([""], [""]),
+    }
+    assert cps.unmoved_counts(texts) == {"src.qmd": 0, "dst.qmd": 0, "edit.qmd": 3, "blank.qmd": 2}
 
 
 def test_moved_lines_into_an_ignored_path_still_count(tmp_path):

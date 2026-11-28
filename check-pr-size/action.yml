@@ -7,8 +7,9 @@ description: >-
   nor any path `.gitattributes` marks `linguist-generated`, and
   neither are the lines of a newly added `_fig-*` figure subfile (each still
   counts as a file), and a pure rename does not count toward the file cap.
-  A line moved unchanged between files does not count, nor does a file whose
-  every changed line moved, so a pure movement PR passes at any size.
+  A line moved unchanged, within a file or between files, does not count,
+  nor does a file whose every changed line moved, so a pure movement PR
+  passes at any size.
   The exemption label (`size-exempt` in the reusable workflow) lifts the cap,
   as does a PR description saying "mechanical, content-identical".
 inputs:

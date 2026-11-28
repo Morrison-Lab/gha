@@ -35,12 +35,15 @@ and editing an existing `_fig-*` file still counts its lines.
 
 A pure rename (no line changed) does not count toward the file cap.
 A line deleted in one place and added unchanged in another,
+in the same file or another one,
 as in a move or a page split, does not count,
 and neither does a file whose every changed line moved,
 so a pure movement PR is exempt at any size
 (Ezra, 2026-11-28: "pure movement prs are exempt from the cap").
-Lines are compared with surrounding whitespace stripped,
-and a short or punctuation-only added line never counts as moved,
+Lines are compared with surrounding whitespace stripped.
+A short or punctuation-only line (a brace, a fence, a blank line)
+counts as moved only in a file whose other changed lines all moved,
+and only against the short lines such files delete,
 since braces, fences, and blank lines recur in any big edit.
 This mirrors the push hook in ai-config, `no-oversized-pr-push`.
 A PR whose description says "mechanical, content-identical"

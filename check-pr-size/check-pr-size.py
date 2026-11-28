@@ -19,9 +19,10 @@ The lines (not the files) of a newly added `_fig-*` subfile are not counted
   PRS_PR_BODY       the PR description; one saying "mechanical,
                     content-identical" exempts the PR (ai-config#5129)
 A pure rename (no line changed) does not count toward the file cap.
-A line deleted in one place and added unchanged in another (a move or split,
-compared with surrounding whitespace stripped) does not count, and neither
-does a file whose every changed line is such a move, so a pure movement PR is
+A line deleted in one place and added unchanged in another, in the same file
+or another one (a move or split, compared with surrounding whitespace
+stripped), does not count, and neither does a file whose every changed line is
+such a move, so a pure movement PR is
 exempt at any size (Ezra, 2026-11-28: "pure movement prs are exempt from the
 cap"). This mirrors ai-config's no-oversized-pr-push hook.
 A diff that is a pure token substitution is exempt (gha#2050): every hunk
@@ -217,18 +218,56 @@ def changed_texts(diff):
     return files
 
 
+def is_short(text):
+    """A short or punctuation-only line: a brace, a fence, a blank."""
+    return len(text) < 8 or not re.search(r"\w", text)
+
+
 def move_budget(texts):
     """How often each line text is both deleted and added: moved, as in a split.
 
-    A short or punctuation-only added line (a brace, a fence, a blank) recurs
-    in any big edit, so it never counts as moved. Keep in step with
-    ai-config's hooks/no-oversized-pr-push.py.
+    A short or punctuation-only added line recurs in any big edit, so it is not
+    in this budget. Keep in step with ai-config's hooks/no-oversized-pr-push.py.
     """
     added, deleted = Counter(), Counter()
     for a, d in texts.values():
-        added.update(t for t in a if len(t) >= 8 and re.search(r"\w", t))
+        added.update(t for t in a if not is_short(t))
         deleted.update(d)
     return added & deleted
+
+
+def unmoved_counts(texts):
+    """{path: changed lines not paid for as moves}, for each path in `texts`.
+
+    A substantive line is paid from `move_budget`. A short line is paid only in
+    a moving file, one whose substantive changed lines all moved, and only from
+    the short lines the moving files add and delete: the blank lines and fences
+    of a moved block move with it. Elsewhere every short line counts.
+    Keep in step with ai-config's hooks/no-oversized-pr-push.py.
+    """
+    plus, minus = move_budget(texts), move_budget(texts)
+    left, short, moving = {}, {}, []
+    for p, (a, d) in texts.items():
+        long_a = [t for t in a if not is_short(t)]
+        long_d = [t for t in d if not is_short(t)]
+        left[p] = unmoved(long_a, plus) + unmoved(long_d, minus)
+        short[p] = ([t for t in a if is_short(t)], [t for t in d if is_short(t)])
+        if left[p] == 0 and (long_a or long_d):
+            moving.append(p)
+    short_added, short_deleted = Counter(), Counter()
+    for p in moving:
+        short_added.update(short[p][0])
+        short_deleted.update(short[p][1])
+    short_plus = short_added & short_deleted
+    short_minus = Counter(short_plus)
+    counts = {}
+    for p in texts:
+        a, d = short[p]
+        if p in moving:
+            counts[p] = unmoved(a, short_plus) + unmoved(d, short_minus)
+        else:
+            counts[p] = left[p] + len(a) + len(d)
+    return counts
 
 
 def unmoved(lines, budget):
@@ -254,12 +293,12 @@ def measure(rows, regexes, added=frozenset(), renames=frozenset(), texts=None):
     kept = [(p, n) for p, n in rows if not diffscope.ignored(p, regexes) and p not in renames]
     counted = {p for p, _ in kept}
     texts = {p: t for p, t in (texts or {}).items() if p in counted}
-    plus, minus = move_budget(texts), move_budget(texts)
+    counts = unmoved_counts(texts)
     files = lines = 0
     for p, n in kept:
         if p in texts:
             a, d = texts[p]
-            n = unmoved(a, plus) + unmoved(d, minus)
+            n = counts[p]
             if n == 0 and (a or d):
                 continue
         files += 1
