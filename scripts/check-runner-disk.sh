@@ -43,6 +43,31 @@ if [ -n "$tool_cache" ]; then
     echo "::warning::check-runner-disk: Python toolcache seeding failed; Python-based checks may fail."
 fi
 
+# Empty this job's workspace, so actions/checkout clones into an empty folder
+# instead of switching a tree an earlier job left (Morrison-Lab/lds#3292).
+# On a reused tree, checkout printed "not uptodate; will not remove from
+# working tree" and left it half switched, with files of the new commit
+# missing, so checks failed on files the commit holds.
+# Only a folder in the runner's <work>/<repo>/<repo> layout is emptied;
+# the folder itself is kept, since the runner starts the job in it.
+# CHECK_DISK_KEEP_WORKSPACE=1 keeps the tree, and then only a broken .git
+# is removed, as below.
+workspace="${GITHUB_WORKSPACE:-}"
+if [ "${CHECK_DISK_KEEP_WORKSPACE:-}" != 1 ] && [ -n "$workspace" ] && [ -d "$workspace" ]; then
+  case "$workspace" in
+    /*/*/*)
+      if [ "$(basename "$workspace")" = "$(basename "$(dirname "$workspace")")" ]; then
+        if find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2> /dev/null &&
+          [ -z "$(find "$workspace" -mindepth 1 -maxdepth 1 -print -quit 2> /dev/null)" ]; then
+          echo "check-runner-disk: emptied $workspace, so checkout starts from an empty folder."
+        else
+          echo "::warning::check-runner-disk: could not empty $workspace; checkout will reuse what is left."
+        fi
+      fi
+      ;;
+  esac
+fi
+
 # Remove a .git that is not a valid repository from this job's workspace
 # (gha#1720). A job cancelled mid-checkout leaves one, and actions/checkout then
 # prints "--local can only be used inside a git repository" as an error

@@ -9,6 +9,9 @@ set -uo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../../../.." && pwd)"
 script="$repo_root/scripts/check-runner-disk.sh"
+# The hook empties GITHUB_WORKSPACE, and in CI that is this repository's own
+# checkout, so no case may inherit it.
+unset GITHUB_WORKSPACE
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
@@ -65,17 +68,34 @@ rm -rf "$copy"
 
 # A .git that is not a valid repository is removed from the workspace, and a
 # valid one is kept (gha#1720).
+# These cases keep the tree (CHECK_DISK_KEEP_WORKSPACE=1), which the default empties.
 ws="$work/gitws/repo/repo"
 mkdir -p "$ws/.git"
 echo x > "$ws/keep.txt"
-out=$(GITHUB_WORKSPACE="$ws" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script") || fail "a broken .git should not fail the hook"
+out=$(CHECK_DISK_KEEP_WORKSPACE=1 GITHUB_WORKSPACE="$ws" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script") || fail "a broken .git should not fail the hook"
 [ -e "$ws/.git" ] && fail "a .git that is not a repository should be removed"
 [ -e "$ws/keep.txt" ] || fail "only the .git folder should be removed"
 case "$out" in *"removed $ws/.git"*) ;; *) fail "removal should be reported: $out" ;; esac
 
 git init -q "$ws"
-GITHUB_WORKSPACE="$ws" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script" > /dev/null || fail "a valid repository should pass"
+CHECK_DISK_KEEP_WORKSPACE=1 GITHUB_WORKSPACE="$ws" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script" > /dev/null || fail "a valid repository should pass"
 [ -d "$ws/.git" ] || fail "a valid repository's .git should be kept"
+
+# By default the hook empties a <work>/<repo>/<repo> workspace, dotfiles and
+# a valid .git included, and keeps the folder itself (Morrison-Lab/lds#3292).
+echo x > "$ws/.gitmodules"
+echo x > "$ws/tracked.txt"
+out=$(GITHUB_WORKSPACE="$ws" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script") || fail "emptying the workspace should not fail the hook"
+[ -d "$ws" ] || fail "the workspace folder itself should be kept"
+[ -z "$(find "$ws" -mindepth 1 -print -quit)" ] || fail "the workspace should be empty: $(ls -A "$ws")"
+case "$out" in *"emptied $ws"*) ;; *) fail "emptying should be reported: $out" ;; esac
+
+# A folder outside the runner layout is never emptied.
+odd="$work/odd/repo/other"
+mkdir -p "$odd"
+echo x > "$odd/keep.txt"
+GITHUB_WORKSPACE="$odd" CHECK_DISK_DIRS="$work" CHECK_DISK_MIN_FREE_GB=0 RUNNER_TOOL_CACHE="$work/tc" bash "$script" > /dev/null || fail "an odd workspace should not fail the hook"
+[ -e "$odd/keep.txt" ] || fail "a folder outside the <work>/<repo>/<repo> layout should be kept"
 
 [ "$failures" = 0 ] && echo "all check-runner-disk tests passed"
 exit "$failures"
